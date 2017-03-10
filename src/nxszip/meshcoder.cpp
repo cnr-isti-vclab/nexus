@@ -426,18 +426,12 @@ void MeshEncoder::encodeColors() {
 		colors.resize(node.nvert);
 		for(unsigned int i = 0; i < node.nvert; i++) {
 			for(int k = 0; k < 4; k++) {
-				colors[i][k] = original_colors[i][k]/steps[k]*steps[k];
+				colors[i][k] = original_colors[i][k]; ///steps[k]*steps[k];
 			}
 			colors[i] = toYCC(colors[i]);
-
-			/*
-			Color4b s = original_colors[i];
-			Color4b c = toRGB(colors[i]);
-			cout << "Orig: " << (int)s[0] << ":"
-					<< (int)s[1] << ":"
-					   << (int)s[2]
-				<< "Roundtrip: " << (int)c[0] << ":" << (int)c[1] << ":" << (int)c[2] << endl;
-*/
+			for(int k = 0; k < 4; k++) {
+				colors[i][k] = (colors[i][k] + (steps[k]>>1))/steps[k];
+			}
 		}
 
 		for(int i = 0; i < node.nvert; i++) {
@@ -446,34 +440,26 @@ void MeshEncoder::encodeColors() {
 			Color4b b;
 			if(l < 0)
 				b = Color4b(0, 0, 0, 0);
-			else {
+			else
 				b = colors[last[i]];
-			}
 
 			for(int k = 0; k < 4; k++) {
-				int d = c[k]/steps[k] - b[k]/steps[k];
+				int d = (int)c[k] - (int)b[k];
 				encodeDiff(diffs[k], bitstream, d);
 			}
 		}
 
 	} else {
 
-		//colors.resize(zpoints.size());
-		//for(unsigned int i = 0; i < order.size(); i++)
-		//colors[order[i]] = toYCC(original_colors[i]);
-
 		int on[4] = {0, 0, 0, 0}; //old color
 		for(unsigned int i = 0; i < zpoints.size(); i++) {
 			for(int k = 0; k < 4; k++) {
-				//int step = (1<<(8 - color_q[k]));
-				//int max_value = (1<<(color_q[k]));
-
 
 				int pos = zpoints[i].pos;
 				Color4b c = toYCC(original_colors[pos]);
 				int n = c[k];
 
-				n = n/steps[k];
+				n = (n + (steps[k]>>1))/steps[k];
 
 				int d = n - on[k];
 				encodeDiff(diffs[k], bitstream, d);
