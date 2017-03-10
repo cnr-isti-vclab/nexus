@@ -36,7 +36,8 @@ SOURCES += \
     tsploader.cpp \
     nexusbuilder.cpp \
     objloader.cpp \
-    tmesh.cpp
+    tmesh.cpp \
+    texpyramid.cpp
 
 win32-msvc: DEFINES += NOMINMAX
 
@@ -57,7 +58,8 @@ HEADERS += \
     nexusbuilder.h \
     objloader.h \
     tmesh.h \
-    vertex_cache_optimizer.h
+    vertex_cache_optimizer.h \
+    texpyramid.h
 
 DESTDIR = "../../bin"
 

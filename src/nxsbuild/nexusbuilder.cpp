@@ -19,6 +19,8 @@ for more details.
 #include <QThread>
 #include <QFileInfo>
 #include <QPainter>
+#include <QImage>
+#include <QImageReader>
 #include "vertex_cache_optimizer.h"
 
 #include "nexusbuilder.h"
@@ -235,7 +237,7 @@ public:
 
 };
 
-QImage extractNodeTex(TMesh &mesh, std::vector<QImage> &textures, float &error) {
+QImage extractNodeTex(TMesh &mesh, std::vector<QImageReader> &textures, float &error) {
 	std::vector<vcg::Box2f> boxes;
 	std::vector<int> box_texture; //which texture each box belongs;
 	std::vector<int> vertex_to_tex(mesh.vert.size(), -1);
@@ -310,13 +312,13 @@ QImage extractNodeTex(TMesh &mesh, std::vector<QImage> &textures, float &error) 
 	std::vector<vcg::Point2i> origins(boxes.size());
 	for(size_t b = 0; b < boxes.size(); b++) {
 		auto &box = boxes[b];
-		QImage &img = textures[box_texture[b]];
+		QImageReader *img = textures[box_texture[b]];
 
 		//enlarge 1 pixel
-		float w = img.width();
-		float h = img.height();
-		float px = 1/(float)img.width();
-		float py = 1/(float)img.height();
+		float w = img->size().width();
+		float h = img->size().height();
+		float px = 1/(float)img->size().width();
+		float py = 1/(float)img->size().height();
 		box.Offset(vcg::Point2f(px, py));
 		//snap to higher pix (clamped by 0 and 1 anyway)
 		vcg::Point2i &size = sizes[b];
@@ -381,9 +383,9 @@ QImage extractNodeTex(TMesh &mesh, std::vector<QImage> &textures, float &error) 
 		vcg::Point2i &o = origins[b];
 		vcg::Point2i m = mapping[b];
 
-		QImage &img = textures[box_texture[b]];
-		float px = 1/(float)img.width();
-		float py = 1/(float)img.height();
+		QImageReader &img = textures[box_texture[b]];
+		float px = 1/(float)img->size().width();
+		float py = 1/(float)img->size().height();
 
 		if(uv[0] < 0.0f)
 			uv[0] = 0.0f;
@@ -436,9 +438,11 @@ QImage extractNodeTex(TMesh &mesh, std::vector<QImage> &textures, float &error) 
 			vcg::Point2i &o = origins[i];
 			vcg::Point2i &s = sizes[i];
 
-			QImage &img = textures[source];
+			QImageReader &img = textures[source];
+			img.setClipRect(QRect(o[0], o[1], s[0], s[1]));
+			QImage rect = img.read();
 
-			painter.drawImage(mapping[i][0], mapping[i][1], img, o[0], o[1], s[0], s[1]);
+			painter.drawImage(mapping[i][0], mapping[i][1], rect);
 			//		painter.fillRect(mapping[i][0], mapping[i][1], s[0], s[1], QColor(color[0], color[1], color[2]));
 			//		boxid++;
 		}
@@ -527,23 +531,17 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 		KDTreeSoup *input = dynamic_cast<KDTreeSoup *>(in);
 		StreamSoup *output = dynamic_cast<StreamSoup *>(out);
 
-		std::vector<QImage> teximages;
+		std::vector<QImageReader *> teximages;
 
 		if(hasTextures()) {
-			//keep texture information
-			//here only the first one is used (what if there are more than one?)
-
-			//TODO problem with huge textures here! The images are needed when creating the node texture.
-			//will be fixed in future.
 
 			for(QString filename: input->textures) {
 
-				QImage img;
-				img.load(filename);
+				QImageReader *img = new QImageReader(filename);
 				if(level == 0)
-					input_pixels += img.width()*img.height();
+					input_pixels += img->size().width()*img->size().height();
 
-				teximages.push_back(img.mirrored());
+				teximages.push_back(img);
 
 				//if(level % 2 == 0 && img.width() > 32) {
 				images.push_back(filename);
@@ -556,9 +554,9 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 					t.offset = info.size();
 					textures.push_back(t);
 				}
-				//create 1.4 size texture and store it.
-				int w = std::max(1, (int)(img.width()/M_SQRT2));
-				int h = std::max(1, (int)(img.height()/M_SQRT2));
+				//create half pixels size texture and store it.
+				int w = std::max(1, (int)(img->size().width()/M_SQRT2));
+				int h = std::max(1, (int)(img->size().height()/M_SQRT2));
 
 				img = img.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
@@ -639,6 +637,10 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 					Texture t;
 					t.offset = nodeTex.size()/NEXUS_PADDING;
 					textures.push_back(t);
+					//TODO qimage writer if could reduce size, this are false by default,
+//					void QImageWriter::setOptimizedWrite(bool optimize)
+//					void QImageWriter::setProgressiveScanWrite(bool progressive)
+
 
 					nodetex.save(&nodeTex, "jpg", tex_quality);
 					quint64 size = pad(nodeTex.size());
@@ -701,6 +703,8 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 			delete []triangles;
 		}
+		for(auto img: teximages)
+			delete img;
 
 		//std::cout << "Level texture area: " << area << endl;
 		/*while(workers.size()) {

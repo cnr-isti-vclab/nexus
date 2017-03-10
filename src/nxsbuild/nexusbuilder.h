@@ -24,7 +24,6 @@ for more details.
 #include <QString>
 #include <QFile>
 #include <QMutex>
-#include <QImage>
 #include "../common/virtualarray.h"
 
 #include <vcg/space/box3.h>
