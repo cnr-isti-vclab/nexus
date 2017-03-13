@@ -154,6 +154,7 @@ int main(int argc, char *argv[]) {
 		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;
 		builder.tex_quality = tex_quality;
+		builder.initAtlas(stream->textures);
 
 
 		KDTree *tree = 0;

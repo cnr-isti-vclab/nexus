@@ -20,7 +20,6 @@ for more details.
 #include <QFileInfo>
 #include <QPainter>
 #include <QImage>
-#include <QImageReader>
 #include "vertex_cache_optimizer.h"
 
 #include "nexusbuilder.h"
@@ -89,6 +88,11 @@ NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scalin
 	header.version = 2;
 	header.signature = signature;
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
+}
+
+void NexusBuilder::initAtlas(std::vector<QString> &filenames) {
+	if(filenames.size())
+		atlas.addTextures(filenames);
 }
 
 void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
@@ -237,7 +241,7 @@ public:
 
 };
 
-QImage extractNodeTex(TMesh &mesh, std::vector<QImageReader> &textures, float &error) {
+QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 	std::vector<vcg::Box2f> boxes;
 	std::vector<int> box_texture; //which texture each box belongs;
 	std::vector<int> vertex_to_tex(mesh.vert.size(), -1);
@@ -312,13 +316,13 @@ QImage extractNodeTex(TMesh &mesh, std::vector<QImageReader> &textures, float &e
 	std::vector<vcg::Point2i> origins(boxes.size());
 	for(size_t b = 0; b < boxes.size(); b++) {
 		auto &box = boxes[b];
-		QImageReader *img = textures[box_texture[b]];
+		int tex = box_texture[b];
 
 		//enlarge 1 pixel
-		float w = img->size().width();
-		float h = img->size().height();
-		float px = 1/(float)img->size().width();
-		float py = 1/(float)img->size().height();
+		float w = atlas.width(tex, level); //img->size().width();
+		float h = atlas.height(tex, level); //img->size().height();
+		float px = 1/(float)w;
+		float py = 1/(float)h;
 		box.Offset(vcg::Point2f(px, py));
 		//snap to higher pix (clamped by 0 and 1 anyway)
 		vcg::Point2i &size = sizes[b];
@@ -383,9 +387,12 @@ QImage extractNodeTex(TMesh &mesh, std::vector<QImageReader> &textures, float &e
 		vcg::Point2i &o = origins[b];
 		vcg::Point2i m = mapping[b];
 
-		QImageReader &img = textures[box_texture[b]];
-		float px = 1/(float)img->size().width();
-		float py = 1/(float)img->size().height();
+		//QImageReader &img = textures[box_texture[b]];
+		int tex = box_texture[b];
+		float w = atlas.width(tex, level); //img->size().width();
+		float h = atlas.height(tex, level); //img->size().height();
+		float px = 1/(float)w;
+		float py = 1/(float)h;
 
 		if(uv[0] < 0.0f)
 			uv[0] = 0.0f;
@@ -438,11 +445,13 @@ QImage extractNodeTex(TMesh &mesh, std::vector<QImageReader> &textures, float &e
 			vcg::Point2i &o = origins[i];
 			vcg::Point2i &s = sizes[i];
 
-			QImageReader &img = textures[source];
+			/*QImageReader &img = textures[source];
 			img.setClipRect(QRect(o[0], o[1], s[0], s[1]));
-			QImage rect = img.read();
+			QImage rect = img.read(); */
 
+			QImage rect = atlas.read(source, level, QRect(o[0], o[1], s[0], s[1]));
 			painter.drawImage(mapping[i][0], mapping[i][1], rect);
+
 			//		painter.fillRect(mapping[i][0], mapping[i][1], s[0], s[1], QColor(color[0], color[1], color[2]));
 			//		boxid++;
 		}
@@ -531,10 +540,8 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 		KDTreeSoup *input = dynamic_cast<KDTreeSoup *>(in);
 		StreamSoup *output = dynamic_cast<StreamSoup *>(out);
 
-		std::vector<QImageReader *> teximages;
-
-		if(hasTextures()) {
-
+		atlas.buildLevel(level);
+/*		if(hasTextures()) {
 			for(QString filename: input->textures) {
 
 				QImageReader *img = new QImageReader(filename);
@@ -566,12 +573,9 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 				if(!success)
 					throw QString("Could not save img: '%1'").arg(texture_filename);
 				output->textures.push_back(texture_filename);
-				/*} else {
-					current_texture = textures.size()-1;
-					output->textures.push_back(filename);
-				}*/
+
 			}
-		}
+		} */
 
 		//const int n_threads = 3;
 		//QList<Worker *> workers;
@@ -631,7 +635,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			} else {
 
 				if(useNodeTex) {
-					QImage nodetex = extractNodeTex(tmp, teximages, error);
+					QImage nodetex = extractNodeTex(tmp, level, error);
 					area += nodetex.width()*nodetex.height();
 					output_pixels += nodetex.width()*nodetex.height();
 					Texture t;
@@ -703,8 +707,8 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 			delete []triangles;
 		}
-		for(auto img: teximages)
-			delete img;
+//		for(auto img: teximages)
+//			delete img;
 
 		//std::cout << "Level texture area: " << area << endl;
 		/*while(workers.size()) {
