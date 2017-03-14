@@ -198,9 +198,11 @@ void TexAtlas::pruneCache() {
 	while(cache_size > cache_max) {
 		Index index;
 		uint32_t oldest = access;
-		for (auto it = ram.cbegin(); it != ram.cend();) {
-			if(it->second.access < oldest)
+		for (auto it = ram.cbegin(); it != ram.cend(); it++) {
+			if(it->second.access < oldest) {
 				index = it->first;
+				oldest = it->second.access;
+			}
 		}
 		auto it = ram.find(index);
 		cache_size -= 4*(it->second.image.width())*(it->second.image.height());

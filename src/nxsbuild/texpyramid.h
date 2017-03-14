@@ -70,12 +70,12 @@ public:
 		uint32_t w,h;
 	};
 
-	const int side = 1024;
+	const int side = 512; //1024;
 	std::vector<TexPyramid> pyramids;
 	float scale;
 	int quality;
 
-	TexAtlas(): scale(M_SQRT1_2), quality(92), cache_max(1<<30), cache_size(0), access(1) {}
+	TexAtlas(): scale(M_SQRT1_2), quality(92), cache_max(20*(1<<20)), cache_size(0), access(1) {}
 
 	bool addTextures(std::vector<QString> &filenames);
 	QImage read(int tex, int level, QRect region);
