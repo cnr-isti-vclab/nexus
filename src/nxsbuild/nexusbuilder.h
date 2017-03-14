@@ -18,18 +18,20 @@ for more details.
 #ifndef NX_NEXUSBUILDER_H
 #define NX_NEXUSBUILDER_H
 
-#include "../common/signature.h"
-#include "../common/dag.h"
+#include <vector>
 
 #include <QString>
 #include <QFile>
 #include <QMutex>
-#include <QImage>
-#include "../common/virtualarray.h"
 
 #include <vcg/space/box3.h>
 
-#include <vector>
+#include "../common/signature.h"
+#include "../common/dag.h"
+#include "../common/virtualarray.h"
+#include "texpyramid.h"
+
+
 
 class KDTree;
 class KDTreeSoup;
@@ -38,7 +40,11 @@ class Stream;
 class StreamSoup;
 class StreamCloud;
 
+class QImage;
+class TMesh;
+
 namespace nx {
+
 class Nexus;
 }
 
@@ -80,6 +86,7 @@ public:
 	bool hasColors() { return header.signature.vertex.hasColors(); }
 	bool hasTextures() { return header.signature.vertex.hasTextures(); }
 
+	void initAtlas(std::vector<QString> &textures);
 	void create(KDTree *input, Stream *output, uint top_node_size);
 	void createLevel(KDTree *input, Stream *output, int level);
 
@@ -113,6 +120,7 @@ public:
 	std::vector<QString> images;
 
 	quint64 input_pixels, output_pixels;
+	nx::TexAtlas atlas;
 	QTemporaryFile nodeTex; //texure images for each node stored here.
 	quint64 max_memory;
 
@@ -121,7 +129,7 @@ public:
 	int tex_quality;
 
 
-
+	QImage extractNodeTex(TMesh &mesh, int level, float &error);
 	void invertNodes(); //
 	void saturateNode(quint32 n);
 	void optimizeNode(quint32 node, uchar *chunk);

@@ -19,8 +19,6 @@ for more details.
 
 #include <QtGui>
 #include <QVariant>
-#include <QImage>
-#include <QImageIOPlugin>
 
 #include <wrap/system/qgetopt.h>
 
@@ -38,14 +36,15 @@ int main(int argc, char *argv[]) {
 	setlocale(LC_ALL, "C");
 	QLocale::setDefault(QLocale::C);		      QLocale::setDefault(QLocale::C);
 
-	QVariant node_size(1<<15),
-			top_node_size(4096),
-			vertex_quantization(0.0f),
-			tex_quality(92),               //default texture quality
-			decimation("quadric"),         //simplification method
-			ram_buffer(2000),              //Mb of ram to use
-			scaling(0.5),                  //simplification ratio
-			output("");                    //output file
+	int node_size = 1<<15;
+	int top_node_size = 4096;
+	float vertex_quantization = 0.0f;   //optionally quantize vertices position.
+	int tex_quality(92);                //default jpg texture quality
+	QString decimation("quadric");      //simplification method
+	int ram_buffer(2000);               //Mb of ram to use
+	float scaling(0.5);                 //simplification ratio
+	QString output("");                 //output file
+
 
 	bool point_cloud = false;
 	bool normals = false;
@@ -99,19 +98,17 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	QString filename = output.toString();
-	if(filename == "") filename = inputs[0].left(inputs[0].length()-4);
-	if(!filename.endsWith(".nxs"))
-		filename += ".nxs";
+	if(output == "") output = inputs[0].left(inputs[0].length()-4);
+	if(!output.endsWith(".nxs"))
+		output += ".nxs";
 
-	int size = node_size.toInt();
-	if(size < 1000 || size >= 1<<16) {
-		cerr << "Patch size (" << size << ") out of bounds [2000-32536]\n";
+	if(node_size < 1000 || node_size >= 1<<16) {
+		cerr << "Patch size (" << node_size << ") out of bounds [2000-32536]\n";
 		return -1;
 	}
 
 	try {
-		quint64 max_memory = (1<<20)*ram_buffer.toULongLong()/4; //hack 4 is actually an estimate...
+		quint64 max_memory = (1<<20)*(uint64_t)ram_buffer/4; //hack 4 is actually an estimate...
 
 		//autodetect point cloud ply.
 		{
@@ -125,7 +122,7 @@ int main(int argc, char *argv[]) {
 			stream = new StreamCloud("cache_stream");
 		else
 			stream = new StreamSoup("cache_stream");
-		stream->setVertexQuantization(vertex_quantization.toDouble());
+		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
 		stream->load(inputs);
 		bool has_colors = stream->hasColors();
@@ -154,9 +151,10 @@ int main(int argc, char *argv[]) {
 
 		NexusBuilder builder(components);
 		builder.setMaxMemory(max_memory);
-		builder.setScaling(scaling.toFloat());
+		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;
-		builder.tex_quality = tex_quality.toInt();
+		builder.tex_quality = tex_quality;
+		builder.initAtlas(stream->textures);
 
 
 		KDTree *tree = 0;
@@ -165,17 +163,17 @@ int main(int argc, char *argv[]) {
 		else
 			tree = new KDTreeSoup("cache_tree", adaptive.toFloat());
 
-		tree->setMaxMemory((1<<20)*ram_buffer.toULongLong()/2);
+		tree->setMaxMemory((1<<20)*(uint64_t)ram_buffer/2);
 		KDTreeSoup *treesoup = dynamic_cast<KDTreeSoup *>(tree);
 		if(treesoup)
-			treesoup->setTrianglesPerBlock(node_size.toInt());
+			treesoup->setTrianglesPerBlock(node_size);
 
 		KDTreeCloud *treecloud = dynamic_cast<KDTreeCloud *>(tree);
 		if(treecloud)
-			treecloud->setTrianglesPerBlock(node_size.toInt());
+			treecloud->setTrianglesPerBlock(node_size);
 
-		builder.create(tree, stream,  top_node_size.toUInt());
-		builder.save(filename);
+		builder.create(tree, stream,  top_node_size);
+		builder.save(output);
 
 		delete tree;
 		delete stream;
