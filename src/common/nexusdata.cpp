@@ -25,9 +25,9 @@ for more details.
 
 #include "../nxszip/meshdecoder.h"
 
-#if _MSC_VER >= 1800
+//#if _MSC_VER >= 1800
 #include <random>
-#endif
+//#endif
 
 #include <iostream>
 using namespace std;
