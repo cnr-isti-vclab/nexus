@@ -34,15 +34,6 @@ SOURCES += \
     ../common/nexusdata.cpp \
     ../common/traversal.cpp \
     ../common/cone.cpp \
-    ../nxsbuild/tsploader.cpp \
-    ../nxsbuild/plyloader.cpp \
-    ../nxsbuild/meshstream.cpp \
-    ../nxsbuild/meshloader.cpp \
-    ../nxsbuild/kdtree.cpp \
-    ../nxsbuild/tmesh.cpp \
-    ../nxsbuild/mesh.cpp \
-    ../nxsbuild/nexusbuilder.cpp \
-    ../nxsbuild/objloader.cpp \
     ../nxszip/bitstream.cpp \
     ../nxszip/tunstall.cpp \
     ../nxszip/meshcoder.cpp \
@@ -56,17 +47,6 @@ HEADERS += \
     ../common/nexusdata.h \
     ../common/traversal.h \
     ../common/signature.h \
-    ../nxsbuild/tsploader.h \
-    ../nxsbuild/trianglesoup.h \
-    ../nxsbuild/plyloader.h \
-    ../nxsbuild/partition.h \
-    ../nxsbuild/meshstream.h \
-    ../nxsbuild/meshloader.h \
-    ../nxsbuild/kdtree.h \
-    ../nxsbuild/mesh.h \
-    ../nxsbuild/nexusbuilder.h \
-    ../nxsbuild/objloader.h \
-    ../nxsbuild/tmesh.h \
     ../nxszip/zpoint.h \
     ../nxszip/model.h \
     ../nxszip/range.h \
