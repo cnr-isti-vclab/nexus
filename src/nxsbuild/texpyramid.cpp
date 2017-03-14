@@ -8,8 +8,6 @@
 using namespace nx;
 using namespace std;
 
-//TODO pass path instead of reader (which cannot be reused
-
 bool TexLevel::init(int t, TexAtlas *c, QString filename) {
 	tex = t;
 	level = 0;
