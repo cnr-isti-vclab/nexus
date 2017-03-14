@@ -4,7 +4,6 @@
 #include <QRect>
 #include <QString>
 #include <QImage>
-#include <QImageReader>
 #include <QTemporaryFile>
 
 namespace nx {
@@ -18,9 +17,9 @@ public:
 	int tex, level;
 	int width, height;
 	int tilew, tileh;              //how many tiles to make up side.
-	std::vector<qint64> offsets; //where each tile starts in the cache.
+	//std::vector<qint64> offsets; //where each tile starts in the cache.
 
-	bool init(int tex, TexAtlas *c, QImageReader &reader);
+	bool init(int tex, TexAtlas *c, QString filename);
 	QImage read(QRect region);
 	void build(TexLevel &parent);
 
@@ -45,9 +44,8 @@ public:
 		int tex;
 		int level;
 		int index;
-		uint32_t access; //record last access time.
 		Index() {}
-		Index(int t, int l, int i, int a = 0): tex(t), level(l), index(i), access(a) {}
+		Index(int t, int l, int i): tex(t), level(l), index(i) {}
 		bool operator<(const Index &i) const {
 			if(tex == i.tex) {
 				if(level == i.level)
@@ -59,6 +57,17 @@ public:
 		bool operator==(const Index &i) {
 			return level == i.level && index == i.index && tex == i.tex;
 		}
+	};
+	struct RamData {
+		QImage image;
+		uint32_t access;
+		RamData() {}
+		RamData(QImage img, uint32_t a): image(img), access(a) {}
+	};
+	struct DiskData {
+		uint64_t offset;
+		uint64_t size;
+		uint32_t w,h;
 	};
 
 	const int side = 1024;
@@ -76,9 +85,11 @@ public:
 	int height(int tex, int level) { return pyramids[tex].levels[level].height; }
 	void flush(int level);
 	void pruneCache();
-	void cacheImg(Index index, QImage img);
+	void addImg(Index index, QImage img);
+	QImage getImg(Index index);
 
-	std::map<Index, QImage> cache;
+	std::map<Index, RamData> ram;
+	std::map<Index, DiskData> disk;
 	uint64_t cache_max;
 	uint64_t cache_size;
 	uint64_t access;

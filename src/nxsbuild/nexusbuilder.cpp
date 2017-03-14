@@ -20,6 +20,7 @@ for more details.
 #include <QFileInfo>
 #include <QPainter>
 #include <QImage>
+#include <QImageWriter>
 #include "vertex_cache_optimizer.h"
 
 #include "nexusbuilder.h"
@@ -445,10 +446,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 			vcg::Point2i &o = origins[i];
 			vcg::Point2i &s = sizes[i];
 
-			/*QImageReader &img = textures[source];
-			img.setClipRect(QRect(o[0], o[1], s[0], s[1]));
-			QImage rect = img.read(); */
-
 			QImage rect = atlas.read(source, level, QRect(o[0], o[1], s[0], s[1]));
 			painter.drawImage(mapping[i][0], mapping[i][1], rect);
 
@@ -470,10 +467,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 			painter.drawPoint(x, y);
 		} */
 	}
-
-	/*	static int countfile = 0;
-	QString filename = "test_%1.jpg";
-	image.save(filename.arg(countfile++), "jpg", 90); */
 
 	image = image.mirrored();
 	return image;
@@ -541,41 +534,8 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 		StreamSoup *output = dynamic_cast<StreamSoup *>(out);
 
 		atlas.buildLevel(level);
-/*		if(hasTextures()) {
-			for(QString filename: input->textures) {
-
-				QImageReader *img = new QImageReader(filename);
-				if(level == 0)
-					input_pixels += img->size().width()*img->size().height();
-
-				teximages.push_back(img);
-
-				//if(level % 2 == 0 && img.width() > 32) {
-				images.push_back(filename);
-				QFileInfo info(filename);
-				if(!info.exists())
-					throw QString("Missing texture '%1'!").arg(filename);
-
-				if(!useNodeTex) {
-					Texture t;
-					t.offset = info.size();
-					textures.push_back(t);
-				}
-				//create half pixels size texture and store it.
-				int w = std::max(1, (int)(img->size().width()/M_SQRT2));
-				int h = std::max(1, (int)(img->size().height()/M_SQRT2));
-
-				img = img.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-
-				QString texture_filename = QString("nexus_tmp_tex%1.png").arg(images.size());
-
-				bool success = img.save(texture_filename);
-				if(!success)
-					throw QString("Could not save img: '%1'").arg(texture_filename);
-				output->textures.push_back(texture_filename);
-
-			}
-		} */
+		if(level > 0)
+			atlas.flush(level-1);
 
 		//const int n_threads = 3;
 		//QList<Worker *> workers;
@@ -641,12 +601,13 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 					Texture t;
 					t.offset = nodeTex.size()/NEXUS_PADDING;
 					textures.push_back(t);
-					//TODO qimage writer if could reduce size, this are false by default,
-//					void QImageWriter::setOptimizedWrite(bool optimize)
-//					void QImageWriter::setProgressiveScanWrite(bool progressive)
 
+					QImageWriter writer(&nodeTex, "jpg");
+					writer.setQuality(tex_quality);
+					writer.setOptimizedWrite(true);
+					writer.setProgressiveScanWrite(true);
+					writer.write(nodetex);
 
-					nodetex.save(&nodeTex, "jpg", tex_quality);
 					quint64 size = pad(nodeTex.size());
 					nodeTex.resize(size);
 					nodeTex.seek(size);
