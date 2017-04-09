@@ -647,7 +647,7 @@ Instance.prototype = {
 		gl.enableVertexAttribArray(attr.position);
 		if(m.vertex.texCoord) gl.enableVertexAttribArray(attr.uv);
 		if(m.vertex.normal) gl.enableVertexAttribArray(attr.normal);
-		if(m.vertex.color) gl.enableVertexAttribArray(attr.color);
+		if(m.vertex.color && attr.color >= 0) gl.enableVertexAttribArray(attr.color);
 		gl.vertexAttrib4fv(2, [0.8, 0.8, 0.8, 1.0]);
 
 		if(Debug.nodes) {

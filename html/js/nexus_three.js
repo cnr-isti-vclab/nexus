@@ -2,10 +2,10 @@ function NexusObject(url, renderer, render, material) {
 	var gl = renderer.context;
 	var geometry = new THREE.BufferGeometry();
 	var positions = new Float32Array(3);
-	var normals = new Float32Array(3);
+
 
 	geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-	geometry.addAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
+	
 
 	if(!material)
 		this.autoMaterial = true;
@@ -24,16 +24,20 @@ function NexusObject(url, renderer, render, material) {
 		if(mesh.autoMaterial)
 			mesh.material = new THREE.MeshLambertMaterial( { color: 0xffffff } );
 
+		if(this.mesh.vertex.normal) {
+			var normals = new Float32Array(3);
+			geometry.addAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
+		}
 		if(this.mesh.vertex.color) {
 			var colors = new Float32Array(4);
 			geometry.addAttribute( 'color', new THREE.BufferAttribute(colors, 4));
-			nexus.attributes.color = 2;
+			if(mesh.autoMaterial)
+				mesh.material = new THREE.MeshLambertMaterial({ vertexColors: THREE.VertexColors });
 		}
 
 		if(this.mesh.vertex.texCoord) {
 			var uv = new Float32Array(2);
 			geometry.addAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
-			nexus.attributes.uv = 2;
 			if(mesh.autoMaterial) {
 				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
 				texture.needsUpdate = true;
