@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Nexus = function() {
 
-
 /* WORKER INITIALIZED ONCE */
 
 var worker;
@@ -564,7 +563,7 @@ Instance.prototype = {
 		t.visited[node] = 1;
 
 		var error = t.nodeError(node);
-		if(error < t.targetError*0.8) return;  //2% speed TODO check if needed
+		if(node > 0 && error < t.targetError*0.8) return;  //2% speed TODO check if needed
 
 		var errors = t.mesh.errors;
 		var frames = t.mesh.frames;
@@ -588,7 +587,7 @@ Instance.prototype = {
 
 	expandNode : function (node, error) {
 		var t = this;
-		if(error < t.targetError) //error
+		if(node > 0 && error < t.targetError) //error
 			return false;
 
 		if(t.drawSize > t.drawBudget)
