@@ -88,6 +88,7 @@ QImage TexLevel::read(QRect region) {
 void TexLevel::build(TexLevel &parent) {
 	int side = collection->side;
 	float scale = collection->scale;
+	tex = parent.tex;
 	width = floor(parent.width * scale);
 	height = floor(parent.height * scale);
 
@@ -152,7 +153,7 @@ QImage TexAtlas::read(int tex, int level, QRect region) {
 }
 
 void TexAtlas::addImg(Index index, QImage img) {
-	cout << "Adding: " << index.level << " " << index.index << endl;
+//	cout << "Adding: tex: " << index.tex << " level: " << index.level << " index: " << index.index << endl;
 	cache_size += img.width()*img.height()*4;
 	ram[index] = RamData(img, access++);
 	pruneCache();
