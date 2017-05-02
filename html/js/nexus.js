@@ -281,7 +281,15 @@ Mesh.prototype = {
 		r.open('GET', this.url(), true);
 		r.responseType = type;
 		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
-		r.onload = load;
+		r.onload = function(){
+			switch (this.status){
+				case 206:
+                			load.bind(this)();
+                			break;
+				case 200:
+					console.log("200 response; server does not support byte range requests.")
+			}
+        	};
 		r.onerror = error;
 		r.onabort = abort;
 		r.send();
