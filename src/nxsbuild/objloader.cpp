@@ -99,6 +99,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 
 		int face[3];
 		int normal[3];
+		int tex[3];
 		int res=sscanf(buffer, "f %s %s %s",st[0],st[1],st[2]);
 		if(res != 3)
 			throw QString("Could not parse face: %1").arg(buffer);
@@ -115,8 +116,8 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 			}
 			face[w] = rr[0]-1;
 			normal[w] = rr[1] -1;
+			tex[w] = rr[2] -1;
 		}
-
 
 		current_triangle++;
 		n_triangles++;

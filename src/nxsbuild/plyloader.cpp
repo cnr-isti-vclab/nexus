@@ -171,13 +171,11 @@ void PlyLoader::init() {
 	}
 
 	//these calls will fail silently if no normals on vertices
-	if(n_triangles == 0) {
-		error = pf.AddToRead(plyprop1[7]);
-		pf.AddToRead(plyprop1[8]);
-		pf.AddToRead(plyprop1[9]);
-		if(error == vcg::ply::E_NOERROR)
-			has_normals = true;
-	}
+	error = pf.AddToRead(plyprop1[7]);
+	pf.AddToRead(plyprop1[8]);
+	pf.AddToRead(plyprop1[9]);
+	if(error == vcg::ply::E_NOERROR)
+		has_normals = true;
 
 	pf.AddToRead(plyprop2[0]);
 	pf.AddToRead(plyprop2_uint[0]);

@@ -65,7 +65,7 @@ vector<bool> NodeBox::markBorders(Node &node, vcg::Point3f *p, uint16_t *f) {
 	return border;
 }
 
-NexusBuilder::NexusBuilder(quint32 components): chunks("cache_chunks"), scaling(0.5), useNodeTex(true), tex_quality(92), nodeTex("cache_tex") {
+NexusBuilder::NexusBuilder(quint32 components): chunks("cache_chunks"), scaling(0.5), useNodeTex(true), tex_quality(92), nodeTex("cache_tex"), preserveNormals(false) {
 
 	Signature &signature = header.signature;
 	signature.vertex.setComponent(VertexElement::COORD, Attribute(Attribute::FLOAT, 3));
@@ -85,7 +85,7 @@ NexusBuilder::NexusBuilder(quint32 components): chunks("cache_chunks"), scaling(
 	nodeTex.open();
 }
 
-NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scaling(0.5) {
+NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scaling(0.5), preserveNormals(false) {
 	header.version = 2;
 	header.signature = signature;
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
@@ -497,7 +497,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			quint32 patch_offset = patches.size();
 
 			std::vector<Patch> node_patches;
-			mesh.serialize(buffer, header.signature, node_patches);
+			mesh.serialize(buffer, header.signature, node_patches, preserveNormals);
 
 			//patches will be reverted later, but the local order is important because of triangle_offset
 			std::reverse(node_patches.begin(), node_patches.end());
@@ -591,7 +591,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 			float error;
 			if(!hasTextures()) {
-				mesh1.serialize(buffer, header.signature, node_patches);
+				mesh1.serialize(buffer, header.signature, node_patches, preserveNormals);
 			} else {
 
 				if(useNodeTex) {

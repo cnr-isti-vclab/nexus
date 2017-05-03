@@ -119,6 +119,8 @@ public:
 	std::vector<nx::Texture> textures;
 	std::vector<QString> images;
 
+	bool preserveNormals;
+
 	quint64 input_pixels, output_pixels;
 	nx::TexAtlas atlas;
 	QTemporaryFile nodeTex; //texure images for each node stored here.

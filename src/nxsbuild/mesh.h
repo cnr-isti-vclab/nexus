@@ -121,7 +121,7 @@ public:
 	nx::Node getNode();
 	quint32 serializedSize(nx::Signature &sig);
 	//appends nodes found in the mesh
-	void serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches);
+	void serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches, bool preserveNormals);
 
 	vcg::Sphere3f boundingSphere();
 	nx::Cone3s normalsCone();
