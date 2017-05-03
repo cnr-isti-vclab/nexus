@@ -26,6 +26,8 @@ for more details.
 #include "kdtree.h"
 #include "../nxsbuild/nexusbuilder.h"
 #include "plyloader.h"
+#include "objloader.h"
+
 
 using namespace std;
 
@@ -112,9 +114,11 @@ int main(int argc, char *argv[]) {
 
 		//autodetect point cloud ply.
 		{
-			PlyLoader autodetect(inputs[0]);
-			if(autodetect.nTriangles() == 0)
-				point_cloud = true;
+			if(inputs[0].endsWith(".ply")) {
+				PlyLoader autodetect(inputs[0]);
+				if(autodetect.nTriangles() == 0)
+					point_cloud = true;
+			}
 		}
 
 		Stream *stream = 0;
