@@ -22,6 +22,7 @@ for more details.
 // allows a specific bit to be masked from a number
 #include <iostream>
 using namespace std;
+using namespace meco;
 // usage: bmask[k] has the rightmost k bits == 1, other bits 0
 //
 static uint64_t bmask[] = {
@@ -45,8 +46,6 @@ static uint64_t bmask[] = {
 
 BitStream::BitStream(int reserved) { //for write
 	reserve(reserved);
-
-
 }
 
 BitStream::BitStream(int _size, uint64_t *_buffer) { //for read

@@ -27,6 +27,7 @@ for more details.
 #include "zpoint.h"
 #include "../common/nexusdata.h"
 
+namespace meco {
 
 class DEdge2 { //decompression edges
 public:
@@ -91,4 +92,5 @@ private:
 	int vertex_count; //keep tracks of current decoding vertex
 };
 
+}//namespace
 #endif // NX_MESHDECODER_H

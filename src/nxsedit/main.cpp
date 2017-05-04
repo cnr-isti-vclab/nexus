@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
 	QString projection("");
 	QString matrix("");
 	QString imatrix("");
+	QString compresslib("meco");
 
 	bool info = false;
 	bool check = false;
@@ -84,6 +85,7 @@ int main(int argc, char *argv[]) {
 
 	//compression and quantization options
 	opt.addSwitch('z', "compress", "compress patches", &compress);
+	opt.addOption('Z', "compresslib", "pick among meco or corto compression libs, corto default", &compresslib);
 	opt.addOption('v', "vertex quantization", "absolute side of compression quantization grid", &coord_step);
 	opt.addOption('V', "vertex bits", "number of bits in vertex coordinate when compressing", &position_bits);
 	opt.addOption('Y', "luma_bits", "quantization of luma channel (default 6)", &luma_bits);
@@ -179,7 +181,14 @@ int main(int argc, char *argv[]) {
 
 			Signature signature = nexus.header.signature;
 			if(compress) {
+				if(compresslib == "meco")
 				signature.flags |= Signature::MECO;
+				else if(compresslib == "corto")
+					signature.flags |= Signature::CORTO;
+				else {
+					cerr << "Unknown compression method: " << qPrintable(compresslib) << endl;
+					exit(-1);
+				}
 
 				if(coord_step) {  //global precision, absolute value
 					extractor.error_factor = 0.0; //ignore error factor.
@@ -191,8 +200,6 @@ int main(int argc, char *argv[]) {
 
 				} else if(error_q) {
 					//take node 0:
-					int level = 0;
-					int node = 0;
 					uint32_t sink = nexus.header.n_nodes -1;
 					coord_step = error_q*nexus.nodes[0].error/2;
 					for(int i = 0; i < sink; i++){
@@ -276,7 +283,9 @@ void printInfo(NexusData &nexus) {
 
 	cout << "Flags: " << header.signature.flags << endl;
 	if(header.signature.flags & Signature::MECO)
-		cout << "Mesh compressed";
+		cout << "Mesh compressed with MECO\n";
+	else if(header.signature.flags & Signature::CORTO)
+		cout << "Mesh compressed with CORTO\n";
 	vcg::Point3f c = header.sphere.Center();
 	float r = header.sphere.Radius();
 	cout << "Sphere      : c: [" << c[0] << "," << c[1] << "," << c[2] << "] r: " << r << endl;
@@ -294,7 +303,7 @@ void printInfo(NexusData &nexus) {
 			cout << "Node: " << i << "\t";
 			for(uint k = node.first_patch; k < node.last_patch(); k++)
 				cout << "[" << nexus.patches[k].node << "] ";
-			cout << endl;
+			cout << "\n";
 		}
 		cout << endl;
 	}
@@ -314,7 +323,7 @@ void printInfo(NexusData &nexus) {
 			cout << "Node: " << i << "\t  Error: " << node.error << "\t"
 				 << " Sphere r: " << node.sphere.Radius() << "\t"
 				 << "Primitives: " << n << "\t"
-				 << "Size: " << node.getSize() << endl;
+				 << "Size: " << node.getSize() << "\n";
 
 			mean += node.nface;
 		}
@@ -332,7 +341,7 @@ void printInfo(NexusData &nexus) {
 		cout << "Patch dump:\n";
 		for(uint i = 0; i < nexus.header.n_patches; i++) {
 			nx::Patch &patch = nexus.patches[i];
-			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t texture: " << patch.texture << endl;
+			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t texture: " << patch.texture << "\n";
 
 		}
 		cout << endl;
@@ -342,7 +351,7 @@ void printInfo(NexusData &nexus) {
 		cout << "Texture dump: \n";
 		for(uint i = 0; i < nexus.header.n_textures; i++) {
 			nx::Texture &texture = nexus.textures[i];
-			cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << endl;
+			cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
 		}
 	}
 

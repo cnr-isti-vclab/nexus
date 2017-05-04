@@ -24,6 +24,9 @@ for more details.
 #include <vcg/space/intersection3.h>
 
 #include "../nxszip/meshdecoder.h"
+#ifdef USE_CORTO
+#include "../../../corto/src/decoder.h"
+#endif
 
 //#if _MSC_VER >= 1800
 #include <random>
@@ -144,56 +147,88 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 	quint64 size = -1;
 
-	if(header.signature.flags & Signature::MECO) {
-
-		QTime time;
-		time.start();
-
+	Signature &sign = header.signature;
+	if(sign.isCompressed()) {
 		char *buffer = new char[compressed_size];
 		file.seek(offset);
 		qint64 r = file.read(buffer, compressed_size);
-
 		assert(r == (qint64)compressed_size);
-		size = node.nvert * header.signature.vertex.size() +
-				node.nface * header.signature.face.size();
+		size = node.nvert * sign.vertex.size() +
+				node.nface * sign.face.size();
 		d.memory = new char[size];
-		//memort data is
-		for(int i = 0; i < 1; i++) {
-			MeshDecoder coder(node, d, patches, header.signature);
-			coder.decode(compressed_size, (unsigned char *)buffer);
 
-			if(0 && !header.signature.face.hasIndex()) {
-				auto &sig = header.signature;
-				std::vector<int> order(node.nvert);
-				for(int i = 0; i < node.nvert; i++)
-					order[i] = i;
+		int iterations = 100;
+		QTime time;
+		time.start();
 
-				unsigned seed = 0;
-				std::shuffle (order.begin(), order.end(), std::default_random_engine(seed));
-				std::vector<vcg::Point3f> coords(node.nvert);
-				for(int i =0; i < node.nvert; i++)
-					coords[i] = d.coords()[order[i]];
-				memcpy(d.coords(), &*coords.begin(), sizeof(Point3f)*node.nvert);
+		if(sign.flags & Signature::MECO) {
 
-				if(sig.vertex.hasNormals()) {
-					Point3s *n = d.normals(sig, node.nvert);
-					std::vector<Point3s> normals(node.nvert);
+
+
+			//memort data is
+			for(int i = 0; i < iterations; i++) {
+				meco::MeshDecoder coder(node, d, patches, sign);
+				coder.decode(compressed_size, (unsigned char *)buffer);
+
+				if(0 && !sign.face.hasIndex()) {
+					std::vector<int> order(node.nvert);
+					for(int i = 0; i < node.nvert; i++)
+						order[i] = i;
+
+					unsigned seed = 0;
+					std::shuffle (order.begin(), order.end(), std::default_random_engine(seed));
+					std::vector<vcg::Point3f> coords(node.nvert);
 					for(int i =0; i < node.nvert; i++)
-						normals[i] = n[order[i]];
-					memcpy(n, &*normals.begin(), sizeof(Point3s)*node.nvert);
-				}
+						coords[i] = d.coords()[order[i]];
+					memcpy(d.coords(), &*coords.begin(), sizeof(Point3f)*node.nvert);
 
-				if(sig.vertex.hasColors()) {
-					Color4b *c = d.colors(sig, node.nvert);
-					std::vector<Color4b> colors(node.nvert);
-					for(int i =0; i < node.nvert; i++)
-						colors[i] = c[order[i]];
-					memcpy(c, &*colors.begin(), sizeof(Color4b)*node.nvert);
+					if(sign.vertex.hasNormals()) {
+						Point3s *n = d.normals(sign, node.nvert);
+						std::vector<Point3s> normals(node.nvert);
+						for(int i =0; i < node.nvert; i++)
+							normals[i] = n[order[i]];
+						memcpy(n, &*normals.begin(), sizeof(Point3s)*node.nvert);
+					}
+
+					if(sign.vertex.hasColors()) {
+						Color4b *c = d.colors(sign, node.nvert);
+						std::vector<Color4b> colors(node.nvert);
+						for(int i =0; i < node.nvert; i++)
+							colors[i] = c[order[i]];
+						memcpy(c, &*colors.begin(), sizeof(Color4b)*node.nvert);
+					}
 				}
 			}
+
+		} else if(sign.flags & Signature::CORTO) {
+#ifndef USE_CORTO
+			cerr << "Compiled without Corto support" << endl;
+			throw "Compiled without Corto support";
+
+#else
+			QTime time;
+			time.start();
+
+			for(int i = 0; i < iterations; i++) {
+
+			crt::Decoder decoder(compressed_size, (unsigned char *)buffer);
+
+			decoder.setPositions((float *)d.coords());
+			if(sign.vertex.hasNormals())
+				decoder.setNormals((int16_t *)d.normals(sign, node.nvert));
+			if(sign.vertex.hasColors())
+				decoder.setColors((unsigned char *)d.colors(sign, node.nvert));
+			if(sign.vertex.hasTextures())
+				decoder.setUvs((float *)d.texCoords(sign, node.nvert));
+			if(node.nface)
+				decoder.setIndex(d.faces(sign, node.nvert));
+			decoder.decode();
+			}
+
+#endif
 		}
-		//double elapsed = time.elapsed();
-		//cout << "Z Elapsed: " << elapsed << " M/s " << 1000*(node.nface/elapsed)/(1<<20) << " Faces: " << node.nface << endl;
+		double elapsed = (time.elapsed()/(double)iterations)/1000.0;
+		cout << "Z Elapsed: " << elapsed << " M/s " << (node.nface/elapsed)/(1<<20) << " Faces: " << node.nface << endl;
 
 	} else { //not compressed
 		size = node.getSize();
