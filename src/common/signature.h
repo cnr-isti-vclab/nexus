@@ -90,13 +90,13 @@ public:
 	VertexElement vertex;
 	FaceElement face;
 
-	enum Flags { PTEXTURE = 0x1, MECO = 0x2 };
+	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4 };
 	uint32_t flags;
 	void setFlag(Flags f) { flags |= f; }
 	void unsetFlag(Flags f) { flags &= ~f; }
 
 	bool hasPTextures() { return (bool)(flags | PTEXTURE); }
-	bool isMecoCompressed() { return (bool)(flags | MECO); }
+	bool isCompressed() { return (bool)(flags & (MECO|CORTO)); }
 
 	Signature(): flags(0) {}
 };

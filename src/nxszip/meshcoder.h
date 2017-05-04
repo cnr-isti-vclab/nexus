@@ -39,6 +39,8 @@ for more details.
 
 //face topology utility structures.
 
+namespace meco {
+
 class McFace {
 public:
 	uint16_t f[3];
@@ -173,4 +175,5 @@ private:
 	void encodeDiff(std::vector<uchar> &diffs, BitStream &stream, int val);
 };
 
+} //namespace
 #endif // NX_MESHCODER_H

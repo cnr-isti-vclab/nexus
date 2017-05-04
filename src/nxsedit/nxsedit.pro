@@ -11,17 +11,22 @@ TARGET = nxsedit
 CONFIG   += console
 CONFIG   -= app_bundle
 
+CONFIG+=object_parallel_to_source. #cpp files with same name
+
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
 
-DEFINES += _FILE_OFFSET_BITS=64 TEXTURE #PARALLELOGRAM
+DEFINES = USE_CORTO
+
+DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
 
 INCLUDEPATH += ../../../vcglib \
-    ../../../vcglib/eigenlib
+    ../../../vcglib/eigenlib \
+#    ../../../corto/src
 
-				
+#LIBS += ../../../corto/lib/libcorto.a
 
 win32:INCLUDEPATH += ../../../code/lib/glew/include
 
@@ -34,12 +39,19 @@ SOURCES += \
     ../common/nexusdata.cpp \
     ../common/traversal.cpp \
     ../common/cone.cpp \
-    ../nxszip/bitstream.cpp \
-    ../nxszip/tunstall.cpp \
     ../nxszip/meshcoder.cpp \
     ../nxszip/meshdecoder.cpp \
     main.cpp \
-    extractor.cpp
+    extractor.cpp \
+    ../../../corto/src/bitstream.cpp \
+    ../../../corto/src/color_attribute.cpp \
+    ../../../corto/src/cstream.cpp \
+    ../../../corto/src/decoder.cpp \
+    ../../../corto/src/encoder.cpp \
+    ../../../corto/src/normal_attribute.cpp \
+    ../../../corto/src/tunstall.cpp \
+    ../nxszip/abitstream.cpp \
+    ../nxszip/atunstall.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -59,6 +71,16 @@ HEADERS += \
     ../nxszip/meshcoder.h \
     ../nxszip/meshdecoder.h \
     extractor.h \
+    ../../../corto/src/bitstream.h \
+    ../../../corto/src/color_attribute.h \
+    ../../../corto/src/corto.h \
+    ../../../corto/src/cstream.h \
+    ../../../corto/src/decoder.h \
+    ../../../corto/src/encoder.h \
+    ../../../corto/src/index_attribute.h \
+    ../../../corto/src/normal_attribute.h \
+    ../../../corto/src/tunstall.h \
+    ../../../corto/src/vertex_attribute.h
 
 
 DESTDIR = "../../bin"

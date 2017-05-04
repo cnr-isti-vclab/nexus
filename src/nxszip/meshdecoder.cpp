@@ -24,6 +24,7 @@ for more details.
 using namespace std;
 using namespace vcg;
 using namespace nx;
+using namespace meco;
 
 void MeshDecoder::decode(int len, uchar *input) {
 	FpuPrecision::store();

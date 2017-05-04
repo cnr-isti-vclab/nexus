@@ -22,10 +22,6 @@ for more details.
 #include <vector>
 
 
-using namespace std;
-
-
-
 /* SIMPLEST TUNSTALL encoding:
    1) build dictionary:
 	  split root, keep track of highest probability, keep splitting until all words are assigned.
@@ -38,6 +34,8 @@ using namespace std;
 		else maps to second 8bit table with same approach. each entry longer than 8 bits gets another table.
 	  all tables are just concatenated.
 */
+
+namespace meco {
 
 class Tunstall {
 public:
@@ -160,4 +158,5 @@ public:
 
 };*/
 
+} //namespace
 #endif // NX_TUNSTALL_H

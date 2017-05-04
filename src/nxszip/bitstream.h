@@ -21,6 +21,8 @@ for more details.
 #include <vector>
 #include <stdint.h>
 
+namespace meco {
+
 class BitStream {
 public:
 	BitStream(): size(0), buffer(0), allocated(0), pos(0), buff(0), bits(0) {}
@@ -74,4 +76,5 @@ private:
 	int inbbits;                     // used for buffering
 };
 
+} //namespace
 #endif // NX_BITSTREAM_H
