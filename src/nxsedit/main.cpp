@@ -181,15 +181,15 @@ int main(int argc, char *argv[]) {
 
 			Signature signature = nexus.header.signature;
 			if(compress) {
+				signature.flags &= ~(Signature::MECO | Signature::CORTO);
 				if(compresslib == "meco")
-				signature.flags |= Signature::MECO;
+					signature.flags |= Signature::MECO;
 				else if(compresslib == "corto")
 					signature.flags |= Signature::CORTO;
 				else {
 					cerr << "Unknown compression method: " << qPrintable(compresslib) << endl;
 					exit(-1);
 				}
-
 				if(coord_step) {  //global precision, absolute value
 					extractor.error_factor = 0.0; //ignore error factor.
 					//do nothing
