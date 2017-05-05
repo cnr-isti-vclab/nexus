@@ -65,6 +65,7 @@ function getURLParameter(name) {
 var model = getURLParameter('model') || "models/gargo.nxz";
 
 var nexus_obj = new NexusObject(model, renderer, render);
+
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );

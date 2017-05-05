@@ -34,9 +34,7 @@ for(i = 0; i < scripts.length; i++) {
 		if(a.name != 'src') continue;
 		if(!a.value) continue;
 		if(a.value.search('nexus.js') >= 0) {
-			var path = a.value;
-
-
+			path = a.value;
 			break;
 		}
 	}
@@ -61,20 +59,21 @@ worker.postRequest = function(sig, node, patches) {
 worker.onmessage = function(e) {
 	var node = this.requests[e.data.request];
 	node.buffer = e.data.buffer;
-	readyNode(node.context, node);
+	readyNode(node);
 };
 
 corto = new Worker(path.replace('nexus.js', 'corto.js'));
-worker.requests = {};
-worker.count = 0;
-worker.postRequest = function(sig, node, patches) {
-	worker.postMessage({ buffer: node.buffer, request:this.count });
+corto.requests = {};
+corto.count = 0;
+corto.postRequest = function(node) {
+	corto.postMessage({ buffer: node.buffer, request:this.count });
 	this.requests[this.count++] = node;
 }
-worker.onmessage = function(e) {
+corto.onmessage = function(e) {
 	var node = this.requests[e.data.request];
 	node.buffer = e.data.buffer;
-	readyNode(node.context, node);
+	node.model = e.data.model;
+	readyNode(node);
 };
 
 /* UTILITIES */
@@ -291,7 +290,9 @@ Mesh.prototype = {
 			mesh.vertex = mesh.signature.vertex;
 			mesh.face = mesh.signature.face;
 			mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
-			mesh.compressed = (mesh.signature.flags & 2);
+			mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
+			mesh.meco = (mesh.signature.flags & 2); 
+			mesh.corto = (mesh.signature.flags & 4); 
 			mesh.requestIndex();
 		});
 	},
@@ -958,13 +959,15 @@ function loadNode(request, context, node) {
 	node.nface = m.nfaces[n];
 
 	if(!m.compressed)
-		readyNode(context, node);
-	else {
+		readyNode(node);
+	else if(m.meco) {
 		var sig = { texcoords: m.vertex.texCoord, normals:m.vertex.normal, colors:m.vertex.color, indices: m.face.index }
 		var patches = [];
 		for(var k = m.nfirstpatch[n]; k < m.nfirstpatch[n+1]; k++)
 			patches.push(m.patches[k*3+1]);
 		worker.postRequest(sig, node, patches);
+	} else {
+		corto.postRequest(node);
 	}
 }
 
@@ -1000,16 +1003,38 @@ function loadTexture(request, context, node, texid) {
 	}
 }
 
-function readyNode(context, node) {
+function readyNode(node) {
 	var m = node.mesh;
 	var n = node.id;
 	var nv = m.nvertices[n];
 	var nf = m.nfaces[n];
+	var model = node.model;
 
-	var vertices = new Uint8Array(node.buffer, 0, nv*m.vsize);
-	var indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+	if(!m.corto) {
+		var vertices = new Uint8Array(node.buffer, 0, nv*m.vsize);
+		//dangerous alignment 16 bits if we had 1b attribute
+		var indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+	} else {
+		var indices = node.model.index;
+		var vertices = new ArrayBuffer(nv*m.vsize);
+		var v = new Float32Array(vertices, 0, nv*3);
+		v.set(model.position, 0, nv*12);
+		var off = nv*12;
+		if(model.uv) {
+			var u = new Float32Array(vertices, off, nv*2);
+			u.set(model.uv, off, off+nv*8); off += nv*8;
+		}
+		if(model.normal) {
+			var n = new Int16Array(vertices, off, nv*3);
+			vertices.set(model.normal, off, off+nv*6); off += nv*6; 
+		}
+		if(model.color) {
+			var n = new Uint8Array(vertices, off, nv*4);
+			vertices.set(model.color, off, off+nv*4); off += nv*4;  
+		}
+	}
 
-	var gl = context.gl;
+	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
 	gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
@@ -1018,7 +1043,7 @@ function readyNode(context, node) {
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
 	m.status[n]--;
-	context.pending--;
+	node.context.pending--;
 	if(m.status[n] == 1)
 		node.instance.onUpdate();
 	updateCache(gl); //call anyway even if waiting for texture

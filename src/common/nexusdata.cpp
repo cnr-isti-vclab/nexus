@@ -169,7 +169,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				node.nface * sign.face.size();
 		d.memory = new char[size];
 
-		int iterations = 100;
+		int iterations = 1;
 		QTime time;
 		time.start();
 
