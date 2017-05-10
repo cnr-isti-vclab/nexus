@@ -153,7 +153,7 @@ QImage TexAtlas::read(int tex, int level, QRect region) {
 }
 
 void TexAtlas::addImg(Index index, QImage img) {
-//	cout << "Adding: tex: " << index.tex << " level: " << index.level << " index: " << index.index << endl;
+	//cout << "Adding: tex: " << index.tex << " level: " << index.level << " index: " << index.index << endl;
 	cache_size += img.width()*img.height()*4;
 	ram[index] = RamData(img, access++);
 	pruneCache();
@@ -168,7 +168,7 @@ QImage TexAtlas::getImg(Index index) {
 	if(dt == disk.end())
 		throw "Unespected missing image in disk and ram.";
 
-	cout << "Loading from disk: " << index.level << " " << index.index << endl;
+	//cout << "Loading from disk: " << index.level << " " << index.index << endl;
 	QImage img(dt->second.w, dt->second.h, QImage::Format_RGB32);
 	uchar *data = storage.map(dt->second.offset, dt->second.size);
 	img.loadFromData(data, dt->second.size);

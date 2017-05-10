@@ -333,7 +333,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 		if(origin[0] >= w)
 			origin[0] = w-1;
 		if(origin[1] >= h)
-			origin[0] = h-1;
+			origin[1] = h-1;
 
 		size[0] = std::min(w, ceil(box.max[0]/px)) - origin[0];
 		size[1] = std::min(h, ceil(box.max[1]/py)) - origin[1];
