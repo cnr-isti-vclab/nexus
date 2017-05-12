@@ -276,7 +276,7 @@ quint32 Mesh::serializedSize(nx::Signature &sig) {
 	return nvert*sig.vertex.size() + nface*sig.face.size();
 }
 
-void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches, bool preserveNormals) {
+void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches) {
 
 
 	quint32 current_node = 0;
@@ -325,7 +325,7 @@ void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> 
 	patch.texture = 0xffffffff;
 	patches.push_back(patch);
 
-	if(!preserveNormals && sig.vertex.hasNormals() && sig.face.hasIndex())
+	if(sig.vertex.hasNormals() && sig.face.hasIndex())
 		vcg::tri::UpdateNormal<Mesh>::PerVertexNormalized(*this);
 
 	vcg::Point3f *c = (vcg::Point3f *)buffer;

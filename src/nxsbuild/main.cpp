@@ -61,8 +61,6 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(" ARGS specify one or more .ply or .obj files");
-
 	opt.allowUnlimitedArguments(true); //able to join several plys
 	opt.addOption('o', "output_filename", "filename of the nexus output file", &output);
 
@@ -156,7 +154,6 @@ int main(int argc, char *argv[]) {
 		}
 
 		NexusBuilder builder(components);
-		builder.preserveNormals = stream->hasNormals();
 		builder.setMaxMemory(max_memory);
 		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;
