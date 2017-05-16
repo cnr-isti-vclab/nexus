@@ -25,9 +25,7 @@ for more details.
 struct Vertex {
 	float v[3];
 	unsigned char c[4]; //colors
-#ifdef TEXTURE
 	float t[2]; //texture
-#endif
 
 	bool operator==(const Vertex &p) const {
 		return v[0] == p.v[0] && v[1] == p.v[1] && v[2] == p.v[2];

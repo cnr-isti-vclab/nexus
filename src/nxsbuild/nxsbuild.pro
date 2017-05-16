@@ -19,7 +19,7 @@ QMAKE_CXXFLAGS += -std=c++11 -g
 INCLUDEPATH += ../../../vcglib \
     ../../../vcglib/eigenlib
 
-DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
+DEFINES += _FILE_OFFSET_BITS=64
 DEFINES += _USE_MATH_DEFINES
 
 SOURCES += \

@@ -27,10 +27,8 @@ using namespace std;
 
 struct PlyFace {
 	quint32 f[3];
-#ifdef TEXTURE
 	float t[6];
 	quint32 texNumber;
-#endif
 	unsigned char n;
 };
 //TODO add uv?
@@ -75,7 +73,6 @@ PropDescriptor plyprop3_uint[1]=	{
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
 
-#ifdef TEXTURE
 PropDescriptor plyprop4[1]=	{
 	{"face", "texcoord",T_FLOAT,T_FLOAT,offsetof(PlyFace,t[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
@@ -84,7 +81,6 @@ PropDescriptor plyprop4[1]=	{
 PropDescriptor plyprop5[1]=	{
 	{"face", "texnumber",T_INT,T_INT,offsetof(PlyFace, texNumber), 0,0,0,0,0,0}
 };
-#endif
 
 
 PlyLoader::PlyLoader(QString filename):
@@ -235,10 +231,8 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 		Triangle &current = buffer[count];
 		for(int k = 0; k < 3; k++) {
 			Vertex &vertex = vertices[face.f[k]];
-#ifdef TEXTURE
 			vertex.t[0] = face.t[k*2];
 			vertex.t[1] = face.t[k*2+1];
-#endif
 			current.vertices[k] = vertex;
 		}
 		current.node = 0;
