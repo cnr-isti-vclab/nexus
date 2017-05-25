@@ -425,13 +425,9 @@ void MeshEncoder::encodeColors() {
 	if(sig.face.hasIndex()) {
 		colors.resize(node.nvert);
 		for(unsigned int i = 0; i < node.nvert; i++) {
-			for(int k = 0; k < 4; k++) {
-				colors[i][k] = original_colors[i][k]; ///steps[k]*steps[k];
-			}
+			for(int k = 0; k < 4; k++)
+				colors[i][k] = original_colors[i][k]/steps[k]*steps[k];
 			colors[i] = toYCC(colors[i]);
-			for(int k = 0; k < 4; k++) {
-				colors[i][k] = (colors[i][k] + (steps[k]>>1))/steps[k];
-			}
 		}
 
 		for(int i = 0; i < node.nvert; i++) {
@@ -444,7 +440,7 @@ void MeshEncoder::encodeColors() {
 				b = colors[last[i]];
 
 			for(int k = 0; k < 4; k++) {
-				int d = (int)c[k] - (int)b[k];
+				int d = c[k]/steps[k] - b[k]/steps[k];
 				encodeDiff(diffs[k], bitstream, d);
 			}
 		}
@@ -459,7 +455,7 @@ void MeshEncoder::encodeColors() {
 				Color4b c = toYCC(original_colors[pos]);
 				int n = c[k];
 
-				n = (n + (steps[k]>>1))/steps[k];
+				n = n/steps[k];
 
 				int d = n - on[k];
 				encodeDiff(diffs[k], bitstream, d);
