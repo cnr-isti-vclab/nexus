@@ -54,7 +54,6 @@ int main(int argc, char *argv[]) {
 	bool colors = false;
 	bool no_colors = false;
 	bool no_texcoords = false;
-	bool compress = false;
 	bool useOrigTex = false;
 
 	//BTREE options
@@ -65,7 +64,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('o', "output_filename", "filename of the nexus output file", &output);
 
 	//construction options
-	opt.addOption('f', "node_faces", "faces per patch, default: 16286", &node_size);
+	opt.addOption('f', "node_faces", "faces per patch, default: 32768", &node_size);
 	opt.addOption('t', "top_node_faces", "number of triangles in the top node, default 4096", &top_node_size);
 	opt.addOption('d', "decimation", "decimation method: quadric, edgelen. Default: quadric", &decimation);
 	opt.addOption('s', "scaling", "scaling between level, default 0.5", &decimation);
@@ -85,8 +84,6 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('C', "colors", "save colors", &colors);
 	opt.addSwitch('c', "no_colors", "do not tore per vertex colors", &no_colors);
 	opt.addSwitch('u', "no_textures", "do not store per vertex texture coordinates", &no_texcoords);
-
-	opt.addSwitch('z', "compression", "enable geometry driven compression", &compress);
 
 	//other options
 	opt.addOption('r', "ram", "max ram used (in Megabytes default 2000) WARNING: not a hard limit, increase at your risk :P", &ram_buffer);
