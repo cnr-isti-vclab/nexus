@@ -652,8 +652,8 @@ Instance.prototype = {
 		var uvEnabled = attr.uv >= 0? gl.getVertexAttrib(attr.uv, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
 
 		gl.enableVertexAttribArray(attr.position);
-		if(m.vertex.texCoord) gl.enableVertexAttribArray(attr.uv);
-		if(m.vertex.normal) gl.enableVertexAttribArray(attr.normal);
+		if(m.vertex.texCoord && attr.uv >= 0) gl.enableVertexAttribArray(attr.uv);
+		if(m.vertex.normal && attr.normal >= 0) gl.enableVertexAttribArray(attr.normal);
 		if(m.vertex.color && attr.color >= 0) gl.enableVertexAttribArray(attr.color);
 		gl.vertexAttrib4fv(2, [0.8, 0.8, 0.8, 1.0]);
 
@@ -691,11 +691,11 @@ Instance.prototype = {
 
 			gl.vertexAttribPointer(attr.position, 3, gl.FLOAT, false, 12, 0);
 			var offset = nv*12;
-			if(m.vertex.texCoord)
+			if(m.vertex.texCoord && attr.uv >= 0)
 				gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset), offset += nv*8;
-			if(m.vertex.normal)
+			if(m.vertex.normal && attr.normal >= 0)
 				gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset), offset += nv*6;
-			if(m.vertex.color)
+			if(m.vertex.color && attr.color >= 0)
 				gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
 
 			if (Debug.nodes)
