@@ -61,9 +61,11 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(" ARGS specify one or more .ply or .obj files");
+	opt.setHelp(QString(" ARGS specify one or more .ply or .obj files"));
 
 	opt.allowUnlimitedArguments(true); //able to join several plys
+
+	//extraction options
 	opt.addOption('o', "output_filename", "filename of the nexus output file", &output);
 
 	//construction options
@@ -88,7 +90,7 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('c', "no_colors", "do not tore per vertex colors", &no_colors);
 	opt.addSwitch('u', "no_textures", "do not store per vertex texture coordinates", &no_texcoords);
 
-	opt.addSwitch('z', "compression", "enable geometry driven compression", &compress);
+	//opt.addSwitch('z', "compression", "enable geometry driven compression", &compress);
 
 	//other options
 	opt.addOption('r', "ram", "max ram used (in Megabytes default 2000) WARNING: not a hard limit, increase at your risk :P", &ram_buffer);
@@ -97,8 +99,8 @@ int main(int argc, char *argv[]) {
 	//Check parameters are correct
 	QStringList inputs = opt.arguments;
 	if(inputs.size() == 0) {
-		cerr << "No input files specified.\n";
-		cerr << qPrintable(opt.usage()) << "\n";
+		cerr << "No input files specified\n" << endl;
+		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
 	}
 
@@ -107,7 +109,7 @@ int main(int argc, char *argv[]) {
 		output += ".nxs";
 
 	if(node_size < 1000 || node_size >= 1<<16) {
-		cerr << "Patch size (" << node_size << ") out of bounds [2000-32536]\n";
+		cerr << "Patch size (" << node_size << ") out of bounds [2000-32536]" << endl;
 		return -1;
 	}
 

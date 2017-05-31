@@ -67,7 +67,12 @@ int main(int argc, char *argv[]) {
 	QString recompute_error;
 
 	GetOpt opt(argc, argv);
-	opt.addArgument("nexus file", "path to the nexus file (add .nxs or not)", &input);
+	opt.setHelp(QString(" ARGS specify a nexus file"));
+
+	opt.allowUnlimitedArguments(true); //able to join several inputs
+
+//	opt.addArgument("nexus file", "path to the nexus file (add .nxs or not)", &input);
+
 	opt.addSwitch('i', "info", "prints info about the nexus", &info);
 	opt.addSwitch('n', "show_nodes", "prints info about nodes", &show_nodes);
 	opt.addSwitch('q', "show_patches", "prints info about payches", &show_patches);
@@ -101,14 +106,27 @@ int main(int argc, char *argv[]) {
 
 	opt.parse();
 
+	//Check parameters are correct
+	QStringList inputs = opt.arguments;
+	if (inputs.size() == 0) {
+		cerr << "No input files specified\n" << endl;
+		cerr << qPrintable(opt.usage()) << endl;
+		return -1;
+	}
+	else if (inputs.size() > 1) {
+		cerr << "Too many input files specified\n" << endl;
+		cerr << qPrintable(opt.usage()) << endl;
+		return -1;
+	}
+
 	NexusData nexus;
 	bool read_only = true;
 	if(!recompute_error.isEmpty())
 		read_only = false;
 
 	try {
-		if(!nexus.open(input.toLatin1()))
-			throw QString("Could not open file: " + input);
+		if(!nexus.open(inputs[0].toLatin1()))
+			throw QString("Could not open file: " + inputs[0]);
 
 		if(info) {
 			printInfo(nexus);
@@ -127,15 +145,15 @@ int main(int argc, char *argv[]) {
 		}
 
 		if(compress && output.isEmpty()) {
-			output = input.left(input.length()-4) + "Z.nxs";
+			output = inputs[0].left(inputs[0].length()-4) + "Z.nxs";
 		}
 		if(output.isEmpty() && ply.isEmpty()) return 0;
 		if(!output.isEmpty() && !ply.isEmpty())  {
-			cerr << "The output can be a ply file or a nexus file, not both." << endl;
+			cerr << "The output can be a ply file or a nexus file, not both" << endl;
 			return -1;
 		}
-		if(output == input) {
-			cerr << "Output and Input file must be different." << endl;
+		if(output == inputs[0]) {
+			cerr << "Output and Input file must be different" << endl;
 			return -1;
 		}
 		Extractor extractor(&nexus);
@@ -165,7 +183,7 @@ int main(int argc, char *argv[]) {
 			if(!matrix.isEmpty()) {
 				QStringList sl = matrix.split(":");
 				if(sl.size() != 16) {
-					cerr << "Wrong matrix: found only " << sl.size() << " elements.\n";
+					cerr << "Wrong matrix: found only " << sl.size() << " elements" << endl;
 					exit(-1);
 				}
 				vcg::Matrix44f m;
@@ -276,7 +294,7 @@ void printInfo(NexusData &nexus) {
 
 	cout << "Flags: " << header.signature.flags << endl;
 	if(header.signature.flags & Signature::MECO)
-		cout << "Mesh compressed";
+		cout << "Mesh compressed" << endl;
 	vcg::Point3f c = header.sphere.Center();
 	float r = header.sphere.Radius();
 	cout << "Sphere      : c: [" << c[0] << "," << c[1] << "," << c[2] << "] r: " << r << endl;
