@@ -91,9 +91,13 @@ NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scalin
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 }
 
-void NexusBuilder::initAtlas(std::vector<QString> &filenames) {
-	if(filenames.size())
-		atlas.addTextures(filenames);
+bool NexusBuilder::initAtlas(std::vector<QString> &filenames) {
+	if(filenames.size()) {
+		bool success = atlas.addTextures(filenames);
+		if(!success)
+			return false;
+	}
+	return true;
 }
 
 void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {

@@ -143,7 +143,10 @@ bool TexAtlas::addTextures(std::vector<QString> &filenames) {
 	for(size_t i = 0; i < pyramids.size(); i++) {
 		TexPyramid &py = pyramids[i];
 		bool ok = py.init(i, this, filenames[i]);
-		if(!ok) return false;
+		if(!ok) {
+			cerr << "Could not load texture: " << qPrintable(filenames[i]) << endl;
+			return false;
+		}
 	}
 	return true;
 }

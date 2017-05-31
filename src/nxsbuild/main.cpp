@@ -160,7 +160,11 @@ int main(int argc, char *argv[]) {
 		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;
 		builder.tex_quality = tex_quality;
-		builder.initAtlas(stream->textures);
+		bool success = builder.initAtlas(stream->textures);
+		if(!success) {
+			cerr << "Exiting." << endl;
+			return 1;
+		}
 
 
 		KDTree *tree = 0;
