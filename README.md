@@ -15,6 +15,8 @@ Contact me @ federico.ponchio@isti.cnr.it
 * Compression
 * WebGL
 
+### [Demo](http://vcg.isti.cnr.it/nexus/)
+
 ### Create the .nxs model
 
 Use [nxsbuild](doc/nxsbuild.md) to create a multiresolution nexus model (.nxs) out of your mesh (.ply):
