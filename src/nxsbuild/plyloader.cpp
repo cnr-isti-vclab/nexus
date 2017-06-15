@@ -100,12 +100,15 @@ PlyLoader::PlyLoader(QString filename):
 	}
 	init();
 	for(int co = 0; co < int(pf.comments.size()); ++co) {
-		std::string TFILE = "TextureFile";
+		std::string TFILE = "TEXTUREFILE";
 		std::string &c = pf.comments[co];
 		std::string bufstr,bufclean;
 		int i,n;
 
-		if( TFILE == c.substr(0,TFILE.length()) )
+		std::string start = c.substr(0,TFILE.length());
+		for_each(start.begin(), start.end(), [](char& in){ in = ::toupper(in); });
+
+		if( TFILE == start )
 		{
 			bufstr = c.substr(TFILE.length()+1);
 			n = static_cast<int>(bufstr.length());
