@@ -318,10 +318,10 @@ Mesh.prototype = {
 
 		for(i = 0; i < n; i++) {
 			t.noffsets[i] = padding*getUint32(view); //offset
-			t.nvertices[i] = getUint16(view);          //verticesCount
-			t.nfaces[i] = getUint16(view);          //facesCount
+			t.nvertices[i] = getUint16(view);        //verticesCount
+			t.nfaces[i] = getUint16(view);           //facesCount
 			t.nerrors[i] = getFloat32(view);
-			view.offset += 8;                             //skip cone
+			view.offset += 8;                        //skip cone
 			for(k = 0; k < 5; k++)
 				t.nspheres[i*5+k] = getFloat32(view);       //sphere + tight
 			t.nfirstpatch[i] = getUint32(view);          //first patch
@@ -329,6 +329,15 @@ Mesh.prototype = {
 		t.sink = n -1;
 
 		t.patches = new Uint32Array(view.buffer, view.offset, t.patchesCount*3); //noded, lastTriangle, texture
+		t.nroots = t.nodesCount;
+		for(j = 0; j < t.nroots; j++) {
+			for(i = t.nfirstpatch[j]; i < t.nfirstpatch[j+1]; i++) {
+				if(t.patches[i*3] < t.nroots)
+					t.nroots = t.patches[i*3];
+			}
+			t.nerrors[j] = 1e20;
+		}
+
 		view.offset += t.patchesCount*12;
 
 		t.textures = new Uint32Array(t.texturesCount);
@@ -538,7 +547,8 @@ Instance.prototype = {
 		t.selected = new Uint8Array(n);
 
 		t.visitQueue = new PriorityQueue(n);
-		t.insertNode(0);
+		for(var i = 0; i < t.mesh.nroots; i++)
+			t.insertNode(i);
 
 		var candidatesCount = 0;
 		t.targetError = t.context.currentError;

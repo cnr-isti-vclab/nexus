@@ -335,6 +335,7 @@ void TMesh::splitSeams(nx::Signature &sig) {
 	}
 	vert = new_vert;
 	vn = vert.size();
+	assert(new_face.size() == face.size()*3);
 	for(size_t i = 0; i < new_face.size(); i+= 3) {
 		TFace &f = face[i/3];
 		for(int k = 0; k < 3; k++) {

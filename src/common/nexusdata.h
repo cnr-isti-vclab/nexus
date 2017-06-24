@@ -85,7 +85,7 @@ public:
 	TextureData *texturedata;
 
 	std::string url;
-
+	uint32_t nroots;
 
 	NexusData();
 	virtual ~NexusData();
@@ -103,6 +103,7 @@ public:
 	void loadHeader();
 	void loadHeader(char *buffer);
 	uint64_t indexSize();
+	void countRoots();
 	virtual void initIndex();
 	virtual void loadIndex();
 	virtual void loadIndex(char *buffer);
