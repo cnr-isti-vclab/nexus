@@ -293,7 +293,7 @@ void KDTreeSoup::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 				mask |= (1<<k);
 		}
 		int c = 0;
-		if(mask != 0) //why should ever be 0?
+		if(mask != 0)
 			c = assign(t, mask, axis, node.middle);
 
 		if(c == 0) source[n0++] = t;
@@ -352,7 +352,6 @@ int KDTreeSoup::assign(Triangle &t, quint32 &mask, vcg::Point3f axis, float midd
 		mask = mask0;
 		return 0;
 	}
-	assert(mask != 0);
 }
 
 

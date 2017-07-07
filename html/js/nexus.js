@@ -335,7 +335,6 @@ Mesh.prototype = {
 				if(t.patches[i*3] < t.nroots)
 					t.nroots = t.patches[i*3];
 			}
-			t.nerrors[j] = 1e20;
 		}
 
 		view.offset += t.patchesCount*12;
@@ -791,7 +790,7 @@ var contexts = [];
 
 function getContext(gl) {
 	var c = null;
-	if(!gl.isTexture) throw "PORCA PALETTA";
+	if(!gl.isTexture) throw "Somethingg wrong";
 	contexts.forEach(function(g) { 
 		if(g.gl == gl) c = g;
 	});

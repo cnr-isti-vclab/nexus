@@ -118,14 +118,10 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 
 		createLevel(tree, stream, level);
 		level++;
-		if(last_top_level_size != 0) {
-			cout << "Leaves: " << tree->nLeaves() << " Ratio: " << stream->size()/(float)last_top_level_size << endl;
-
-			if(stream->size()/(float)last_top_level_size > 0.7f) {
-				cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
-				cout << "Quitting prematurely (most probably to high parametrization fragmentation)!\n";
-				break;
-			}
+		if(last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
+			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
+			cout << "Quitting prematurely (most probably to high parametrization fragmentation)!\n";
+			break;
 		}
 		last_top_level_size = stream->size();
 	} while(stream->size() > top_node_size);
@@ -260,15 +256,10 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 		int v[3];
 		for(int i = 0; i < 3; i++) {
 			v[i] = face.V(i) - &*mesh.vert.begin();
-			assert(v[i] >= 0 && v[i] < vertex_to_tex.size());
 			int &t = vertex_to_tex[v[i]];
 			//			if(t != -1 && t != face.tex) qDebug() << "Missing vertex replication across seams\n";
 			t = face.tex;
 
-			if(!(face.tex == 0xffffffff || face.tex < atlas.pyramids.size())) {
-				cout << face.tex << endl;
-				assert(0);
-			}
 		}
 		components.link(v[0], v[1]);
 		components.link(v[0], v[2]);
@@ -298,8 +289,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 		if(tex < 0) continue; //vertex not assigned.
 
 		vcg::Box2f &box = boxes[b];
-		//		assert(box_texture[b] == -1 || box_texture[b] == tex);
-		assert(tex < atlas.pyramids.size());
 		box_texture[b] = tex;
 		auto t = mesh.vert[i].T().P();
 		//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
@@ -585,19 +574,11 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 				//we need to replicate vertices where textured seams occours
 
 				vcg::tri::Append<TMesh,TMesh>::MeshCopy(tmp,mesh);
-				assert(tmp.face.size() == mesh.face.size());
 				for(int i = 0; i < tmp.face.size(); i++) {
 					tmp.face[i].node = mesh.face[i].node;
-					assert(mesh.face[i].tex == 0xffffffff || mesh.face[i].tex < atlas.pyramids.size());
 					tmp.face[i].tex = mesh.face[i].tex;
 				}
 				tmp.splitSeams(header.signature);
-
-				for(int i = 0; i < tmp.face.size(); i++) {
-					assert(tmp.face[i].tex == 0xffffffff || tmp.face[i].tex < atlas.pyramids.size());
-				}
-
-				assert(tmp.vert.size() < (1<<16));
 				//save node in nexus temporary structure
 				mesh_size = tmp.serializedSize(header.signature);
 			}
@@ -773,7 +754,19 @@ void NexusBuilder::save(QString filename) {
 
 	header.n_textures = textures.size();
 	header.version = 2;
-	header.sphere = nodes[0].tightSphere();
+
+	//find roots and adjust error
+	uint32_t nroots = header.n_nodes;
+	for(uint32_t j = 0; j < nroots; j++) {
+		for(uint32_t i = nodes[j].first_patch; i < nodes[j].last_patch(); i++)
+			if(patches[i].node < nroots)
+				nroots = patches[i].node;
+		nodes[j].error = nodes[j].tight_radius;
+	}
+
+	header.sphere = vcg::Sphere3f();
+	for(uint32_t i = 0; i < nroots; i++)
+		header.sphere.Add(nodes[i].tightSphere());
 
 	for(uint i = 0; i < nodes.size()-1; i++) {
 		nx::Node &node = nodes[i];

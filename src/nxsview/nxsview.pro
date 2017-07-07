@@ -15,8 +15,6 @@ DEFINES += GL_COMPATIBILITY
 unix:DEFINES += USE_CURL
 win32:DEFINES += NOMINMAX
 
-#    ../../../code/lib/glew/src/glew.c \
-
 SOURCES += \
     ../../../vcglib/wrap/gui/trackmode.cpp \
     ../../../vcglib/wrap/gui/trackball.cpp \
@@ -70,12 +68,7 @@ HEADERS  += \
 FORMS    += \
     nxsview.ui
 
-INCLUDEPATH += ../../../vcglib ../common/ \
-	../../../vcglib/eigenlib
-#    ../../../code/lib/glew/include
-
-
-#win32:INCLUDEPATH += ../../../code/lib/glew/include
+INCLUDEPATH += ../../../vcglib ../common/ ../../../vcglib/eigenlib
 			  
 win32-msvc2013:  LIBS += -lopengl32 -lGLU32
 win32-msvc2015:  LIBS += -lopengl32 -lGLU32

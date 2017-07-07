@@ -37,13 +37,7 @@ void Traversal::traverse(NexusData *nx) {
 	blocked.clear();
 	blocked.resize(n_nodes, false);
 
-	//This is ok only if the top level has only 1 node.
-	//find first non parent node.
-//	Node &root = nexus->nodes[0];
-//	uint32_t second_level_start = nexus->patches[root.first_patch].node;
-//	for(uint32_t i = 0; i < second_level_start; i++) {
-//		add(i);
-//	}
+	//add all top level nodes
 	for(uint32_t i = 0; i < nexus->nroots; i++)
 		add(i);
 

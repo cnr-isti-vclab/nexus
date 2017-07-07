@@ -96,7 +96,6 @@ void NexusData::countRoots() {
 		for(uint32_t i = nodes[j].first_patch; i < nodes[j].last_patch(); i++)
 			if(patches[i].node < nroots)
 				nroots = patches[i].node;
-		nodes[j].error = 1e20;
 	}
 }
 
