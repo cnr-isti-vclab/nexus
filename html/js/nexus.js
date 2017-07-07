@@ -81,6 +81,15 @@ function getFloat32(view) {
 
 /* MATRIX STUFF */
 
+function vecMul(m, v, r) {
+	var w = m[3]*v[0] + m[7]*v[1] + m[11]*v[2] + m[15];
+
+	r[0] = (m[0]*v[0]  + m[4]*v[1]  + m[8 ]*v[2] + m[12 ])/w;
+	r[1] = (m[1]*v[0]  + m[5]*v[1]  + m[9 ]*v[2] + m[13 ])/w;
+	r[2] = (m[2]*v[0]  + m[6]*v[1]  + m[10]*v[2] + m[14])/w;
+}
+
+
 function matMul(a, b, r) {
 	r[ 0] = a[0]*b[0] + a[4]*b[1] + a[8]*b[2] + a[12]*b[3];
 	r[ 1] = a[1]*b[0] + a[5]*b[1] + a[9]*b[2] + a[13]*b[3];
@@ -101,10 +110,6 @@ function matMul(a, b, r) {
 	r[13] = a[1]*b[12] + a[5]*b[13] + a[9]*b[14] + a[13]*b[15];
 	r[14] = a[2]*b[12] + a[6]*b[13] + a[10]*b[14] + a[14]*b[15];
 	r[15] = a[3]*b[12] + a[7]*b[13] + a[11]*b[14] + a[15]*b[15];
-}
-
-//normalized projection
-function matMulV(a, b) {
 }
 
 function matInv(m, t) {
@@ -229,13 +234,12 @@ var attrGlMap = [glP.NONE, glP.BYTE, glP.UNSIGNED_BYTE, glP.SHORT, glP.UNSIGNED_
 var attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
 
 
-var targetError   = 3.0;
-var targetFps     = 20;
+var targetError   = 2.0;
+var targetFps     = 15;
 var maxPending    = 3;
 var maxBlocked    = 3;
-var maxCacheSize  = 256*(1<<20); //TODO DEBUG
-var drawBudget    = 1*(1<<20);
-var minDrawBudget = drawBudget/4;
+var maxCacheSize  = 512*(1<<20); //TODO DEBUG
+var drawBudget    = 5*(1<<20);
 var cachePatch    = true; //set false for mac.
 
 
@@ -283,6 +287,7 @@ Mesh.prototype = {
 		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
 		r.onload = function(){
 			switch (this.status){
+				case 0: //returned in chrome for local files
 				case 206:
                 			load.bind(this)();
                 			break;
@@ -329,6 +334,15 @@ Mesh.prototype = {
 		t.sink = n -1;
 
 		t.patches = new Uint32Array(view.buffer, view.offset, t.patchesCount*3); //noded, lastTriangle, texture
+		t.nroots = t.nodesCount;
+		for(j = 0; j < t.nroots; j++) {
+			for(i = t.nfirstpatch[j]; i < t.nfirstpatch[j+1]; i++) {
+				if(t.patches[i*3] < t.nroots)
+					t.nroots = t.patches[i*3];
+			}
+			t.nerrors[j] = 1e20;
+		}
+
 		view.offset += t.patchesCount*12;
 
 		t.textures = new Uint32Array(t.texturesCount);
@@ -438,7 +452,6 @@ Instance = function(gl) {
 	this.onLoad = function() {};
 	this.onUpdate = function() {};
 	this.drawBudget = drawBudget;
-	this.minDrawBudget = minDrawBudget;
 	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3 };
 }
 
@@ -493,8 +506,11 @@ Instance.prototype = {
 		matInv(t.modelViewProj, t.modelViewProjInv);
 
 		matInv(t.modelView, t.modelViewInv);
-		t.viewpoint[0] = t.modelViewInv[12]; t.viewpoint[1] = t.modelViewInv[13];
-		t.viewpoint[2] = t.modelViewInv[14]; t.viewpoint[3] = 1.0;
+		t.viewpoint[0] = t.modelViewInv[12]; 
+		t.viewpoint[1] = t.modelViewInv[13];
+		t.viewpoint[2] = t.modelViewInv[14]; 
+		t.viewpoint[3] = 1.0;
+
 
 		var m = t.modelViewProj;
 		var mi = t.modelViewProjInv;
@@ -505,24 +521,33 @@ Instance.prototype = {
 		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11]; p[7]  = -m[12] + m[15];
 		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11]; p[11] =  m[13] + m[15];
 		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11]; p[15] = -m[13] + m[15];
+		p[16] = -m[2] + m[3]; p[17] = -m[6] + m[7]; p[18] = -m[10] + m[11]; p[19] = -m[14] + m[15];
+		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15];
 
 		for(var i = 0; i < 16; i+= 4) {
 			var l = Math.sqrt(p[i]*p[i] + p[i+1]*p[i+1] + p[i+2]*p[i+2]);
 			p[i] /= l; p[i+1] /= l; p[i+2] /= l; p[i+3] /= l;
 		}
-		//side is M'(1,0,0,1) - M'(-1,0,01) and they lie on the planes
-		var dx = p[0]*p[3] - p[4]*p[7];
-		var dy = p[1]*p[3] - p[5]*p[7];
-		var dz = p[2]*p[3] - p[6]*p[7];
-		var side = Math.sqrt(dx*dx + dy*dy + dz*dz);
+		//side is M'(1,0,0,1) - M'(-1,0,0,1) and they lie on the planes
+		var r3 = mi[3] + mi[15];
+		var r0 = (mi[0]  + mi[12 ])/r3;
+		var r1 = (mi[1]  + mi[13 ])/r3;
+		var r2 = (mi[2]  + mi[14 ])/r3;
+ 
+		var l3 = -mi[3] + mi[15];
+		var l0 = (-mi[0]  + mi[12 ])/l3 - r0;
+		var l1 = (-mi[1]  + mi[13 ])/l3 - r1;
+		var l2 = (-mi[2]  + mi[14 ])/l3 - r2;
+		
+		var side = Math.sqrt(l0*l0 + l1*l1 + l2*l2);
 
 		//center of the scene is M'*(0, 0, 0, 1)
-		var rx = mi[3]/mi[15] - t.viewpoint[0];
-		var ry = mi[7]/mi[15] - t.viewpoint[1];
-		var rz = mi[11]/mi[15] - t.viewpoint[2];
-		var dist = Math.sqrt(rx*rx + ry*ry + rz*rz);
+		var c0 = mi[12]/mi[15] - t.viewpoint[0];
+		var c1 = mi[13]/mi[15] - t.viewpoint[1];
+		var c2 = mi[14]/mi[15] - t.viewpoint[2];
+		var dist = Math.sqrt(c0*c0 + c1*c1 + c2*c2);
 
-		t.resolution = 2*side/(t.viewport[2]*dist); //2* brings it back to the value of the orig nexus.
+		t.resolution = (2*side/dist)/ t.viewport[2];
 	},
 
 	traversal : function () {
@@ -538,7 +563,8 @@ Instance.prototype = {
 		t.selected = new Uint8Array(n);
 
 		t.visitQueue = new PriorityQueue(n);
-		t.insertNode(0);
+		for(var i = 0; i < t.mesh.nroots; i++)
+			t.insertNode(i);
 
 		var candidatesCount = 0;
 		t.targetError = t.context.currentError;
@@ -571,7 +597,7 @@ Instance.prototype = {
 		t.visited[node] = 1;
 
 		var error = t.nodeError(node);
-		if(node > 0 && error < t.targetError*0.8) return;  //2% speed TODO check if needed
+		if(node > 0 && error < t.targetError) return;  //2% speed TODO check if needed
 
 		var errors = t.mesh.errors;
 		var frames = t.mesh.frames;
@@ -595,21 +621,31 @@ Instance.prototype = {
 
 	expandNode : function (node, error) {
 		var t = this;
-		if(node > 0 && error < t.targetError) //error
+		if(node > 0 && error < t.targetError) {
+//			console.log("Reached error", error, t.targetError);
 			return false;
+		}
 
-		if(t.drawSize > t.drawBudget)
+		if(t.drawSize > t.drawBudget) {
+//			console.log("Reached drawsize", t.drawSize, t.drawBudget);
 			return false;
+		}
+
+		if(t.mesh.status[node] != 1) { //not ready
+//			console.log("Still not loaded (cache?)");
+			return false;
+		}
 
 		var sp = t.mesh.nspheres;
 		var off = node*5;
 		if(t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+3])) //expanded radius
 			t.drawSize += t.mesh.nvertices[node]*0.8; 
 			//we are adding half of the new faces. (but we are using the vertices so *2)
-		return t.mesh.status[node] == 1; //not ready return false
+
+		return true; 
 	},
 
-	nodeError : function (n) {
+	nodeError : function (n, tight) {
 		var t = this;
 		var spheres = t.mesh.nspheres;
 		var b = t.viewpoint;
@@ -618,22 +654,26 @@ Instance.prototype = {
 		var cy = spheres[off+1];
 		var cz = spheres[off+2];
 		var r  = spheres[off+3];
+		if(tight)
+			r = spheres[off+4];
 		var d0 = b[0] - cx;
 		var d1 = b[1] - cy;
 		var d2 = b[2] - cz;
 		var dist = Math.sqrt(d0*d0 + d1*d1 + d2*d2) - r;
-		if (dist < 0.1) dist = 0.1;
+		if (dist < 0.1)
+			dist = 0.1;
 
-		var error = t.mesh.nerrors[n]/(t.resolution*dist);
+		//resolution is how long is a pixel at distance 1.
+		var error = t.mesh.nerrors[n]/(t.resolution*dist); //in pixels
 
-		if (!t.isVisible(cx, cy. cz, r))
+		if (!t.isVisible(cx, cy. cz, spheres[off+4]))
 			error /= 1000.0;
 		return error;
 	},
 
 	isVisible : function (x, y, z, r) {
 		var p = this.planes;
-		for (i = 0; i < 16; i +=4) {
+		for (i = 0; i < 24; i +=4) {
 			if(p[i]*x + p[i+1]*y + p[i+2]*z +p[i+3] + r < 0) //ax+by+cz+w = 0;
 				return false;
 		}
@@ -698,8 +738,26 @@ Instance.prototype = {
 			if(m.vertex.color && attr.color >= 0)
 				gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
 
-			if (Debug.nodes)
-				gl.vertexAttrib4fv(2, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
+			if (Debug.nodes) {
+				var error = t.nodeError(n, true);
+				var palette = { 
+					1: [1, 1, 1, 1],
+					2: [0.5, 1, 1, 1],
+					4: [0, 1, 1, 1],
+					8: [0, 1, 0.5, 1],
+					12: [0, 1, 0, 1],
+					16: [0, 1, 0, 1],
+					20: [1, 1, 0, 1],
+					30: [1, 0.5, 0, 1],
+					1e20: [1, 0, 0, 1] };
+
+				for(i in palette)
+					if(i > error) {
+						gl.vertexAttrib4fv(attr.color, palette[i]);
+						break;
+					}
+//				gl.vertexAttrib4fv(2, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
+			}
 
 			if (Debug.draw) continue;
 
@@ -808,7 +866,7 @@ function beginFrame(gl, fps) { //each context has a separate frame count.
 	
 		if(c.currentError < c.targetError)
 			c.currentError = c.targetError;
-		if(c.currentError > 20) c.currentError = 20;
+		if(c.currentError > 10) c.currentError = 10;
 	}
 //	console.log("current", c.currentError, "fps", fps, "targetFps", c.targetFps, "rendered", c.rendered);
 	c.rendered = 0;
