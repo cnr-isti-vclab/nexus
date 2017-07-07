@@ -283,6 +283,7 @@ Mesh.prototype = {
 		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
 		r.onload = function(){
 			switch (this.status){
+				case 0: //returned in chrome for local files
 				case 206:
                 			load.bind(this)();
                 			break;
