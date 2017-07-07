@@ -120,15 +120,11 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 		level++;
 		if(last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
 			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
-			cout << "Quitting prematurely!\n";
+			cout << "Quitting prematurely (most probably to high parametrization fragmentation)!\n";
 			break;
 		}
-		if(tree->nLeaves() == 1) {
-			if(last_top_level_size != 0)
-				break;
-			last_top_level_size = stream->size();
-		}
-	} while(tree->nLeaves() > 1 || stream->size() > top_node_size);
+		last_top_level_size = stream->size();
+	} while(stream->size() > top_node_size);
 
 	reverseDag();
 	saturate();
@@ -263,7 +259,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 			int &t = vertex_to_tex[v[i]];
 			//			if(t != -1 && t != face.tex) qDebug() << "Missing vertex replication across seams\n";
 			t = face.tex;
-			//assert(face.tex < textures.size()); //no.
+
 		}
 		components.link(v[0], v[1]);
 		components.link(v[0], v[2]);
@@ -293,7 +289,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 		if(tex < 0) continue; //vertex not assigned.
 
 		vcg::Box2f &box = boxes[b];
-		//		assert(box_texture[b] == -1 || box_texture[b] == tex);
 		box_texture[b] = tex;
 		auto t = mesh.vert[i].T().P();
 		//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
@@ -759,7 +754,19 @@ void NexusBuilder::save(QString filename) {
 
 	header.n_textures = textures.size();
 	header.version = 2;
-	header.sphere = nodes[0].tightSphere();
+
+	//find roots and adjust error
+	uint32_t nroots = header.n_nodes;
+	for(uint32_t j = 0; j < nroots; j++) {
+		for(uint32_t i = nodes[j].first_patch; i < nodes[j].last_patch(); i++)
+			if(patches[i].node < nroots)
+				nroots = patches[i].node;
+		nodes[j].error = nodes[j].tight_radius;
+	}
+
+	header.sphere = vcg::Sphere3f();
+	for(uint32_t i = 0; i < nroots; i++)
+		header.sphere.Add(nodes[i].tightSphere());
 
 	for(uint i = 0; i < nodes.size()-1; i++) {
 		nx::Node &node = nodes[i];

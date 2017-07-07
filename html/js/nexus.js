@@ -323,10 +323,10 @@ Mesh.prototype = {
 
 		for(i = 0; i < n; i++) {
 			t.noffsets[i] = padding*getUint32(view); //offset
-			t.nvertices[i] = getUint16(view);          //verticesCount
-			t.nfaces[i] = getUint16(view);          //facesCount
+			t.nvertices[i] = getUint16(view);        //verticesCount
+			t.nfaces[i] = getUint16(view);           //facesCount
 			t.nerrors[i] = getFloat32(view);
-			view.offset += 8;                             //skip cone
+			view.offset += 8;                        //skip cone
 			for(k = 0; k < 5; k++)
 				t.nspheres[i*5+k] = getFloat32(view);       //sphere + tight
 			t.nfirstpatch[i] = getUint32(view);          //first patch
@@ -340,7 +340,6 @@ Mesh.prototype = {
 				if(t.patches[i*3] < t.nroots)
 					t.nroots = t.patches[i*3];
 			}
-			t.nerrors[j] = 1e20;
 		}
 
 		view.offset += t.patchesCount*12;
@@ -839,7 +838,7 @@ var contexts = [];
 
 function getContext(gl) {
 	var c = null;
-	if(!gl.isTexture) throw "PORCA PALETTA";
+	if(!gl.isTexture) throw "Somethingg wrong";
 	contexts.forEach(function(g) { 
 		if(g.gl == gl) c = g;
 	});

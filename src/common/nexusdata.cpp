@@ -39,7 +39,7 @@ uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
 }
 
 
-NexusData::NexusData(): nodes(0), patches(0), textures(0), nodedata(0), texturedata(0) {
+NexusData::NexusData(): nodes(0), patches(0), textures(0), nodedata(0), texturedata(0), nroots(0) {
 }
 
 NexusData::~NexusData() {
@@ -89,6 +89,16 @@ void NexusData::loadHeader(char *buffer) {
 		throw "Could not read header.. probably not a nxs file";
 }
 
+void NexusData::countRoots() {
+	//find number of roots:
+	nroots = header.n_nodes;
+	for(uint32_t j = 0; j < nroots; j++) {
+		for(uint32_t i = nodes[j].first_patch; i < nodes[j].last_patch(); i++)
+			if(patches[i].node < nroots)
+				nroots = patches[i].node;
+	}
+}
+
 uint64_t NexusData::indexSize() {
 	return header.n_nodes * sizeof(Node) +
 			header.n_patches * sizeof(Patch) +
@@ -113,6 +123,7 @@ void NexusData::loadIndex() {
 	file.read((char *)nodes, sizeof(Node)*header.n_nodes);
 	file.read((char *)patches, sizeof(Patch)*header.n_patches);
 	file.read((char *)textures, sizeof(Texture)*header.n_textures);
+	countRoots();
 }
 
 void NexusData::loadIndex(char *buffer) {
@@ -129,6 +140,7 @@ void NexusData::loadIndex(char *buffer) {
 	size = sizeof(Texture)*header.n_textures;
 	memcpy(textures, buffer, size);
 
+	countRoots();
 }
 
 uint32_t NexusData::size(uint32_t node) {
