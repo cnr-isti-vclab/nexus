@@ -21,7 +21,7 @@ Nexus = function() {
 
 /* WORKER INITIALIZED ONCE */
 
-var worker;
+var meco;
 var corto;
 
 var scripts = document.getElementsByTagName('script');
@@ -39,42 +39,47 @@ for(i = 0; i < scripts.length; i++) {
 		}
 	}
 }
-
-
-worker = new Worker(path.replace('nexus.js', 'meshcoder_worker.js'));
-worker.requests = {};
-worker.count = 0;
-worker.postRequest = function(sig, node, patches) {
-	var signature = {
-		texcoords: sig.texcoords?1:0, colors: sig.colors?1:0,
-		normals: sig.normals?1:0, indices: sig.indices?1:0
+var meco = null;
+function loadMeco() {
+	meco = new Worker(path.replace('nexus.js', 'meco.js'));
+	meco.requests = {};
+	meco.count = 0;
+	meco.postRequest = function(sig, node, patches) {
+		var signature = {
+			texcoords: sig.texcoords?1:0, colors: sig.colors?1:0,
+			normals: sig.normals?1:0, indices: sig.indices?1:0
+		};
+		meco.postMessage({ 
+			signature:signature,
+			node:{ nface: node.nface, nvert: node.nvert, buffer:node.buffer, request:this.count}, 
+			patches:patches
+		});
+		this.requests[this.count++] = node;
 	};
-	worker.postMessage({ 
-		signature:signature,
-		node:{ nface: node.nface, nvert: node.nvert, buffer:node.buffer, request:this.count}, 
-		patches:patches
-	});
-	this.requests[this.count++] = node;
-};
-worker.onmessage = function(e) {
-	var node = this.requests[e.data.request];
-	node.buffer = e.data.buffer;
-	readyNode(node);
-};
-
-corto = new Worker(path.replace('nexus.js', 'corto.js'));
-corto.requests = {};
-corto.count = 0;
-corto.postRequest = function(node) {
-	corto.postMessage({ buffer: node.buffer, request:this.count });
-	this.requests[this.count++] = node;
+	meco.onmessage = function(e) {
+		var node = this.requests[e.data.request];
+		node.buffer = e.data.buffer;
+		readyNode(node);
+	};
 }
-corto.onmessage = function(e) {
-	var node = this.requests[e.data.request];
-	node.buffer = e.data.buffer;
-	node.model = e.data.model;
-	readyNode(node);
-};
+
+var corto = null;
+
+function loadCorto() {
+	corto = new Worker(path.replace('nexus.js', 'corto.js'));
+	corto.requests = {};
+	corto.count = 0;
+	corto.postRequest = function(node) {
+		corto.postMessage({ buffer: node.buffer, request:this.count });
+		this.requests[this.count++] = node;
+	}
+	corto.onmessage = function(e) {
+		var node = this.requests[e.data.request];
+		node.buffer = e.data.buffer;
+		node.model = e.data.model;
+		readyNode(node);
+	};
+}
 
 /* UTILITIES */
 
@@ -965,8 +970,10 @@ function loadNode(request, context, node) {
 		var patches = [];
 		for(var k = m.nfirstpatch[n]; k < m.nfirstpatch[n+1]; k++)
 			patches.push(m.patches[k*3+1]);
-		worker.postRequest(sig, node, patches);
+		if(!meco) loadMeco();
+		meco.postRequest(sig, node, patches);
 	} else {
+		if(!corto) loadCorto();
 		corto.postRequest(node);
 	}
 }

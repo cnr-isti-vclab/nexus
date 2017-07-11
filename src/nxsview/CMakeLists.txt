@@ -1,3 +1,5 @@
+#export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
+
 cmake_minimum_required(VERSION 3.1)
 project(nxsview)
 
@@ -48,8 +50,8 @@ SET(SOURCES
 	../common/ram_cache.cpp
 	../common/frustum.cpp
 	../common/nexusdata.cpp
-	../nxszip/bitstream.cpp
-	../nxszip/tunstall.cpp
+	../nxszip/abitstream.cpp
+	../nxszip/atunstall.cpp
 	../nxszip/meshdecoder.cpp
 	main.cpp
 	gl_nxsview.cpp

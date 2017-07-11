@@ -245,7 +245,7 @@ void MeshEncoder::encodeFaces() {
 
 	start =  0;
 	//	encodeFaces(0, node.nface);
-	for(int p = node.first_patch; p < node.last_patch(); p++) {
+	for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 		Patch &patch = patches[p];
 		uint end = patch.triangle_offset;
 		encodeFaces(start, end);
@@ -480,13 +480,6 @@ void MeshEncoder::encodeColors() {
 	stream.write(bitstream);
 
 	color_size = stream.size() - start;
-}
-
-void MeshEncoder::encodeTexCoords() {
-	Point2f *tex_coords = data.texCoords(sig, node.nvert);
-
-	//
-
 }
 
 static void buildTopology(vector<McFace> &faces) {

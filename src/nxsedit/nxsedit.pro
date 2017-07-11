@@ -1,31 +1,21 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-05-29T18:43:31
-#
-#-------------------------------------------------
-
 QT       += core
-#QT       -= gui
 
 TARGET = nxsedit
 CONFIG   += console
 CONFIG   -= app_bundle
 
-CONFIG+=object_parallel_to_source. #cpp files with same name
-
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
 
-DEFINES = USE_CORTO
+DEFINES += USE_CORTO
 
 DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
 
-INCLUDEPATH += ../../../vcglib \
-    ../../../vcglib/eigenlib \
-#    ../../../corto/src
+INCLUDEPATH += ../../../vcglib ../../../vcglib/eigenlib
 
+#    ../../../corto/src
 #LIBS += ../../../corto/lib/libcorto.a
 
 win32:INCLUDEPATH += ../../../code/lib/glew/include

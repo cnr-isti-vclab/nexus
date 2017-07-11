@@ -164,7 +164,6 @@ private:
 	void encodeCoordinates(); //used only for point clouds
 	void encodeNormals();
 	void encodeColors();
-	void encodeTexCoords();
 
 	void encodeFaces(int start, int end);
 
