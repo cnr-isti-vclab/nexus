@@ -5,10 +5,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <style>body { margin: 0px; overflow: hidden; }</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.js"></script>
+<script src="js/three.js"></script>
 <script src="js/TrackballControls.js"></script>
 <script src="js/nexus.js"></script>
-<script src="js/nexus_three.js"></script>
+<script src="js/NEXUSLoader.js"></script>
+<script src="js/stats.js"></script>
 </head>
 
 <body>
@@ -33,13 +34,16 @@ controls.addEventListener( 'change', render );
 
 var scene = new THREE.Scene();
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
-scene.add( new THREE.AmbientLight( 0x444444 ) );
+//scene.add( new THREE.AmbientLight( 0x444444 ) );
 
-var light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
+scene.add( new THREE.AmbientLight( 0xcccccc ) );
+
+//var light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
+var light1 = new THREE.DirectionalLight( 0x888888, 1.0 );
 light1.position.set( 1, 1, -1 );
 scene.add( light1 );
 
-var light2 = new THREE.DirectionalLight( 0xffffff, 1.0 );
+var light2 = new THREE.DirectionalLight( 0x888888, 1.0 );
 light2.position.set( -1, -1, 1 );
 scene.add( light2 );
 
@@ -58,14 +62,25 @@ texture.needsUpdate = true;
 var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
 */
 
+var loader = new THREE.NEXUSLoader({ onUpdate: render });
+
 function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
 var model = getURLParameter('model') || "models/gargo.nxz";
+var nexus_obj = loader.load(model, { onLoad: loaded, onError: alert });
 
-var nexus_obj = new NexusObject(model, renderer, render);
+function loaded(obj) {
+	obj.center();
+	render();
+}
+
 scene.add(nexus_obj);
+
+var stats = new Stats();
+stats.showPanel( 0 );
+document.body.appendChild( stats.dom );
 
 window.addEventListener( 'resize', onWindowResize, false );
 render();
@@ -86,12 +101,14 @@ function onWindowResize() {
 function animate() {
 	requestAnimationFrame( animate );
 	controls.update();
+	stats.update();
+
 }
 
 function render() {
-	Nexus.beginFrame(renderer.context);
+	nexus_obj.update(renderer, camera);
 	renderer.render( scene, camera );
-	Nexus.endFrame(renderer.context);
+	loader.update(); //keep tracks of fps (needed if targetFps)
 }
 
 animate();

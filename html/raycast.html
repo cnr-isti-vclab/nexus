@@ -5,10 +5,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <style>body { margin: 0px; overflow: hidden; }</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.js"></script>
+<script src="js/three.js"></script>
 <script src="js/TrackballControls.js"></script>
+<script src="js/GPUPicker.js"></script>
 <script src="js/nexus.js"></script>
-<script src="js/nexus_three.js"></script>
+<script src="js/NEXUSLoader.js"></script>
+<script src="js/stats.js"></script>
 </head>
 
 <body>
@@ -16,6 +18,8 @@
 </body>
 
 <script>
+
+var useGPU = false;
 
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
 camera.position.z = 4;
@@ -35,6 +39,8 @@ var scene = new THREE.Scene();
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
 scene.add( new THREE.AmbientLight( 0x444444 ) );
 
+
+
 var light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
 light1.position.set( 1, 1, -1 );
 scene.add( light1 );
@@ -48,26 +54,35 @@ var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster();
 
 function onDocumentMouseMove( event ) {
+//	gpuPicker.needUpdate = true;
+	if(event.buttons != 0) return;
 	event.preventDefault();
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 	raycaster.setFromCamera( mouse, camera );
 
-	var intersections = raycaster.intersectObjects( [nexus_obj] );
+	var intersections;
+	if(useGPU)
+		intersect = gpuPicker.pick(mouse, raycaster);
+	else
+		intersections = raycaster.intersectObjects( nexus_obj.children );
+
 /*	if(nexus_obj.material.color) {
 		if(intersections.length)
 			nexus_obj.material.color =  0xff0000;
 		else
 			nexus_obj.material.color =  0xffffff;
 
-	} else */if(nexus_obj.material.vertexColors != null) {
+	} else if(nexus_obj.material.vertexColors != null) {
 		if(intersections.length)
 			nexus_obj.material.vertexColors = THREE.NoColors;
 		else
 			nexus_obj.material.vertexColors = THREE.VertexColors; 
-	}
-	nexus_obj.material.needsUpdate = true;
-	render();
+	} */
+	if(intersections)
+		console.log(intersections.length);
+//	nexus_obj.material.needsUpdate = true;
+//	render();
 }
 
 
@@ -77,6 +92,10 @@ renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight);
 
 renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+
+
+
 
 
 var container = document.getElementById( 'container');
@@ -89,14 +108,31 @@ texture.needsUpdate = true;
 var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
 */
 
+var loader = new THREE.NEXUSLoader({ onUpdate: render });
+
 function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
 var model = getURLParameter('model') || "models/gargo.nxz";
+var nexus_obj = loader.load(model, { onLoad: loaded, onError: alert });
 
-var nexus_obj = new NexusObject(model, renderer, render);
+function loaded(obj) {
+	obj.center();
+	render();
+}
+
 scene.add(nexus_obj);
+
+/*
+var gpuPicker = new THREE.GPUPicker({renderer:renderer, debug: false});
+gpuPicker.setFilter(function (object) {return true;});
+gpuPicker.setScene(scene);
+gpuPicker.setCamera(camera); */
+
+var stats = new Stats();
+stats.showPanel( 0 );
+document.body.appendChild( stats.dom );
 
 window.addEventListener( 'resize', onWindowResize, false );
 render();
@@ -117,18 +153,17 @@ function onWindowResize() {
 function animate() {
 	requestAnimationFrame( animate );
 	controls.update();
+	stats.update();
+
 }
 
 function render() {
-
-	Nexus.beginFrame(renderer.context);
+	nexus_obj.update(renderer, camera);
 	renderer.render( scene, camera );
-	Nexus.endFrame(renderer.context);
+	loader.update(); //keep tracks of fps (needed if targetFps)
 }
 
 animate();
-
-
 
 </script>
 
