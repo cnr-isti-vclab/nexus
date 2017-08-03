@@ -19,7 +19,6 @@ for more details.
 #include "../nxszip/meshdecoder.h"
 
 #include <corto/decoder.h>
-#endif
 
 using namespace nx;
 

@@ -230,8 +230,6 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				decoder.setIndex(d.faces(sign, node.nvert));
 			decoder.decode();
 			}
-
-#endif
 		}
 		double elapsed = (time.elapsed()/(double)iterations)/1000.0;
 		cout << "Z Elapsed: " << elapsed << " M/s " << (node.nface/elapsed)/(1<<20) << " Faces: " << node.nface << endl;
