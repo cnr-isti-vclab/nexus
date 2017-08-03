@@ -75,5 +75,5 @@ find_package(Qt5OpenGL)
 
 add_executable(nxsview ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsview Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
+target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
 
