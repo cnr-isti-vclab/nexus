@@ -20,9 +20,7 @@ for more details.
 
 #include "../nxszip/meshcoder.h"
 //typedef MeshCoder MeshEncoder;
-#ifdef USE_CORTO
-#include "../../../corto/src/corto.h"
-#endif
+#include <corto/corto.h>
 
 using namespace std;
 using namespace nx;
@@ -261,10 +259,6 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 		char tmp[NEXUS_PADDING];
 		file.write(tmp, size);
 	} else if(signature.flags & Signature::CORTO) {
-#ifndef USE_CORTO
-		cerr << "Compiled without Corto support" << endl;
-		throw "Compiled without Corto support";
-#else
 
 		crt::Encoder encoder(node.nvert, node.nface);
 

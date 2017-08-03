@@ -11,9 +11,18 @@ TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
 
-DEFINES += GL_COMPATIBILITY USE_CORTO
+DEFINES += GL_COMPATIBILITY 
+
 unix:DEFINES += USE_CURL
 win32:DEFINES += NOMINMAX
+
+INCLUDEPATH += ../../../vcglib ../common/ ../../../vcglib/eigenlib
+
+win32:INCLUDEPATH += /pathtocorto
+win32:LIBS += -lopengl32 -lGLU32 -lcorto
+
+unix:INCLUDEPATH += /usr/local/lib
+unix:LIBS += -lGLEW -lGLU -lcurl -lcorto
 
 SOURCES += \
     ../../../vcglib/wrap/gui/trackmode.cpp \
@@ -32,13 +41,7 @@ SOURCES += \
     ../nxszip/meshdecoder.cpp \
     main.cpp\
     gl_nxsview.cpp \
-    scene.cpp \
-    ../../../corto/src/bitstream.cpp \
-    ../../../corto/src/color_attribute.cpp \
-    ../../../corto/src/cstream.cpp \
-    ../../../corto/src/decoder.cpp \
-    ../../../corto/src/tunstall.cpp \
-    ../../../corto/src/normal_attribute.cpp
+    scene.cpp
 
 HEADERS  += \
     ../../../vcglib/wrap/gcache/token.h \
@@ -68,24 +71,12 @@ HEADERS  += \
     ../nxszip/zpoint.h \
     ../nxszip/meshdecoder.h \
     gl_nxsview.h \
-    scene.h \
-    ../../../corto/src/bitstream.h \
-    ../../../corto/src/color_attribute.h \
-    ../../../corto/src/cstream.h \
-    ../../../corto/src/decoder.h \
-    ../../../corto/src/tunstall.h \
-    ../../../corto/src/vertex_attribute.h \
-    ../../../corto/src/normal_attribute.h
+    scene.h 
 
 
 FORMS    += \
     nxsview.ui
 
-INCLUDEPATH += ../../../vcglib ../common/ ../../../vcglib/eigenlib
-			  
-win32-msvc2013:  LIBS += -lopengl32 -lGLU32
-win32-msvc2015:  LIBS += -lopengl32 -lGLU32
 
-unix:LIBS += -lGLEW -lGLU -lcurl
 
 DESTDIR = "../../bin"

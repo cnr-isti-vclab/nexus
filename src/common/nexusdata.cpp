@@ -24,9 +24,7 @@ for more details.
 #include <vcg/space/intersection3.h>
 
 #include "../nxszip/meshdecoder.h"
-#ifdef USE_CORTO
-#include "../../../corto/src/decoder.h"
-#endif
+#include <corto/decoder.h>
 
 //#if _MSC_VER >= 1800
 #include <random>
@@ -213,11 +211,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 			}
 
 		} else if(sign.flags & Signature::CORTO) {
-#ifndef USE_CORTO
-			cerr << "Compiled without Corto support" << endl;
-			throw "Compiled without Corto support";
 
-#else
 			QTime time;
 			time.start();
 

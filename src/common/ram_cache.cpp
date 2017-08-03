@@ -17,8 +17,8 @@ for more details.
 */
 #include "ram_cache.h"
 #include "../nxszip/meshdecoder.h"
-#ifdef USE_CORTO
-#include "../../../corto/src/decoder.h"
+
+#include <corto/decoder.h>
 #endif
 
 using namespace nx;
@@ -111,12 +111,7 @@ int RamCache::get(nx::Token *in) {
 				coder.decode(node.getSize(), (unsigned char *)buffer);
 
 			} else if(signature.flags & Signature::CORTO) {
-#ifdef USE_CORTO
 
-#else
-				cerr << "Compiled without Corto support" << endl;
-				throw "Compiled without Corto support";
-#endif
 				crt::Decoder decoder(node.getSize(), (unsigned char *)buffer);
 
 				decoder.setPositions((float *)nodedata.coords());

@@ -1,7 +1,9 @@
+#export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
+
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
+include_directories(../../../vcglib ../../../vcglib/eigenlib /usr/local/lib/include)
 
 
 SET(HEADERS
@@ -54,5 +56,10 @@ find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsbuild Qt5::Widgets)
+link_directories(/usr/local/lib)
+target_link_libraries(nxsbuild Qt5::Widgets corto)
+
+
+
+
 
