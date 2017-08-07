@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString(" ARGS specify one or more .ply or .obj files"));
+	opt.setHelp(QString(" ARGS specify one or more .ply or .obj files or a directory"));
 
 	opt.allowUnlimitedArguments(true); //able to join several plys
 
@@ -102,6 +102,21 @@ int main(int argc, char *argv[]) {
 		cerr << "No input files specified\n" << endl;
 		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
+	}
+
+	if(inputs.size() == 1) { //check for directory parameter
+		QDir dir(inputs[0]);
+		if(dir.exists()) {
+			QStringList filters;
+			filters << "*.ply" << "*.obj"; //append your xml filter. You can add other filters here
+			inputs = dir.entryList(filters, QDir::Files);
+			if(inputs.size() == 0) {
+				cerr << "Empty directory." << endl;
+				return -1;
+			}
+			for(QString &s: inputs)
+				s = dir.filePath(s);
+		}
 	}
 
 	if(output == "") output = inputs[0].left(inputs[0].length()-4);
