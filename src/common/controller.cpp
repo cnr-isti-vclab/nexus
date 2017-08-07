@@ -31,7 +31,9 @@ Controller::Controller(): max_tokens(300), max_ram(512*1000*1000), max_gpu(256*1
 
 void Controller::setWidget(QGLWidget *widget) {
 	//TODO check destruction of widget
+#ifdef SHARED_CONTEXT
 	gpu_cache.shared = widget; //new QGLWidget(NULL, widget);
+#endif
 }
 
 void Controller::load(Nexus *nexus) {

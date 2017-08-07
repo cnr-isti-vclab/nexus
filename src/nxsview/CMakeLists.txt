@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsview)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib ../../../code/lib/glew/include)
+set (CMAKE_CXX_STANDARD 11)
 
+add_definitions( -DGL_COMPATIBILITY )
 
 SET(HEADERS
 	../../../vcglib/wrap/gcache/token.h
@@ -36,7 +37,6 @@ SET(HEADERS
 )
 
 SET(SOURCES
-	../../../code/lib/glew/src/glew.c
 	../../../vcglib/wrap/gui/trackmode.cpp
 	../../../vcglib/wrap/gui/trackball.cpp
 	../../../vcglib/wrap/system/qgetopt.cpp
@@ -56,16 +56,13 @@ SET(SOURCES
 	scene.cpp
 )
 
-
-cmake_minimum_required(VERSION 3.1)
-
-project(nxsview)
-
-
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
+add_definitions( -DGL_COMPATIBILITY )
+
+include_directories(../../../vcglib ../../../vcglib/eigenlib)
 
 find_package(Qt5Widgets)
 find_package(Qt5OpenGL)

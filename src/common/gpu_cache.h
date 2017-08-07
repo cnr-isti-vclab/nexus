@@ -25,28 +25,33 @@ for more details.
 
 #include <QThread>
 //#include <QWindow>
+//#define SHARED_CONTEXT
+
+#ifdef SHARED_CONTEXT
 #include <QGLContext>
+#endif
 
 #include <iostream>
 using namespace std;
 
 namespace nx {
 
-//#define SHARED_CONTEXT
 
 class GpuCache: public vcg::Cache<nx::Token> {
 public:
-#ifndef NO_QT
-	QGLWidget *widget;
-	QGLWidget *shared;
-#endif
-
 #ifndef SHARED_CONTEXT
 	std::vector<unsigned int> to_drop;
 	mt::mutex droplock;
 #endif
 
+#ifdef SHARED_CONTEXT
+	QGLWidget *widget;
+	QGLWidget *shared;
+
 	GpuCache(): widget(NULL), shared(NULL) {}
+#endif
+
+
 
 #ifndef SHARED_CONTEXT
 	void dropGpu() {
