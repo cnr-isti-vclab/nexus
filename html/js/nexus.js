@@ -70,7 +70,7 @@ function loadCorto() {
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
-		corto.postMessage({ buffer: node.buffer, request:this.count });
+		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_normals: true });
 		this.requests[this.count++] = node;
 	}
 	corto.onmessage = function(e) {
@@ -1012,6 +1012,29 @@ function loadTexture(request, context, node, texid) {
 	}
 }
 
+function scramble(n, coords, normals, colors) {
+	while (n > 0) {
+		var i = Math.floor(Math.random() * n);
+		n--;
+		for(var k =0; k < 3; k++) {
+			var v = coords[n*3+k];
+			coords[n*3+k] = coords[i*3+k];
+			coords[i*3+k] = v;
+
+			if(normals) {
+				var v = normals[n*3+k];
+				normals[n*3+k] = normals[i*3+k];
+				normals[i*3+k] = v;
+			}
+			if(colors) {
+				var v = colors[n*4+k];
+				colors[n*4+k] = colors[i*4+k];
+				colors[i*4+k] = v;
+			}
+		}
+	}
+}
+
 function readyNode(node) {
 	var m = node.mesh;
 	var n = node.id;
@@ -1019,29 +1042,47 @@ function readyNode(node) {
 	var nf = m.nfaces[n];
 	var model = node.model;
 
+	var vertices;
+	var indices;
+
 	if(!m.corto) {
-		var vertices = new Uint8Array(node.buffer, 0, nv*m.vsize);
+		vertices = new Uint8Array(node.buffer, 0, nv*m.vsize);
 		//dangerous alignment 16 bits if we had 1b attribute
-		var indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+		indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+		if(nf == 0) {
+			var off = nv*12;
+			var v = new Float32Array(node.buffer, 0, nv*3);
+			if(m.vertex.normal) {
+				var no = new Int16Array(node.buffer, off, nv*3); off += nv*6;
+			}
+			if(m.vertex.color) {
+				var co = new Uint8Array(node.buffer, off, nv*4);
+			}
+			scramble(nv, v, no, co);
+		}
 	} else {
-		var indices = node.model.index;
-		var vertices = new ArrayBuffer(nv*m.vsize);
+		indices = node.model.index;
+		vertices = new ArrayBuffer(nv*m.vsize);
 		var v = new Float32Array(vertices, 0, nv*3);
-		v.set(model.position, 0, nv*12);
+		v.set(model.position, 0, nv*3);
 		var off = nv*12;
 		if(model.uv) {
-			var u = new Float32Array(vertices, off, nv*2);
-			u.set(model.uv, off, off+nv*8); off += nv*8;
+			var uv = new Float32Array(vertices, off, nv*2);
+			uv.set(model.uv); off += nv*8;
 		}
 		if(model.normal) {
-			var n = new Int16Array(vertices, off, nv*3);
-			vertices.set(model.normal, off, off+nv*6); off += nv*6; 
+			var no = new Int16Array(vertices, off, nv*3);
+			no.set(model.normal); off += nv*6; 
 		}
 		if(model.color) {
-			var n = new Uint8Array(vertices, off, nv*4);
-			vertices.set(model.color, off, off+nv*4); off += nv*4;  
+			var co = new Uint8Array(vertices, off, nv*4);
+			co.set(model.color); off += nv*4;  
 		}
+		if(nf == 0)
+			scramble(nv, v, no, co);
 	}
+
+
 
 	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();

@@ -319,14 +319,10 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 
 
 
-
-
-
 		file.write((char *)&*encoder.stream.data(), encoder.stream.size());
 		quint64 size = pad(file.pos()) - file.pos();
 		char tmp[NEXUS_PADDING];
 		file.write(tmp, size);
-#endif
 	}
 }
 
