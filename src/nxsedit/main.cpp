@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
 						if(patch.node != sink)
 							continue;
 						double e = error_q*n.error/2;
-						if(e < coord_step)
+						if(e < coord_step && e > 0)
 							coord_step = e; //we are looking at level1 error, need level0 estimate.
 					}
 					extractor.error_factor = error_q;
