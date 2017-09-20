@@ -738,15 +738,17 @@ Instance.prototype = {
 		for(var n = 0; n < m.nodesCount; n++) {
 			if(!t.selected[n]) continue;
 
-			var skip = true;
-			for(var p = m.nfirstpatch[n]; p < m.nfirstpatch[n+1]; p++) {
-				var child = m.patches[p*3];
-				if(!t.selected[child]) {
-					skip = false;
-					break;
+			if(t.mode != "POINT") {
+				var skip = true;
+				for(var p = m.nfirstpatch[n]; p < m.nfirstpatch[n+1]; p++) {
+					var child = m.patches[p*3];
+					if(!t.selected[child]) {
+						skip = false;
+						break;
+					}
 				}
+				if(skip) continue;
 			}
-			if(skip) continue;
 
 
 			var sp = t.mesh.nspheres;
