@@ -117,7 +117,7 @@ PlyLoader::PlyLoader(QString filename):
 
 			char buf2[255];
 			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2 );
-			texture_filenames.push_back(buf2);
+			texture_filenames.push_back(QString(buf2).trimmed());
 		}
 	}
 	if(has_textures && texture_filenames.size() == 0)

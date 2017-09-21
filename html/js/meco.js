@@ -358,28 +358,6 @@ decode: function(input) {
 	} else {
 		t.decodeCoordinates();
 
-		//scramble attributes
-		var n = t.node.nvert;
-		while (n > 0) {
-			var i = Math.floor(Math.random() * n);
-			n--;
-			for(var k =0; k < 3; k++) {
-				var v = t.coords[n*3+k];
-				t.coords[n*3+k] = t.coords[i*3+k];
-				t.coords[i*3+k] = v;
-			}
-			if(t.sig.normals) {
-				var v = t.normals[n*3+k];
-				t.normals[n*3+k] = t.normals[i*3+k];
-				t.normals[i*3+k] = v;
-			}
-			if(t.sig.colors) {
-				var v = t.colors[n*3+k];
-				t.colors[n*3+k] = t.colors[i*3+k];
-				t.colors[i*3+k] = v;
-			}
-		}
-
 //	var coords = window.performance.now() - start;
 //	start += coords;
 	}
@@ -974,5 +952,6 @@ decodeDiff: function(diff, bitstream) {
 };
 
 var tot = 0;
+
 
 
