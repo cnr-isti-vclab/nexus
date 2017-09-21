@@ -23,6 +23,7 @@ for more details.
 using namespace nx;
 using namespace vcg;
 using namespace std;
+using namespace meco;
 //side is the edge face.f[side] face.f[side+1]
 
 static int ilog2(uint64_t p) {
@@ -67,6 +68,7 @@ void MeshEncoder::encode() {
 void MeshEncoder::quantizeCoords() {
 	//quantize vertex position and compute min.
 	float side = pow(2.0f, (float)coord_q);
+	cout << "side: " << side << endl;
 
 	//TODO use quadric to quantize for better rate?  probably not worth it, for so few bits.
 	qpoints.resize(node.nvert);
@@ -183,7 +185,7 @@ void MeshEncoder::encodeCoordinates() {
 
 	bitstream.write(zpoints[0].bits, coord_bits*3);
 
-	for(int pos = 1; pos < zpoints.size(); pos++) {
+	for(size_t pos = 1; pos < zpoints.size(); pos++) {
 		ZPoint &p = zpoints[pos-1]; //previous point
 		ZPoint &q = zpoints[pos]; //current point
 		uchar d = p.difference(q);
@@ -216,12 +218,12 @@ void MeshEncoder::encodeFaces() {
 	uint16_t *triangles = data.faces(sig, node.nvert);
 
 	//remove degenerate faces
-	int start =  0;
-	int count = 0;
-	for(int p = node.first_patch; p < node.last_patch(); p++) {
+	uint32_t start =  0;
+	uint32_t count = 0;
+	for(size_t p = node.first_patch; p < node.last_patch(); p++) {
 		Patch &patch = patches[p];
-		uint end = patch.triangle_offset;
-		for(unsigned int i = start; i < end; i++) {
+		uint32_t end = patch.triangle_offset;
+		for(uint32_t i = start; i < end; i++) {
 			uint16_t *face = triangles + i*3;
 
 			if(face[0] == face[1] || face[0] == face[2] || face[1] == face[2])
@@ -243,7 +245,7 @@ void MeshEncoder::encodeFaces() {
 
 	start =  0;
 	//	encodeFaces(0, node.nface);
-	for(int p = node.first_patch; p < node.last_patch(); p++) {
+	for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 		Patch &patch = patches[p];
 		uint end = patch.triangle_offset;
 		encodeFaces(start, end);
@@ -478,13 +480,6 @@ void MeshEncoder::encodeColors() {
 	stream.write(bitstream);
 
 	color_size = stream.size() - start;
-}
-
-void MeshEncoder::encodeTexCoords() {
-	Point2f *tex_coords = data.texCoords(sig, node.nvert);
-
-	//
-
 }
 
 static void buildTopology(vector<McFace> &faces) {

@@ -1,11 +1,4 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-05-29T18:43:31
-#
-#-------------------------------------------------
-
 QT       += core
-#QT       -= gui
 
 TARGET = nxsedit
 CONFIG   += console
@@ -15,17 +8,17 @@ TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
 
-DEFINES += _FILE_OFFSET_BITS=64 TEXTURE #PARALLELOGRAM
+DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
 
-INCLUDEPATH += ../../../vcglib \
-    ../../../vcglib/eigenlib
+INCLUDEPATH += ../../../vcglib ../../../vcglib/eigenlib
 
-				
 
-win32:INCLUDEPATH += ../../../code/lib/glew/include
-
+win32:INCLUDEPATH += ../../../code/lib/glew/include 
 win32:LIBS += ../../../code/lib/glew/lib/glew32.lib opengl32.lib GLU32.lib user32.lib
+
+unix:INCLUDEPATH += /usr/local/lib
+unix:LIBS += -L /usr/local/lib -lcorto
 
 SOURCES += \
     ../../../vcglib/wrap/system/qgetopt.cpp \
@@ -34,12 +27,12 @@ SOURCES += \
     ../common/nexusdata.cpp \
     ../common/traversal.cpp \
     ../common/cone.cpp \
-    ../nxszip/bitstream.cpp \
-    ../nxszip/tunstall.cpp \
     ../nxszip/meshcoder.cpp \
     ../nxszip/meshdecoder.cpp \
     main.cpp \
-    extractor.cpp
+    extractor.cpp \
+    ../nxszip/abitstream.cpp \
+    ../nxszip/atunstall.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -58,7 +51,7 @@ HEADERS += \
     ../nxszip/cstream.h \
     ../nxszip/meshcoder.h \
     ../nxszip/meshdecoder.h \
-    extractor.h \
+    extractor.h 
 
 
 DESTDIR = "../../bin"

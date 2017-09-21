@@ -11,9 +11,18 @@ TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
 
-DEFINES += GL_COMPATIBILITY
+DEFINES += GL_COMPATIBILITY 
+
 unix:DEFINES += USE_CURL
 win32:DEFINES += NOMINMAX
+
+INCLUDEPATH += ../../../vcglib ../common/ ../../../vcglib/eigenlib
+
+win32:INCLUDEPATH += /pathtocorto
+win32:LIBS += -lopengl32 -lGLU32 -lcorto
+
+unix:INCLUDEPATH += /usr/local/lib
+unix:LIBS += -lGLEW -lGLU -lcurl -lcorto
 
 SOURCES += \
     ../../../vcglib/wrap/gui/trackmode.cpp \
@@ -27,12 +36,12 @@ SOURCES += \
     ../common/ram_cache.cpp \
     ../common/frustum.cpp \
     ../common/nexusdata.cpp \
-    ../nxszip/bitstream.cpp \
-    ../nxszip/tunstall.cpp \
+    ../nxszip/abitstream.cpp \
+    ../nxszip/atunstall.cpp \
     ../nxszip/meshdecoder.cpp \
     main.cpp\
     gl_nxsview.cpp \
-    scene.cpp \
+    scene.cpp
 
 HEADERS  += \
     ../../../vcglib/wrap/gcache/token.h \
@@ -62,17 +71,12 @@ HEADERS  += \
     ../nxszip/zpoint.h \
     ../nxszip/meshdecoder.h \
     gl_nxsview.h \
-    scene.h
+    scene.h 
 
 
 FORMS    += \
     nxsview.ui
 
-INCLUDEPATH += ../../../vcglib ../common/ ../../../vcglib/eigenlib
-			  
-win32-msvc2013:  LIBS += -lopengl32 -lGLU32
-win32-msvc2015:  LIBS += -lopengl32 -lGLU32
 
-unix:LIBS += -lGLEW -lGLU -lcurl
 
 DESTDIR = "../../bin"

@@ -21,10 +21,12 @@ Nexus = function() {
 
 /* WORKER INITIALIZED ONCE */
 
-var worker;
+var meco;
+var corto;
 
 var scripts = document.getElementsByTagName('script');
 var i, j, k;
+var path;
 for(i = 0; i < scripts.length; i++) {
 	var attrs = scripts[i].attributes;
 	for(j = 0; j < attrs.length; j++) {
@@ -32,23 +34,56 @@ for(i = 0; i < scripts.length; i++) {
 		if(a.name != 'src') continue;
 		if(!a.value) continue;
 		if(a.value.search('nexus.js') >= 0) {
-			var path = a.value.replace('nexus.js', 'meshcoder_worker.js');
-			worker = new Worker(path);
-			worker.requests = {};
-			worker.count = 0;
-			worker.postRequest = function(sig, node, patches) {
-				var signature = { texcoords: sig.texcoords?1:0, colors: sig.colors?1:0, normals: sig.normals?1:0, indices: sig.indices?1:0 };
-				worker.postMessage({ signature:signature, node:{nface: node.nface, nvert: node.nvert, buffer:node.buffer, request:this.count}, patches:patches});
-				this.requests[this.count++] = node;
-			};
-			worker.onmessage = function(e) {
-				var node = this.requests[e.data.request];
-				node.buffer = e.data.buffer;
-				readyNode(node.context, node);
-			};
+			path = a.value;
 			break;
 		}
 	}
+}
+var meco = null;
+function loadMeco() {
+	if(presenter) //back compatible for 3dhop
+		meco = new Worker(path.replace('nexus.js', 'meshcoder_worker.js'));
+	else
+		meco = new Worker(path.replace('nexus.js', 'meco.js'));
+
+	meco.onerror = function(e) { console.log(e); }
+	meco.requests = {};
+	meco.count = 0;
+	meco.postRequest = function(sig, node, patches) {
+		var signature = {
+			texcoords: sig.texcoords?1:0, colors: sig.colors?1:0,
+			normals: sig.normals?1:0, indices: sig.indices?1:0
+		};
+		meco.postMessage({ 
+			signature:signature,
+			node:{ nface: node.nface, nvert: node.nvert, buffer:node.buffer, request:this.count}, 
+			patches:patches
+		});
+		this.requests[this.count++] = node;
+	};
+	meco.onmessage = function(e) {
+		var node = this.requests[e.data.request];
+		node.buffer = e.data.buffer;
+		readyNode(node);
+	};
+}
+
+var corto = null;
+
+function loadCorto() {
+	corto = new Worker(path.replace('nexus.js', 'corto.js'));
+	corto.requests = {};
+	corto.count = 0;
+	corto.postRequest = function(node) {
+		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_normals: true });
+		this.requests[this.count++] = node;
+	}
+	corto.onmessage = function(e) {
+		var node = this.requests[e.data.request];
+		node.buffer = e.data.buffer;
+		node.model = e.data.model;
+		readyNode(node);
+	};
 }
 
 /* UTILITIES */
@@ -265,7 +300,9 @@ Mesh.prototype = {
 			mesh.vertex = mesh.signature.vertex;
 			mesh.face = mesh.signature.face;
 			mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
-			mesh.compressed = (mesh.signature.flags & 2);
+			mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
+			mesh.meco = (mesh.signature.flags & 2); 
+			mesh.corto = (mesh.signature.flags & 4); 
 			mesh.requestIndex();
 		});
 	},
@@ -934,13 +971,17 @@ function loadNode(request, context, node) {
 	node.nface = m.nfaces[n];
 
 	if(!m.compressed)
-		readyNode(context, node);
-	else {
+		readyNode(node);
+	else if(m.meco) {
 		var sig = { texcoords: m.vertex.texCoord, normals:m.vertex.normal, colors:m.vertex.color, indices: m.face.index }
 		var patches = [];
 		for(var k = m.nfirstpatch[n]; k < m.nfirstpatch[n+1]; k++)
 			patches.push(m.patches[k*3+1]);
-		worker.postRequest(sig, node, patches);
+		if(!meco) loadMeco();
+		meco.postRequest(sig, node, patches);
+	} else {
+		if(!corto) loadCorto();
+		corto.postRequest(node);
 	}
 }
 
@@ -976,16 +1017,79 @@ function loadTexture(request, context, node, texid) {
 	}
 }
 
-function readyNode(context, node) {
+function scramble(n, coords, normals, colors) {
+	while (n > 0) {
+		var i = Math.floor(Math.random() * n);
+		n--;
+		for(var k =0; k < 3; k++) {
+			var v = coords[n*3+k];
+			coords[n*3+k] = coords[i*3+k];
+			coords[i*3+k] = v;
+
+			if(normals) {
+				var v = normals[n*3+k];
+				normals[n*3+k] = normals[i*3+k];
+				normals[i*3+k] = v;
+			}
+			if(colors) {
+				var v = colors[n*4+k];
+				colors[n*4+k] = colors[i*4+k];
+				colors[i*4+k] = v;
+			}
+		}
+	}
+}
+
+function readyNode(node) {
 	var m = node.mesh;
 	var n = node.id;
 	var nv = m.nvertices[n];
 	var nf = m.nfaces[n];
+	var model = node.model;
 
-	var vertices = new Uint8Array(node.buffer, 0, nv*m.vsize);
-	var indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+	var vertices;
+	var indices;
 
-	var gl = context.gl;
+	if(!m.corto) {
+		vertices = new Uint8Array(node.buffer, 0, nv*m.vsize);
+		//dangerous alignment 16 bits if we had 1b attribute
+		indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+		if(nf == 0) {
+			var off = nv*12;
+			var v = new Float32Array(node.buffer, 0, nv*3);
+			if(m.vertex.normal) {
+				var no = new Int16Array(node.buffer, off, nv*3); off += nv*6;
+			}
+			if(m.vertex.color) {
+				var co = new Uint8Array(node.buffer, off, nv*4);
+			}
+			scramble(nv, v, no, co);
+		}
+	} else {
+		indices = node.model.index;
+		vertices = new ArrayBuffer(nv*m.vsize);
+		var v = new Float32Array(vertices, 0, nv*3);
+		v.set(model.position, 0, nv*3);
+		var off = nv*12;
+		if(model.uv) {
+			var uv = new Float32Array(vertices, off, nv*2);
+			uv.set(model.uv); off += nv*8;
+		}
+		if(model.normal) {
+			var no = new Int16Array(vertices, off, nv*3);
+			no.set(model.normal); off += nv*6; 
+		}
+		if(model.color) {
+			var co = new Uint8Array(vertices, off, nv*4);
+			co.set(model.color); off += nv*4;  
+		}
+		if(nf == 0)
+			scramble(nv, v, no, co);
+	}
+
+
+
+	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
 	gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
@@ -994,7 +1098,7 @@ function readyNode(context, node) {
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
 	m.status[n]--;
-	context.pending--;
+	node.context.pending--;
 	if(m.status[n] == 1)
 		node.instance.onUpdate();
 	updateCache(gl); //call anyway even if waiting for texture

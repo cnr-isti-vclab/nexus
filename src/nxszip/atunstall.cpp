@@ -24,6 +24,7 @@ for more details.
 #include "tunstall.h"
 
 using namespace std;
+using namespace meco;
 
 struct TSymbol {
 	int offset;
@@ -131,14 +132,14 @@ void Tunstall::createDecodingTables() {
 		queues[i].push_back(s);
 		buffer.push_back(probabilities[i].symbol);
 	}
-	int dictionary_size = 1<<wordsize;
-	int n_words = n_symbols;
-	int table_length = n_symbols;
+	uint32_t dictionary_size = 1<<wordsize;
+	uint32_t n_words = n_symbols;
+	uint32_t table_length = n_symbols;
 	while(n_words < dictionary_size - n_symbols +1) {
 		//find highest probability word
 		int best = 0;
 		float max_prob = 0;
-		for(int i = 0; i < n_symbols; i++) {
+		for(uint32_t i = 0; i < n_symbols; i++) {
 			float p = queues[i].front().probability ;
 			if(p > max_prob) {
 				best = i;
@@ -148,9 +149,9 @@ void Tunstall::createDecodingTables() {
 
 		TSymbol symbol = queues[best].front();
 		//split word.
-		int pos = buffer.size();
+		uint32_t pos = buffer.size();
 		buffer.resize(pos + n_symbols*(symbol.length + 1));
-		for(int i = 0; i < n_symbols; i++) {
+		for(uint32_t i = 0; i < n_symbols; i++) {
 			uint32_t p = probabilities[i].probability;
 			TSymbol s;
 			//TODO check performances with +1 and without.
@@ -179,7 +180,7 @@ void Tunstall::createDecodingTables() {
 	int pos = 0;
 	for(size_t i = 0; i < queues.size(); i++) {
 		deque<TSymbol> &queue = queues[i];
-		for(int k = 0; k < queue.size(); k++) {
+		for(size_t k = 0; k < queue.size(); k++) {
 			TSymbol &s = queue[k];
 			index[word] = pos;
 			lengths[word] = s.length;
@@ -207,7 +208,7 @@ void Tunstall::createEncodingTables() {
 
 	offsets.clear();
 	offsets.resize(lookup_table_size, 0xffffff); //this is enough for quite large tables.
-	for(int i = 0; i < index.size(); i++) {
+	for(size_t i = 0; i < index.size(); i++) {
 		int low, high;
 		int offset = 0;
 		int table_offset = 0;
@@ -308,7 +309,7 @@ int Tunstall::decompress(unsigned char *data, unsigned char *output, int output_
 	exit(0);
 	while(1) {
 		int symbol = *data++;
-		assert(symbol < index.size());
+		assert(symbol < (int)index.size());
 		int start = index[symbol];
 		int length = lengths[symbol];
 		if(output + length >= end_output) {
@@ -326,7 +327,7 @@ int Tunstall::decompress(unsigned char *data, unsigned char *output, int output_
 
 float Tunstall::entropy() {
 	float e = 0;
-	for(int i = 0; i < probabilities.size(); i++) {
+	for(size_t i = 0; i < probabilities.size(); i++) {
 		float p = probabilities[i].probability/255.0f;
 		e += p*log(p)/log(2);
 	}

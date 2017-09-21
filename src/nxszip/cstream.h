@@ -23,7 +23,7 @@ for more details.
 
 #include "bitstream.h"
 
-using namespace std;
+namespace meco {
 
 typedef unsigned char uchar;
 
@@ -118,4 +118,5 @@ public:
 
 };
 
+} //namespace
 #endif // NX_CSTREAM_H
