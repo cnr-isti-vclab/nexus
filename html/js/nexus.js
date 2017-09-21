@@ -41,7 +41,12 @@ for(i = 0; i < scripts.length; i++) {
 }
 var meco = null;
 function loadMeco() {
-	meco = new Worker(path.replace('nexus.js', 'meco.js'));
+	if(presenter) //back compatible for 3dhop
+		meco = new Worker(path.replace('nexus.js', 'meshcoder_worker.js'));
+	else
+		meco = new Worker(path.replace('nexus.js', 'meco.js'));
+
+	meco.onerror = function(e) { console.log(e); }
 	meco.requests = {};
 	meco.count = 0;
 	meco.postRequest = function(sig, node, patches) {
