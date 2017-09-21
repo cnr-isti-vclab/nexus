@@ -357,6 +357,7 @@ decode: function(input) {
 //	start += faces;
 	} else {
 		t.decodeCoordinates();
+		
 //	var coords = window.performance.now() - start;
 //	start += coords;
 	}

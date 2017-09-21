@@ -20,6 +20,7 @@ for more details.
 
 #include "../nxszip/meshcoder.h"
 //typedef MeshCoder MeshEncoder;
+#include <corto/corto.h>
 
 using namespace std;
 using namespace nx;
@@ -170,7 +171,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 				v = matrix * v;
 			}
 		}
-		if(signature.flags & nx::Signature::MECO) {
+		if(signature.isCompressed()) {
 			compress(file, signature, node, nexus->nodedata[i], &*patches.begin());
 		} else {
 			file.write(memory, data_size);
@@ -233,7 +234,7 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 	//detect first node error which is out of boundary.
 	if(signature.flags & Signature::MECO) {
 
-		MeshEncoder coder(node, data, patches, signature);
+		meco::MeshEncoder coder(node, data, patches, signature);
 		coder.coord_q = coord_q;
 		coder.error = error_factor*node.error;
 		coder.norm_q = norm_bits;
@@ -246,8 +247,79 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 		coder.tex_q = -(int)log2(512/tex_step);
 
 		coder.encode();
+
+		cout << "V size: " << coder.coord_size << endl;
+		cout << "N size: " << coder.normal_size << endl;
+		cout << "C size: " << coder.color_size << endl;
+		cout << "I size: " << coder.face_size << endl;
+
 		file.write((char *)&*coder.stream.buffer, coder.stream.size());
 		//padding
+		quint64 size = pad(file.pos()) - file.pos();
+		char tmp[NEXUS_PADDING];
+		file.write(tmp, size);
+	} else if(signature.flags & Signature::CORTO) {
+
+		crt::Encoder encoder(node.nvert, node.nface);
+
+		for(uint32_t p = node.first_patch; p < node.last_patch(); p++)
+			encoder.addGroup(patches[p].triangle_offset);
+
+
+		cout << " coord: " << pow(2, coord_q) << endl;
+
+		if(node.nface == 0)
+			encoder.addPositions((float *)data.coords(), pow(2, coord_q));
+		else
+			encoder.addPositions((float *)data.coords(), data.faces(signature, node.nvert), pow(2, coord_q));
+
+		if(signature.vertex.hasNormals())
+			encoder.addNormals((int16_t *)data.normals(signature, node.nvert), norm_bits, crt::NormalAttr::BORDER);
+
+		if(signature.vertex.hasColors())
+			encoder.addColors((unsigned char *)data.colors(signature, node.nvert), color_bits[0], color_bits[1], color_bits[2], color_bits[3]);
+
+		if(signature.vertex.hasTextures())
+			encoder.addUvs((float *)data.texCoords(signature, node.nvert), tex_step/512);
+		encoder.encode();
+
+/*
+		int nvert = encoder.nvert;
+		int nface = encoder.nface;
+		//cout << "Nvert: " << nvert << " Nface: " << nface << " (was: nv: " << node.nvert << " nf: " << node.nface << endl;
+		//cout << "Compressed to: " << encoder.stream.size() << endl;
+		//cout << "Ratio: " << 100.0f*encoder.stream.size()/(nvert*12 + nface*12) << "%" << endl;
+		//cout << "Bpv: " << 8.0f*encoder.stream.size()/nvert << endl << endl;
+
+		//cout << "Header: " << encoder.header_size << " bpv: " << (float)encoder.header_size/nvert << endl;
+
+		crt::VertexAttribute *coord = encoder.data["position"];
+		cout << "Coord bpv; " << 8.0f*coord->size/nvert << " size: " << coord->size << endl;
+		cout << "Coord q: " << coord->q << " bits: " << coord->bits << endl << endl;
+
+		crt::VertexAttribute *norm = encoder.data["normal"];
+		if(norm) {
+			cout << "Normal bpv; " << 8.0f*norm->size/nvert << " size: " << norm->size << endl;
+			cout << "Normal q: " << norm->q << " bits: " << norm->bits << endl << endl;
+		}
+
+		crt::ColorAttr *color = dynamic_cast<crt::ColorAttr *>(encoder.data["color"]);
+		if(color) {
+			cout << "Color bpv; " << 8.0f*color->size/nvert << " size: " << color->size << endl;
+			cout << "Color q: " << color->qc[0] << " " << color->qc[1] << " " << color->qc[2] << " " << color->qc[3] << endl;
+		}
+
+		crt::GenericAttr<int> *uv = dynamic_cast<crt::GenericAttr<int> *>(encoder.data["uv"]);
+		if(uv) {
+			cout << "Uv bpv; " << 8.0f*uv->size/nvert << endl;
+			cout << "Uv q: " << uv->q << " bits: " << uv->bits << endl << endl;
+		}
+
+		cout << "Face bpv; " << 8.0f*encoder.index.size/nvert << " size: " << encoder.index.size << endl; */
+
+
+
+		file.write((char *)&*encoder.stream.data(), encoder.stream.size());
 		quint64 size = pad(file.pos()) - file.pos();
 		char tmp[NEXUS_PADDING];
 		file.write(tmp, size);

@@ -39,6 +39,8 @@ for more details.
 
 //face topology utility structures.
 
+namespace meco {
+
 class McFace {
 public:
 	uint16_t f[3];
@@ -162,7 +164,6 @@ private:
 	void encodeCoordinates(); //used only for point clouds
 	void encodeNormals();
 	void encodeColors();
-	void encodeTexCoords();
 
 	void encodeFaces(int start, int end);
 
@@ -173,4 +174,5 @@ private:
 	void encodeDiff(std::vector<uchar> &diffs, BitStream &stream, int val);
 };
 
+} //namespace
 #endif // NX_MESHCODER_H

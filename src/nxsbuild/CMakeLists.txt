@@ -1,10 +1,16 @@
+#export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
+
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
+
+# replace with ../../../corto/ and ../../../corto/src/ if you didn't install
+set (CORTOLIBDIR /usr/local/lib)
+set (CORTOLIBINCLUDE /usr/local/lib/include)
+
+include_directories(../../../vcglib ../../../vcglib/eigenlib CORTOLIBINCLUDE)
+
 set (CMAKE_CXX_STANDARD 11)
-
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
-
 
 SET(HEADERS
 	../../../vcglib/wrap/system/qgetopt.h
@@ -56,5 +62,10 @@ find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsbuild Qt5::Widgets)
+link_directories(/usr/local/lib)
+target_link_libraries(nxsbuild Qt5::Widgets corto)
+
+
+
+
 

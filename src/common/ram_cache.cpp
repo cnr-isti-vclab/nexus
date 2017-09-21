@@ -18,6 +18,8 @@ for more details.
 #include "ram_cache.h"
 #include "../nxszip/meshdecoder.h"
 
+#include <corto/decoder.h>
+
 using namespace nx;
 
 size_t nx_curl_header_callback( char *, size_t size, size_t nmemb, void *) {
@@ -97,12 +99,33 @@ int RamCache::get(nx::Token *in) {
 		CurlData data(nodedata.memory, node.getSize());
 		int32_t readed = getCurl(in->nexus->url.c_str(), data, node.getBeginOffset(), node.getEndOffset());
 		assert(data.written == node.getSize());
-		if(signature.flags & Signature::MECO) {
+		if(signature.isCompressed()) {
 			int size = node.nvert * signature.vertex.size() + node.nface * signature.face.size();
 			char *buffer = nodedata.memory;
 			nodedata.memory = new char[size];
-			MeshDecoder coder(node, nodedata, in->nexus->patches, signature);
-			coder.decode(node.getSize(), (unsigned char *)buffer);
+
+			if(signature.flags & Signature::MECO) {
+
+				meco::MeshDecoder coder(node, nodedata, in->nexus->patches, signature);
+				coder.decode(node.getSize(), (unsigned char *)buffer);
+
+			} else if(signature.flags & Signature::CORTO) {
+
+				crt::Decoder decoder(node.getSize(), (unsigned char *)buffer);
+
+				decoder.setPositions((float *)nodedata.coords());
+				if(signature.vertex.hasNormals())
+					decoder.setNormals((int16_t *)nodedata.normals(signature, node.nvert));
+				if(signature.vertex.hasColors())
+					decoder.setColors((unsigned char *)nodedata.colors(signature, node.nvert));
+				if(signature.vertex.hasTextures())
+					decoder.setUvs((float *)nodedata.texCoords(signature, node.nvert));
+				if(node.nface)
+					decoder.setIndex(nodedata.faces(signature, node.nvert));
+				decoder.decode();
+
+				delete []buffer;
+			}
 			delete []buffer;
 		}
 		return readed;
