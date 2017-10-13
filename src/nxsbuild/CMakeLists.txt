@@ -5,8 +5,8 @@ project(nxsbuild)
 
 
 # replace with ../../../corto/ and ../../../corto/src/ if you didn't install
-set (CORTOLIBDIR /usr/local/lib)
-set (CORTOLIBINCLUDE /usr/local/lib/include)
+#set (CORTOLIBDIR /usr/local/lib)
+#set (CORTOLIBINCLUDE /usr/local/lib/include)
 
 include_directories(../../../vcglib ../../../vcglib/eigenlib CORTOLIBINCLUDE)
 

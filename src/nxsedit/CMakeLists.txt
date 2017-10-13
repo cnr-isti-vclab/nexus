@@ -36,8 +36,8 @@ SET(SOURCES
 	../common/nexusdata.cpp
 	../common/traversal.cpp
 	../common/cone.cpp
-	../nxszip/bitstream.cpp
-	../nxszip/tunstall.cpp
+	../nxszip/abitstream.cpp
+	../nxszip/atunstall.cpp
 	../nxszip/meshcoder.cpp
 	../nxszip/meshdecoder.cpp
 	main.cpp
@@ -56,5 +56,5 @@ find_package(Qt5Widgets)
 
 add_executable(nxsedit ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsedit Qt5::Widgets)
+target_link_libraries(nxsedit Qt5::Widgets corto)
 
