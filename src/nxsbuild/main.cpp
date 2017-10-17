@@ -68,25 +68,25 @@ int main(int argc, char *argv[]) {
 	opt.addOption('o', "output_filename", "filename of the nexus output file", &output);
 
 	//construction options
-	opt.addOption('f', "node_faces", "faces per patch, default: 32768", &node_size);
+	opt.addOption('f', "node_faces", "number of faces per patch, default: 32768", &node_size);
 	opt.addOption('t', "top_node_faces", "number of triangles in the top node, default 4096", &top_node_size);
 	opt.addOption('d', "decimation", "decimation method: quadric, edgelen. Default: quadric", &decimation);
-	opt.addOption('s', "scaling", "scaling between level, default 0.5", &decimation);
+	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
 	opt.addSwitch('O', "orig_textures", "Use original textures, no repacking", &useOrigTex);
 
 	//btree options
-	opt.addOption('a', "adaptive", "split notes adaptively [0...1] default 0.333", &adaptive);
+	opt.addOption('a', "adaptive", "split nodes adaptively [0...1] default 0.333", &adaptive);
 
-	opt.addOption('v', "vertex_quantization", "approximated to closest power of 2", &vertex_quantization);
-	opt.addOption('q', "texture quality", "jpeg quality for texture [0-100] default 92", &tex_quality);
+	opt.addOption('v', "vertex_quantization", "vertex quantization grid size (might be approximated)", &vertex_quantization);
+	opt.addOption('q', "texture quality", "jpeg quality for texture [0-100]: default 92", &tex_quality);
 
 	//format options
 	opt.addSwitch('p', "point_cloud", "generate a multiresolution point cloud", &point_cloud);
 
-	opt.addSwitch('N', "normals", "force per vertex normals even in point clouds", &normals);
+	opt.addSwitch('N', "normals", "force per vertex normals, even in point clouds", &normals);
 	opt.addSwitch('n', "no_normals", "do not store per vertex normals", &no_normals);
 	opt.addSwitch('C', "colors", "save colors", &colors);
-	opt.addSwitch('c', "no_colors", "do not tore per vertex colors", &no_colors);
+	opt.addSwitch('c', "no_colors", "do not store per vertex colors", &no_colors);
 	opt.addSwitch('u', "no_textures", "do not store per vertex texture coordinates", &no_texcoords);
 
 	//other options

@@ -3,12 +3,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
-
-# replace with ../../../corto/ and ../../../corto/src/ if you didn't install
-#set (CORTOLIBDIR /usr/local/lib)
-#set (CORTOLIBINCLUDE /usr/local/lib/include)
-
-include_directories(../../../vcglib ../../../vcglib/eigenlib CORTOLIBINCLUDE)
+include_directories(../../../vcglib ../../../vcglib/eigenlib)
 
 set (CMAKE_CXX_STANDARD 11)
 
@@ -62,7 +57,6 @@ find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
-link_directories(/usr/local/lib)
 target_link_libraries(nxsbuild Qt5::Widgets corto)
 
 

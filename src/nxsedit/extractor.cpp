@@ -265,9 +265,6 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++)
 			encoder.addGroup(patches[p].triangle_offset);
 
-
-		cout << " coord: " << pow(2, coord_q) << endl;
-
 		if(node.nface == 0)
 			encoder.addPositions((float *)data.coords(), pow(2, coord_q));
 		else
