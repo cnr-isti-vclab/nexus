@@ -68,7 +68,7 @@ public:
 	void loadNexus(Nexus *nexus);
 	int get(nx::Token *in);
 	int drop(nx::Token *in) { return in->nexus->dropRam(in->node); }
-	int size(nx::Token *in) { return in->nexus->size(in->node); }
+	int size(nx::Token *in);
 	int size() { return Cache<Token>::size(); }
 
 protected:
