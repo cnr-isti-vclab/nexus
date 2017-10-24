@@ -81,16 +81,15 @@ public:
 		mt::sleep_ms(1);
 #endif
 		//do nothing, transfer will be done in renderer
-		return in->nexus->size(in->node);
+		return size(in);
 	}
 	int drop(nx::Token *in) {
-
 
 #ifndef SHARED_CONTEXT
 		//mark GPU to be dropped, it will be done in the renderer
 		NodeData &data= in->nexus->nodedata[in->node];
 		if(data.vbo == 0)  //can happen if a patch is scheduled for GPU but never actually rendererd
-			return in->nexus->size(in->node);
+			return size(in);
 		{
 			mt::mutexlocker locker(&droplock);
 			if(data.vbo) {
@@ -105,12 +104,30 @@ public:
 #else
 		in->nexus->dropGpu(in->node);
 #endif
-		return in->nexus->size(in->node);
+
+		return size(in);
 	}
 
 	int size(nx::Token *in) {
-		return in->nexus->size(in->node);
+		Node &node = in->nexus->nodes[in->node];
+		Signature &sig = in->nexus->header.signature;
+
+		uint32_t vertex_size = node.nvert*sig.vertex.size();
+		uint32_t face_size = node.nface*sig.face.size();
+		int size = vertex_size + face_size;
+		if(in->nexus->header.n_textures) {
+			for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
+				uint32_t t = in->nexus->patches[p].texture;
+				if(t == 0xffffffff) continue;
+
+				TextureData &tdata = in->nexus->texturedata[t];
+				size += tdata.width*tdata.height*3;
+				break;
+			}
+		}
+		return size;
 	}
+
 	int size() { return Cache<nx::Token>::size(); }
 };
 

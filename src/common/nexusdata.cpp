@@ -18,6 +18,7 @@ for more details.
 #define _FILE_OFFSET_BITS 64
 
 #include <QTime>
+#include <QImage>
 #include "nexusdata.h"
 
 #include <vcg/space/line3.h>
@@ -149,22 +150,27 @@ uint32_t NexusData::size(uint32_t node) {
 }
 
 uint64_t NexusData::loadRam(uint32_t n) {
+
+	Signature &sign = header.signature;
 	Node &node = nodes[n];
 	quint64 offset = node.getBeginOffset();
 
 	NodeData &d = nodedata[n];
 	quint64 compressed_size = node.getEndOffset() - offset;
 
-	quint64 size = -1;
+	quint64 size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
 
-	Signature &sign = header.signature;
-	if(sign.isCompressed()) {
+	if(!sign.isCompressed()) {
+
+		d.memory = (char *)file.map(offset, size);
+
+	} else {
+
 		char *buffer = new char[compressed_size];
 		file.seek(offset);
 		qint64 r = file.read(buffer, compressed_size);
 		assert(r == (qint64)compressed_size);
-		size = node.nvert * sign.vertex.size() +
-				node.nface * sign.face.size();
+
 		d.memory = new char[size];
 
 		int iterations = 1;
@@ -172,50 +178,10 @@ uint64_t NexusData::loadRam(uint32_t n) {
 		time.start();
 
 		if(sign.flags & Signature::MECO) {
-
-
-
-			//memort data is
-			for(int i = 0; i < iterations; i++) {
-				meco::MeshDecoder coder(node, d, patches, sign);
-				coder.decode(compressed_size, (unsigned char *)buffer);
-
-				if(0 && !sign.face.hasIndex()) {
-					std::vector<int> order(node.nvert);
-					for(int i = 0; i < node.nvert; i++)
-						order[i] = i;
-
-					unsigned seed = 0;
-					std::shuffle (order.begin(), order.end(), std::default_random_engine(seed));
-					std::vector<vcg::Point3f> coords(node.nvert);
-					for(int i =0; i < node.nvert; i++)
-						coords[i] = d.coords()[order[i]];
-					memcpy(d.coords(), &*coords.begin(), sizeof(Point3f)*node.nvert);
-
-					if(sign.vertex.hasNormals()) {
-						Point3s *n = d.normals(sign, node.nvert);
-						std::vector<Point3s> normals(node.nvert);
-						for(int i =0; i < node.nvert; i++)
-							normals[i] = n[order[i]];
-						memcpy(n, &*normals.begin(), sizeof(Point3s)*node.nvert);
-					}
-
-					if(sign.vertex.hasColors()) {
-						Color4b *c = d.colors(sign, node.nvert);
-						std::vector<Color4b> colors(node.nvert);
-						for(int i =0; i < node.nvert; i++)
-							colors[i] = c[order[i]];
-						memcpy(c, &*colors.begin(), sizeof(Color4b)*node.nvert);
-					}
-				}
-			}
+			meco::MeshDecoder coder(node, d, patches, sign);
+			coder.decode(compressed_size, (unsigned char *)buffer);
 
 		} else if(sign.flags & Signature::CORTO) {
-
-			QTime time;
-			time.start();
-
-			for(int i = 0; i < iterations; i++) {
 
 			crt::Decoder decoder(compressed_size, (unsigned char *)buffer);
 
@@ -228,37 +194,91 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				decoder.setUvs((float *)d.texCoords(sign, node.nvert));
 			if(node.nface)
 				decoder.setIndex(d.faces(sign, node.nvert));
+
 			decoder.decode();
+		}
+
+		//Shuffle points in compressed point clouds
+		if(!sign.face.hasIndex()) {
+			std::vector<int> order(node.nvert);
+			for(int i = 0; i < node.nvert; i++)
+				order[i] = i;
+
+			unsigned seed = 0;
+			std::shuffle (order.begin(), order.end(), std::default_random_engine(seed));
+			std::vector<vcg::Point3f> coords(node.nvert);
+			for(int i =0; i < node.nvert; i++)
+				coords[i] = d.coords()[order[i]];
+			memcpy(d.coords(), &*coords.begin(), sizeof(Point3f)*node.nvert);
+
+			if(sign.vertex.hasNormals()) {
+				Point3s *n = d.normals(sign, node.nvert);
+				std::vector<Point3s> normals(node.nvert);
+				for(int i =0; i < node.nvert; i++)
+					normals[i] = n[order[i]];
+				memcpy(n, &*normals.begin(), sizeof(Point3s)*node.nvert);
+			}
+
+			if(sign.vertex.hasColors()) {
+				Color4b *c = d.colors(sign, node.nvert);
+				std::vector<Color4b> colors(node.nvert);
+				for(int i =0; i < node.nvert; i++)
+					colors[i] = c[order[i]];
+				memcpy(c, &*colors.begin(), sizeof(Color4b)*node.nvert);
 			}
 		}
-		double elapsed = (time.elapsed()/(double)iterations)/1000.0;
-		cout << "Z Elapsed: " << elapsed << " M/s " << (node.nface/elapsed)/(1<<20) << " Faces: " << node.nface << endl;
-
-	} else { //not compressed
-		size = node.getSize();
-		d.memory = (char *)file.map(offset, size);
 	}
 
 	assert(d.memory);
 	if(header.n_textures) {
 		//be sure to load images
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
-			Patch &patch = patches[p];
-			uint32_t t = patch.texture;
+			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
+
 			TextureData &data = texturedata[t];
 			data.count_ram++;
-			if(texturedata[t].memory) continue;
-			assert(data.count_ram == 1);
+			if(data.count_ram > 1)
+				continue;
+
 			Texture &texture = textures[t];
-			texturedata[t].memory = (char *)file.map(texture.getBeginOffset(), texture.getSize());
-			//size += texture.getSize();
+			data.memory = (char *)file.map(texture.getBeginOffset(), texture.getSize());
+			if(!data.memory) {
+				cerr << "Failed mapping texture data" << endl;
+				exit(0);
+			}
+
+			QImage img;
+			bool success = img.loadFromData((uchar *)data.memory, texture.getSize());
+			file.unmap((uchar *)data.memory);
+
+			if(!success) {
+				cerr << "Failed loading tex: " << endl;
+				exit(0);
+			}
+
+			img = img.convertToFormat(QImage::Format_RGBA8888);
+			data.width = img.width();
+			data.height = img.height();
+
+			int imgsize = data.width*data.height*4;
+			data.memory = new char[imgsize];
+
+			//flip memory for texture
+			int linesize = img.width()*4;
+			char *mem = data.memory + linesize*(img.height()-1);
+			for(int i = 0; i < img.height(); i++) {
+				memcpy(mem, img.scanLine(i), linesize);
+				mem -= linesize;
+			}
+			size += imgsize;
 		}
 	}
 	return size;
 }
 
 uint64_t NexusData::dropRam(uint32_t n, bool write) {
+	cout << "Dropping node; " << n << endl;
 
 	Node &node = nodes[n];
 	NodeData &data = nodedata[n];
@@ -267,7 +287,7 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(!data.vbo);
 	assert(data.memory);
 
-	if(!(header.signature.flags & Signature::MECO)) //not compressed.
+	if(!header.signature.isCompressed()) //not compressed.
 		file.unmap((uchar *)data.memory);
 	else
 		delete []data.memory;
@@ -275,25 +295,21 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	data.memory = NULL;
 
 	//report RAM size for compressed meshes.
-	uint32_t size = 0;
-	if(header.signature.flags & Signature::MECO)
-		size = node.nvert * header.signature.vertex.size() +
+	uint32_t size = node.nvert * header.signature.vertex.size() +
 				node.nface * header.signature.face.size();
-	else
-		size = node.getSize();
 
 	if(header.n_textures) {
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
-			Patch &patch = patches[p];
-			uint32_t t = patch.texture;
+			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
+
 			TextureData &tdata = texturedata[t];
 			tdata.count_ram--;
 			if(tdata.count_ram != 0) continue;
-			file.unmap((uchar *)tdata.memory);
+
+			delete []tdata.memory;
 			tdata.memory = NULL;
-			//Texture &texture = textures[t];
-			//size += tdata.getSize(); //careful with cache... might create problems to return different sizes in get drop and size
+			size += tdata.width*tdata.height*4;
 		}
 	}
 	return size;

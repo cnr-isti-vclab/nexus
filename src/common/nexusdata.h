@@ -66,8 +66,11 @@ public:
 
 class TextureData {
 public:
-	TextureData(): memory(NULL), tex(0), count_ram(0), count_gpu(0) {}
+	TextureData(): memory(NULL), width(0), height(0), tex(0), count_ram(0), count_gpu(0) {}
 	char *memory;             //some form of raw data (probably compressed jpeg)
+	uint32_t width;            //size of image
+	uint32_t height;
+
 	uint32_t tex;             //opengl identifier
 	uint32_t count_ram;           //number of nodes using the texture
 	uint32_t count_gpu;           //number of nodes using the texture

@@ -132,8 +132,9 @@ int RamCache::get(nx::Token *in) {
 #else
 		throw "Compiled without curl library";
 #endif
-	} else
+	} else {
 		return in->nexus->loadRam(in->node);
+	}
 }
 
 int drop(nx::Token *in) {
@@ -144,6 +145,27 @@ int drop(nx::Token *in) {
 	} else
 		return in->nexus->dropRam(in->node);
 }
+
+//this get called only once the data has been loaded
+int RamCache::size(nx::Token *in) {
+	Node &node = in->nexus->nodes[in->node];
+	Signature &sig = in->nexus->header.signature;
+
+	uint32_t vertex_size = node.nvert*sig.vertex.size();
+	uint32_t face_size = node.nface*sig.face.size();
+	int size = vertex_size + face_size;
+	if(in->nexus->header.n_textures) {
+		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
+			uint32_t t = in->nexus->patches[p].texture;
+			if(t == 0xffffffff) continue;
+			TextureData &tdata = in->nexus->texturedata[t];
+			size += tdata.width*tdata.height*4;
+			break;
+		}
+	}
+	return size;
+}
+
 
 
 uint64_t RamCache::getCurl(const char *url, CurlData &data, uint64_t start, uint64_t end) {
