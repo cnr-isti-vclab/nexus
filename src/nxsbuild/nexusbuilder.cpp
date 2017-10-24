@@ -579,6 +579,12 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 					tmp.face[i].tex = mesh.face[i].tex;
 				}
 				tmp.splitSeams(header.signature);
+				if(tmp.vert.size() > 60000) {
+					cerr << "Unable to properly simplify due to framented parametrization.\n"
+						 << "Using a smaller (than the 32000 default) node size (-f) might alleviate the problem." << endl;
+					exit(0);
+				}
+
 				//save node in nexus temporary structure
 				mesh_size = tmp.serializedSize(header.signature);
 			}
@@ -646,7 +652,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 			quint32 current_node = nodes.size();
 
-			node.offset = chunk; //temporaryle remember which chunk belongs to which node
+			node.offset = chunk; //temporarily remember which chunk belongs to which node
 			node.error = error;
 			node.first_patch = patch_offset;
 			nodes.push_back(node);
@@ -667,8 +673,6 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 			delete []triangles;
 		}
-//		for(auto img: teximages)
-//			delete img;
 
 		//std::cout << "Level texture area: " << area << endl;
 		/*while(workers.size()) {
@@ -929,7 +933,9 @@ void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, s
 	uint32_t chunk = node.offset; //chunk index was stored here.
 
 
-	uchar *buffer = chunks.getChunk(chunk, true);
+	//if origin != destination do not flush cache, it would invalidate pointers.
+	uchar *buffer = chunks.getChunk(chunk, origin != destination);
+
 	vcg::Point3f *point = (vcg::Point3f *)buffer;
 	int size = sizeof(vcg::Point3f) + header.signature.vertex.hasTextures()*sizeof(vcg::Point2f);
 	vcg::Point3s *normal = (vcg::Point3s *)(buffer + size * node.nvert);
@@ -945,7 +951,6 @@ void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, s
 
 
 void NexusBuilder::uniformNormals() {
-
 	cout << "Unifying normals\n";
 	/* level 0: for each node in the lowest level:
 			load the neighboroughs
@@ -954,9 +959,11 @@ void NexusBuilder::uniformNormals() {
 
 	   level > 0: for every other node (goind backwards)
 			load child nodes
-			find common vertices (use lock!)
+			find common vertices (use lock, it's way faster!)
 			copy normal */
 
+
+	std::vector<NVertex> vertices;
 
 	uint32_t sink = nodes.size()-1;
 	for(int t = sink-1; t > 0; t--) {
@@ -966,8 +973,7 @@ void NexusBuilder::uniformNormals() {
 		box.Offset(box.Diag()/100);
 
 
-		std::vector<NVertex> vertices;
-
+		vertices.clear();
 		appendBorderVertices(t, t, vertices);
 
 		bool last_level = (patches[target.first_patch].node == sink);
@@ -991,7 +997,7 @@ void NexusBuilder::uniformNormals() {
 			}
 		}
 
-		if(!vertices.size()) { //THIS IS HIGHLY UNLIKELY
+		if(!vertices.size()) { //this is possible, there might be no border at all.
 			continue;
 		}
 
@@ -1006,33 +1012,33 @@ void NexusBuilder::uniformNormals() {
 				//uniform normals;
 				if(k - last > 1) {   //more than 1 vertex to unify
 
-					vcg::Point3s normals;
 
 					if(last_level) {     //average all normals of the coincident points.
 
 						vcg::Point3f normalf(0, 0, 0);
+
 						for(uint j = last; j < k; j++)
 							for(int l = 0; l < 3; l++)
 								normalf[l] += (*vertices[j].normal)[l];
 						normalf.Normalize();
 
 						//convert back to shorts
+						vcg::Point3s normals;
 						for(int l = 0; l < 3; l++)
 							normals[l] = (short)(normalf[l]*32766);
 
-					} else { //just copy the first one (it's from the lowest level.
+						for(uint j = last; j < k; j++)
+							*vertices[j].normal = normals;
 
-						normals = (*vertices[last].normal);
+					} else { //just copy the first one (it's from the lowest level, due to sort)
+
+						assert(vertices[k-1].node == t);
+						*vertices[k-1].normal = *vertices[last].normal;
 					}
-
-					for(uint j = last; j < k; j++)
-						*vertices[j].normal = normals;
 				}
 				previous =v.point;
 				last = k;
 			}
 		}
-		if(chunks.memoryUsed() > max_memory)
-			chunks.flush();
 	}
 }
