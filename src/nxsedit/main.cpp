@@ -127,8 +127,10 @@ int main(int argc, char *argv[]) {
 		read_only = false;
 
 	try {
-		if(!nexus.open(inputs[0].toLatin1()))
-			throw QString("Could not open file: " + inputs[0]);
+		if(!nexus.open(inputs[0].toLatin1())) {
+			cerr << "Could not open file: " << qPrintable(inputs[0]) << endl;
+			return 0;
+		}
 
 		if(info) {
 			printInfo(nexus);
@@ -220,7 +222,7 @@ int main(int argc, char *argv[]) {
 					//take node 0:
 					uint32_t sink = nexus.header.n_nodes -1;
 					coord_step = error_q*nexus.nodes[0].error/2;
-					for(int i = 0; i < sink; i++){
+					for(unsigned int i = 0; i < sink; i++){
 						Node &n = nexus.nodes[i];
 						Patch &patch = nexus.patches[n.first_patch];
 						if(patch.node != sink)
@@ -282,9 +284,10 @@ int main(int argc, char *argv[]) {
 
 		} */
 
-	} catch(QString error) {
+	} catch(const QString error) {
 		cerr << "ERROR: " << qPrintable(error) << endl;
 	}
+
 	return 0;
 }
 

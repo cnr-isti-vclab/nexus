@@ -60,7 +60,7 @@ void KDTree::load(Stream *stream) {
 				"the model could be quantized.\n"
 				"In that case use CloudCompare to move the model to the origin\n";
 		if(precision < 12) {
-			throw "Severe quantiziation, quitting";
+			throw QString("Severe quantiziation, quitting");
 		}
 	}
 

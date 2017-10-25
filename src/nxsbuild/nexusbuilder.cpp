@@ -1031,9 +1031,8 @@ void NexusBuilder::uniformNormals() {
 							*vertices[j].normal = normals;
 
 					} else { //just copy the first one (it's from the lowest level, due to sort)
-
-						assert(vertices[k-1].node == t);
-						*vertices[k-1].normal = *vertices[last].normal;
+						if(vertices[k-1].node == t) //unless this vertex do not belongs to t.
+							*vertices[k-1].normal = *vertices[last].normal;
 					}
 				}
 				previous =v.point;

@@ -217,7 +217,7 @@ void PlyLoader::setMaxMemory(quint64 max_memory) {
 
 quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 	if(faces_element == -1)
-		throw "Ply has no faces.";
+		throw QString("Ply has no faces.");
 
 	if(current_triangle == 0)
 		cacheVertices();

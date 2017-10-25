@@ -80,15 +80,15 @@ void NexusData::loadHeader() {
 	//fread(&header, sizeof(Header), 1, file);
 	int readed = file.read((char *)&header, sizeof(Header));
 	if(readed != sizeof(Header))
-		throw "Could not read header, file too short";
+		throw QString("Could not read header, file too short");
 	if(header.magic != 0x4E787320)
-		throw "Could not read header.. probably not a nxs file";
+		throw QString("Could not read header.. probably not a nxs file");
 }
 
 void NexusData::loadHeader(char *buffer) {
 	header = *(Header *)buffer;
 	if(header.magic != 0x4E787320)
-		throw "Could not read header.. probably not a nxs file";
+		throw QString("Could not read header.. probably not a nxs file");
 }
 
 void NexusData::countRoots() {

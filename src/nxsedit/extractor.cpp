@@ -74,7 +74,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	QFile file;
 	file.setFileName(output);
 	if(!file.open(QIODevice::WriteOnly | QFile::Truncate))
-		throw "Could not open file: " + output + " for writing";
+		throw QString("Could not open file: " + output + " for writing");
 
 	nx::Header header = nexus->header;
 	header.signature = signature;
