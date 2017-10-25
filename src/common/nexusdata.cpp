@@ -278,8 +278,6 @@ uint64_t NexusData::loadRam(uint32_t n) {
 }
 
 uint64_t NexusData::dropRam(uint32_t n, bool write) {
-	cout << "Dropping node; " << n << endl;
-
 	Node &node = nodes[n];
 	NodeData &data = nodedata[n];
 

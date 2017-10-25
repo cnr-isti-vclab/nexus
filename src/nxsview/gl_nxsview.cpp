@@ -367,7 +367,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 		if(Pick<Point3f>(pointToPick[0],pointToPick[1],pp)) {
 			//check if intersects
 			vcg::Matrix44f m = Inverse(scene.nodes[0].transform);
-			vcg::Point3f p = m * trackball.InverseMatrix() * pp;
+			//vcg::Point3f p = m * trackball.InverseMatrix() * pp;
 
 			trackball.Translate(-pp);
 			trackball.Scale(1.25f);

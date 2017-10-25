@@ -77,6 +77,4 @@ HEADERS  += \
 FORMS    += \
     nxsview.ui
 
-
-
 DESTDIR = "../../bin"
