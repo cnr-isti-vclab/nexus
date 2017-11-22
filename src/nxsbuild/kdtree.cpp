@@ -56,11 +56,11 @@ void KDTree::load(Stream *stream) {
 
 	float precision = boxFloatPrecision(node.box);
 	if(precision < 16) {
-		cout << "The bounding box is far from the origin respect to it's size,\n"
-				"the model could be quantized.\n"
-				"In that case use CloudCompare to move the model to the origin\n";
+        cout << "WARNING: The bounding box is far from the origin (with respect to its size),\n"
+                "the model MIGHT be quantized.\n"
+                "In that case use MeshLab or CloudCompare to move the model closer to the origin\n";
 		if(precision < 12) {
-			throw QString("Severe quantiziation, quitting");
+            throw QString("ERROR: Quantiziation is too severe, quitting");
 		}
 	}
 
