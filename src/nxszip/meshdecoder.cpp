@@ -26,7 +26,7 @@ using namespace vcg;
 using namespace nx;
 using namespace meco;
 
-void MeshDecoder::decode(int len, uchar *input) {
+void MeshDecoder::decode(int len, ::uchar *input) {
 	FpuPrecision::store();
 	FpuPrecision::setFloat();
 
@@ -562,7 +562,7 @@ int MeshDecoder::decodeVertex(const Point3i &predicted, const Point2i &texpredic
 	return v;
 }
 
-int MeshDecoder::decodeDiff(uchar diff, BitStream &stream) {
+int MeshDecoder::decodeDiff(::uchar diff, BitStream &stream) {
 	if(diff == 0)
 		return 0;
 

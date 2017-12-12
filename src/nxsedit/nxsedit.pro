@@ -1,9 +1,8 @@
 QT       += core
 
-TARGET = nxsedit
+TARGET   = nxsedit
 CONFIG   += console
 CONFIG   -= app_bundle
-
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
@@ -11,11 +10,12 @@ QMAKE_CXXFLAGS += -std=c++11
 DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
 
-INCLUDEPATH += ../../../vcglib ../../../vcglib/eigenlib
+INCLUDEPATH += \
+    ../../../vcglib \
+    ../../../vcglib/eigenlib
 
-
-win32:INCLUDEPATH += ../../../code/lib/glew/include 
-win32:LIBS += ../../../code/lib/glew/lib/glew32.lib opengl32.lib GLU32.lib user32.lib
+win32:INCLUDEPATH += ../../../glew/include ../../../corto/include
+win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib ../../../corto/lib/corto.lib
 
 unix:INCLUDEPATH += /usr/local/lib
 unix:LIBS += -L /usr/local/lib -lcorto
@@ -29,10 +29,10 @@ SOURCES += \
     ../common/cone.cpp \
     ../nxszip/meshcoder.cpp \
     ../nxszip/meshdecoder.cpp \
-    main.cpp \
-    extractor.cpp \
     ../nxszip/abitstream.cpp \
-    ../nxszip/atunstall.cpp
+    ../nxszip/atunstall.cpp \
+    main.cpp \
+    extractor.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -51,7 +51,6 @@ HEADERS += \
     ../nxszip/cstream.h \
     ../nxszip/meshcoder.h \
     ../nxszip/meshdecoder.h \
-    extractor.h 
-
+    extractor.h
 
 DESTDIR = "../../bin"

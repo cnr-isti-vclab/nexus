@@ -1,26 +1,22 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-05-20T21:38:32
-#
-#-------------------------------------------------
+QT       += core gui
 
-QT       += core
-QT       += gui 
+QTPLUGIN += qjpeg    # image formats
 
-QTPLUGIN     += qjpeg    # image formats
-
-TARGET = nxsbuild
+TARGET   = nxsbuild
 CONFIG   += console
 CONFIG   -= app_bundle
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11 -g
 
-INCLUDEPATH += ../../../vcglib \
+INCLUDEPATH += \
+    ../../../vcglib \
     ../../../vcglib/eigenlib
 
 DEFINES += _FILE_OFFSET_BITS=64
 DEFINES += _USE_MATH_DEFINES
+
+win32-msvc: DEFINES += NOMINMAX
 
 SOURCES += \
     ../../../vcglib/wrap/system/qgetopt.cpp \
@@ -38,8 +34,6 @@ SOURCES += \
     objloader.cpp \
     tmesh.cpp \
     texpyramid.cpp
-
-win32-msvc: DEFINES += NOMINMAX
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \

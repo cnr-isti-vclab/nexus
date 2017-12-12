@@ -1,12 +1,6 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-05-25T23:10:26
-#
-#-------------------------------------------------
-
 QT       += core gui opengl widgets
 
-TARGET = nxsview
+TARGET   = nxsview
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++11
@@ -16,10 +10,12 @@ DEFINES += GL_COMPATIBILITY
 unix:DEFINES += USE_CURL
 win32:DEFINES += NOMINMAX
 
-INCLUDEPATH += ../../../vcglib ../common/ ../../../vcglib/eigenlib
+INCLUDEPATH += \
+    ../../../vcglib \
+    ../../../vcglib/eigenlib
 
-win32:INCLUDEPATH += /pathtocorto
-win32:LIBS += -lopengl32 -lGLU32 -lcorto
+win32:INCLUDEPATH += ../../../corto/include
+win32:LIBS += -lopengl32 -lGLU32 ../../../glew/lib/glew32.lib ../../../corto/lib/corto.lib
 
 unix:INCLUDEPATH += /usr/local/lib
 unix:LIBS += -lGLEW -lGLU -lcurl -lcorto
@@ -39,7 +35,7 @@ SOURCES += \
     ../nxszip/abitstream.cpp \
     ../nxszip/atunstall.cpp \
     ../nxszip/meshdecoder.cpp \
-    main.cpp\
+    main.cpp \
     gl_nxsview.cpp \
     scene.cpp
 
@@ -71,8 +67,7 @@ HEADERS  += \
     ../nxszip/zpoint.h \
     ../nxszip/meshdecoder.h \
     gl_nxsview.h \
-    scene.h 
-
+    scene.h
 
 FORMS    += \
     nxsview.ui

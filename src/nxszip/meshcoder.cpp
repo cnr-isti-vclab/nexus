@@ -778,7 +778,7 @@ int needed(int v) {
 }
 
 void MeshEncoder::encodeVertex(int target, const Point3i &predicted, const Point2i &texpredicted, BitStream &bitstream,
-							   vector<uchar> &diffs, vector<uchar> &tdiffs) {
+							   vector<::uchar> &diffs, vector<::uchar> &tdiffs) {
 
 
 	static int count = 0;
@@ -850,7 +850,7 @@ void MeshEncoder::encodeVertex(int target, const Point3i &predicted, const Point
 }
 
 //val cam be zero.
-void MeshEncoder::encodeDiff(vector<uchar> &diffs, BitStream &stream, int val) {
+void MeshEncoder::encodeDiff(vector<::uchar> &diffs, BitStream &stream, int val) {
 	val = Tunstall::toUint(val)+1;
 	int ret = ilog2(val);
 	diffs.push_back(ret);
