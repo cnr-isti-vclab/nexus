@@ -1,7 +1,5 @@
 QT       += core gui
 
-QTPLUGIN += qjpeg    # image formats
-
 TARGET   = nxsbuild
 CONFIG   += console
 CONFIG   -= app_bundle
