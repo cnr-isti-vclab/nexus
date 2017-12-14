@@ -1,6 +1,6 @@
 /*
 3DHOP - 3D Heritage Online Presenter
-Copyright (c) 2014-2016, Federico Ponchio - Visual Computing Lab, ISTI - CNR
+Copyright (c) 2014-2017, Visual Computing Lab, ISTI - CNR
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 Nexus = function() {
@@ -41,7 +41,7 @@ for(i = 0; i < scripts.length; i++) {
 }
 var meco = null;
 function loadMeco() {
-	if(typeof(presenter) != "undefined") //back compatible for 3dhop
+	if(typeof(presenter) != "undefined") //back compatible for 3DHOP
 		meco = new Worker(path.replace('nexus.js', 'meshcoder_worker.js'));
 	else
 		meco = new Worker(path.replace('nexus.js', 'meco.js'));
@@ -859,7 +859,6 @@ Instance.prototype = {
 		if(!colorEnabled && attr.color >= 0) gl.disableVertexAttribArray(attr.color);
 		if(!uvEnabled && attr.uv >= 0) gl.disableVertexAttribArray(attr.uv);
 
-
 		gl.bindBuffer(gl.ARRAY_BUFFER, null);
 		if(t.mode != "POINT")
 			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -877,7 +876,7 @@ var contexts = [];
 
 function getContext(gl) {
 	var c = null;
-	if(!gl.isTexture) throw "Somethingg wrong";
+	if(!gl.isTexture) throw "Something wrong";
 	contexts.forEach(function(g) { 
 		if(g.gl == gl) c = g;
 	});
