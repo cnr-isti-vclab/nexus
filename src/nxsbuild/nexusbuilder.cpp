@@ -118,12 +118,13 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 
 		createLevel(tree, stream, level);
 		level++;
-		if(last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
+		if(skipSimplifyLevels <= 0 && last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
 			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
 			cout << "Quitting prematurely (most probably to high parametrization fragmentation)!\n";
 			break;
 		}
 		last_top_level_size = stream->size();
+		skipSimplifyLevels--;
 	} while(stream->size() > top_node_size);
 
 	reverseDag();
@@ -242,7 +243,7 @@ public:
 
 };
 
-QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
+QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge) {
 	std::vector<vcg::Box2f> boxes;
 	std::vector<int> box_texture; //which texture each box belongs;
 	std::vector<int> vertex_to_tex(mesh.vert.size(), -1);
@@ -291,8 +292,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
 		auto t = mesh.vert[i].T().P();
-		//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
-		//			cout << "T: " << t[0] << " " << t[1] << endl;
+//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
+//				cout << "T: " << t[0] << " " << t[1] << endl;
 		if(t[0] != 0.0f || t[1] != 0.0f)
 			box.Add(t);
 	}
@@ -329,19 +330,17 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 		vcg::Point2i &origin = origins[b];
 		origin[0] = std::max(0.0f, floor(box.min[0]/px));
 		origin[1] = std::max(0.0f, floor(box.min[1]/py));
-		if(origin[0] >= w)
-			origin[0] = w-1;
-		if(origin[1] >= h)
-			origin[1] = h-1;
+		if(origin[0] >= w) origin[0] = w-1;
+		if(origin[1] >= h) origin[1] = h-1;
 
 		size[0] = std::min(w, ceil(box.max[0]/px)) - origin[0];
 		size[1] = std::min(h, ceil(box.max[1]/py)) - origin[1];
-		if(size[0] <= 0)
-			size[0] = 1;
-		if(size[1] <= 0)
-			size[1] = 1;
-		//		cout << "Box: " << box_texture[b] << " [" << box.min[0] << "  " << box.min[1] << " ] [ " << box.max[0] << "  " << box.max[1] << "]" << std::endl;
-		//		cout << "Size: " << size[0] << " - " << size[1] << endl;
+		if(size[0] <= 0) size[0] = 1;
+		if(size[1] <= 0) size[1] = 1;
+		
+//		cout << "Box: " << box_texture[b] << " [" << box.min[0] << "  " << box.min[1] << " ] [ " << box.max[0] << "  " << box.max[1] << "]" << std::endl;
+//		cout << "Size: " << size[0] << " - " << size[1] << endl << endl;
+//		getchar();
 	}
 
 	//pack boxes;
@@ -413,12 +412,14 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 	//compute error:
 	float pdx2 = pdx*pdx;
 	error = 0.0;
+	pixelXedge = 0.0f;
 	for(auto &face: mesh.face) {
 		for(int k = 0; k < 3; k++) {
 			int j = (k==2)?0:k+1;
 
 			float edge = vcg::SquaredNorm(face.P(k) - face.P(j));
 			float pixel = vcg::SquaredNorm(face.V(k)->T().P() - face.V(j)->T().P())/pdx2;
+			pixelXedge += pixel;
 			if(pixel > 10) pixel = 10;
 			if(pixel < 1)
 				error += edge;
@@ -426,6 +427,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 				error += edge/pixel;
 		}
 	}
+	pixelXedge = sqrt(pixelXedge/mesh.face.size()*3);
 	error = sqrt(error/mesh.face.size()*3);
 
 	{
@@ -452,7 +454,27 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 			//		boxid++;
 		}
 
-		/*		for(int i = 0; i < mesh.vert.size(); i++) {
+		/*
+		painter.setPen(QColor(255,0,255));
+		for(int i = 0; i < mesh.face.size(); i++) {
+			auto &face = mesh.face[i];
+			int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
+			vcg::Point2i &o = origins[b];
+			vcg::Point2i m = mapping[b];
+			
+			for(int k = 0; k < 3; k++) {
+				int j = (k==2)?0:k+1;
+				auto V0 = face.V(k);
+				auto V1 = face.V(j);
+				float x0 = V0->T().P()[0]/pdx; //how many pixels from the origin
+				float y0 = V0->T().P()[1]/pdy; //how many pixels from the origin
+				float x1 = V1->T().P()[0]/pdx; //how many pixels from the origin
+				float y1 = V1->T().P()[1]/pdy; //how many pixels from the origin
+				painter.drawLine(x0, y0, x1, y1);
+			}
+		}*/
+		/*
+		for(int i = 0; i < mesh.vert.size(); i++) {
 			auto &p = mesh.vert[i];
 			int b = vertex_to_box[i];
 			vcg::Point2i &o = origins[b];
@@ -465,9 +487,12 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error) {
 			painter.drawEllipse(x-10, y-10, 20, 20);
 			painter.drawPoint(x, y);
 		} */
+
 	}
 
 	image = image.mirrored();
+/*	static int imgcount = 0;
+	image.save(QString("Test_%1.jpg").arg(imgcount++)); */
 	return image;
 }
 
@@ -595,12 +620,13 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			std::vector<Patch> node_patches;
 
 			float error;
+			float pixelXedge;
 			if(!hasTextures()) {
 				mesh1.serialize(buffer, header.signature, node_patches);
 			} else {
 
 				if(useNodeTex) {
-					QImage nodetex = extractNodeTex(tmp, level, error);
+					QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
 					area += nodetex.width()*nodetex.height();
 					output_pixels += nodetex.width()*nodetex.height();
 					Texture t;
@@ -644,7 +670,17 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 				error = mesh1.simplify(soup.size()*scaling, Mesh::QUADRICS);
 				nface = mesh1.fn;
 			} else {
-				float e = mesh.simplify(soup.size()*scaling, TMesh::QUADRICS);
+				
+				int nvert = soup.size()*scaling;
+				//if(pixelXedge > 10) {
+				//When textures are too big for the amount of geometry we skip some level of geometry simplification.
+				//It should be automatic based on pixelXedge....
+				if(skipSimplifyLevels > 0) {
+					//cout << "Too much texture! Skipping vertex simplification" << endl;
+					nvert = soup.size();
+				} 
+				
+				float e = mesh.simplify(nvert, TMesh::QUADRICS);
 				if(!useNodeTex)
 					error = e;
 				nface = mesh.fn;

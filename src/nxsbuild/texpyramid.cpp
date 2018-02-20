@@ -212,7 +212,6 @@ void TexAtlas::pruneCache() {
 		auto it = ram.find(index);
 		cache_size -= 4*(it->second.image.width())*(it->second.image.height());
 		if(disk.find(index) == disk.end()) {
-			cout << "Saving to disk: " << index.level << " " << index.index << endl;
 			DiskData d;
 			d.offset = storage.pos();
 			d.w = it->second.image.width();

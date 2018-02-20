@@ -236,8 +236,20 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 			Vertex &vertex = vertices[face.f[k]];
 			vertex.t[0] = face.t[k*2];
 			vertex.t[1] = face.t[k*2+1];
+
+			while(vertex.t[0] > 1.0f)
+				vertex.t[0] -= 1.0f;
+			while(vertex.t[1] > 1.0f)
+				vertex.t[1] -= 1.0f;
+			while(vertex.t[0] < 0.0f)
+				vertex.t[0] += 1.0f;
+			while(vertex.t[1] < 0.0f)
+				vertex.t[1] += 1.0f;
+
 			current.vertices[k] = vertex;
 		}
+		//TODO! detect complicated texture coordinates
+		
 		current.node = 0;
 		current.tex = face.texNumber + texOffset;
 

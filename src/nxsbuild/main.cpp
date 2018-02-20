@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
 	QString decimation("quadric");      //simplification method
 	int ram_buffer(2000);               //Mb of ram to use
 	float scaling(0.5);                 //simplification ratio
+	int skiplevels = 0;
 	QString output("");                 //output file
 
 
@@ -72,6 +73,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('t', "top_node_faces", "number of triangles in the top node, default 4096", &top_node_size);
 	opt.addOption('d', "decimation", "decimation method: quadric, edgelen. Default: quadric", &decimation);
 	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
+	opt.addOption('S', "skiplevels", "decimation skipped for n levels (default 0)", &skiplevels);
 	opt.addSwitch('O', "orig_textures", "Use original textures, no repacking", &useOrigTex);
 
 	//btree options
@@ -170,6 +172,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		NexusBuilder builder(components);
+		builder.skipSimplifyLevels = skiplevels;
 		builder.setMaxMemory(max_memory);
 		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;

@@ -93,6 +93,7 @@ public:
 	void setMaxMemory(quint64 m) {
 		max_memory = m;
 		chunks.setMaxMemory(m);
+		atlas.cache_max = m;
 	}
 	void setScaling(float s) { scaling = s; }
 
@@ -127,9 +128,12 @@ public:
 	float scaling;
 	bool useNodeTex; //use node textures
 	int tex_quality;
+	
+	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
+	int skipSimplifyLevels = 0;
 
 
-	QImage extractNodeTex(TMesh &mesh, int level, float &error);
+	QImage extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge);
 	void invertNodes(); //
 	void saturateNode(quint32 n);
 	void optimizeNode(quint32 node, uchar *chunk);
