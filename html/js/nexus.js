@@ -193,6 +193,7 @@ PriorityQueue.prototype = {
 		this.bubbleUp(this.size);
 		this.size++;
 	},
+
 	pop: function() {
 		var result = this.data[0];
 		this.size--;
@@ -203,6 +204,7 @@ PriorityQueue.prototype = {
 		}
 		return result;
 	},
+
 	bubbleUp: function(n) {
 		var data = this.data[n];
 		var error = this.error[n];
@@ -275,7 +277,6 @@ var maxPending    = 3;
 var maxBlocked    = 3;
 var maxCacheSize  = 512*(1<<20); //TODO DEBUG
 var drawBudget    = 5*(1<<20);
-var cachePatch    = true; //set false for mac.
 
 
 /* MESH DEFINITION */
@@ -289,49 +290,47 @@ Mesh.prototype = {
 	open: function(url) {
 		var mesh = this;
 		mesh._url = url;
-		mesh.httpRequest(0, 88, function() {
-			var view = new DataView(this.response);
-			view.offset = 0;
-			var header = mesh.importHeader(view);
-			if(!header) return null;
+		mesh.httpRequest(
+			0,
+			88,
+			function() {
+				var view = new DataView(this.response);
+				view.offset = 0;
+				var header = mesh.importHeader(view);
+				if(!header) { console.log("Header Error!"); mesh.open(mesh._url + '?' + Math.random()); return null; }
 
-			for(i in header)
-				mesh[i] = header[i];
-			mesh.vertex = mesh.signature.vertex;
-			mesh.face = mesh.signature.face;
-			mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
-			mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
-			mesh.meco = (mesh.signature.flags & 2); 
-			mesh.corto = (mesh.signature.flags & 4); 
-			mesh.requestIndex();
-		});
-	},
-
-	url: function() {
-		var url = this._url;
-		//Safari PATCH
-		if (cachePatch) url = this._url + '?' + Math.random();
-		//Safari PATCH
-		return url;
+				for(i in header)
+					mesh[i] = header[i];
+				mesh.vertex = mesh.signature.vertex;
+				mesh.face = mesh.signature.face;
+				mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
+				mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
+				mesh.meco = (mesh.signature.flags & 2); 
+				mesh.corto = (mesh.signature.flags & 4); 
+				mesh.requestIndex();
+			},
+			function() { console.log("Open request error!");},
+			function() { console.log("Open request abort!");}
+		);
 	},
 
 	httpRequest: function(start, end, load, error, abort, type) {
 		if(!type) type = 'arraybuffer';
-		var that = this;
 		var r = new XMLHttpRequest();
-		r.open('GET', this.url(), true);
+		r.open('GET', this._url, true);
 		r.responseType = type;
 		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
-		r.onload = function(){
+		r.onload = function(){ 
 			switch (this.status){
-				case 0: //returned in chrome for local files
+				case 0:
+					console.log("0 response");//returned in chrome for local files
 				case 206:
-                			load.bind(this)();
-                			break;
+                	load.bind(this)();
+                	break;
 				case 200:
-					console.log("200 response; server does not support byte range requests.")
+					console.log("200 response: server does not support byte range requests.");
 			}
-        	};
+        };
 		r.onerror = error;
 		r.onabort = abort;
 		r.send();
@@ -340,7 +339,13 @@ Mesh.prototype = {
 	requestIndex: function() {
 		var mesh = this;
 		var end = 88 + mesh.nodesCount*44 + mesh.patchesCount*12 + mesh.texturesCount*68;
-		mesh.httpRequest(88, end, function() { mesh.handleIndex(this.response); });
+		mesh.httpRequest(
+			88,
+			end,
+			function() { mesh.handleIndex(this.response); },
+			function() { console.log("Index request error!");},
+			function() { console.log("Index request abort!");}
+		);
 	},
 
 	handleIndex: function(buffer) {
@@ -939,10 +944,12 @@ function requestNode(context, node) {
 	context.pending++;
 	context.cacheSize += m.nsize[n];
 
-	m.httpRequest(m.noffsets[n], m.noffsets[n+1], 
+	m.httpRequest(
+		m.noffsets[n],
+		m.noffsets[n+1],
 		function() { loadNode(this, context, node); },
 		function () { console.log("Failed loading node for: " + m.url); context.pending--;},
-		function () { console.log("Abort!"); m.status[n] = 0; context.pending--; },
+		function () { console.log("Node request abort!"); m.status[n] = 0; context.pending--; },
 		'arraybuffer'
 	);
 	if(!m.vertex.texCoord) return;
@@ -952,10 +959,12 @@ function requestNode(context, node) {
 		return;
 
 	m.status[n]++;
-	m.httpRequest(m.textures[tex], m.textures[tex+1], 
+	m.httpRequest(
+		m.textures[tex],
+		m.textures[tex+1],
 		function() { loadTexture(this, context, node, tex); },
-		function () { console.log("Failed loading node for: " + m.url); },
-		function () { console.log("Abort!"); m.texids[tex] = null; },
+		function () { console.log("Failed loading texture for: " + m.url); },
+		function () { console.log("Texture request abort!"); m.texids[tex] = null; },
 		'blob'
 	);
 }
@@ -1148,7 +1157,6 @@ function setMaxCacheSize(gl, size) {
 	var context = getContext(gl);
 	context.maxCacheSize = size;
 }
-
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, 
