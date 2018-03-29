@@ -68,7 +68,7 @@ void MeshEncoder::encode() {
 void MeshEncoder::quantizeCoords() {
 	//quantize vertex position and compute min.
 	float side = pow(2.0f, (float)coord_q);
-	cout << "side: " << side << endl;
+	//cout << "Side: " << side << endl;
 
 	//TODO use quadric to quantize for better rate?  probably not worth it, for so few bits.
 	qpoints.resize(node.nvert);
@@ -828,11 +828,11 @@ void MeshEncoder::encodeVertex(int target, const Point3i &predicted, const Point
 			if(n > tdiff)
 				tdiff = n;
 			if(tdiff >= 22) {
-				cerr << "Target: " << target << " size: " << qtexcoords.size() << endl;
-				cerr << "Texture precision required cannot be bigger than 2^-21. \n"
-					<< "tex: " << qtexcoords[target][0] << " " << qtexcoords[target][1] << "\n"
-					<< "predicted: " << texpredicted[0] << " " << texpredicted[1] << "\n"
-					<< "dt: " << dt[0] << " " << dt[1] << endl;
+				cerr << "Target: " << target << " Size: " << qtexcoords.size() << endl;
+				cerr << "Texture precision required cannot be bigger than 2^-21.\n"
+					<< "Tex: " << qtexcoords[target][0] << " " << qtexcoords[target][1] << "\n"
+					<< "Predicted: " << texpredicted[0] << " " << texpredicted[1] << "\n"
+					<< "Dt: " << dt[0] << " " << dt[1] << endl;
 				cerr << "Tex q: " << tex_q << " tex bits " << tex_bits << endl;
 			}
 		}

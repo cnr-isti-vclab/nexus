@@ -128,7 +128,7 @@ QImage TexPyramid::read(int level, QRect region) {
 void TexPyramid::buildLevel(int level) {
 	if(levels.size() > (size_t)level) return;
 	if(levels.size() != (size_t)level)
-		throw QString("Texture atlas canno skip levels when building...");
+		throw QString("texture atlas cannot skip levels when building");
 	levels.resize(level + 1);
 	TexLevel &texlevel = levels.back();
 	texlevel.level = level;
@@ -169,7 +169,7 @@ QImage TexAtlas::getImg(Index index) {
 
 	auto dt = disk.find(index);
 	if(dt == disk.end())
-		throw QString("Unespected missing image in disk and ram.");
+		throw QString("unespected missing image in disk and ram");
 
 	//cout << "Loading from disk: " << index.level << " " << index.index << endl;
 	QImage img(dt->second.w, dt->second.h, QImage::Format_RGB32);

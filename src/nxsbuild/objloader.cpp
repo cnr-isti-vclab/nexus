@@ -26,7 +26,7 @@ ObjLoader::ObjLoader(QString filename):
 
 	file.setFileName(filename);
 	if(!file.open(QFile::ReadOnly))
-		throw QString("Could not open file '%1' error: %2").arg(filename).arg(file.errorString());
+		throw QString("could not open file %1. Error: %2").arg(filename).arg(file.errorString());
 }
 
 ObjLoader::~ObjLoader() {
@@ -56,7 +56,7 @@ void ObjLoader::cacheVertices() {
 				n_vertices++;
 
 				int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
-				if(n != 3) throw QString("Error parsing vertex line: %1").arg(buffer);
+				if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
 				if(quantization) {
 					quantize(vertex.v[0]);
 					quantize(vertex.v[1]);
@@ -95,13 +95,13 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 		if(buffer[0] == '#')            //skip comments
 			continue;
 		if(buffer[0] != 'f')            //vertex
-			throw QString("I was expecing a face, not this: %1").arg(buffer);
+			throw QString("expecting a face, not %1").arg(buffer);
 
 		int face[3];
 		int normal[3];
 		int res=sscanf(buffer, "f %s %s %s",st[0],st[1],st[2]);
 		if(res != 3)
-			throw QString("Could not parse face: %1").arg(buffer);
+			throw QString("could not parse face %1").arg(buffer);
 		for (int w = 0; w < 3; w++) {
 			int n=strlen(st[w]);
 			int rr[3]; rr[0]=rr[1]=rr[2]=0;
@@ -153,7 +153,7 @@ quint32 ObjLoader::getVertices(quint32 size, Splat *vertices) {
 		Vertex &vertex = vertices[count++];
 
 		int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
-		if(n != 3) throw QString("Error parsing vertex line: %1").arg(buffer);
+		if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
 		if(quantization) {
 			quantize(vertex.v[0]);
 			quantize(vertex.v[1]);

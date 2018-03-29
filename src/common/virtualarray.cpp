@@ -28,7 +28,7 @@ VirtualMemory::VirtualMemory(QString prefix):
 
 	setAutoRemove(true);
 	if(!open())
-		throw QString("Unable to open temporary file");
+		throw QString("unable to open temporary file");
 
 }
 
@@ -48,7 +48,7 @@ uchar *VirtualMemory::getBlock(quint64 index, bool prevent_unload) {
 			makeRoom();
 		mapBlock(index);
 		if(!cache[index])
-			throw QString("VirtualMemory error mapping block: " + this->errorString());
+			throw QString("VirtualMemory. Error mapping block: " + this->errorString());
 
 		mapped.push_front(index);
 	}

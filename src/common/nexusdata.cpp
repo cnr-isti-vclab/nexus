@@ -80,15 +80,15 @@ void NexusData::loadHeader() {
 	//fread(&header, sizeof(Header), 1, file);
 	int readed = file.read((char *)&header, sizeof(Header));
 	if(readed != sizeof(Header))
-		throw QString("Could not read header, file too short");
+		throw QString("could not read header, file too short");
 	if(header.magic != 0x4E787320)
-		throw QString("Could not read header.. probably not a nxs file");
+		throw QString("could not read header, probably not a nexus file");
 }
 
 void NexusData::loadHeader(char *buffer) {
 	header = *(Header *)buffer;
 	if(header.magic != 0x4E787320)
-		throw QString("Could not read header.. probably not a nxs file");
+		throw QString("could not read header, probably not a nexus file");
 }
 
 void NexusData::countRoots() {
@@ -253,7 +253,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 			file.unmap((uchar *)data.memory);
 
 			if(!success) {
-				cerr << "Failed loading tex: " << endl;
+				cerr << "Failed loading texture" << endl;
 				exit(0);
 			}
 

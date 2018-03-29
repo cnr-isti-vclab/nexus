@@ -46,7 +46,7 @@ void Stream::load(QStringList paths) {
 	has_normals = true;
 	has_textures = true;
 	foreach(QString file, paths) {
-		qDebug() << "Reading " << file;
+		qDebug() << "Reading" << qPrintable(file);
 		MeshLoader *loader = NULL;
 		if(file.endsWith(".ply"))
 			loader = new PlyLoader(file);
@@ -66,7 +66,7 @@ void Stream::load(QStringList paths) {
 			loader = new StlLoader(file, vertex_quantization, max_memory); */
 
 		else
-			throw QString("Only supported input formats are .ply, .stl and obj  at the moment\n");
+			throw QString("only supported input formats are .ply, .stl and obj  at the moment");
 
 		loader->setVertexQuantization(vertex_quantization);
 		loadMesh(loader);

@@ -35,7 +35,7 @@ void recomputeError(NexusData &nexus, QString mode);
 bool show_dag = false;
 bool show_nodes = false;
 bool show_patches = false;
-bool show_textures = true;
+bool show_textures = false;
 
 
 //TODO REMOVE unused textures when resizing nexus.
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 	QString projection("");
 	QString matrix("");
 	QString imatrix("");
-	QString compresslib("meco");
+	QString compresslib("corto");
 
 	bool info = false;
 	bool check = false;
@@ -68,21 +68,21 @@ int main(int argc, char *argv[]) {
 	QString recompute_error;
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString(" ARGS specify a nexus file"));
+	opt.setHelp(QString("ARGS specify a nexus file"));
 
 	opt.allowUnlimitedArguments(true); //able to join several inputs
 
 //	opt.addArgument("nexus file", "path to the nexus file (add .nxs or not)", &input);
 
 	opt.addSwitch('i', "info", "prints info about the nexus", &info);
-	opt.addSwitch('n', "show_nodes", "prints info about nodes", &show_nodes);
-	opt.addSwitch('q', "show_patches", "prints info about payches", &show_patches);
-	opt.addSwitch('d', "show_dag", "prints info about dag", &show_dag);
+	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes);
+	opt.addSwitch('q', "show patches", "prints info about payches", &show_patches);
+	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag);
 	opt.addSwitch('c', "check", "performs various checks", &check);
 
 	//extraction options
-	opt.addOption('o', "nexus_file", "filename of the nexus output file", &output);
-	opt.addOption('p', "ply_file", "filename of the ply output file", &ply);
+	opt.addOption('o', "nexus file", "filename of the nexus output file", &output);
+	opt.addOption('p', "ply file", "filename of the ply output file", &ply);
 	opt.addOption('s', "size", "size in MegaBytes of the final file [requires -E]", &max_size);
 	opt.addOption('e', "error", "remove nodes below this error from the node", &error);
 	opt.addOption('t', "triangles", "drop nodes until total number of triangles is < triangles [about double final resolution]", &max_triangles);
@@ -90,17 +90,17 @@ int main(int argc, char *argv[]) {
 
 	//compression and quantization options
 	opt.addSwitch('z', "compress", "compress patches", &compress);
-	opt.addOption('Z', "compresslib", "pick among meco or corto compression libs, corto default", &compresslib);
+	opt.addOption('Z', "compression library", "pick among compression libs [corto, meco], default corto", &compresslib);
 	opt.addOption('v', "vertex quantization", "absolute side of compression quantization grid", &coord_step);
 	opt.addOption('V', "vertex bits", "number of bits in vertex coordinate when compressing", &position_bits);
-	opt.addOption('Y', "luma_bits", "quantization of luma channel (default 6)", &luma_bits);
-	opt.addOption('C', "chroma_bits", "quantization of chroma channel (default 6)", &chroma_bits);
-	opt.addOption('A', "alha_bits", "quantization of alpha channel (default 5)", &alpha_bits);
-	opt.addOption('N', "normal_bits", "quantization of normals (default 10)", &norm_bits);
-	opt.addOption('T', "tex_bits", "quantization of textures (default 0.25 pixel)", &tex_step);
-	opt.addOption('Q', "quantization_factor", "quantization as a factor of error (default 0.1)", &error_q);
+	opt.addOption('Y', "luma bits", "quantization of luma channel, default 6", &luma_bits);
+	opt.addOption('C', "chroma bits", "quantization of chroma channel, default 6", &chroma_bits);
+	opt.addOption('A', "alha bits", "quantization of alpha channel, default 5", &alpha_bits);
+	opt.addOption('N', "normal bits", "quantization of normals, default 10", &norm_bits);
+	opt.addOption('T', "textures bits", "quantization of textures, default 0.25", &tex_step);
+	opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1", &error_q);
 
-	opt.addOption('E', "recompute_error", "recompute errors [average, quadratic, logarithmic]", &recompute_error);
+	opt.addOption('E', "recompute error", "recompute error [average, quadratic, logarithmic, curvature]", &recompute_error);
 
 	opt.addOption('m', "matrix", "multiply by matrix44 in format a:b:c...", &matrix);
 	opt.addOption('M', "imatrix", "multiply by inverse of matrix44 in format a:b:c...", &imatrix);
@@ -111,12 +111,12 @@ int main(int argc, char *argv[]) {
 	//Check parameters are correct
 	QStringList inputs = opt.arguments;
 	if (inputs.size() == 0) {
-		cerr << "No input files specified\n" << endl;
+		cerr << "No input files specified" << endl;
 		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
 	}
 	else if (inputs.size() > 1) {
-		cerr << "Too many input files specified\n" << endl;
+		cerr << "Too many input files specified" << endl;
 		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
 	}
@@ -128,16 +128,17 @@ int main(int argc, char *argv[]) {
 
 	try {
 		if(!nexus.open(inputs[0].toLatin1())) {
-			cerr << "Could not open file: " << qPrintable(inputs[0]) << endl;
+			cerr << "Could not open file " << qPrintable(inputs[0]) << endl;
 			return 0;
 		}
 
 		if(info) {
 			printInfo(nexus);
-
 			return 0;
-
 		}
+
+		cout << "Reading " << qPrintable(inputs[0].toLatin1()) << endl;
+
 		if(check) {
 			checks(nexus);
 			return 0;
@@ -157,7 +158,7 @@ int main(int argc, char *argv[]) {
 			return -1;
 		}
 		if(output == inputs[0]) {
-			cerr << "Output and Input file must be different" << endl;
+			cerr << "Output and input file must be different" << endl;
 			return -1;
 		}
 		Extractor extractor(&nexus);
@@ -176,7 +177,7 @@ int main(int argc, char *argv[]) {
 
 		if(!ply.isEmpty()) {       //export to ply
 			extractor.saveUnifiedPly(ply);
-
+			cout << "Saving to file " << qPrintable(ply) << endl;
 		} else if(!output.isEmpty()) { //export to nexus
 
 			bool invert = false;
@@ -242,10 +243,14 @@ int main(int argc, char *argv[]) {
 				extractor.color_bits[2] = chroma_bits;
 				extractor.color_bits[3] = alpha_bits;
 				extractor.tex_step = tex_step; //was (int)log2(tex_step * pow(2, -12));, moved to per node value
-				cout << "tex step: " << extractor.tex_step << endl;
+				//cout << "Texture step: " << extractor.tex_step << endl;
 			}
 
-			cout << "saving with flags: " << signature.flags << endl;
+			cout << "Saving with flag: " << signature.flags;
+			if (signature.flags & Signature::MECO) cout << " (compressed with MECO)";
+			else if (signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
+			else cout << " (not compressed)";
+			cout << endl;
 
 			if(!output.endsWith(".nxs") && !output.endsWith(".nxz")) output += ".nxs";
 
@@ -269,6 +274,7 @@ int main(int argc, char *argv[]) {
 			builder.setMatrix(m);
 		}
 		builder.process(nexus, selection); */
+		cout << "Saving to file " << qPrintable(output) << endl;
 		}
 
 /*		if(projection != "") {
@@ -283,9 +289,14 @@ int main(int argc, char *argv[]) {
 			//project
 
 		} */
-
-	} catch(const QString error) {
-		cerr << "ERROR: " << qPrintable(error) << endl;
+	}
+	catch (QString error) {
+		cout << "Fatal error: " << qPrintable(error) << endl;
+		return -1;
+	}
+	catch (const char *error) {
+		cout << "Fatal error: " << error << endl;
+		return -1;
 	}
 
 	return 0;
@@ -296,29 +307,28 @@ void printInfo(NexusData &nexus) {
 	cout << "Tot vertices: " << header.nvert << endl;
 	cout << "Tot faces   : " << header.nface << endl;
 
-	cout << "Components: ";
+	cout << "Components  :";
 	if(header.signature.vertex.hasNormals()) cout << " normals";
 	if(header.signature.vertex.hasColors()) cout << " colors";
 	if(!header.signature.face.hasIndex()) cout << " pointcloud";
 	cout << endl;
 
-	cout << "Flags: " << header.signature.flags << endl;
-	if(header.signature.flags & Signature::MECO)
-		cout << "Mesh compressed with MECO\n";
-	else if(header.signature.flags & Signature::CORTO)
-		cout << "Mesh compressed with CORTO\n";
-	vcg::Point3f c = header.sphere.Center();
-	float r = header.sphere.Radius();
-	cout << "Sphere      : c: [" << c[0] << "," << c[1] << "," << c[2] << "] r: " << r << endl;
-	cout << "Nodes       : " << header.n_nodes << endl;
-	cout << "Patches     : " << header.n_patches << endl;
-	cout << "Textures    : " << header.n_textures << endl << endl;
+	cout << "Flag        : " << header.signature.flags;
+	if(header.signature.flags & Signature::MECO) cout << " (compressed with MECO)";
+	else if(header.signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
+	else cout << " (not compressed)";
 	cout << endl;
 
+	vcg::Point3f c = header.sphere.Center();
+	float r = header.sphere.Radius();
+	cout << "Sphere      : c [" << c[0] << "," << c[1] << "," << c[2] << "] r " << r << endl;
+	cout << "Nodes       : " << header.n_nodes << endl;
+	cout << "Patches     : " << header.n_patches << endl;
+	cout << "Textures    : " << header.n_textures << endl;
 
 	uint32_t n_nodes = header.n_nodes;
 	if(show_dag){
-		cout << "Dag dump: \n";
+		cout << "\nDag dump: \n";
 		for(uint i = 0; i < n_nodes-1; i++) {
 			nx::Node &node = nexus.nodes[i];
 			cout << "Node: " << i << "\t";
@@ -326,12 +336,11 @@ void printInfo(NexusData &nexus) {
 				cout << "[" << nexus.patches[k].node << "] ";
 			cout << "\n";
 		}
-		cout << endl;
 	}
 	int last_level_size =0;
 	uint32_t sink = nexus.header.n_nodes -1;
 	if(show_nodes) {
-		cout << "Node dump:\n";
+		cout << "\nNode dump:\n";
 		double mean = 0;
 		for(uint i = 0; i < n_nodes-1; i++) {
 			nx::Node &node =  nexus.nodes[i];
@@ -356,27 +365,23 @@ void printInfo(NexusData &nexus) {
 		std /= n_nodes;
 		std = sqrt(std);
 		cout << "Mean faces: " << mean << "standard deviation: " << std << endl;
-		cout << "Last level size: " << last_level_size/(1024*1024) << "MB" << endl;
+		cout << "Last level size: " << last_level_size/(1024*1024) << "MB";
 	}
 	if(show_patches) {
-		cout << "Patch dump:\n";
+		cout << "\nPatch dump:\n";
 		for(uint i = 0; i < nexus.header.n_patches; i++) {
 			nx::Patch &patch = nexus.patches[i];
 			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t texture: " << patch.texture << "\n";
 
 		}
-		cout << endl;
 	}
-
 	if(show_textures) {
-		cout << "Texture dump: \n";
+		cout << "\nTexture dump: \n";
 		for(uint i = 0; i < nexus.header.n_textures; i++) {
 			nx::Texture &texture = nexus.textures[i];
 			cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
 		}
 	}
-
-
 }
 
 void recomputeError(NexusData &nexus, QString error_method) {
@@ -392,8 +397,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 	} else if(error_method == "curvature") {
 		method = CURVATURE;
 	} else {
-		cerr << "Not a valid error method: " << qPrintable(error_method) << ". Choose among:\n";
-		cerr << "average, quadratic, locaritmic, curvature" << endl;
+		cerr << "Not a valid error method: " << qPrintable(error_method) << endl;
 		exit(0);
 	}
 
@@ -484,7 +488,7 @@ void checks(NexusData &nexus) {
 	for(uint i = 0; i < n_nodes-1; i++) {
 		Node &node = nexus.nodes[i];
 		if(node.first_patch >= n_patches) {
-			cout << "Node: " << i << " of " << n_nodes << " first patch: " << node.first_patch << " of " << n_patches << endl;
+			cout << "Node " << i << " of " << n_nodes << " First patch " << node.first_patch << " of " << n_patches << endl;
 			exit(-1);
 		}
 		assert(node.offset * (quint64)NEXUS_PADDING < nexus.file.size());
@@ -496,7 +500,7 @@ void checks(NexusData &nexus) {
 		assert(patch.node < n_nodes);
 		if(patch.texture == 0xffffffff) continue;
 		if(patch.texture >= n_textures) {
-			cout << "Patch: " << i << " of: " << n_patches << " texture: " << patch.texture << " of: " << n_textures << endl;
+			cout << "Patch " << i << " of " << n_patches << " Texture " << patch.texture << " of " << n_textures << endl;
 			exit(-1);
 		}
 	}
@@ -506,12 +510,12 @@ void checks(NexusData &nexus) {
 	for(uint i = 0; i < n_textures-1; i++) {
 		Texture &texture = nexus.textures[i];
 		if(texture.offset * (quint64)NEXUS_PADDING >= nexus.file.size()) {
-			cout << "Texture " << i << " offset: " << texture.offset*NEXUS_PADDING << " file size: " << nexus.file.size() << endl;
+			cout << "Texture " << i << " offset " << texture.offset*NEXUS_PADDING << " file size " << nexus.file.size() << endl;
 		}
 	}
 	if(nexus.textures[n_textures-1].offset*NEXUS_PADDING != nexus.file.size()) {
-		cout << "last texture: " << nexus.textures[n_textures-1].offset*NEXUS_PADDING <<
-				"file size: " << nexus.file.size() << endl;
+		cout << "Last texture " << nexus.textures[n_textures-1].offset*NEXUS_PADDING <<
+				"File size " << nexus.file.size() << endl;
 	}
 	return;
 }
@@ -536,9 +540,9 @@ void checkSpheres(NexusData &nexus) {
 		}
 		if(node.tight_radius != new_radius) {
 			if(node.tight_radius*2 < new_radius) {
-				cout << "OFfset: " << node.offset*NEXUS_PADDING << endl;
+				cout << "Offset " << node.offset*NEXUS_PADDING << endl;
 			}
-			cout << "Node: " << i << " radius: " << node.tight_radius << " -> " << new_radius << endl;
+			cout << "Node " << i << " radius " << node.tight_radius << " -> " << new_radius << endl;
 		}
 		node.tight_radius = new_radius;
 		nexus.dropRam(i);

@@ -1,6 +1,6 @@
 /*
-3DHOP - 3D Heritage Online Presenter
-Copyright (c) 2014-2017, Visual Computing Lab, ISTI - CNR
+Nexus
+Copyright (c) 2012-2018, Visual Computing Lab, ISTI - CNR
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -257,12 +257,12 @@ PriorityQueue.prototype = {
 
 var padding = 256;
 var Debug = { 
-	nodes: false,    //color each node
-	culling: false,  //visibility culling disabled
-	draw: false,     //final rendering call disabled
-	extract: false,  //no extraction
-	request: false,  //no network requests
-	worker: false    //no web workers
+	nodes   : false,  //color each node
+	culling : false,  //visibility culling disabled
+	draw    : false,  //final rendering call disabled
+	extract : false,  //no extraction
+	request : false,  //no network requests
+	worker  : false   //no web workers
 };
 
 
@@ -275,6 +275,7 @@ var targetError   = 2.0;
 var targetFps     = 15;
 var maxPending    = 3;
 var maxBlocked    = 3;
+var maxReqAttempt = 2;
 var maxCacheSize  = 512*(1<<20); //TODO DEBUG
 var drawBudget    = 5*(1<<20);
 
@@ -284,29 +285,35 @@ var drawBudget    = 5*(1<<20);
 Mesh = function() {
 	var t = this;
 	t.onLoad = null;
+	t.reqAttempt = 0;
 }
 
 Mesh.prototype = {
 	open: function(url) {
 		var mesh = this;
-		mesh._url = url;
+		mesh.url = url;
 		mesh.httpRequest(
 			0,
 			88,
 			function() {
+//				console.log("Loading header for " + mesh.url);
 				var view = new DataView(this.response);
 				view.offset = 0;
+				mesh.reqAttempt++;
 				var header = mesh.importHeader(view);
-				if(!header) { console.log("Header Error!"); mesh.open(mesh._url + '?' + Math.random()); return null; }
-
+				if(!header) { 
+					console.log("Empty header!");
+					if(mesh.reqAttempt < maxReqAttempt) mesh.open(mesh.url + '?' + Math.random()); // BLINK ENGINE CACHE BUG PATCH
+					return null;
+				}
 				for(i in header)
 					mesh[i] = header[i];
 				mesh.vertex = mesh.signature.vertex;
 				mesh.face = mesh.signature.face;
 				mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
 				mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
-				mesh.meco = (mesh.signature.flags & 2); 
-				mesh.corto = (mesh.signature.flags & 4); 
+				mesh.meco = (mesh.signature.flags & 2);
+				mesh.corto = (mesh.signature.flags & 4);
 				mesh.requestIndex();
 			},
 			function() { console.log("Open request error!");},
@@ -317,23 +324,25 @@ Mesh.prototype = {
 	httpRequest: function(start, end, load, error, abort, type) {
 		if(!type) type = 'arraybuffer';
 		var r = new XMLHttpRequest();
-		r.open('GET', this._url, true);
+		r.open('GET', this.url, true);
 		r.responseType = type;
 		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
-		r.onload = function(){ 
+		r.onload = function(){
 			switch (this.status){
 				case 0:
-					console.log("0 response");//returned in chrome for local files
+					console.log("0 response: server unreachable.");//returned in chrome for local files
 				case 206:
-                	load.bind(this)();
-                	break;
+//					console.log("206 response: partial content loaded.");
+					load.bind(this)();
+					break;
 				case 200:
 					console.log("200 response: server does not support byte range requests.");
 			}
-        };
+		};
 		r.onerror = error;
 		r.onabort = abort;
 		r.send();
+		return r;
 	},
 
 	requestIndex: function() {
@@ -673,7 +682,7 @@ Instance.prototype = {
 		}
 
 		if(t.mesh.status[node] != 1) { //not ready
-//			console.log("Still not loaded (cache?)");
+//			console.log("Node " + node + " still not loaded (cache?)");
 			return false;
 		}
 
@@ -921,14 +930,21 @@ function endFrame(gl) {
 function removeNode(context, node) {
 	var n = node.id;
 	var m = node.mesh;
+	if(m.status[n] == 0) return;
+
+//	console.log("Removing " + m.url + " node: " + n);
 	m.status[n] = 0;
+
+	if (m.georeq.readyState != 4) m.georeq.abort();
+	if (m.texreq.readyState != 4) m.texreq.abort();
+
 	context.cacheSize -= m.nsize[n];
 	context.gl.deleteBuffer(m.vbo[n]);
 	context.gl.deleteBuffer(m.ibo[n]);
 	m.vbo[n] = m.ibo[n] = null;
 
 	if(!m.vertex.texCoord) return;
-	var tex = m.patches[m.nfirstpatch[n]*3+2];  //TODO assuming one texture per node
+	var tex = m.patches[m.nfirstpatch[n]*3+2]; //TODO assuming one texture per node
 	m.texref[tex]--;
 
 	if(m.texref[tex] == 0 && m.texids[tex]) {
@@ -940,43 +956,92 @@ function removeNode(context, node) {
 function requestNode(context, node) {
 	var n = node.id;
 	var m = node.mesh;
+
 	m.status[n] = 2; //pending
+
 	context.pending++;
 	context.cacheSize += m.nsize[n];
 
-	m.httpRequest(
+	node.reqAttempt = 0;
+	node.context = context;
+	node.nvert = m.nvertices[n];
+	node.nface = m.nfaces[n];
+
+//	console.log("Requesting " + m.url + " node: " + n);
+	requestNodeGeometry(context, node);
+	requestNodeTexture(context, node);
+}
+
+function requestNodeGeometry(context, node) {
+	var n = node.id;
+	var m = node.mesh;
+
+	m.status[n]++; //pending
+	m.georeq = m.httpRequest(
 		m.noffsets[n],
 		m.noffsets[n+1],
-		function() { loadNode(this, context, node); },
-		function () { console.log("Failed loading node for: " + m.url); context.pending--;},
-		function () { console.log("Node request abort!"); m.status[n] = 0; context.pending--; },
+		function() { loadNodeGeometry(this, context, node); },
+		function() { console.log("Geometry request error!"); recoverNode(context, node, 0); },
+		function() { console.log("Geometry request abort!"); removeNode(context, node); },
 		'arraybuffer'
 	);
+}
+
+function requestNodeTexture(context, node) {
+	var n = node.id;
+	var m = node.mesh;
+
 	if(!m.vertex.texCoord) return;
+
 	var tex = m.patches[m.nfirstpatch[n]*3+2];
 	m.texref[tex]++;
 	if(m.texids[tex])
 		return;
 
-	m.status[n]++;
-	m.httpRequest(
+	m.status[n]++; //pending
+	m.texreq = m.httpRequest(
 		m.textures[tex],
 		m.textures[tex+1],
-		function() { loadTexture(this, context, node, tex); },
-		function () { console.log("Failed loading texture for: " + m.url); },
-		function () { console.log("Texture request abort!"); m.texids[tex] = null; },
+		function() { loadNodeTexture(this, context, node, tex); },
+		function() { console.log("Texture request error!"); recoverNode(context, node, 1); },
+		function() { console.log("Texture request abort!"); removeNode(context, node); },
 		'blob'
 	);
 }
 
-function loadNode(request, context, node) {
+function recoverNode(context, node, id) {
 	var n = node.id;
 	var m = node.mesh;
+	if(m.status[n] == 0) return;
 
-	node.context = context;
+	m.status[n]--;
+
+	if(node.reqAttempt > maxReqAttempt) {
+//		console.log("Max request limit for " + m.url + " node: " + n);
+		removeNode(context, node);
+		return;
+	}
+
+	node.reqAttempt++;
+
+	switch (id){ 
+		case 0:
+			requestNodeGeometry(context, node); 
+			console.log("Recovering geometry for " + m.url + " node: " + n);
+			break;
+		case 1:
+			requestNodeTexture(context, node); 
+			console.log("Recovering texture for " + m.url + " node: " + n);
+			break;
+	}
+}
+
+function loadNodeGeometry(request, context, node) {
+	var n = node.id;
+	var m = node.mesh;
+	if(m.status[n] == 0) return;
+
 	node.buffer = request.response;
-	node.nvert = m.nvertices[n];
-	node.nface = m.nfaces[n];
 
 	if(!m.compressed)
 		readyNode(node);
@@ -993,15 +1058,16 @@ function loadNode(request, context, node) {
 	}
 }
 
-function loadTexture(request, context, node, texid) {
-	var m = node.mesh;
+function loadNodeTexture(request, context, node, texid) {
 	var n = node.id;
-	if(m.status[n] == 0) return; //aborted
+	var m = node.mesh;
+	if(m.status[n] == 0) return;
 
-	var blob = request.response; 
+	var blob = request.response;
+
 	var urlCreator = window.URL || window.webkitURL;
 	var img = document.createElement('img');
-	img.onerror = function(e) { console.log("Failed loading texture."); };
+	img.onerror = function(e) { console.log("Texture loading error!"); };
 	img.src = urlCreator.createObjectURL(blob);
 
 	var gl = context.gl;
@@ -1020,8 +1086,14 @@ function loadTexture(request, context, node, texid) {
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
 
 		m.status[n]--;
-		updateCache(gl);
-		node.instance.onUpdate();
+
+		if(m.status[n] == 2) {
+			m.status[n]--; //ready
+			node.reqAttempt = 0;
+			node.context.pending--;
+			node.instance.onUpdate();
+			updateCache(gl);
+		}
 	}
 }
 
@@ -1095,8 +1167,6 @@ function readyNode(node) {
 			scramble(nv, v, no, co);
 	}
 
-
-
 	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
@@ -1106,10 +1176,14 @@ function readyNode(node) {
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
 	m.status[n]--;
-	node.context.pending--;
-	if(m.status[n] == 1)
+
+	if(m.status[n] == 2) {
+		m.status[n]--; //ready
+		node.reqAttempt = 0;
+		node.context.pending--;
 		node.instance.onUpdate();
-	updateCache(gl); //call anyway even if waiting for texture
+		updateCache(gl);
+	}
 }
 
 function updateCache(gl) {
@@ -1136,8 +1210,9 @@ function updateCache(gl) {
 			return;
 		removeNode(context, worst);
 	}
+
 	requestNode(context, best);
- 
+
 	if(context.pending < maxPending)
 		updateCache(gl);
 }

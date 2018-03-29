@@ -74,7 +74,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	QFile file;
 	file.setFileName(output);
 	if(!file.open(QIODevice::WriteOnly | QFile::Truncate))
-		throw QString("Could not open file: " + output + " for writing");
+		throw QString("could not open file " + output + " for writing");
 
 	nx::Header header = nexus->header;
 	header.signature = signature;
@@ -125,7 +125,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 		assert(patch.node < nodes.size());
 	}
 
-	cout << "n textures: " << nexus->header.n_textures << endl;
+	cout << "Textures: " << nexus->header.n_textures << endl;
 	textures.resize(nexus->header.n_textures);
 
 	header.n_nodes = nodes.size();
@@ -212,7 +212,7 @@ nx::Traversal::Action Extractor::expand(nx::Traversal::HeapNode h) {
 	current_size += node.getEndOffset() - node.getBeginOffset();
 	current_triangles += node.nface;
 
-	cout << "max size: " << max_size << " CUrrent siuze: " << current_size << endl;
+	cout << "Max size: " << max_size << " Current size: " << current_size << endl;
 	if(max_triangles && current_triangles > max_triangles)
 		return STOP;
 	if(max_size && current_size > max_size)
@@ -248,10 +248,10 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 
 		coder.encode();
 
-		cout << "V size: " << coder.coord_size << endl;
-		cout << "N size: " << coder.normal_size << endl;
-		cout << "C size: " << coder.color_size << endl;
-		cout << "I size: " << coder.face_size << endl;
+		//cout << "V size: " << coder.coord_size << endl;
+		//cout << "N size: " << coder.normal_size << endl;
+		//cout << "C size: " << coder.color_size << endl;
+		//cout << "I size: " << coder.face_size << endl;
 
 		file.write((char *)&*coder.stream.buffer, coder.stream.size());
 		//padding
@@ -367,8 +367,8 @@ void Extractor::savePly(QString filename) {
 
 	bool has_colors = nexus->header.signature.vertex.hasColors();
 
-	cout << "n vertices: " << n_vertices << endl;
-	cout << "n faces: " << n_faces << endl;
+	cout << "Vertices: " << n_vertices << endl;
+	cout << "Faces: " << n_faces << endl;
 	{ //stram flushes on destruction
 		QTextStream stream(&ply);
 		stream << "ply\n"

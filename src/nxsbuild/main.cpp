@@ -61,44 +61,44 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString(" ARGS specify one or more .ply or .obj files or a directory"));
+	opt.setHelp(QString("ARGS specify one or more .ply or .obj files or a directory"));
 
 	opt.allowUnlimitedArguments(true); //able to join several plys
 
 	//extraction options
-	opt.addOption('o', "output_filename", "filename of the nexus output file", &output);
+	opt.addOption('o', "output filename", "filename of the nexus output file", &output);
 
 	//construction options
-	opt.addOption('f', "node_faces", "number of faces per patch, default: 32768", &node_size);
-	opt.addOption('t', "top_node_faces", "number of triangles in the top node, default 4096", &top_node_size);
-	opt.addOption('d', "decimation", "decimation method: quadric, edgelen. Default: quadric", &decimation);
+	opt.addOption('f', "node faces", "number of faces per patch, default 32768", &node_size);
+	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096", &top_node_size);
+	opt.addOption('d', "decimation", "decimation method: quadric, edgelen, default quadric", &decimation);
 	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
-	opt.addOption('S', "skiplevels", "decimation skipped for n levels (default 0)", &skiplevels);
-	opt.addSwitch('O', "orig_textures", "Use original textures, no repacking", &useOrigTex);
+	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0", &skiplevels);
+	opt.addSwitch('O', "original textures", "Use original textures, no repacking", &useOrigTex);
 
 	//btree options
-	opt.addOption('a', "adaptive", "split nodes adaptively [0...1] default 0.333", &adaptive);
+	opt.addOption('a', "adaptive", "split nodes adaptively [0...1], default 0.333", &adaptive);
 
-	opt.addOption('v', "vertex_quantization", "vertex quantization grid size (might be approximated)", &vertex_quantization);
-	opt.addOption('q', "texture quality", "jpeg quality for texture [0-100]: default 92", &tex_quality);
+	opt.addOption('v', "vertex quantization", "vertex quantization grid size (might be approximated)", &vertex_quantization);
+	opt.addOption('q', "texture quality", "jpeg quality for texture [0-100], default 92", &tex_quality);
 
 	//format options
-	opt.addSwitch('p', "point_cloud", "generate a multiresolution point cloud", &point_cloud);
+	opt.addSwitch('p', "point cloud", "generate a multiresolution point cloud", &point_cloud);
 
 	opt.addSwitch('N', "normals", "force per vertex normals, even in point clouds", &normals);
-	opt.addSwitch('n', "no_normals", "do not store per vertex normals", &no_normals);
+	opt.addSwitch('n', "no normals", "do not store per vertex normals", &no_normals);
 	opt.addSwitch('C', "colors", "save colors", &colors);
-	opt.addSwitch('c', "no_colors", "do not store per vertex colors", &no_colors);
-	opt.addSwitch('u', "no_textures", "do not store per vertex texture coordinates", &no_texcoords);
+	opt.addSwitch('c', "no colors", "do not store per vertex colors", &no_colors);
+	opt.addSwitch('u', "no textures", "do not store per vertex texture coordinates", &no_texcoords);
 
 	//other options
-	opt.addOption('r', "ram", "max ram used (in Megabytes default 2000) WARNING: not a hard limit, increase at your risk :P", &ram_buffer);
+	opt.addOption('r', "ram", "max ram used (in Megabytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
 	opt.parse();
 
 	//Check parameters are correct
 	QStringList inputs = opt.arguments;
 	if(inputs.size() == 0) {
-		cerr << "No input files specified\n" << endl;
+		cerr << "No input files specified" << endl;
 		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
 	}
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 			filters << "*.ply" << "*.obj"; //append your xml filter. You can add other filters here
 			inputs = dir.entryList(filters, QDir::Files);
 			if(inputs.size() == 0) {
-				cerr << "Empty directory." << endl;
+				cerr << "Empty directory" << endl;
 				return -1;
 			}
 			for(QString &s: inputs)
@@ -160,15 +160,15 @@ int main(int argc, char *argv[]) {
 
 		if((!no_normals && (!point_cloud || has_normals)) || normals) {
 			components |= NexusBuilder::NORMALS;
-			cout << "Normals enabled.\n";
+			cout << "Normals enabled\n";
 		}
 		if((has_colors  && !no_colors ) || colors ) {
 			components |= NexusBuilder::COLORS;
-			cout << "Colors enabled.\n";
+			cout << "Colors enabled\n";
 		}
 		if(has_textures && !no_texcoords) {
 			components |= NexusBuilder::TEXTURES;
-			cout << "Textures enabled.\n";
+			cout << "Textures enabled\n";
 		}
 
 		NexusBuilder builder(components);
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
 		builder.tex_quality = tex_quality;
 		bool success = builder.initAtlas(stream->textures);
 		if(!success) {
-			cerr << "Exiting." << endl;
+			cerr << "Exiting" << endl;
 			return 1;
 		}
 
@@ -205,7 +205,6 @@ int main(int argc, char *argv[]) {
 		delete tree;
 		delete stream;
 
-
 	} catch(QString error) {
 		cout << "Fatal error: " << qPrintable(error) << endl;
 		return -1;
@@ -213,5 +212,6 @@ int main(int argc, char *argv[]) {
 		cout << "Fatal error: " << error << endl;
 		return -1;
 	}
+
 	return 0;
 }

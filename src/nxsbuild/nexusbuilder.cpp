@@ -120,7 +120,7 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 		level++;
 		if(skipSimplifyLevels <= 0 && last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
 			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
-			cout << "Quitting prematurely (most probably to high parametrization fragmentation)!\n";
+			cout << "Quitting prematurely (most probably to high parametrization fragmentation)\n";
 			break;
 		}
 		last_top_level_size = stream->size();
@@ -362,7 +362,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 			break;
 	}
 	if(!success) {
-		cerr << "Failed packing! The texture in a single nexus node would be > 16K!\n";
+		cerr << "Failed packing: the texture in a single nexus node would be > 16K\n";
 		cerr << "Try to reduce the size of the nodes using -t 4000 (default is 16000)";
 		exit(0);
 	}
@@ -605,8 +605,8 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 				}
 				tmp.splitSeams(header.signature);
 				if(tmp.vert.size() > 60000) {
-					cerr << "Unable to properly simplify due to framented parametrization.\n"
-						 << "Using a smaller (than the 32000 default) node size (-f) might alleviate the problem." << endl;
+					cerr << "Unable to properly simplify due to framented parametrization\n"
+						 << "Using a smaller node size (-f, default is 32000) might alleviate the problem" << endl;
 					exit(0);
 				}
 
@@ -774,12 +774,12 @@ void NexusBuilder::reverseDag() {
 
 void NexusBuilder::save(QString filename) {
 
-	cout << "Saving to file: " << qPrintable(filename) << endl;
-	cout << "Input squaresize: " << sqrt(input_pixels) <<  " Output size: " << sqrt(output_pixels) << "\n";
+	//cout << "Saving to file " << qPrintable(filename) << endl;
+	//cout << "Input squaresize " << sqrt(input_pixels) <<  " Output size " << sqrt(output_pixels) << "\n";
 
 	file.setFileName(filename);
 	if(!file.open(QIODevice::ReadWrite | QIODevice::Truncate))
-		throw QString("Could not open file; " + filename);
+		throw QString("could not open file " + filename);
 
 	if(header.signature.vertex.hasNormals() && header.signature.face.hasIndex())
 		uniformNormals();
@@ -880,7 +880,7 @@ void NexusBuilder::save(QString filename) {
 			nodeTex.seek(0);
 			bool success = file.write(nodeTex.readAll());
 			if(!success)
-				throw QString("Failed writing texture");
+				throw QString("failed writing texture");
 
 		} else {
 			for(int i = 0; i < textures.size()-1; i++) {
@@ -888,10 +888,10 @@ void NexusBuilder::save(QString filename) {
 				assert(tex.offset == file.pos()/NEXUS_PADDING);
 				QFile image(images[i]);
 				if(!image.open(QFile::ReadOnly))
-					throw QString("Could not load img: '%1'").arg(images[i]);
+					throw QString("could not load img %1").arg(images[i]);
 				bool success = file.write(image.readAll());
 				if(!success)
-					throw QString("Failed writing texture %1").arg(images[i]);
+					throw QString("failed writing texture %1").arg(images[i]);
 				//we should use texture.offset instead.
 				quint64 s = file.pos();
 				s = pad(s);
@@ -904,6 +904,7 @@ void NexusBuilder::save(QString filename) {
 		for(int i = 0; i < textures.size()-1; i++) {
 			QFile::remove(QString("nexus_tmp_tex%1.png").arg(i));
 		}
+	cout << "Saving to file " << qPrintable(filename) << endl;
 	file.close();
 }
 

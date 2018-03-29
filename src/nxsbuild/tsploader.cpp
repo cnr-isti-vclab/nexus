@@ -25,7 +25,7 @@ TspLoader::TspLoader(QString filename) {
 
 	file.setFileName(filename);
 	if(!file.open(QIODevice::ReadOnly))
-		throw QString("Could not open file: " + filename);
+		throw QString("could not open file " + filename);
 }
 
 Triangle readTriangle(float *tmp) {
