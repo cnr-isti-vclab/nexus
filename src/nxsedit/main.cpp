@@ -68,43 +68,43 @@ int main(int argc, char *argv[]) {
 	QString recompute_error;
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString("ARGS specify a nexus file"));
+	opt.setHelp(QString("ARGS specify a nexus or a ply file"));
 
 	opt.allowUnlimitedArguments(true); //able to join several inputs
 
-//	opt.addArgument("nexus file", "path to the nexus file (add .nxs or not)", &input);
-
+	//info options
 	opt.addSwitch('i', "info", "prints info about the nexus", &info);
-	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes);
-	opt.addSwitch('q', "show patches", "prints info about payches", &show_patches);
-	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag);
-	opt.addSwitch('c', "check", "performs various checks", &check);
+//	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes); //DOESN'T WORK, TO CHECK
+//	opt.addSwitch('q', "show patches", "prints info about payches", &show_patches); //DOESN'T WORK, TO CHECK
+//	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag); //DOESN'T WORK, TO CHECK
+//	opt.addSwitch('c', "check", "performs various checks", &check); //DOESN'T WORK, TO CHECK
 
 	//extraction options
 	opt.addOption('o', "nexus file", "filename of the nexus output file", &output);
 	opt.addOption('p', "ply file", "filename of the ply output file", &ply);
-	opt.addOption('s', "size", "size in MegaBytes of the final file [requires -E]", &max_size);
-	opt.addOption('e', "error", "remove nodes below this error from the node", &error);
-	opt.addOption('t', "triangles", "drop nodes until total number of triangles is < triangles [about double final resolution]", &max_triangles);
-	opt.addSwitch('l', "last level", "remove nodes from last level", &drop_level);
+
+	opt.addOption('s', "size", "size in MegaBytes of the final file [requires -o]", &max_size);
+	opt.addOption('e', "error", "remove nodes below this error from the node [requires -o]", &error);
+	opt.addOption('t', "triangles", "drop nodes until total number of triangles is < triangles  [requires -o]", &max_triangles);
+	opt.addSwitch('l', "last level", "remove nodes from last level [requires -o]", &drop_level);
 
 	//compression and quantization options
 	opt.addSwitch('z', "compress", "compress patches", &compress);
-	opt.addOption('Z', "compression library", "pick among compression libs [corto, meco], default corto", &compresslib);
-	opt.addOption('v', "vertex quantization", "absolute side of compression quantization grid", &coord_step);
-	opt.addOption('V', "vertex bits", "number of bits in vertex coordinate when compressing", &position_bits);
-	opt.addOption('Y', "luma bits", "quantization of luma channel, default 6", &luma_bits);
-	opt.addOption('C', "chroma bits", "quantization of chroma channel, default 6", &chroma_bits);
-	opt.addOption('A', "alha bits", "quantization of alpha channel, default 5", &alpha_bits);
-	opt.addOption('N', "normal bits", "quantization of normals, default 10", &norm_bits);
-	opt.addOption('T', "textures bits", "quantization of textures, default 0.25", &tex_step);
-	opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1", &error_q);
+	opt.addOption('Z', "compression library", "pick among compression libs [corto, meco], default corto [requires -z]", &compresslib);
+	opt.addOption('v', "vertex quantization", "absolute side of quantization grid [requires -z]", &coord_step);
+	opt.addOption('V', "vertex bits", "number of bits in vertex coordinates when compressing [requires -z]", &position_bits);
+	opt.addOption('Y', "luma bits", "quantization of luma channel, default 6 [requires -z]", &luma_bits);
+	opt.addOption('C', "chroma bits", "quantization of chroma channel, default 6 [requires -z]", &chroma_bits);
+	opt.addOption('A', "alha bits", "quantization of alpha channel, default 5 [requires -z]", &alpha_bits);
+	opt.addOption('N', "normal bits", "quantization of normals, default 10 [requires -z]", &norm_bits);
+	opt.addOption('T', "textures bits", "quantization of textures, default 0.25 [requires -z]", &tex_step);
+	opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1 [requires -z]", &error_q);
 
-	opt.addOption('E', "recompute error", "recompute error [average, quadratic, logarithmic, curvature]", &recompute_error);
-
-	opt.addOption('m', "matrix", "multiply by matrix44 in format a:b:c...", &matrix);
-	opt.addOption('M', "imatrix", "multiply by inverse of matrix44 in format a:b:c...", &imatrix);
-//	opt.addOption('P', "project file", "tex taylor project file", &projection);
+	//other options
+//	opt.addOption('E', "recompute error", "recompute error [average, quadratic, logarithmic, curvature]", &recompute_error); //DOESN'T WORK, TO CHECK
+//	opt.addOption('m', "matrix", "multiply by matrix44 in format a:b:c... [requires -o]", &matrix); //DOESN'T WORK, TO CHECK
+//	opt.addOption('M', "imatrix", "multiply by inverse of matrix44 in format a:b:c... [requires -o]", &imatrix); //DOESN'T WORK, TO CHECK
+//	opt.addOption('P', "project file", "tex taylor project file", &projection); //DOESN'T WORK, TO CHECK
 
 	opt.parse();
 
@@ -308,9 +308,11 @@ void printInfo(NexusData &nexus) {
 	cout << "Tot faces   : " << header.nface << endl;
 
 	cout << "Components  :";
+	if(!header.signature.face.hasIndex()) cout << " pointcloud";
+	else  cout << " mesh";
 	if(header.signature.vertex.hasNormals()) cout << " normals";
 	if(header.signature.vertex.hasColors()) cout << " colors";
-	if(!header.signature.face.hasIndex()) cout << " pointcloud";
+	if (header.signature.vertex.hasTextures()) cout << " textures";
 	cout << endl;
 
 	cout << "Flag        : " << header.signature.flags;

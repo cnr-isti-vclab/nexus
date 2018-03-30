@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString("ARGS specify one or more .ply or .obj files or a directory"));
+	opt.setHelp(QString("ARGS specify a ply file (specify more ply files or the directory containing them to get a merged output)"));
 
 	opt.allowUnlimitedArguments(true); //able to join several plys
 
@@ -71,16 +71,16 @@ int main(int argc, char *argv[]) {
 	//construction options
 	opt.addOption('f', "node faces", "number of faces per patch, default 32768", &node_size);
 	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096", &top_node_size);
-	opt.addOption('d', "decimation", "decimation method: quadric, edgelen, default quadric", &decimation);
+	opt.addOption('d', "decimation", "decimation method [quadric, edgelen], default quadric", &decimation);
 	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
 	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0", &skiplevels);
-	opt.addSwitch('O', "original textures", "Use original textures, no repacking", &useOrigTex);
+	opt.addSwitch('O', "original textures", "use original textures, no repacking", &useOrigTex);
 
 	//btree options
-	opt.addOption('a', "adaptive", "split nodes adaptively [0...1], default 0.333", &adaptive);
+	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333", &adaptive);
 
 	opt.addOption('v', "vertex quantization", "vertex quantization grid size (might be approximated)", &vertex_quantization);
-	opt.addOption('q', "texture quality", "jpeg quality for texture [0-100], default 92", &tex_quality);
+	opt.addOption('q', "texture quality", "texture quality [0-100], default 92", &tex_quality);
 
 	//format options
 	opt.addSwitch('p', "point cloud", "generate a multiresolution point cloud", &point_cloud);
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('u', "no textures", "do not store per vertex texture coordinates", &no_texcoords);
 
 	//other options
-	opt.addOption('r', "ram", "max ram used (in Megabytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
+	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
 	opt.parse();
 
 	//Check parameters are correct

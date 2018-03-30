@@ -95,7 +95,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 		if(buffer[0] == '#')            //skip comments
 			continue;
 		if(buffer[0] != 'f')            //vertex
-			throw QString("expecting a face, not %1").arg(buffer);
+			throw QString("expecting faces, not this %1").arg(buffer);
 
 		int face[3];
 		int normal[3];
