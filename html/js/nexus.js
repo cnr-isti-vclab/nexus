@@ -41,18 +41,17 @@ for(i = 0; i < scripts.length; i++) {
 }
 var meco = null;
 function loadMeco() {
-	if(typeof(presenter) != "undefined") //back compatible for 3DHOP
-		meco = new Worker(path.replace('nexus.js', 'meshcoder_worker.js'));
-	else
-		meco = new Worker(path.replace('nexus.js', 'meco.js'));
+	meco = new Worker(path.replace('nexus.js', 'meco.js'));
 
 	meco.onerror = function(e) { console.log(e); }
 	meco.requests = {};
 	meco.count = 0;
 	meco.postRequest = function(sig, node, patches) {
 		var signature = {
-			texcoords: sig.texcoords?1:0, colors: sig.colors?1:0,
-			normals: sig.normals?1:0, indices: sig.indices?1:0
+			texcoords: sig.texcoords ? 1 : 0,
+			colors   : sig.colors    ? 1 : 0,
+			normals  : sig.normals   ? 1 : 0,
+			indices  : sig.indices   ? 1 : 0
 		};
 		meco.postMessage({ 
 			signature:signature,
