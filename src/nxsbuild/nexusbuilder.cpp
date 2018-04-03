@@ -312,7 +312,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	for(int &b: vertex_to_box)
 		b = remap[b];
 
-
 	std::vector<vcg::Point2i> sizes(boxes.size());
 	std::vector<vcg::Point2i> origins(boxes.size());
 	for(size_t b = 0; b < boxes.size(); b++) {
@@ -442,7 +441,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		color[1] = ((boxid % 7)*57)%127 + 127;
 		color[0] = ((boxid % 16)*135)%127 + 127; */
 
-
 			int source = box_texture[i];
 			vcg::Point2i &o = origins[i];
 			vcg::Point2i &s = sizes[i];
@@ -534,7 +532,6 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			node.first_patch = patch_offset;
 			nodes.push_back(node);
 			boxes.push_back(NodeBox(input, block));
-
 
 			//we pick the deleted vertices from simplification and reprocess them.
 
@@ -663,7 +660,6 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 				node = mesh1.getNode(); //get node data before simplification
 			else
 				node = tmp.getNode();
-
 
 			int nface;
 			if(!hasTextures()) {
@@ -989,16 +985,17 @@ void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, s
 
 void NexusBuilder::uniformNormals() {
 	cout << "Unifying normals\n";
-	/* level 0: for each node in the lowest level:
+	/* 
+	level 0: for each node in the lowest level:
 			load the neighboroughs
 			find common vertices (use lock to find the vertices)
 			average normals
 
-	   level > 0: for every other node (goind backwards)
+	level > 0: for every other node (goind backwards)
 			load child nodes
 			find common vertices (use lock, it's way faster!)
-			copy normal */
-
+			copy normal
+	*/
 
 	std::vector<NVertex> vertices;
 
@@ -1008,7 +1005,6 @@ void NexusBuilder::uniformNormals() {
 
 		vcg::Box3f box = boxes[t].box;
 		box.Offset(box.Diag()/100);
-
 
 		vertices.clear();
 		appendBorderVertices(t, t, vertices);
@@ -1048,7 +1044,6 @@ void NexusBuilder::uniformNormals() {
 			if(v.point != previous) {
 				//uniform normals;
 				if(k - last > 1) {   //more than 1 vertex to unify
-
 
 					if(last_level) {     //average all normals of the coincident points.
 

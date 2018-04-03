@@ -139,21 +139,26 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
+		string input = "Mesh";
 		Stream *stream = 0;
-		if(point_cloud)
+		if (point_cloud) {
+			input = "Pointcloud";
 			stream = new StreamCloud("cache_stream");
+		}
 		else
 			stream = new StreamSoup("cache_stream");
+
 		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
 		stream->load(inputs);
+
 		bool has_colors = stream->hasColors();
 		bool has_normals = stream->hasNormals();
 		bool has_textures = stream->hasTextures();
 
-		if(has_colors) cout << "Mesh with colors\n";
-		if(has_normals) cout << "Mesh with normals\n";
-		if(has_textures) cout << "Mesh with textures\n";
+		if(has_normals) cout << input << " with normals\n";
+		if(has_colors) cout << input << " with colors\n";
+		if(has_textures) cout << input << " with textures\n";
 
 		quint32 components = 0;
 		if(!point_cloud) components |= NexusBuilder::FACES;

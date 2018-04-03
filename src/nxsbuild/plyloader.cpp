@@ -164,31 +164,26 @@ void PlyLoader::init() {
 		pf.AddToRead(plyprop1[11]);
 		pf.AddToRead(plyprop1[12]);
 
-
 		if(error ==  vcg::ply::E_NOERROR)
 			has_colors = true;
 	}
 
-	//these calls will fail silently if no normals on vertices
-	if(n_triangles == 0) {
-		error = pf.AddToRead(plyprop1[7]);
-		pf.AddToRead(plyprop1[8]);
-		pf.AddToRead(plyprop1[9]);
-		if(error == vcg::ply::E_NOERROR)
-			has_normals = true;
-	}
+	//these calls will fail silently if no normal is present
+	error = pf.AddToRead(plyprop1[7]);
+	pf.AddToRead(plyprop1[8]);
+	pf.AddToRead(plyprop1[9]);
+	if(error == vcg::ply::E_NOERROR)
+		has_normals = true;
 
 	pf.AddToRead(plyprop2[0]);
 	pf.AddToRead(plyprop2_uint[0]);
 	pf.AddToRead(plyprop3[0]);
 	pf.AddToRead(plyprop3_uint[0]);
-	if(pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR) {
-		has_textures = true;
-	}
-	if(pf.AddToRead(plyprop5[0]) == vcg::ply::E_NOERROR) {
-		//do nothing.
-	}
 
+	//these calls will fail silently if no texture is present
+	if(pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR)
+		has_textures = true;
+	//if(pf.AddToRead(plyprop5[0]) == vcg::ply::E_NOERROR)
 
 	pf.SetCurElement(vertices_element);
 }
