@@ -181,9 +181,8 @@ void PlyLoader::init() {
 	pf.AddToRead(plyprop3_uint[0]);
 
 	//these calls will fail silently if no texture is present
-	if(pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR)
-		has_textures = true;
-	//if(pf.AddToRead(plyprop5[0]) == vcg::ply::E_NOERROR)
+	if (pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR) { has_textures = true; }
+	if (pf.AddToRead(plyprop5[0]) == vcg::ply::E_NOERROR) { }
 
 	pf.SetCurElement(vertices_element);
 }

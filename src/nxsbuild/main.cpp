@@ -139,10 +139,10 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		string input = "Mesh";
+		string input = "mesh";
 		Stream *stream = 0;
 		if (point_cloud) {
-			input = "Pointcloud";
+			input = "pointcloud";
 			stream = new StreamCloud("cache_stream");
 		}
 		else
@@ -156,9 +156,11 @@ int main(int argc, char *argv[]) {
 		bool has_normals = stream->hasNormals();
 		bool has_textures = stream->hasTextures();
 
-		if(has_normals) cout << input << " with normals\n";
-		if(has_colors) cout << input << " with colors\n";
-		if(has_textures) cout << input << " with textures\n";
+		cout << "Components: " << input;
+		if(has_normals) cout << " normals";
+		if(has_colors) cout << " colors";
+		if(has_textures) cout << " textures";
+		cout << "\n";
 
 		quint32 components = 0;
 		if(!point_cloud) components |= NexusBuilder::FACES;
