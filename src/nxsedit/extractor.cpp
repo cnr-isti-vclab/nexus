@@ -272,7 +272,8 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 
 		if(signature.vertex.hasNormals()) {
 			encoder.addNormals((int16_t *)data.normals(signature, node.nvert), norm_bits, 
-							   node.nface == 0? crt::NormalAttr::DIFF : crt::NormalAttr::BORDER);
+							   crt::NormalAttr::DIFF);
+//							   node.nface == 0? crt::NormalAttr::DIFF : crt::NormalAttr::BORDER);
 		}
 
 		if(signature.vertex.hasColors())
