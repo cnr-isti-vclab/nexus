@@ -960,7 +960,7 @@ void NexusBuilder::optimizeNode(quint32 n, uchar *chunk) {
 	}
 }
 
-
+/* extracts vertices in origin which intersects destination box */
 void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, std::vector<NVertex> &vertices) {
 	Node &node = nodes[origin];
 	uint32_t chunk = node.offset; //chunk index was stored here.
@@ -974,7 +974,8 @@ void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, s
 	vcg::Point3s *normal = (vcg::Point3s *)(buffer + size * node.nvert);
 	uint16_t *face = (uint16_t *)(buffer + header.signature.vertex.size()*node.nvert);
 
-	NodeBox &nodebox = boxes[destination];
+	NodeBox &nodebox = boxes[origin];
+	
 	vector<bool> border = nodebox.markBorders(node, point, face);
 	for(int i = 0; i < node.nvert; i++) {
 		if(border[i])
@@ -1004,7 +1005,8 @@ void NexusBuilder::uniformNormals() {
 		Node &target = nodes[t];
 
 		vcg::Box3f box = boxes[t].box;
-		box.Offset(box.Diag()/100);
+		//box.Offset(box.Diag()/100);
+		box.Offset(box.Diag()/10);
 
 		vertices.clear();
 		appendBorderVertices(t, t, vertices);
@@ -1021,7 +1023,7 @@ void NexusBuilder::uniformNormals() {
 				appendBorderVertices(n, t, vertices);
 			}
 
-		} else {
+		} else { //again among childrens.
 
 			for(uint p = target.first_patch; p < target.last_patch(); p++) {
 				uint n = patches[p].node;
@@ -1036,10 +1038,38 @@ void NexusBuilder::uniformNormals() {
 
 		sort(vertices.begin(), vertices.end());
 
-		uint last = 0;
-		vcg::Point3f previous(vertices[0].point);
+		uint start = 0;
+		while(start < vertices.size()) {
+			NVertex &v = vertices[start];
+			
+			uint last = start+1;
+			while(last < vertices.size() && vertices[last].point == v.point)
+				last++;
 
-		for(uint k = 0; k < vertices.size(); k++) {
+			if(last_level && last - start > 1) { //average all normals
+				vcg::Point3f normalf(0, 0, 0);
+				for(uint k = start; k < last; k++) {
+					for(int l = 0; l < 3; l++)
+						normalf[l] += (*vertices[k].normal)[l];
+				}
+				normalf.Normalize();
+				//convert back to shorts
+				vcg::Point3s normals;
+				for(int l = 0; l < 3; l++)
+					normals[l] = (short)(normalf[l]*32766);
+					
+				for(uint k = start; k < last; k++) 
+					*vertices[k].normal = normals;
+				
+			} else //just copy from first one (coming from lower level due to sorting
+				for(uint k = start; k < last; k++)
+					*vertices[k].normal =*v.normal;
+			
+			start = last;
+		}
+
+		
+/*		for(uint k = 0; k < vertices.size(); k++) {
 			NVertex &v = vertices[k];
 			if(v.point != previous) {
 				//uniform normals;
@@ -1067,9 +1097,9 @@ void NexusBuilder::uniformNormals() {
 							*vertices[k-1].normal = *vertices[last].normal;
 					}
 				}
-				previous =v.point;
+				previous = v.point;
 				last = k;
 			}
-		}
+		}*/
 	}
 }
