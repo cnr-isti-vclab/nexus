@@ -41,7 +41,7 @@ struct Splat: public Vertex {
 struct Triangle {
 	Vertex vertices[3];
 	quint32 node;
-	quint32 tex;  //which tex this triangle refers to.
+	int tex;  //which tex this triangle refers to.
 	bool isDegenerate() const {
 		if(vertices[0] == vertices[1] || vertices[0] == vertices[2] || vertices[1] == vertices[2])
 			return true;

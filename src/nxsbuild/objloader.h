@@ -22,6 +22,9 @@ for more details.
 #include "../common/virtualarray.h"
 
 #include <QFile>
+#include <QMap>
+#include <vector>
+
 
 class ObjLoader: public MeshLoader {
 public:
@@ -33,13 +36,24 @@ public:
 	quint32 getVertices(quint32 size, Splat *vertex);
 
 private:
+	
+	void readMTL();
+	void cacheTextureUV();
+	void cacheVertices();
+	
 	QFile file;
 	VirtualArray<Vertex> vertices;
+	std::vector<float> vtxtuv;
 	quint64 n_vertices;
 	quint64 n_triangles;
 	quint64 current_triangle;
 	quint64 current_vertex;
-
-	void cacheVertices();
+	qint64  current_tri_pos = 0;
+	quint32  current_color = 0;
+	qint32  current_texture_id = -1;
+	QMap<QString, quint32> colors_map;
+	QMap<QString, QString> textures_map;
+	
+	
 };
 #endif // NX_OBJLOADER_H
