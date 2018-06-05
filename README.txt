@@ -1,6 +1,6 @@
 # Nexus
 
-Nexus is a c++/javascript library for creation and visualization of a batched multiresolution mesh structure.
+Nexus is a c++/javascript library for creation and visualization of a batched multiresolution 3D model structure.
 
 [Nexus](http://vcg.isti.cnr.it/nexus/) by [Visual Computing Laboratory](http://vcg.isti.cnr.it) - ISTI - CNR
 
@@ -15,51 +15,68 @@ Contact me @ federico.ponchio@isti.cnr.it
 * Compression
 * WebGL
 
+### Basic usage
+
+Starting from a 3D model (.ply), drag and drop it on the **nxsbuild** executable, and it will be converted into a multiresolution nexus model (.nxs). Drag the multiresolution nexus model (.nxs) onto the **nxscompress** executable to compress it, and the result will be a compressed multiresolution nexus model (.nxz). 
+
+gargo.ply --> **nxsbuild** --> gargo.nxs --> **nxscompress.exe** --> gargo.nxz
+
+Drag and drop either .nxs or .nxz files on **nxsview** to interactively inspect the generated 3D multiresolution model.
+
+-----------------------------------------------------------------------------------------
+
 ### Create the .nxs model
 
-Use [nxsbuild](doc/nxsbuild.md) to create a multiresolution nexus model (.nxs) out of your mesh (.ply):
+Use [nxsbuild](doc/nxsbuild.md) to create a multiresolution nexus model (.nxs) out of your 3D model (.ply):
 
-	$ nxsbuild bunny.ply
+	$ nxsbuild gargo.ply
 
-The result will be bunny.nxs. For large files this may take quite some time. See the [man](doc/nxsbuild.md) page for all the options, supported input files etc.
+The result will be gargo.nxs. For large files this may take quite some time. See the [man](doc/nxsbuild.md) page for all the options, supported input files etc.
 
+### Compress the multiresolution model
 
-### Simplify and/or compress
+The model can be compressed, saving aroung 90% of the size. This is most useful for streaming applications:
 
-The model can be compressed, saving aroung 90% of the size. This is most useful for streaming applications: 
+	$ nxcompress gargo.nxs
 
-	$ nxsedit bunny.nxs -z -o bunny.nxz
-
-Detailed information about the compression parameters can be found in the [man](doc/nxsedit.md) page.
-
-You can get some statistics using [nxsedit](doc/nxsedit.md) on the created model: bounding sphere, list of patches created along with their error using nxsedit:
-
-	$ nxsedit bunny.nxs -i -n
+The result will be gargo.nxz.
+Detailed information about the compression parameters can be found in the [man](doc/nxcompress.md) page.
 
 
-The .nxs file can be simplified: you can prune the lowest level of the resolution using the -l option.
+### Edit, Info and Simplify
 
+[Nxsedit](doc/nxsedit.md) can be used for many editing operations on the multiresolution model.
+For instance, you can get some statistics on the created model (bounding sphere, list of patches, etc.):
+
+	$ nxsedit gargo.nxs -i
+
+Or also, you can simplify the .nxs file (pruning the lowest level of the multiresolution tree):
+
+	$ nxsedit gargo.nxs -l -o simplified_gargo.nxs
+
+Detailed information about the editing parameters can be found in the [man](doc/nxedit.md) page.
 
 ### Inspect your model.
 
 [Nxsview](doc/nxsview.md) is a simple program for inspecting a .nxs file:
 
-	$ nxsview bunny.nxs 
+	$ nxsview gargo.nxs 
 
 You can tune various parameters through the interface, but be sure to read the available options in the [man](doc/nxsview.md) page.
 
 
 ### WebGL
 
-The easiest way to publish the model on the web is to use [3DHOP](http://vcg.isti.cnr.it/3dhop/) interface.
-Alternatively you can use Threejs: there is a minimal example in the html directory of the repository.
+The easiest way to publish the model on the web is to use [3DHOP](http://3dhop.net) interface.
+Alternatively you can use Three.js: there is a minimal example in the HTML directory of the GitHub [Nexus repository](https://github.com/cnr-isti-vclab/nexus).
+It is strongly recommended to use compression for the models (nxscompress).
 
-It is strongly recommended to use compression for the models (nxsedit -z).
 
 ### Library
 
-The visualization algorithm can be easily (?) used as library inside your engine, both in C++ or in javascript,
+The visualization algorithm can be easily used as library inside your engine, both in C++ or in JavaScript,
 basically the algorithm job is to send geometry to the GPU.
+
 
 ### Dependencies and Licenses
 
@@ -95,6 +112,7 @@ ACM Trans. on Graphics, vol. 23(3), pp. 796-803, August 2004 (Siggraph '04)
 [BDAM: Batched Dynamic Adaptive Meshes for High Performance Terrain Visualization](http://vcg.isti.cnr.it/publications/papers/bdam.pdf)
 P.Cignoni, F.Ganovelli, E. Gobbetti, F.Marton, F. Ponchio, R. Scopigno
 Computer Graphics Forum, 22(3), pp. 505-514, September 2003
+
 
 ### Support and thanks
 

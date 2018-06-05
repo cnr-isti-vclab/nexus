@@ -1,6 +1,6 @@
 # Nxsview
 
-Nxsview is a demo progam for nxs models visualization. It exposes the parameters of the visualization algorithm for testing purpouses:
+Nxsview is a demo progam for nexus models visualization. It exposes the parameters of the visualization algorithm for testing purpouses:
 
 	nxsview [OPTIONS] [NEXUS INPUT FILE]
 

@@ -1,57 +1,43 @@
 # Nxsedit
 
-Nxsedit can be used for a number of post-processing operations over a nxs file: compression, adding color from projected photos, pruning, etc:
+Nxsedit can be used for a number of post-processing operations over a nexus file:
 
-	nxsedit [OPTIONS] [NEXUS INPUT FILE]
+	nxsedit [NEXUS INPUT FILE] [OPTIONS]
 
 All operations generate a new nexus leaving the old one untouched.
 
 ### Options
 
-**-i**: prints info about the nexus: number of patches, dag etc. The number of triangles and vertices includes all the resolutions, you can assume the highest resolution level holds half the total amount
+**-i**: prints info about the nexus: number of patches, bounding sphere, etc. The number of triangles and vertices includes all the resolutions, you can assume the highest resolution level holds half the total amount
 
-**-n**: prints info about nodes
+**-o <FILE>**: filename of the nexus output file, .nxs is added automatically
 
-**-q**: prints info about payches
+**-p <FILE>**: filename of the ply output file
 
-**-d**: prints info about dag
+**-s <val>**: extract a subset of the nxs of a given size (in MB), pruning lower error nodes [requires -o] 
 
-**-c**: performs various checks
+**-e <val>**: extract a subset of the nxs pruning nodes with error below the given value [requires -o] 
 
-**-o FILE**: filename of the nexus output file, .nxs is added automatically. If not specified no output file is created
+**-t <val>**: extract a subset of the nxs of a given triangle count, pruning lower error nodes [requires -o] 
 
-**-p FILE**: filename of the ply output file
+**-l**: prune the last level of nodes from the nexus (thus approximately halving the size and the triangle count) [requires -o] 
 
-**-s M**: extract a subset of the nxs of a given size (in MB), pruning lower error nodes. (requires -E option)
+**-z**: applies a (somewhat lossy) compression algorithm to each patch
 
-**-e E**: extract a subset of the nxs pruning nodes with error below the given value (-i -n options can be used to inspect node errors)
+**-Z <val>**  pick among compression libs [corto, meco], default corto [requires -z]
 
-**-t T**: extract a subset of the nxs of a given triangle count, pruning lower error nodes
+**-v <val>**  absolute side of quantization grid [requires -z]
 
-**-l**: prune the last level of nodes from the nexus (thus approximately halving the size and the triangle count)
+**-V <val>**  number of bits in vertex coordinates when compressing [requires -z]
 
-**-z**: Applies a (somewhat lossy) compression algorithm to each patch. You can tune quantization parameters using the following options
+**-Y <val>**  quantization of luma channel, default 6 [requires -z]
 
-**-v S**: absolute side of compression quantization grid
+**-C <val>**  quantization of chroma channel, default 6 [requires -z]
 
-**-V B**: number of bits in vertex coordinate when compressing
+**-A <val>**  quantization of alpha channel, default 5 [requires -z]
 
-**-Y B**: quantization of luma channel (default 6 bits)
+**-N <val>**  quantization of normals, default 10 [requires -z]
 
-**-C B**: quantization of chroma channel (default 6 bits)
+**-T <val>**  quantization of textures, default 0.25 [requires -z]
 
-**-A B**: quantization of alpha channel (default bits)
-
-**-N B**: quantization of normals (default 10 bits)
-
-**-T Q**: quantization of textures coordinates (default 0.25 pixel)
-
-**-Q Q**: coordinates quantization grid as a fraction of smallest node error (default 0.1)
-
-**-E METHOD**: recompute errors (average, quadratic, logarithmic)
-
-**-m MATRIX**: multiply by matrix44 in format a:b:c...
-
-**-M MATRIX**: multiply by inverse of matrix44 in format a:b:c...
-
-
+**-Q <val>**  quantization as a factor of error, default 0.1 [requires -z]

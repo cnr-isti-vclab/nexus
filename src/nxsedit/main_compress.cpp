@@ -17,6 +17,7 @@ for more details.
 */
 #include <stdio.h>
 #include <iostream>
+
 #include <QStringList>
 #include <wrap/system/qgetopt.h>
 
@@ -24,10 +25,18 @@ for more details.
 #include "../common/traversal.h"
 #include "extractor.h"
 
+#include <QtGui>
+
 using namespace std;
 using namespace nx;
 
+//TODO REMOVE unused textures when resizing nexus.
 int main(int argc, char *argv[]) {
+
+	// we create a QCoreApplication just so that QT loads image IO plugins (for jpg and tiff loading)
+	QCoreApplication myUselessApp(argc, argv);
+	setlocale(LC_ALL, "C");
+	QLocale::setDefault(QLocale::C);
 
 	QString input;
 	QString output;
