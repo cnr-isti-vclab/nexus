@@ -74,7 +74,8 @@ int main(int argc, char *argv[]) {
 	QString recompute_error;
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString("ARGS specify a nexus or a ply file"));
+	QString help("ARGS specify a nexus or a ply file");
+	opt.setHelp(help);
 
 	opt.allowUnlimitedArguments(true); //able to join several inputs
 
