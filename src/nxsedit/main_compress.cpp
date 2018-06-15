@@ -48,10 +48,11 @@ int main(int argc, char *argv[]) {
 	QString imatrix("");
 	QString compresslib("corto");
 
-    bool compress = true;
+	bool compress = true;
 
 	GetOpt opt(argc, argv);
-    opt.setHelp(QString("ARGS specify a nexus file"));
+	QString help("ARGS specify a nexus file");
+	opt.setHelp(help);
 
 	opt.allowUnlimitedArguments(true); //able to join several inputs
 
@@ -59,15 +60,15 @@ int main(int argc, char *argv[]) {
 	opt.addOption('o', "nexus file", "filename of the nexus output file", &output);
 
 	//compression and quantization options
-    opt.addOption('Z', "compression library", "pick among compression libs [corto, meco], default corto", &compresslib);
-    opt.addOption('v', "vertex quantization", "absolute side of quantization grid, default 0.0 (uses quantization factor, instead)", &coord_step);
-    opt.addOption('V', "vertex bits", "number of bits in vertex coordinates when compressing default, 0 (uses quantization factor, instead)", &position_bits);
-    opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1", &error_q);
-    opt.addOption('Y', "luma bits", "quantization of luma channel, default 6", &luma_bits);
-    opt.addOption('C', "chroma bits", "quantization of chroma channel, default 6", &chroma_bits);
-    opt.addOption('A', "alha bits", "quantization of alpha channel, default 5", &alpha_bits);
-    opt.addOption('N', "normal bits", "quantization of normals, default 10", &norm_bits);
-    opt.addOption('T', "textures bits", "quantization of textures, default 0.25", &tex_step);
+	opt.addOption('Z', "compression library", "pick among compression libs [corto, meco], default corto", &compresslib);
+	opt.addOption('v', "vertex quantization", "absolute side of quantization grid, default 0.0 (uses quantization factor, instead)", &coord_step);
+	opt.addOption('V', "vertex bits", "number of bits in vertex coordinates when compressing default, 0 (uses quantization factor, instead)", &position_bits);
+	opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1", &error_q);
+	opt.addOption('Y', "luma bits", "quantization of luma channel, default 6", &luma_bits);
+	opt.addOption('C', "chroma bits", "quantization of chroma channel, default 6", &chroma_bits);
+	opt.addOption('A', "alha bits", "quantization of alpha channel, default 5", &alpha_bits);
+	opt.addOption('N', "normal bits", "quantization of normals, default 10", &norm_bits);
+	opt.addOption('T', "textures bits", "quantization of textures, default 0.25", &tex_step);
 
 	opt.parse();
 
@@ -105,7 +106,7 @@ int main(int argc, char *argv[]) {
 		}
 		Extractor extractor(&nexus);
 
-        if(!output.isEmpty()) { //export to nexus
+	  if(!output.isEmpty()) { //export to nexus
 
 			bool invert = false;
 			if(!imatrix.isEmpty()) {
@@ -182,7 +183,7 @@ int main(int argc, char *argv[]) {
 			extractor.save(output, signature);
 			//builder.copy(nexus, out, selection);
 
-            cout << "Saving to file " << qPrintable(output) << endl;
+		cout << "Saving to file " << qPrintable(output) << endl;
 		}
 
 	}
