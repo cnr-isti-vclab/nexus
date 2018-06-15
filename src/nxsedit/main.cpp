@@ -17,6 +17,7 @@ for more details.
 */
 #include <stdio.h>
 #include <iostream>
+
 #include <QStringList>
 #include <wrap/system/qgetopt.h>
 
@@ -24,9 +25,10 @@ for more details.
 #include "../common/traversal.h"
 #include "extractor.h"
 
+#include <QtGui>
+
 using namespace std;
 using namespace nx;
-
 
 void printInfo(NexusData &nexus);
 void checks(NexusData &nexus);
@@ -37,9 +39,13 @@ bool show_nodes = false;
 bool show_patches = false;
 bool show_textures = false;
 
-
 //TODO REMOVE unused textures when resizing nexus.
 int main(int argc, char *argv[]) {
+
+	// we create a QCoreApplication just so that QT loads image IO plugins (for jpg and tiff loading)
+	QCoreApplication myUselessApp(argc, argv);
+	setlocale(LC_ALL, "C");
+	QLocale::setDefault(QLocale::C);
 
 	QString input;
 	QString output;
@@ -68,7 +74,8 @@ int main(int argc, char *argv[]) {
 	QString recompute_error;
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString("ARGS specify a nexus or a ply file"));
+	QString help("ARGS specify a nexus or a ply file");
+	opt.setHelp(help);
 
 	opt.allowUnlimitedArguments(true); //able to join several inputs
 

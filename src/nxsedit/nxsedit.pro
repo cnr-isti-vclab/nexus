@@ -1,4 +1,4 @@
-QT       += core
+QT       += core gui
 
 TARGET   = nxsedit
 CONFIG   += console

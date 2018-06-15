@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 	// we create a QCoreApplication just so that QT loads image IO plugins (for jpg and tiff loading)
 	QCoreApplication myUselessApp(argc, argv);
 	setlocale(LC_ALL, "C");
-	QLocale::setDefault(QLocale::C);		      QLocale::setDefault(QLocale::C);
+	QLocale::setDefault(QLocale::C);
 
 	int node_size = 1<<15;
 	int top_node_size = 4096;
@@ -61,7 +61,8 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString("ARGS specify a ply file (specify more ply files or the directory containing them to get a merged output)"));
+	QString help("ARGS specify a ply file (specify more ply files or the directory containing them to get a merged output)");
+	opt.setHelp(help);
 
 	opt.allowUnlimitedArguments(true); //able to join several plys
 

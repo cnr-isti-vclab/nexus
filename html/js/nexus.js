@@ -305,6 +305,7 @@ Mesh.prototype = {
 					if(mesh.reqAttempt < maxReqAttempt) mesh.open(mesh.url + '?' + Math.random()); // BLINK ENGINE CACHE BUG PATCH
 					return null;
 				}
+				mesh.reqAttempt = 0;
 				for(i in header)
 					mesh[i] = header[i];
 				mesh.vertex = mesh.signature.vertex;
@@ -329,13 +330,13 @@ Mesh.prototype = {
 		r.onload = function(){
 			switch (this.status){
 				case 0:
-					console.log("0 response: server unreachable.");//returned in chrome for local files
+//					console.log("0 response: server unreachable.");//returned in chrome for local files
 				case 206:
 //					console.log("206 response: partial content loaded.");
 					load.bind(this)();
 					break;
 				case 200:
-					console.log("200 response: server does not support byte range requests.");
+//					console.log("200 response: server does not support byte range requests.");
 			}
 		};
 		r.onerror = error;
@@ -508,18 +509,6 @@ Instance.prototype = {
 	open: function(url) {
 		var t = this;
 		t.context = getContext(t.gl);
-		var mesh;
-		t.context.meshes.forEach(function(m) {
-			if(m.url == url)
-			t.mesh = m;
-			//m.instances.push(t);
-		});
-		if(!t.mesh) {
-			t.mesh = new Mesh();
-			t.mesh.onLoad = function() { t.renderMode = t.mesh.renderMode; t.mode = t.renderMode[0]; t.onLoad(); }
-			t.mesh.open(url);
-			t.context.meshes.push(t.mesh);
-		}
 
 		t.modelMatrix      = new Float32Array(16);
 		t.viewMatrix       = new Float32Array(16);
@@ -531,7 +520,24 @@ Instance.prototype = {
 		t.planes           = new Float32Array(24);
 		t.viewport         = new Float32Array(4);
 		t.viewpoint        = new Float32Array(4);
+
+		t.context.meshes.forEach(function(m) {
+			if(m.url == url){
+				t.mesh = m;
+				t.renderMode = t.mesh.renderMode;
+				t.mode = t.renderMode[0];
+				t.onLoad();
+			}
+		});
+
+		if(!t.mesh) {
+			t.mesh = new Mesh();
+			t.mesh.onLoad = function() { t.renderMode = t.mesh.renderMode; t.mode = t.renderMode[0]; t.onLoad(); }
+			t.mesh.open(url);
+			t.context.meshes.push(t.mesh);
+		}
 	},
+
 	close: function() {
 		//remove instance from mesh.
 	},
@@ -980,8 +986,14 @@ function requestNodeGeometry(context, node) {
 		m.noffsets[n],
 		m.noffsets[n+1],
 		function() { loadNodeGeometry(this, context, node); },
-		function() { console.log("Geometry request error!"); recoverNode(context, node, 0); },
-		function() { console.log("Geometry request abort!"); removeNode(context, node); },
+		function() {
+//			console.log("Geometry request error!"); 
+			recoverNode(context, node, 0);
+		},
+		function() {
+//			console.log("Geometry request abort!"); 
+			removeNode(context, node);
+		},
 		'arraybuffer'
 	);
 }
@@ -1002,8 +1014,14 @@ function requestNodeTexture(context, node) {
 		m.textures[tex],
 		m.textures[tex+1],
 		function() { loadNodeTexture(this, context, node, tex); },
-		function() { console.log("Texture request error!"); recoverNode(context, node, 1); },
-		function() { console.log("Texture request abort!"); removeNode(context, node); },
+		function() { 
+//			console.log("Texture request error!");
+			recoverNode(context, node, 1);
+		},
+		function() { 
+//			console.log("Texture request abort!");
+			removeNode(context, node);
+		},
 		'blob'
 	);
 }
