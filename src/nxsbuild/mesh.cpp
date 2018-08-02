@@ -178,7 +178,7 @@ float Mesh::simplify(quint16 target_faces, Simplification method) {
 	switch(method) {
 	case RANDOM: error = randomSimplify(target_faces); break;
 	case QUADRICS: error = quadricSimplify(target_faces); break;
-	default: throw QString("Unknown simplification method");
+	default: throw QString("unknown simplification method");
 	}
 
 	//unlock everything

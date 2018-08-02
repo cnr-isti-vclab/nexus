@@ -57,7 +57,6 @@ void ObjLoader::cacheTextureUV() {
 		
 		int s = file.readLine(buffer, 1024);
 		if (s == -1) {                     //end of file
-			cout << "vtxt read: " << cnt << endl;
 			break;
 		}
 		if (s == 0) continue;            //skip empty lines
@@ -203,7 +202,7 @@ void ObjLoader::readMTL() {
 	}
 	cout << "Colors read: " << cnt << endl;
 	for (auto fn : texture_filenames)
-		cout << qPrintable(fn) << endl;
+		cout << qPrintable("Texture: " + fn) << endl;
 	if (cnt)
 		has_colors = true;
 }
@@ -432,7 +431,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 
 		}
 		else {
-			throw QString("Could not parse face: %1").arg(buffer);
+			throw QString("eould not parse face: %1").arg(buffer);
 		}
 	}
 

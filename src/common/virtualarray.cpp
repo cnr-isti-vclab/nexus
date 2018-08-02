@@ -48,7 +48,7 @@ uchar *VirtualMemory::getBlock(quint64 index, bool prevent_unload) {
 			makeRoom();
 		mapBlock(index);
 		if(!cache[index])
-			throw QString("VirtualMemory. Error mapping block: " + this->errorString());
+			throw QString("virtual memory error mapping block: " + this->errorString());
 
 		mapped.push_front(index);
 	}

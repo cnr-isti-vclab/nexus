@@ -128,6 +128,9 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
+	Stream *stream = 0;
+	KDTree *tree = 0;
+	int returncode = 0;
 	try {
 		quint64 max_memory = (1<<20)*(uint64_t)ram_buffer/4; //hack 4 is actually an estimate...
 
@@ -141,7 +144,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		string input = "mesh";
-		Stream *stream = 0;
+
 		if (point_cloud) {
 			input = "pointcloud";
 			stream = new StreamCloud("cache_stream");
@@ -192,7 +195,6 @@ int main(int argc, char *argv[]) {
 		}
 
 
-		KDTree *tree = 0;
 		if(point_cloud)
 			tree = new KDTreeCloud("cache_tree", adaptive.toFloat());
 		else
@@ -210,16 +212,17 @@ int main(int argc, char *argv[]) {
 		builder.create(tree, stream,  top_node_size);
 		builder.save(output);
 
-		delete tree;
-		delete stream;
-
 	} catch(QString error) {
-		cout << "Fatal error: " << qPrintable(error) << endl;
-		return -1;
+		cerr << "Fatal error: " << qPrintable(error) << endl;
+		returncode = 1;
+		
 	} catch(const char *error) {
-		cout << "Fatal error: " << error << endl;
-		return -1;
+		cerr << "Fatal error: " << error << endl;
+		returncode = 1;
 	}
 
-	return 0;
+	if(tree)   delete tree;
+	if(stream) delete stream;
+	
+	return returncode;
 }
