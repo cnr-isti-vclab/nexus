@@ -70,6 +70,7 @@ function NexusObject(url, renderer, render, material) {
 }
 
 NexusObject.prototype = Object.create(THREE.Mesh.prototype);
+NexusObject.prototype.constructor = NexusObject;
 
 NexusObject.prototype.raycast = function(raycaster, intersects) {
 	var instance = this.instance;
@@ -106,3 +107,85 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 
 	intersects.push({ distance: distance, object: this} );
 }
+
+// Sync instance
+function NexusObjectSync(buf, name, renderer, render, material) {
+	var gl = renderer.context;
+	var geometry = new THREE.BufferGeometry();
+	var positions = new Float32Array(3);
+	this.name = name;
+
+	geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+
+	if(!material)
+		this.autoMaterial = true;
+
+	THREE.Mesh.call( this, geometry, material);
+	this.frustumCulled = false;
+
+	var mesh = this;
+	// Sync instance
+	var instance = this.instance = new Nexus.InstanceSync(gl);
+	this.instance.name = name;
+	instance.onLoad = function() {
+		var s = 1/instance.mesh.sphere.radius;
+		var pos = instance.mesh.sphere.center;
+		mesh.position.set(-pos[0]*s, -pos[1]*s, -pos[2]*s);
+		mesh.scale.set(s, s, s);
+		if(mesh.autoMaterial)
+			mesh.material = new THREE.MeshLambertMaterial( { color: 0xffffff } );
+
+		if(this.mesh.vertex.normal) {
+			var normals = new Float32Array(3);
+			geometry.addAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
+		}
+		if(this.mesh.vertex.color) {
+			var colors = new Float32Array(4);
+			geometry.addAttribute( 'color', new THREE.BufferAttribute(colors, 4));
+			if(mesh.autoMaterial)
+				mesh.material = new THREE.MeshLambertMaterial({ vertexColors: THREE.VertexColors });
+		}
+
+		if(this.mesh.vertex.texCoord) {
+			var uv = new Float32Array(2);
+			geometry.addAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
+			if(mesh.autoMaterial) {
+				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+				texture.needsUpdate = true;
+				mesh.material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
+			}
+		}
+
+		if(this.mesh.face.index) {
+			var indices = new Uint32Array(3);
+			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
+		}
+		render();
+	};
+	instance.onUpdate = function() {
+		render();
+	}
+
+	this.onAfterRender = function(renderer, scene, camera, geometry, material, group) {
+		if(!instance.isReady) return;
+		var s = renderer.getSize();
+		instance.updateView([0, 0, s.width, s.height],
+			camera.projectionMatrix.elements,
+			mesh.modelViewMatrix.elements);
+		var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
+		instance.attributes['position'] = renderer.context.getAttribLocation(program, "position");
+		instance.attributes['normal'] = renderer.context.getAttribLocation(program, "normal");
+		instance.attributes['color'] = renderer.context.getAttribLocation(program, "color");
+		instance.attributes['uv'] = renderer.context.getAttribLocation(program, "uv");
+
+		instance.render();
+	}
+	// This instance is synchronous, therefore we must call the open method
+	// AFTER we set the callbacks, or they would not be called at all
+	instance.open(buf);
+}
+// Inherit from super-class
+NexusObjectSync.prototype = Object.create(NexusObject.prototype);
+// Set the constructor, useful for runtime instance recognition
+NexusObjectSync.prototype.constructor = NexusObjectSync;
