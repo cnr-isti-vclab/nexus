@@ -17,10 +17,7 @@ function NexusObject(url, renderer, render, material) {
 	var instance = this.instance = new Nexus.Instance(gl);
 	instance.open(url);
 	instance.onLoad = function() {
-		var s = 1/instance.mesh.sphere.radius;
-		var pos = instance.mesh.sphere.center;
-		mesh.position.set(-pos[0]*s, -pos[1]*s, -pos[2]*s);
-		mesh.scale.set(s, s, s);
+
 		if(mesh.autoMaterial)
 			mesh.material = new THREE.MeshLambertMaterial( { color: 0xffffff } );
 
