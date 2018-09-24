@@ -60,7 +60,8 @@ int main(int argc, char *argv[]) {
     bool compress = true;
 
 	GetOpt opt(argc, argv);
-    opt.setHelp(QString("ARGS specify a nexus file"));
+	QString help("ARGS specify a nexus file");
+	opt.setHelp(help);
 
 	opt.allowUnlimitedArguments(true); //able to join several inputs
 

@@ -72,7 +72,12 @@ int main(int argc, char *argv[]) {
 	bool autopositioning = false;
 
 	GetOpt opt(argc, argv);
-	opt.allowUnlimitedArguments(true); //able to join several plys
+	opt.setHelp(QString("ARGS specify a nexus file (specify more ply files or the directory containing them to get a merged output)"));
+
+	opt.allowUnlimitedArguments(true); //able to join several nexus
+
+//	GetOpt opt(argc, argv);
+//	opt.allowUnlimitedArguments(true); //able to join several plys
 
 	opt.addOption('d', "draw", "max number of triangles", &draw);
 	opt.addOption('e', "error", "target error in pixels", &error);
@@ -94,8 +99,8 @@ int main(int argc, char *argv[]) {
 	opt.addOption('p', "prefetch", "amount of node prefetching in prioritizer", &prefetch);
 
 
-	QString help = "This is just a quick tool to visualize nexus models.";
-	opt.setHelp(help);
+//	QString help = "This is just a quick tool to visualize nexus models.";
+//	opt.setHelp(help);
 	opt.parse();
 
 	Ui::Form &ui = window->ui;

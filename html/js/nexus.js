@@ -941,7 +941,6 @@ function removeNode(context, node) {
 	m.status[n] = 0;
 
 	if (m.georeq.readyState != 4) m.georeq.abort();
-	if (m.texreq.readyState != 4) m.texreq.abort();
 
 	context.cacheSize -= m.nsize[n];
 	context.gl.deleteBuffer(m.vbo[n]);
@@ -949,6 +948,7 @@ function removeNode(context, node) {
 	m.vbo[n] = m.ibo[n] = null;
 
 	if(!m.vertex.texCoord) return;
+	if (m.texreq.readyState != 4) m.texreq.abort();
 	var tex = m.patches[m.nfirstpatch[n]*3+2]; //TODO assuming one texture per node
 	m.texref[tex]--;
 
