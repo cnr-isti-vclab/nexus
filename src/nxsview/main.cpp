@@ -72,7 +72,8 @@ int main(int argc, char *argv[]) {
 	bool autopositioning = false;
 
 	GetOpt opt(argc, argv);
-	opt.setHelp(QString("ARGS specify a nexus file (specify more ply files or the directory containing them to get a merged output)"));
+	QString help("ARGS specify a nexus file (specify more ply files or the directory containing them to get a merged output)");
+	opt.setHelp(help);
 
 	opt.allowUnlimitedArguments(true); //able to join several nexus
 
