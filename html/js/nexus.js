@@ -186,6 +186,7 @@ PriorityQueue = function(max_length) {
 }
 
 PriorityQueue.prototype = {
+	constructor: PriorityQueue,
 	push: function(data, error) {
 		this.data[this.size] = data;
 		this.error[this.size] = error;
@@ -288,6 +289,7 @@ Mesh = function() {
 }
 
 Mesh.prototype = {
+	constructor: Mesh,
 	open: function(url) {
 		var mesh = this;
 		mesh.url = url;
@@ -495,7 +497,41 @@ Mesh.prototype = {
 		};
 		return h;
 	}
-}; 
+};
+// Sync version of Mesh
+MeshSync = function() {
+	Mesh.call(this);
+}
+MeshSync.prototype = Object.create(Mesh.prototype);
+MeshSync.prototype.constructor = MeshSync;
+MeshSync.prototype.open = function(buf) {
+	var mesh = this;
+	// Read header: first 88 bytes
+	var view = new DataView(buf.slice(0,88));
+	view.offset = 0;
+	mesh.origBuffer = buf;
+	mesh.reqAttempt++;
+	var header = mesh.importHeader(view);
+	if(!header) {
+		console.log("Empty header!");
+		if(mesh.reqAttempt < maxReqAttempt)
+			mesh.open(mesh.url + '?' + Math.random()); // BLINK ENGINE CACHE BUG PATCH
+		return null;
+	}
+	mesh.reqAttempt = 0;
+	for(i in header)
+		mesh[i] = header[i];
+	mesh.vertex = mesh.signature.vertex;
+	mesh.face = mesh.signature.face;
+	mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
+	mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
+	mesh.meco = (mesh.signature.flags & 2);
+	mesh.corto = (mesh.signature.flags & 4);
+	
+	var end = 88 + mesh.nodesCount*44 + mesh.patchesCount*12 + mesh.texturesCount*68;
+	// Handle index: bytes from 88 to end
+	this.handleIndex(buf.slice(88, end));
+}
 
 Instance = function(gl) {
 	this.gl = gl;
@@ -506,6 +542,7 @@ Instance = function(gl) {
 }
 
 Instance.prototype = {
+	constructor: Instance,
 	open: function(url) {
 		var t = this;
 		t.context = getContext(t.gl);
@@ -886,8 +923,127 @@ Instance.prototype = {
 	render: function() {
 		this.traversal();
 		this.renderNodes();
+	},
+
+	// To enable sync loading, it is necessary to handle the requests of geometry and
+	// texture inside the instance.
+	// Thus we can specialize the handling for the sync version
+	requestNodeGeometry: function(context, node) {
+		var n = node.id;
+		var m = node.mesh;
+
+		m.status[n]++; //pending
+		m.georeq = m.httpRequest(
+			m.noffsets[n],
+			m.noffsets[n+1],
+			function() { loadNodeGeometry(this, context, node); },
+			function() { recoverNode(context, node, 0); },
+			function() { removeNode(context, node); },
+			'arraybuffer'
+		);
+	},
+
+	requestNodeTexture: function(context, node) {
+		var n = node.id;
+		var m = node.mesh;
+
+		if(!m.vertex.texCoord)
+			return;
+
+		var tex = m.patches[m.nfirstpatch[n]*3+2];
+		m.texref[tex]++;
+		if(m.texids[tex])
+			return;
+
+		m.status[n]++; //pending
+		m.texreq = m.httpRequest(
+			m.textures[tex],
+			m.textures[tex+1],
+			function() { loadNodeTexture(this, context, node, tex); },
+			function() { recoverNode(context, node, 1); },
+			function() { removeNode(context, node); },
+			'blob'
+		);
 	}
 };
+// Sync instance
+InstanceSync = function(gl) {
+	Instance.call(this, gl);
+}
+InstanceSync.prototype = Object.create(Instance.prototype);
+InstanceSync.prototype.constructor = InstanceSync;
+InstanceSync.prototype.open = function(buf) {
+	var t = this;
+	t.context = getContext(t.gl);
+
+	t.modelMatrix      = new Float32Array(16);
+	t.viewMatrix       = new Float32Array(16);
+	t.projectionMatrix = new Float32Array(16);
+	t.modelView        = new Float32Array(16);
+	t.modelViewInv     = new Float32Array(16);
+	t.modelViewProj    = new Float32Array(16);
+	t.modelViewProjInv = new Float32Array(16);
+	t.planes           = new Float32Array(24);
+	t.viewport         = new Float32Array(4);
+	t.viewpoint        = new Float32Array(4);
+
+	t.context.meshes.forEach(function(m) {
+		// We cannot choose the instances by URL,
+		// we choose to use another property
+		if(m.name == t.name){
+			t.mesh = m;
+			t.renderMode = t.mesh.renderMode;
+			t.mode = t.renderMode[0];
+			t.onLoad();
+		}
+	});
+
+	if(!t.mesh) {
+		// Here we use the sync Mesh
+		t.mesh = new MeshSync();
+		t.mesh.onLoad = function() {
+			t.renderMode = t.mesh.renderMode;
+			t.mode = t.renderMode[0];
+			t.onLoad();
+		}
+		t.mesh.open(buf);
+		t.mesh.name = t.name;
+		t.context.meshes.push(t.mesh);
+	}
+};
+InstanceSync.prototype.requestNodeGeometry = function(context, node) {
+	var n = node.id;
+	var m = node.mesh;
+
+	m.status[n]++; //pending
+	
+	// We simulate an XHR response object, so as to limit the modifications as much as possible
+	var fakeResponse = {
+		response: m.origBuffer.slice(m.noffsets[n], m.noffsets[n + 1])
+	}
+
+	loadNodeGeometry(fakeResponse, context, node);
+};
+InstanceSync.prototype.requestNodeTexture = function(context, node) {
+	var n = node.id;
+	var m = node.mesh;
+
+	if(!m.vertex.texCoord)
+		return;
+
+	var tex = m.patches[m.nfirstpatch[n]*3+2];
+	m.texref[tex]++;
+	if(m.texids[tex])
+		return;
+
+	m.status[n]++; //pending
+
+	// We simulate an XHR response object, so as to limit the modifications as much as possible
+	var fakeResponse = {
+		response: m.origBuffer.slice(m.textures[tex], m.textures[tex + 1])
+	};
+	loadNodeTexture(fakeResponse, context, node, tex);
+}
 
 
 //keep track of meshes and which GL they belong to. (no sharing between contexts)
@@ -973,57 +1129,9 @@ function requestNode(context, node) {
 	node.nface = m.nfaces[n];
 
 //	console.log("Requesting " + m.url + " node: " + n);
-	requestNodeGeometry(context, node);
-	requestNodeTexture(context, node);
-}
-
-function requestNodeGeometry(context, node) {
-	var n = node.id;
-	var m = node.mesh;
-
-	m.status[n]++; //pending
-	m.georeq = m.httpRequest(
-		m.noffsets[n],
-		m.noffsets[n+1],
-		function() { loadNodeGeometry(this, context, node); },
-		function() {
-//			console.log("Geometry request error!"); 
-			recoverNode(context, node, 0);
-		},
-		function() {
-//			console.log("Geometry request abort!"); 
-			removeNode(context, node);
-		},
-		'arraybuffer'
-	);
-}
-
-function requestNodeTexture(context, node) {
-	var n = node.id;
-	var m = node.mesh;
-
-	if(!m.vertex.texCoord) return;
-
-	var tex = m.patches[m.nfirstpatch[n]*3+2];
-	m.texref[tex]++;
-	if(m.texids[tex])
-		return;
-
-	m.status[n]++; //pending
-	m.texreq = m.httpRequest(
-		m.textures[tex],
-		m.textures[tex+1],
-		function() { loadNodeTexture(this, context, node, tex); },
-		function() { 
-//			console.log("Texture request error!");
-			recoverNode(context, node, 1);
-		},
-		function() { 
-//			console.log("Texture request abort!");
-			removeNode(context, node);
-		},
-		'blob'
-	);
+	// We use the added methods on the instance
+	node.instance.requestNodeGeometry(context, node);
+	node.instance.requestNodeTexture(context, node);
 }
 
 function recoverNode(context, node, id) {
@@ -1041,13 +1149,14 @@ function recoverNode(context, node, id) {
 
 	node.reqAttempt++;
 
+	// We use the added methods on the instance
 	switch (id){ 
 		case 0:
-			requestNodeGeometry(context, node); 
+			node.instance.requestNodeGeometry(context, node); 
 			console.log("Recovering geometry for " + m.url + " node: " + n);
 			break;
 		case 1:
-			requestNodeTexture(context, node); 
+			node.instance.requestNodeTexture(context, node); 
 			console.log("Recovering texture for " + m.url + " node: " + n);
 			break;
 	}
@@ -1250,8 +1359,22 @@ function setMaxCacheSize(gl, size) {
 	context.maxCacheSize = size;
 }
 
-return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
-	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, 
-	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
+// Exploded in vertical to be better understandable
+// (if we need less bytes, we can always minify)
+return {
+	Mesh: Mesh,
+	Renderer: Instance,
+	Renderable: Instance,
+	Instance: Instance,
+	// sync object constructors
+	MeshSync: MeshSync,
+	InstanceSync: InstanceSync,
+	Debug: Debug,
+	contexts: contexts,
+	beginFrame:beginFrame,
+	endFrame:endFrame, 
+	setTargetError:setTargetError,
+	setTargetFps:setTargetFps,
+	setMaxCacheSize:setMaxCacheSize };
 
 }();
