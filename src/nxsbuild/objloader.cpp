@@ -120,7 +120,7 @@ void ObjLoader::readMTL() {
 		
 		QString str(buffer);
 		str = str.simplified();
-		if (str.startsWith("newmtl")){
+		if (str.startsWith("newmtl", Qt::CaseInsensitive)){
 			QString mtltag = str.section(" ", 1);
 			QString txtfname;
 			qint32 R = 0;
@@ -135,11 +135,11 @@ void ObjLoader::readMTL() {
 				QString str(buffer);
 				str = str.simplified();
 				
-				if (str.startsWith("newmtl")){
+				if (str.startsWith("newmtl", Qt::CaseInsensitive)){
 					head_linewas_read = true;
 					break;
 				}
-				if (str.startsWith("d")){
+				if (str.startsWith("d", Qt::CaseInsensitive)){
 
 					float d = 1.0;
 					int n = sscanf(buffer, "d %f", &d);
@@ -147,14 +147,14 @@ void ObjLoader::readMTL() {
 						A = 255 * d;
 					continue;
 				}
-				if(str.startsWith("Tr")){
+				if(str.startsWith("Tr", Qt::CaseInsensitive)){
 					float tr = 0.0;
 					int n = sscanf(buffer, "d %f", &tr);
 					if (n == 1)
 						A = 255 * (1.0f - tr);
 					continue;
 				}
-				if(str.startsWith("Map_Kd")){
+				if(str.startsWith("Map_Kd", Qt::CaseInsensitive)){
 					//cout << qPrintable(str);
 					//cout << "  ";
 					txtfname = str.section(" ", 1).trimmed();
@@ -162,7 +162,7 @@ void ObjLoader::readMTL() {
 
 					continue;
 				}
-				if(str.startsWith("Kd")){
+				if(str.startsWith("Kd", Qt::CaseInsensitive)){
 					float r, g, b;
 					QString data_string(buffer);
 					data_string = data_string.simplified();
