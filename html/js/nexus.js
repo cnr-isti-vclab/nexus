@@ -500,7 +500,7 @@ Mesh.prototype = {
 Instance = function(gl) {
 	this.gl = gl;
 	this.onLoad = function() {};
-	this.onUpdate = function() {};
+	this.onUpdate = null;
 	this.drawBudget = drawBudget;
 	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3 };
 }
@@ -1108,7 +1108,7 @@ function loadNodeTexture(request, context, node, texid) {
 			m.status[n]--; //ready
 			node.reqAttempt = 0;
 			node.context.pending--;
-			node.instance.onUpdate();
+			node.instance.onUpdate && node.instance.onUpdate();
 			updateCache(gl);
 		}
 	}
@@ -1198,7 +1198,7 @@ function readyNode(node) {
 		m.status[n]--; //ready
 		node.reqAttempt = 0;
 		node.context.pending--;
-		node.instance.onUpdate();
+		node.instance.onUpdate && node.instance.onUpdate();
 		updateCache(gl);
 	}
 }
@@ -1251,7 +1251,7 @@ function setMaxCacheSize(gl, size) {
 }
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
-	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, 
+	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache,
 	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
 
 }();

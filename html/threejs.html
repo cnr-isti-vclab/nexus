@@ -17,6 +17,34 @@
 
 <script>
 
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+	controls.handleResize();
+	controls.update();
+	renderer.render( scene, camera );
+}
+
+//function animate() {
+//	requestAnimationFrame( animate );
+//	controls.update();
+//	renderer.render( scene, camera );
+//}
+
+
+var redraw = true;
+function animate() {
+	requestAnimationFrame(animate);
+
+	controls.update();
+	if(redraw)
+		renderer.render( scene, camera );
+	redraw = false;
+}
+
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
 camera.position.z = 4;
 
@@ -29,7 +57,7 @@ controls.noPan = false;
 controls.staticMoving = true;
 controls.dynamicDampingFactor = 0.3;
 controls.keys = [ 65, 83, 68 ];
-controls.addEventListener( 'change', render );
+controls.addEventListener( 'change', function() { redraw = true; } );
 
 var scene = new THREE.Scene();
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
@@ -58,43 +86,30 @@ texture.needsUpdate = true;
 var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
 */
 
+
+function onNexusLoad() {
+	console.log("loaded");
+	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
+	var p = nexus_obj.geometry.boundingBox.getCenter().negate();
+	nexus_obj.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
+	nexus_obj.scale.set(s, s, s); 
+	redraw = true;
+}
+
 function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
 var model = getURLParameter('model') || "models/gargo.nxz";
 
-var nexus_obj = new NexusObject(model, renderer, render);
+var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );
-render();
 
-
-function onWindowResize() {
-
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-
-	renderer.setSize( window.innerWidth, window.innerHeight );
-
-	controls.handleResize();
-	controls.update();
-	render();
-}
-
-function animate() {
-	requestAnimationFrame( animate );
-	controls.update();
-}
-
-function render() {
-	Nexus.beginFrame(renderer.context);
-	renderer.render( scene, camera );
-	Nexus.endFrame(renderer.context);
-}
 
 animate();
+
 
 </script>
 
