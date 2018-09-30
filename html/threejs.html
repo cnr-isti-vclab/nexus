@@ -28,13 +28,6 @@ function onWindowResize() {
 	renderer.render( scene, camera );
 }
 
-//function animate() {
-//	requestAnimationFrame( animate );
-//	controls.update();
-//	renderer.render( scene, camera );
-//}
-
-
 var redraw = true;
 function animate() {
 	requestAnimationFrame(animate);
@@ -88,7 +81,6 @@ var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } 
 
 
 function onNexusLoad() {
-	console.log("loaded");
 	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
 	var p = nexus_obj.geometry.boundingBox.getCenter().negate();
 	nexus_obj.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
@@ -107,9 +99,7 @@ scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );
 
-
 animate();
-
 
 </script>
 
