@@ -3,7 +3,7 @@
 */
 
 function NexusObject(url, onLoad, onUpdate, renderer, material) {
-	if(typeof(onLoad) == 'object')
+	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
 
 	var gl = renderer.context;
@@ -62,11 +62,12 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 			}
 		}
 
-		if(this.mesh.face.index) {
+		//this seems not to be needed to setup the attributes and shaders
+/*		if(this.mesh.face.index) {
 			var indices = new Uint32Array(3);
 			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
-		}
-		onLoad && onLoad();
+		} */
+		if(onLoad) onLoad();
 	};
 	instance.onUpdate = onUpdate;
 
