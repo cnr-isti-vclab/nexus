@@ -77,12 +77,17 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 		instance.updateView([0, 0, s.width, s.height], 
 			camera.projectionMatrix.elements, 
 			mesh.modelViewMatrix.elements);
-		var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
-		instance.attributes['position'] = renderer.context.getAttribLocation(program, "position");
-		instance.attributes['normal'] = renderer.context.getAttribLocation(program, "normal");
-		instance.attributes['color'] = renderer.context.getAttribLocation(program, "color");
-		instance.attributes['uv'] = renderer.context.getAttribLocation(program, "uv");
 
+		var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
+		var attr = instance.attributes;
+		attr.position = renderer.context.getAttribLocation(program, "position");
+		attr.normal   = renderer.context.getAttribLocation(program, "normal");
+		attr.color    = renderer.context.getAttribLocation(program, "color");
+		attr.uv       = renderer.context.getAttribLocation(program, "uv");
+		attr.size     = renderer.context.getUniformLocation(program, "size");
+		attr.scale    = renderer.context.getUniformLocation(program, "scale");
+
+		instance.mode = attr.size ? "POINT" : "FILL";
 		instance.render();
 
 		Nexus.updateCache(renderer.context);

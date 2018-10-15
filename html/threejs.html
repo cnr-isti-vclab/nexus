@@ -55,6 +55,8 @@ controls.addEventListener( 'change', function() { redraw = true; } );
 var scene = new THREE.Scene();
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
 scene.add( new THREE.AmbientLight( 0x444444 ) );
+scene.background = new THREE.Color( 0xff0000 );
+
 
 var light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
 light1.position.set( 1, 1, -1 );
@@ -86,6 +88,9 @@ function onNexusLoad() {
 	nexus_obj.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
 	nexus_obj.scale.set(s, s, s); 
 	redraw = true;
+
+	nexus_obj.material = new THREE.PointsMaterial( {  size:1 } );
+	nexus_obj.instance.mode = "POINT";
 }
 
 function getURLParameter(name) {

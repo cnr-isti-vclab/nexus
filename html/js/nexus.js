@@ -502,7 +502,7 @@ Instance = function(gl) {
 	this.onLoad = function() {};
 	this.onUpdate = null;
 	this.drawBudget = drawBudget;
-	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3 };
+	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3, 'size':4 };
 }
 
 Instance.prototype = {
@@ -742,9 +742,9 @@ Instance.prototype = {
 		var attr = t.attributes;
 
 		var vertexEnabled = gl.getVertexAttrib(attr.position, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
-		var normalEnabled = gl.getVertexAttrib(attr.normal, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
-		var colorEnabled = attr.color >= 0? gl.getVertexAttrib(attr.color, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
-		var uvEnabled = attr.uv >= 0? gl.getVertexAttrib(attr.uv, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
+		var normalEnabled = attr.normal >= 0? gl.getVertexAttrib(attr.normal, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
+		var colorEnabled  = attr.color  >= 0? gl.getVertexAttrib(attr.color,  gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
+		var uvEnabled     = attr.uv     >= 0? gl.getVertexAttrib(attr.uv,     gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
 
 		gl.enableVertexAttribArray(attr.position);
 		if(m.vertex.texCoord && attr.uv >= 0) gl.enableVertexAttribArray(attr.uv);
@@ -819,15 +819,22 @@ Instance.prototype = {
 			if (Debug.draw) continue;
 
 			if(t.mode == "POINT") {
-				var pointsize = Math.ceil(0.30*t.currentError);
-				if(pointsize > 2) pointsize = 2;
-				gl.vertexAttrib1fv(4, [pointsize]);
+				var pointsize = t.pointsize;
+				if(!pointsize) {
+					var pointsize = Math.ceil(0.30*t.currentError);
+					if(pointsize > 2) pointsize = 2;
+				}
+				if(typeof attr.size == 'object') { //threejs pointcloud rendering
+					gl.uniform1f(attr.size, 1.0);
+					gl.uniform1f(attr.scale, 1.0);
+				} else
+					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
 				var error = t.nodeError(n);
 				var fraction = (error/t.currentError - 1);
 				if(fraction > 1) fraction = 1;
 
-				var count = fraction * nv;
+				var count = parseInt(fraction * nv);
 				if(count != 0) {
 					if(m.vertex.texCoord) {
 						var texid = m.patches[m.nfirstpatch[n]*3+2];
