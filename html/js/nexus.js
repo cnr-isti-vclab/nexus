@@ -831,10 +831,10 @@ Instance.prototype = {
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
 				var error = t.nodeError(n);
-				var fraction = (error/t.currentError - 1);
-				if(fraction > 1) fraction = 1;
-
-				var count = parseInt(fraction * nv);
+//				var fraction = (error/t.currentError - 1);
+//				if(fraction > 1) fraction = 1;
+//				var count = parseInt(fraction * nv);
+				count = nv;
 				if(count != 0) {
 					if(m.vertex.texCoord) {
 						var texid = m.patches[m.nfirstpatch[n]*3+2];
