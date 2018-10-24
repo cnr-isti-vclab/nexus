@@ -120,7 +120,7 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 		level++;
 		if(skipSimplifyLevels <= 0 && last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
 			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
-			cout << "Quitting prematurely (most probably to high parametrization fragmentation)\n";
+			cout << "Larger top level, most probably to high parametrization fragmentation.\n";
 			break;
 		}
 		last_top_level_size = stream->size();
@@ -849,7 +849,7 @@ void NexusBuilder::save(QString filename) {
 
 	qint64 r = file.write((char*)&header, sizeof(Header));
 	if(r == -1)
-		cout << qPrintable(file.errorString()) << endl;
+		throw(file.errorString());
 	assert(nodes.size());
 	file.write((char*)&(nodes[0]), sizeof(Node)*nodes.size());
 	if(patches.size())

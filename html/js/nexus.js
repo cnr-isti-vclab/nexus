@@ -500,9 +500,9 @@ Mesh.prototype = {
 Instance = function(gl) {
 	this.gl = gl;
 	this.onLoad = function() {};
-	this.onUpdate = function() {};
+	this.onUpdate = null;
 	this.drawBudget = drawBudget;
-	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3 };
+	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3, 'size':4 };
 }
 
 Instance.prototype = {
@@ -742,9 +742,9 @@ Instance.prototype = {
 		var attr = t.attributes;
 
 		var vertexEnabled = gl.getVertexAttrib(attr.position, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
-		var normalEnabled = gl.getVertexAttrib(attr.normal, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
-		var colorEnabled = attr.color >= 0? gl.getVertexAttrib(attr.color, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
-		var uvEnabled = attr.uv >= 0? gl.getVertexAttrib(attr.uv, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
+		var normalEnabled = attr.normal >= 0? gl.getVertexAttrib(attr.normal, gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
+		var colorEnabled  = attr.color  >= 0? gl.getVertexAttrib(attr.color,  gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
+		var uvEnabled     = attr.uv     >= 0? gl.getVertexAttrib(attr.uv,     gl.VERTEX_ATTRIB_ARRAY_ENABLED): false;
 
 		gl.enableVertexAttribArray(attr.position);
 		if(m.vertex.texCoord && attr.uv >= 0) gl.enableVertexAttribArray(attr.uv);
@@ -819,15 +819,22 @@ Instance.prototype = {
 			if (Debug.draw) continue;
 
 			if(t.mode == "POINT") {
-				var pointsize = Math.ceil(0.30*t.currentError);
-				if(pointsize > 2) pointsize = 2;
-				gl.vertexAttrib1fv(4, [pointsize]);
+				var pointsize = t.pointsize;
+				if(!pointsize) {
+					var pointsize = Math.ceil(0.30*t.currentError);
+					if(pointsize > 2) pointsize = 2;
+				}
+				if(typeof attr.size == 'object') { //threejs pointcloud rendering
+					gl.uniform1f(attr.size, 1.0);
+					gl.uniform1f(attr.scale, 1.0);
+				} else
+					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
 				var error = t.nodeError(n);
-				var fraction = (error/t.currentError - 1);
-				if(fraction > 1) fraction = 1;
-
-				var count = fraction * nv;
+//				var fraction = (error/t.currentError - 1);
+//				if(fraction > 1) fraction = 1;
+//				var count = parseInt(fraction * nv);
+				count = nv;
 				if(count != 0) {
 					if(m.vertex.texCoord) {
 						var texid = m.patches[m.nfirstpatch[n]*3+2];
@@ -941,7 +948,6 @@ function removeNode(context, node) {
 	m.status[n] = 0;
 
 	if (m.georeq.readyState != 4) m.georeq.abort();
-	if (m.texreq.readyState != 4) m.texreq.abort();
 
 	context.cacheSize -= m.nsize[n];
 	context.gl.deleteBuffer(m.vbo[n]);
@@ -949,6 +955,7 @@ function removeNode(context, node) {
 	m.vbo[n] = m.ibo[n] = null;
 
 	if(!m.vertex.texCoord) return;
+	if (m.texreq.readyState != 4) m.texreq.abort();
 	var tex = m.patches[m.nfirstpatch[n]*3+2]; //TODO assuming one texture per node
 	m.texref[tex]--;
 
@@ -1108,7 +1115,7 @@ function loadNodeTexture(request, context, node, texid) {
 			m.status[n]--; //ready
 			node.reqAttempt = 0;
 			node.context.pending--;
-			node.instance.onUpdate();
+			node.instance.onUpdate && node.instance.onUpdate();
 			updateCache(gl);
 		}
 	}
@@ -1198,7 +1205,7 @@ function readyNode(node) {
 		m.status[n]--; //ready
 		node.reqAttempt = 0;
 		node.context.pending--;
-		node.instance.onUpdate();
+		node.instance.onUpdate && node.instance.onUpdate();
 		updateCache(gl);
 	}
 }
@@ -1251,7 +1258,7 @@ function setMaxCacheSize(gl, size) {
 }
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
-	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, 
+	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache,
 	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
 
 }();

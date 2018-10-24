@@ -118,12 +118,12 @@ int main(int argc, char *argv[]) {
 	//Check parameters are correct
 	QStringList inputs = opt.arguments;
 	if (inputs.size() == 0) {
-		cerr << "No input files specified" << endl;
+		cerr << "Fatal error: no input files specified" << endl;
 		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
 	}
 	else if (inputs.size() > 1) {
-		cerr << "Too many input files specified" << endl;
+		cerr << "Fatal error: too many input files specified" << endl;
 		cerr << qPrintable(opt.usage()) << endl;
 		return -1;
 	}
@@ -135,8 +135,8 @@ int main(int argc, char *argv[]) {
 
 	try {
 		if(!nexus.open(inputs[0].toLatin1())) {
-			cerr << "Could not open file " << qPrintable(inputs[0]) << endl;
-			return 0;
+			cerr << "Fatal error: could not open file " << qPrintable(inputs[0]) << endl;
+			return -1;
 		}
 
 		if(info) {
@@ -161,11 +161,11 @@ int main(int argc, char *argv[]) {
 		}
 		if(output.isEmpty() && ply.isEmpty()) return 0;
 		if(!output.isEmpty() && !ply.isEmpty())  {
-			cerr << "The output can be a ply file or a nexus file, not both" << endl;
+			cerr << "Fatal error: the output can be a ply file or a nexus file, not both" << endl;
 			return -1;
 		}
 		if(output == inputs[0]) {
-			cerr << "Output and input file must be different" << endl;
+			cerr << "Fatal error: output and input file must be different" << endl;
 			return -1;
 		}
 		Extractor extractor(&nexus);

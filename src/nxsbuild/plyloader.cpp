@@ -147,7 +147,7 @@ void PlyLoader::init() {
 		if(pf.AddToRead(doublecoords[0])==-1 ||
 				pf.AddToRead(doublecoords[1])==-1 ||
 				pf.AddToRead(doublecoords[2])==-1) {
-			throw QString("ply file has not xyz coords");
+			throw QString("ply file is missing xyz coords");
 		}
 	}
 
@@ -211,7 +211,7 @@ void PlyLoader::setMaxMemory(quint64 max_memory) {
 
 quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 	if(faces_element == -1)
-		throw QString("ply has no faces");
+		throw QString("ply has no faces!");
 
 	if(current_triangle == 0)
 		cacheVertices();
