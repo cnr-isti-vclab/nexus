@@ -53,12 +53,12 @@ PropDescriptor doublecoords[3] = {
 	{"vertex", "z",     T_DOUBLE, T_FLOAT, offsetof(Vertex,v[2]),0,0,0,0,0,0}
 };
 
-PropDescriptor plyprop2[1]=	{
+PropDescriptor vindex[1]=	{
 	{"face", "vertex_indices",T_INT,T_UINT,offsetof(PlyFace,f[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
 
-PropDescriptor plyprop2_uint[1]=	{
+PropDescriptor vindex_uint[1]=	{
 	{"face", "vertex_indices",T_UINT,T_UINT,offsetof(PlyFace,f[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
@@ -129,6 +129,7 @@ PlyLoader::~PlyLoader() {
 }
 
 void PlyLoader::init() {
+	bool has_faces = false;
 	for(unsigned int i = 0; i < pf.elements.size(); i++) {
 
 		if(!strcmp( pf.ElemName(i),"vertex")) {
@@ -138,6 +139,7 @@ void PlyLoader::init() {
 		} else if( !strcmp( pf.ElemName(i),"face") ) {
 			n_triangles = pf.ElemNumber(i);
 			faces_element = i;
+			has_faces = true;
 		}
 	}
 	//testing for required vertex fields.
@@ -169,19 +171,23 @@ void PlyLoader::init() {
 	}
 
 	//these calls will fail silently if no normal is present
-	error = pf.AddToRead(plyprop1[7]);
-	pf.AddToRead(plyprop1[8]);
-	pf.AddToRead(plyprop1[9]);
-	if(error == vcg::ply::E_NOERROR)
-		has_normals = true;
+	if(!has_faces) { //skip normals for triangle mesh
+		error = pf.AddToRead(plyprop1[7]);
+		pf.AddToRead(plyprop1[8]);
+		pf.AddToRead(plyprop1[9]);
+		if(error == vcg::ply::E_NOERROR)
+			has_normals = true;
+	}
 
-	pf.AddToRead(plyprop2[0]);
-	pf.AddToRead(plyprop2_uint[0]);
+	pf.AddToRead(vindex[0]);
+	pf.AddToRead(vindex_uint[0]);
 	pf.AddToRead(plyprop3[0]);
 	pf.AddToRead(plyprop3_uint[0]);
 
 	//these calls will fail silently if no texture is present
-	if (pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR) { has_textures = true; }
+	if (pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR)
+		has_textures = true;
+
 	if (pf.AddToRead(plyprop5[0]) == vcg::ply::E_NOERROR) { }
 
 	pf.SetCurElement(vertices_element);
