@@ -348,13 +348,19 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	vcg::Point2i finalSize;
 	bool success = false;
 	for(int i = 0; i < 5; i++, maxSize[0]*= 2, maxSize[1]*= 2) {
+		if(sizes.size() == 0) { //no texture!
+			finalSize = vcg::Point2i(1, 1);
+			success = true;
+			break;
+		}
 		bool too_large = false;
 		for(auto s: sizes) {
 			if(s[0] > maxSize[0] || s[1] > maxSize[1])
 				too_large = true;
 		}
-		if(too_large) //TODO the packer should simply return false
+		if(too_large) { //TODO the packer should simply return false
 			continue;
+		}
 		mapping.clear(); //TODO this should be done inside the packer
 		success = vcg::RectPacker<float>::PackInt(sizes, maxSize, mapping, finalSize);
 		if(success)
