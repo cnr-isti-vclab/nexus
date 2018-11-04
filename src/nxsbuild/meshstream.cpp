@@ -23,6 +23,8 @@ for more details.
 #include "plyloader.h"
 #include "tsploader.h"
 #include "objloader.h"
+#include "stlloader.h"
+
 
 #include <iostream>
 
@@ -56,6 +58,9 @@ void Stream::load(QStringList paths) {
 
 		else if(file.endsWith(".obj"))
 			loader = new ObjLoader(file);
+
+		else if(file.endsWith(".stl"))
+			loader = new STLLoader(file);
 
 		/*        else if(file.endsWith(".off"))
 			loader = new OffLoader(file, vertex_quantization, max_memory);

@@ -431,7 +431,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 
 		}
 		else {
-			throw QString("eould not parse face: %1").arg(buffer);
+			throw QString("could not parse face: %1").arg(buffer);
 		}
 	}
 

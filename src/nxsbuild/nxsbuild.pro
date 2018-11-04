@@ -31,7 +31,8 @@ SOURCES += \
     nexusbuilder.cpp \
     objloader.cpp \
     tmesh.cpp \
-    texpyramid.cpp
+    texpyramid.cpp \
+    stlloader.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -51,7 +52,8 @@ HEADERS += \
     objloader.h \
     tmesh.h \
     vertex_cache_optimizer.h \
-    texpyramid.h
+    texpyramid.h \
+    stlloader.h
 
 DESTDIR = "../../bin"
 

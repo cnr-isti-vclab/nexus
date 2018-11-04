@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 		QDir dir(inputs[0]);
 		if(dir.exists()) {
 			QStringList filters;
-			filters << "*.ply" << "*.obj"; //append your xml filter. You can add other filters here
+			filters << "*.ply" << "*.obj" << "*.stl"; //append your xml filter. You can add other filters here
 			inputs = dir.entryList(filters, QDir::Files);
 			if(inputs.size() == 0) {
 				cerr << "Empty directory" << endl;
