@@ -63,15 +63,10 @@ void Stream::load(QStringList paths) {
 			loader = new STLLoader(file);
 
 		/*        else if(file.endsWith(".off"))
-			loader = new OffLoader(file, vertex_quantization, max_memory);
-
-
-
-		else if(file.endsWith(".stl"))
-			loader = new StlLoader(file, vertex_quantization, max_memory); */
+			loader = new OffLoader(file, vertex_quantization, max_memory);*/
 
 		else
-			throw QString("PLY is the only supported input format at the moment");
+			throw QString("Input format not supported at the moment");
 
 		loader->setVertexQuantization(vertex_quantization);
 		loadMesh(loader);

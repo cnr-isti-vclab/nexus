@@ -27,7 +27,7 @@ for more details.
 #include "../nxsbuild/nexusbuilder.h"
 #include "plyloader.h"
 #include "objloader.h"
-
+#include "tsploader.h"
 
 using namespace std;
 
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 		QDir dir(inputs[0]);
 		if(dir.exists()) {
 			QStringList filters;
-			filters << "*.ply" << "*.obj" << "*.stl"; //append your xml filter. You can add other filters here
+			filters << "*.ply" << "*.obj" << "*.stl" << "*.tsp"; //append your xml filter. You can add other filters here
 			inputs = dir.entryList(filters, QDir::Files);
 			if(inputs.size() == 0) {
 				cerr << "Empty directory" << endl;
@@ -134,13 +134,11 @@ int main(int argc, char *argv[]) {
 	try {
 		quint64 max_memory = (1<<20)*(uint64_t)ram_buffer/4; //hack 4 is actually an estimate...
 
-		//autodetect point cloud ply.
-		{
-			if(inputs[0].endsWith(".ply")) {
-				PlyLoader autodetect(inputs[0]);
-				if(autodetect.nTriangles() == 0)
-					point_cloud = true;
-			}
+		//autodetect point cloud ply
+		if(inputs[0].endsWith(".ply")) {
+			PlyLoader autodetect(inputs[0]);
+			if(autodetect.nTriangles() == 0)
+				point_cloud = true;
 		}
 
 		string input = "mesh";
