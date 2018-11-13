@@ -638,8 +638,10 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 					QImageWriter writer(&nodeTex, "jpg");
 					writer.setQuality(tex_quality);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
 					writer.setOptimizedWrite(true);
 					writer.setProgressiveScanWrite(true);
+#endif
 					writer.write(nodetex);
 
 					quint64 size = pad(nodeTex.size());

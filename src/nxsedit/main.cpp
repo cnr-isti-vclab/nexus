@@ -81,9 +81,9 @@ int main(int argc, char *argv[]) {
 
 	//info options
 	opt.addSwitch('i', "info", "prints info about the nexus", &info);
-//	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes); //DOESN'T WORK, TO CHECK
-//	opt.addSwitch('q', "show patches", "prints info about payches", &show_patches); //DOESN'T WORK, TO CHECK
-//	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag); //DOESN'T WORK, TO CHECK
+	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes); //DOESN'T WORK, TO CHECK
+	opt.addSwitch('q', "show patches", "prints info about payches", &show_patches); //DOESN'T WORK, TO CHECK
+	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag); //DOESN'T WORK, TO CHECK
 //	opt.addSwitch('c', "check", "performs various checks", &check); //DOESN'T WORK, TO CHECK
 
 	//extraction options

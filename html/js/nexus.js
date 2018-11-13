@@ -955,7 +955,7 @@ function removeNode(context, node) {
 	m.vbo[n] = m.ibo[n] = null;
 
 	if(!m.vertex.texCoord) return;
-	if (m.texreq.readyState != 4) m.texreq.abort();
+	if (m.texreq && m.texreq.readyState != 4) m.texreq.abort();
 	var tex = m.patches[m.nfirstpatch[n]*3+2]; //TODO assuming one texture per node
 	m.texref[tex]--;
 
