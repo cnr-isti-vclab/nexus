@@ -41,7 +41,7 @@ public:
 	Stream();
 	virtual ~Stream() {}
 	void setVertexQuantization(double q);
-	void load(QStringList paths);
+	void load(QStringList paths, QString material);
 
 	//return a block of triangles. The buffer is valid until next call to getTriangles. Return null when finished
 	void clear();

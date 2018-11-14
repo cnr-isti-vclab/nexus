@@ -43,7 +43,7 @@ void Stream::setVertexQuantization(double q) {
 	vertex_quantization = q;
 }
 
-void Stream::load(QStringList paths) {
+void Stream::load(QStringList paths, QString material) {
 	has_colors = true;
 	has_normals = true;
 	has_textures = true;
@@ -57,7 +57,7 @@ void Stream::load(QStringList paths) {
 			loader = new TspLoader(file);
 
 		else if(file.endsWith(".obj"))
-			loader = new ObjLoader(file);
+			loader = new ObjLoader(file, material);
 
 		else if(file.endsWith(".stl"))
 			loader = new STLLoader(file);

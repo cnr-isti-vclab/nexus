@@ -28,12 +28,13 @@ for more details.
 #define ALPHA(c) (c & 0xff)
 
 
-ObjLoader::ObjLoader(QString filename):
+ObjLoader::ObjLoader(QString filename, QString _mtl):
 	vertices("cache_plyvertex"),
 	n_vertices(0),
 	n_triangles(0),
 	current_vertex(0) {
 
+	mtl =_mtl;
 	file.setFileName(filename);
 	if(!file.open(QFile::ReadOnly))
 		throw QString("could not open file %1. Error: %2").arg(filename).arg(file.errorString());
@@ -85,17 +86,21 @@ void ObjLoader::readMTL() {
 
 	char buffer[1024];
 	
-
-	QString fname = file.fileName();
-	QFileInfo info = QFileInfo(fname);
+	if (!mtl.isEmpty()) {
+		if(!QFileInfo::exists(mtl))
+			throw QString("Could not find .mtl file: %1").arg(mtl);
+	} else {
+		QString fname = file.fileName();
+		QFileInfo info = QFileInfo(fname);
 	
-	//assuming mtl base file name the same as obj
-	QString mtlfname = info.path() + "/" + info.completeBaseName() + ".mtl";
-
-	if (!QFileInfo::exists(mtlfname))
+		//assuming mtl base file name the same as obj
+		mtl = info.path() + "/" + info.completeBaseName() + ".mtl";
+	}
+		
+	if (!QFileInfo::exists(mtl))
 		return;
 
-	QFile f(mtlfname);
+	QFile f(mtl);
 	if (!f.open(QFile::ReadOnly))
 		return;
 	int cnt = 0;

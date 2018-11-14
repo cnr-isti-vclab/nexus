@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
 	float scaling(0.5);                 //simplification ratio
 	int skiplevels = 0;
 	QString output("");                 //output file
+	QString mtl("");
 
 
 	bool point_cloud = false;
@@ -76,6 +77,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
 	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0", &skiplevels);
 	opt.addSwitch('O', "original textures", "use original textures, no repacking", &useOrigTex);
+	opt.addOption('m', "mtl file", "mtl for a single obj file", &mtl);
 
 	//btree options
 	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333", &adaptive);
@@ -152,7 +154,7 @@ int main(int argc, char *argv[]) {
 
 		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
-		stream->load(inputs);
+		stream->load(inputs, mtl);
 
 		bool has_colors = stream->hasColors();
 		bool has_normals = stream->hasNormals();

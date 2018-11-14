@@ -28,7 +28,7 @@ for more details.
 
 class ObjLoader: public MeshLoader {
 public:
-	ObjLoader(QString file);
+	ObjLoader(QString file, QString mtl);
 	~ObjLoader();
 
 	void setMaxMemory(quint64 max_memory);
@@ -42,6 +42,7 @@ private:
 	void cacheVertices();
 	
 	QFile file;
+	QString mtl;
 	VirtualArray<Vertex> vertices;
 	std::vector<float> vtxtuv;
 	quint64 n_vertices;
