@@ -57,7 +57,7 @@ quint32 STLLoader::getTrianglesAscii(quint32 size, Triangle *buffer) {
 			if(ok <= 0) return readed;
 
 			int n = sscanf(line, "%s %f %f %f", dummy, v, v+1, v+2);
-			if(n != 3)
+			if(n != 4)
 				throw QString("Invalid STL file");
 		}
 		current_triangle++;
