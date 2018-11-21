@@ -15,20 +15,64 @@ STLLoader::STLLoader(QString filename) {
 	if(header.size() != 5)
 		throw QString("Unexpected end of file");
 	ascii = header.startsWith("solid");
-	if(ascii)
-		throw QString("Unsupported ascii STL");
-
+	if(ascii) {
+		file.readLine();
+		n_triangles = 0;
+		return;
+	}
 	header = file.read(80); //ignored
 	file.read((char *)&n_triangles, 4); //TODO support little endian in big-endiam systems
 
 }
 
-STLLoader::~STLLoader() {
 
+/*
+facet normal nx ny nz
+	outer loop
+		vertex v1x v1y v1z
+		vertex v2x v2y v2z
+		vertex v3x v3y v3z
+	endloop
+endfacet */
+
+quint32 STLLoader::getTrianglesAscii(quint32 size, Triangle *buffer) {
+	int readed = 0;
+	char line[1024];
+	char dummy[1024];
+	for(int i = 0; i < size; i++) {
+
+		int ok = file.readLine(line, 1023); //facet
+		if(ok <= 0) return readed;
+
+		ok = file.readLine(line, 1023); //normal
+		if(ok <= 0) return readed;
+
+
+		Triangle &tri = buffer[i];
+		tri.node = 0;
+
+		for(int k = 0; k < 3; k++) {
+			float *v = tri.vertices[k].v;
+			ok = file.readLine(line, 1023); //normal
+			if(ok <= 0) return readed;
+
+			int n = sscanf(line, "%s %f %f %f", dummy, v, v+1, v+2);
+			if(n != 3)
+				throw QString("Invalid STL file");
+		}
+		current_triangle++;
+		readed++;
+
+		ok = file.readLine(line, 1023); //endloop
+		if(ok <= 0) return readed;
+
+		ok = file.readLine(line, 1023); //endfacet
+		if(ok <= 0) return readed;
+	}
+	return readed;
 }
 
-
-quint32 STLLoader::getTriangles(quint32 size, Triangle *buffer) {
+quint32 STLLoader::getTrianglesBinary(quint32 size, Triangle *buffer) {
 	//each face is normal (float), + 3 vertices(float) + uint16  = 50 bytes.
 	vector<char> tmp(50*size);
 	qint64 nread = file.read(tmp.data(), 50*size);
