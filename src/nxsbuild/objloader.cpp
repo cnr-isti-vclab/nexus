@@ -86,7 +86,7 @@ void ObjLoader::readMTL() {
 
 	char buffer[1024];
 	
-	if (!mtl.isEmpty()) {
+	if (!mtl.isNull()) {
 		if(!QFileInfo::exists(mtl))
 			throw QString("Could not find .mtl file: %1").arg(mtl);
 	} else {
@@ -226,8 +226,8 @@ void ObjLoader::cacheVertices() {
 
 		}
 		if(s == 0) continue;            //skip empty lines
-		if(buffer[0] != 'v')            //skip all irrelevant staff
-			continue;
+//		if(buffer[0] != 'v')            //skip all irrelevant staff
+//			continue;
 		buffer[s] = '\0';               //terminating line, readLine wont do this.
 
 		if(buffer[0] == 'v') {          //vertex
@@ -250,6 +250,16 @@ void ObjLoader::cacheVertices() {
 			}//skipping other properties in OBJ
 			continue;
 
+		} else if(buffer[0] == 'm' && strncmp(buffer, "mtllib", 6) == 0) {
+			char buf[1024];
+			int n = sscanf(buffer, "mtllib %s", buf);
+			if(n == 1 && mtl.isNull()) {
+				QString fname = file.fileName();
+				QFileInfo info = QFileInfo(fname);
+			
+				//assuming mtl base file name the same as obj
+				mtl = info.path() + "/" + QString(buf);
+			}
 		}
 	}
 }

@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 	float scaling(0.5);                 //simplification ratio
 	int skiplevels = 0;
 	QString output("");                 //output file
-	QString mtl("");
+	QString mtl;
 
 
 	bool point_cloud = false;

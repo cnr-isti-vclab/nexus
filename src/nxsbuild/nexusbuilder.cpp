@@ -434,6 +434,21 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 	pixelXedge = sqrt(pixelXedge/mesh.face.size()*3);
 	error = sqrt(error/mesh.face.size()*3);
+	
+	double areausage = 0.0;
+	//compute area waste
+	for(int i = 0; i < mesh.face.size(); i++) {
+		auto &face = mesh.face[i];
+		int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
+		vcg::Point2i &o = origins[b];
+		vcg::Point2i m = mapping[b];
+		auto V0 = face.V(0)->T().P();
+		auto V1 = face.V(1)->T().P();
+		auto V2 = face.V(2)->T().P();
+		areausage += (V2 - V0)^(V2 - V1)/2;
+		
+	}
+	//cout << "Area: " << (int)(100*areausage) << "% --- " << (int)areausage*finalSize[0]*finalSize[1] << " vs: " << finalSize[0]*finalSize[1] << "\n";
 
 	{
 		//	static int boxid = 0;
@@ -458,7 +473,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 			//		boxid++;
 		}
 
-		/*
+		
 		painter.setPen(QColor(255,0,255));
 		for(int i = 0; i < mesh.face.size(); i++) {
 			auto &face = mesh.face[i];
@@ -476,7 +491,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 				float y1 = V1->T().P()[1]/pdy; //how many pixels from the origin
 				painter.drawLine(x0, y0, x1, y1);
 			}
-		}*/
+		}
 		/*
 		for(int i = 0; i < mesh.vert.size(); i++) {
 			auto &p = mesh.vert[i];
@@ -495,8 +510,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 
 	image = image.mirrored();
-/*	static int imgcount = 0;
-	image.save(QString("Test_%1.jpg").arg(imgcount++)); */
+	static int imgcount = 0;
+	image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
 	return image;
 }
 
@@ -714,7 +729,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			delete []triangles;
 		}
 
-		//std::cout << "Level texture area: " << area << endl;
+		std::cout << "Level texture area: " << area << endl;
 		/*while(workers.size()) {
 		workers.front()->wait();
 		delete workers.front();
