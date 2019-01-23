@@ -474,7 +474,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		}
 
 		
-		painter.setPen(QColor(255,0,255));
+	/*	painter.setPen(QColor(255,0,255));
 		for(int i = 0; i < mesh.face.size(); i++) {
 			auto &face = mesh.face[i];
 			int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
@@ -491,7 +491,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 				float y1 = V1->T().P()[1]/pdy; //how many pixels from the origin
 				painter.drawLine(x0, y0, x1, y1);
 			}
-		}
+		}*/
 		/*
 		for(int i = 0; i < mesh.vert.size(); i++) {
 			auto &p = mesh.vert[i];
@@ -510,8 +510,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 
 	image = image.mirrored();
-	static int imgcount = 0;
-	image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
+	//static int imgcount = 0;
+	//image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
 	return image;
 }
 

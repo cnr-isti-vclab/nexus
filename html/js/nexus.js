@@ -820,10 +820,9 @@ Instance.prototype = {
 
 			if(t.mode == "POINT") {
 				var pointsize = t.pointsize;
-				if(!pointsize) {
-					var pointsize = Math.ceil(0.30*t.currentError);
-					if(pointsize > 2) pointsize = 2;
-				}
+				if(!pointsize)
+					var pointsize = Math.ceil(1.2* Math.min(error, 5));
+
 				if(typeof attr.size == 'object') { //threejs pointcloud rendering
 					gl.uniform1f(attr.size, 1.0);
 					gl.uniform1f(attr.scale, 1.0);
@@ -831,10 +830,10 @@ Instance.prototype = {
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
 				var error = t.nodeError(n);
-//				var fraction = (error/t.currentError - 1);
-//				if(fraction > 1) fraction = 1;
-//				var count = parseInt(fraction * nv);
-				count = nv;
+				var fraction = (error/t.currentError - 1);
+				if(fraction > 1) fraction = 1;
+
+				var count = nv;
 				if(count != 0) {
 					if(m.vertex.texCoord) {
 						var texid = m.patches[m.nfirstpatch[n]*3+2];
