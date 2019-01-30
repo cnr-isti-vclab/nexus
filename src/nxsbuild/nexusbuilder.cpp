@@ -729,7 +729,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			delete []triangles;
 		}
 
-		std::cout << "Level texture area: " << area << endl;
+		//std::cout << "Level texture area: " << area << endl;
 		/*while(workers.size()) {
 		workers.front()->wait();
 		delete workers.front();
