@@ -1,6 +1,6 @@
 /*
 Nexus
-Copyright (c) 2012-2018, Visual Computing Lab, ISTI - CNR
+Copyright (c) 2012-2019, Visual Computing Lab, ISTI - CNR
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -257,11 +257,11 @@ PriorityQueue.prototype = {
 var padding = 256;
 var Debug = { 
 	nodes   : false,  //color each node
-	culling : false,  //visibility culling disabled
+//	culling : false,  //visibility culling disabled
 	draw    : false,  //final rendering call disabled
 	extract : false,  //no extraction
-	request : false,  //no network requests
-	worker  : false   //no web workers
+//	request : false,  //no network requests
+//	worker  : false   //no web workers
 };
 
 
@@ -798,15 +798,14 @@ Instance.prototype = {
 			if (Debug.nodes) {
 				var error = t.nodeError(n, true);
 				var palette = { 
-					1: [1, 1, 1, 1],
-					2: [0.5, 1, 1, 1],
-					4: [0, 1, 1, 1],
-					8: [0, 1, 0.5, 1],
-					12: [0, 1, 0, 1],
-					16: [0, 1, 0, 1],
-					20: [1, 1, 0, 1],
-					30: [1, 0.5, 0, 1],
-					1e20: [1, 0, 0, 1] };
+					1:    [1, 1, 1, 1], //white
+					2:    [1, 0, 1, 1], //magenta
+					4:    [0, 1, 1, 1], //cyan
+					8:    [1, 1, 0, 1], //yellow
+					16:   [0, 0, 1, 1], //blue
+					32:   [0, 1, 0, 1], //green
+					64:   [1, 0, 0, 1]  //red
+				};
 
 				for(i in palette)
 					if(i > error) {
@@ -820,6 +819,7 @@ Instance.prototype = {
 
 			if(t.mode == "POINT") {
 				var pointsize = t.pointsize;
+				var error = t.nodeError(n);
 				if(!pointsize)
 					var pointsize = Math.ceil(1.2* Math.min(error, 5));
 
@@ -829,9 +829,8 @@ Instance.prototype = {
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
-				var error = t.nodeError(n);
-				var fraction = (error/t.currentError - 1);
-				if(fraction > 1) fraction = 1;
+//				var fraction = (error/t.currentError - 1);
+//				if(fraction > 1) fraction = 1;
 
 				var count = nv;
 				if(count != 0) {
