@@ -602,15 +602,21 @@ Instance.prototype = {
 		var c2 = mi[14]/mi[15] - t.viewpoint[2];
 		var dist = Math.sqrt(c0*c0 + c1*c1 + c2*c2);
 
-		t.resolution = (2*side/dist)/ t.viewport[2];
+		var resolution = (2*side/dist)/ t.viewport[2];
+		t.currentResolution == resolution ? t.sameResolution = true : t.sameResolution = false;
+		t.currentResolution = resolution;
 	},
 
 	traversal : function () {
 		var t = this;
+
 		if(Debug.extract == true)
 			return;
 
 		if(!t.isReady) return;
+
+		if(t.sameResolution) 
+			if(!t.visitQueue.size && !t.nblocked) return;
 
 		var n = t.mesh.nodesCount;
 		t.visited  = new Uint8Array(n);
@@ -621,14 +627,13 @@ Instance.prototype = {
 		for(var i = 0; i < t.mesh.nroots; i++)
 			t.insertNode(i);
 
-		var candidatesCount = 0;
 		t.targetError = t.context.currentError;
 		t.currentError = 1e20;
 		t.drawSize = 0;
+		t.nblocked = 0;
 
-		var nblocked = 0;
 		var requested = 0;
-		while(t.visitQueue.size && nblocked < maxBlocked) {
+		while(t.visitQueue.size && t.nblocked < maxBlocked) {
 			var error = t.visitQueue.error[0];
 			var node = t.visitQueue.pop();
 			if ((requested < maxPending) && (t.mesh.status[node] == 0)) {
@@ -638,7 +643,7 @@ Instance.prototype = {
 
 			var blocked = t.blocked[node] || !t.expandNode(node, error);
 			if (blocked) 
-				nblocked++;
+				t.nblocked++;
 			else {
 				t.selected[node] = 1;
 				t.currentError = error;
@@ -719,7 +724,7 @@ Instance.prototype = {
 			dist = 0.1;
 
 		//resolution is how long is a pixel at distance 1.
-		var error = t.mesh.nerrors[n]/(t.resolution*dist); //in pixels
+		var error = t.mesh.nerrors[n]/(t.currentResolution*dist); //in pixels
 
 		if (!t.isVisible(cx, cy. cz, spheres[off+4]))
 			error /= 1000.0;
@@ -775,7 +780,7 @@ Instance.prototype = {
 			}
 
 
-			var sp = t.mesh.nspheres;
+			var sp = m.nspheres;
 			var off = n*5;
 			if(!t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+4])) //tight radius
 				continue;
@@ -878,6 +883,7 @@ Instance.prototype = {
 		} 
 
 		t.context.rendered += rendered;
+
 		if(!vertexEnabled) gl.disableVertexAttribArray(attr.position);
 		if(!normalEnabled && attr.normal >= 0) gl.disableVertexAttribArray(attr.normal);
 		if(!colorEnabled && attr.color >= 0) gl.disableVertexAttribArray(attr.color);
