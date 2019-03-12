@@ -132,16 +132,19 @@ void PlyLoader::init() {
 	bool has_faces = false;
 	for(unsigned int i = 0; i < pf.elements.size(); i++) {
 
-		if(!strcmp( pf.ElemName(i),"vertex")) {
+		if(!strcmp(pf.ElemName(i),"vertex")) {
 			n_vertices = pf.ElemNumber(i);
 			vertices_element = i;
 
-		} else if( !strcmp( pf.ElemName(i),"face") ) {
+		} else if( !strcmp(pf.ElemName(i),"face") ) {
 			n_triangles = pf.ElemNumber(i);
-			faces_element = i;
-			has_faces = true;
+			if (n_triangles) {
+				faces_element = i;
+				has_faces = true;
+			}
 		}
 	}
+
 	//testing for required vertex fields.
 	if(pf.AddToRead(plyprop1[0])==-1 ||
 			pf.AddToRead(plyprop1[1])==-1 ||
