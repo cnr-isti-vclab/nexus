@@ -6,9 +6,9 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <style>body { margin: 0px; overflow: hidden; }</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.js"></script>
-<script src="js/TrackballControls.js"></script>
 <script src="js/nexus.js"></script>
 <script src="js/nexus_three.js"></script>
+<script src="js/trackball_three.js"></script>
 </head>
 
 <body>
@@ -21,6 +21,7 @@ var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHe
 camera.position.z = 4;
 
 var controls = new THREE.TrackballControls( camera );
+controls.target.set( 0, 0, -1 );
 controls.rotateSpeed = 10.0;
 controls.zoomSpeed = 1.5;
 controls.panSpeed = 0.8;
@@ -89,13 +90,25 @@ texture.needsUpdate = true;
 var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
 */
 
+function onNexusLoad() {
+	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
+	var target = new THREE.Vector3();
+	var p = nexus_obj.geometry.boundingBox.getCenter(target).negate();
+	nexus_obj.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
+	nexus_obj.scale.set(s, s, s); 
+	redraw = true;
+
+//	nexus_obj.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+}
+
 function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
 var model = getURLParameter('model') || "models/gargo.nxz";
 
-var nexus_obj = new NexusObject(model, renderer, render);
+//var nexus_obj = new NexusObject(model, renderer, render);
+var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );

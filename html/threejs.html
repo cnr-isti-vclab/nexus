@@ -6,9 +6,9 @@
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <style>body { margin: 0px; overflow: hidden; }</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/97/three.js"></script>
-<script src="js/TrackballControls.js"></script>
 <script src="js/nexus.js"></script>
 <script src="js/nexus_three.js"></script>
+<script src="js/trackball_three.js"></script>
 </head>
 
 <body>
@@ -39,9 +39,10 @@ function animate() {
 }
 
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
-camera.position.z = 4;
+camera.position.z = 3;
 
 var controls = new THREE.TrackballControls( camera );
+controls.target.set( 0, 0, -1 );
 controls.rotateSpeed = 10.0;
 controls.zoomSpeed = 1.5;
 controls.panSpeed = 0.8;
@@ -97,7 +98,7 @@ function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
-var model = getURLParameter('model') || "models/gargo.nxs";
+var model = getURLParameter('model') || "models/gargo.nxz";
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
 scene.add(nexus_obj);

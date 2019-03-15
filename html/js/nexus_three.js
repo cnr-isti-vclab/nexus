@@ -1,5 +1,5 @@
-/* 
-
+/*
+ * @author Federico Ponchio / http://vcg.isti.cnr.it/~ponchio
 */
 
 function NexusObject(url, onLoad, onUpdate, renderer, material) {
