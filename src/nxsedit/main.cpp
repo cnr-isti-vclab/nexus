@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('V', "vertex bits", "number of bits in vertex coordinates when compressing [requires -z]", &position_bits);
 	opt.addOption('Y', "luma bits", "quantization of luma channel, default 6 [requires -z]", &luma_bits);
 	opt.addOption('C', "chroma bits", "quantization of chroma channel, default 6 [requires -z]", &chroma_bits);
-	opt.addOption('A', "alha bits", "quantization of alpha channel, default 5 [requires -z]", &alpha_bits);
+	opt.addOption('A', "alpha bits", "quantization of alpha channel, default 5 [requires -z]", &alpha_bits);
 	opt.addOption('N', "normal bits", "quantization of normals, default 10 [requires -z]", &norm_bits);
 	opt.addOption('T', "textures bits", "quantization of textures, default 0.25 [requires -z]", &tex_step);
 	opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1 [requires -z]", &error_q);

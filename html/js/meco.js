@@ -1,6 +1,6 @@
 /*
 Nexus
-Copyright (c) 2012-2018, Visual Computing Lab, ISTI - CNR
+Copyright (c) 2012-2019, Visual Computing Lab, ISTI - CNR
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -575,10 +575,12 @@ decodeColors: function() {
 		var e0 = this.colors[offset + 0] * steps[0];
 		var e1 = this.colors[offset + 1] * steps[1];
 		var e2 = this.colors[offset + 2] * steps[2];
+		var e3 = this.colors[offset + 3] * steps[3];
 
 		this.colors[offset + 0] = (e2 + e0)&0xff;
 		this.colors[offset + 1] = e0;
 		this.colors[offset + 2] = (e1 + e0)&0xff;
+		this.colors[offset + 3] = e3;
 	}
 },
 

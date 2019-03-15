@@ -396,16 +396,18 @@ static Color4b toRGB(Color4b e) {
 	s[2] = e[1] + e[0];
 	s[0] = e[2] + e[0];
 	s[1] = e[0];
+	s[3] = e[3];
 	return s;
 #endif
 
 	int r = e[0]                        + 1.40200*(e[2] - 128);
 	int g = e[0] - 0.34414*(e[1] - 128) - 0.71414*(e[2] - 128);
 	int b = e[0] + 1.77200*(e[1] - 128);
-	s[3] = e[3];
+
 	s[0] = std::max(0, std::min(255, r));
 	s[1] = std::max(0, std::min(255, g));
 	s[2] = std::max(0, std::min(255, b));
+	s[3] = e[3];
 
 	return s;
 }
