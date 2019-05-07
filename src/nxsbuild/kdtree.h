@@ -34,6 +34,7 @@ public:
 	vcg::Box3f box;
 	int split;           //splitting axis: 0, 1,
 	float middle;
+    float start, end;    //interval for point cloud
 	int children[2];     //first and second child
 	int block;             //bin where triangle are stored.
 
@@ -100,6 +101,8 @@ protected:
 
 class KDTreeCloud: public VirtualVertexCloud, public KDTree {
 public:
+    //overlapping interval with linearly decreasing density when splitting 0->none 1-> all of the interval but would never dcrease the space.
+    float overlap = 0.3;
 	KDTreeCloud(QString prefix, float adapt = 0.333): VirtualVertexCloud(prefix), KDTree(adapt) {}
 	void setMaxMemory(quint64 m) { return VirtualVertexCloud::setMaxMemory(m); }
 	void clear();
