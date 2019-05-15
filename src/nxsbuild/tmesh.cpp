@@ -290,28 +290,30 @@ void TMesh::splitSeams(nx::Signature &sig) {
 	if(sig.vertex.hasNormals() && sig.face.hasIndex())
 		vcg::tri::UpdateNormal<TMesh>::PerVertexNormalized(*this);
 
-	std::vector<bool> visited(vert.size(), false);
+	//std::vector<bool> visited(vert.size(), false);
 	std::vector<int> next(vert.size(), -1);
 	std::vector<TVertex> new_vert(vert.size());
 	std::vector<int> new_face;
+	std::vector<int> vert_to_tex(vert.size(), -2);
 	for(auto &f: face) {
 		for(int k = 0; k < 3; k++) {
 			int index = f.V(k) - &*vert.begin();
+
 			assert(index >= 0);
 
 			while(true) {
 				assert(index < (int)new_vert.size());
-				assert(index < (int)visited.size());
+//				assert(index < (int)visited.size());
 				assert(index >= 0);
 				TVertex &nv = new_vert[index];
-				if(!visited[index]) { //first time, just update T.
+				if(vert_to_tex[index] == -2) { //first time, just update T.
 					nv = *f.V(k);
 					nv.T() = f.WT(k);
-					visited[index] = true;
+					vert_to_tex[index] = f.tex;
 					break;
 				}
 
-				if(nv.T() == f.WT(k))  //found!
+				if(vert_to_tex[index] == f.tex && nv.T() == f.WT(k))  //found!
 					break;
 
 				if(next[index] == -1) { //ok we have to add a new one.
@@ -320,7 +322,7 @@ void TMesh::splitSeams(nx::Signature &sig) {
 					new_vert.back().T() = f.WT(k);
 					next[index] = new_index;
 					next.push_back(-1);
-					visited.push_back(true);
+					vert_to_tex.push_back(f.tex);
 					index = new_index;
 					break;
 				}
@@ -331,7 +333,7 @@ void TMesh::splitSeams(nx::Signature &sig) {
 		}
 	}
 	for(size_t i = 0; i < vert.size(); i++) {
-		assert(visited[i] == true);
+		assert(vert_to_tex[i] != -2);
 	}
 	vert = new_vert;
 	vn = vert.size();

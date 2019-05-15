@@ -257,10 +257,12 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		int v[3];
 		for(int i = 0; i < 3; i++) {
 			v[i] = face.V(i) - &*mesh.vert.begin();
+			
+			
 			int &t = vertex_to_tex[v[i]];
-			//			if(t != -1 && t != face.tex) qDebug() << "Missing vertex replication across seams\n";
-			t = face.tex;
 
+			if(t != -1 && t != face.tex) qDebug() << "Missing vertex replication across seams\n";
+			t = face.tex;
 		}
 		components.link(v[0], v[1]);
 		components.link(v[0], v[2]);
@@ -292,6 +294,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
 		auto t = mesh.vert[i].T().P();
+
 //		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
 //				cout << "T: " << t[0] << " " << t[1] << endl;
 		if(t[0] != 0.0f || t[1] != 0.0f)
@@ -510,8 +513,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 
 	image = image.mirrored();
-	//static int imgcount = 0;
-	//image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
+	static int imgcount = 0;
+	image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
 	return image;
 }
 
@@ -666,7 +669,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 				tmp.serialize(buffer, header.signature, node_patches);
 				for(Patch &patch: node_patches)
-					patch.texture = textures.size()-1; //last texture uinserted
+					patch.texture = textures.size()-1; //last texture inserted
 
 				//VICIUOS TRICK: we could save only a texture every 2 geometry levels since the patch is contained also to a parent node.
 				//we could store the texture in the parent nodes i and have it good also for the children node.

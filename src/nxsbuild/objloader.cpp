@@ -318,13 +318,13 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 
 			current_texture_id = -1;
 			QString txtfname = textures_map[str];
-			//cout << "txt: " << qPrintable(str) << " " << qPrintable(txtfname) << endl;
 			if (txtfname.length() > 0) {
 				for (int i = 0; i < texture_filenames.size(); i++) {
 					if (texture_filenames[i] == txtfname)
 						current_texture_id = i;
 				}
 			}
+			
 			if (current_texture_id > -1) {
 				//cout << "txt ok: " << qPrintable(str) << " " << qPrintable(txtfname) << endl;
 			}
