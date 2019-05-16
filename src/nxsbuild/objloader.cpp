@@ -160,11 +160,9 @@ void ObjLoader::readMTL() {
 					continue;
 				}
 				if(str.startsWith("Map_Kd", Qt::CaseInsensitive)){
-					//cout << qPrintable(str);
-					//cout << "  ";
-					txtfname = str.section(" ", 1).trimmed();
-					//cout << qPrintable(txtfname);
-
+					txtfname = str.mid(7).trimmed();
+					txtfname = txtfname.remove(QRegExp("^(\")"));
+					txtfname = txtfname.remove(QRegExp("(\")$"));
 					continue;
 				}
 				if(str.startsWith("Kd", Qt::CaseInsensitive)){
@@ -252,14 +250,20 @@ void ObjLoader::cacheVertices() {
 
 		} else if(buffer[0] == 'm' && strncmp(buffer, "mtllib", 6) == 0) {
 			char buf[1024];
-			int n = sscanf(buffer, "mtllib %s", buf);
-			if(n == 1 && mtl.isNull()) {
+			mtl = QString(buffer).mid(7).trimmed();
+			//int n = sscanf(buffer, "mtllib %s", buf);
+			if(mtl.isNull()) {
 				QString fname = file.fileName();
 				QFileInfo info = QFileInfo(fname);
 			
 				//assuming mtl base file name the same as obj
+				
 				mtl = info.path() + "/" + QString(buf);
 			}
+			//remove "
+			mtl = mtl.remove(QRegExp("^(\")"));
+			mtl = mtl.remove(QRegExp("(\")$"));
+			
 		}
 	}
 }
