@@ -293,8 +293,9 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
-		auto t = mesh.vert[i].T().P();
-
+		auto &t = mesh.vert[i].T().P();
+		t[0] = fmod(t[0], 1.0);
+		t[1] = fmod(t[1], 1.0);
 //		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
 //				cout << "T: " << t[0] << " " << t[1] << endl;
 		if(t[0] != 0.0f || t[1] != 0.0f)
@@ -513,8 +514,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 
 	image = image.mirrored();
-	static int imgcount = 0;
-	image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
+	//static int imgcount = 0;
+	//image.save(QString("OUT_test_%1.jpg").arg(imgcount++)); 
 	return image;
 }
 
