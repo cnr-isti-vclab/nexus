@@ -935,7 +935,8 @@ function beginFrame(gl, fps) { //each context has a separate frame count.
 		if(c.currentError < c.targetError)
 			c.currentError = c.targetError;
 		if(c.currentError > 10) c.currentError = 10;
-	}
+	} else
+		c.currentError = c.targetError;
 //	console.log("current", c.currentError, "fps", fps, "targetFps", c.targetFps, "rendered", c.rendered);
 	c.rendered = 0;
 }
