@@ -25,9 +25,7 @@ sudo ldconfig
 
 [Glew](https://github.com/nigels-com/glew)
 
-http://glew.sourceforge.net/
-
-$ git clone ggit@github.com:nigels-com/glew.git
+$ git clone git@github.com:nigels-com/glew.git
 
 $ brew install glew
 
@@ -46,7 +44,7 @@ On **MacOS**
   And in settings>Build,Execution,Deployment>CMake add CMake options:
 
   ```
-  -DCMAKE_PREFIX_PATH=/your/path/to/Qt/5.11.1/gcc_64/lib/cmake
+  -D CMAKE_PREFIX_PATH=/your/path/to/Qt/5.11.1/gcc_64/lib/cmake
   ```
 
 ### install pkg-config
@@ -79,13 +77,16 @@ make
 ```
 
 ## nxsedit
-In nxsedit.pro, line 20,
+In nxsedit.pro and nxscompress.pro, line 20,
 replace     unix:INCLUDEPATH += /usr/local/lib
 with        unix:INCLUDEPATH += /usr/local/lib /usr/local/include
 
 ```
 cd src/nxsedit
 qmake nxsedit.pro
+make
+
+qmake nxscompress.pro
 make
 ```
 
