@@ -23,6 +23,7 @@ SET(HEADERS
 	tsploader.h
 	nexusbuilder.h
 	objloader.h
+	stlloader.h
 	tmesh.h
 	vertex_cache_optimizer.h
 	texpyramid.h
@@ -42,6 +43,7 @@ SET(SOURCES
 	tsploader.cpp
 	nexusbuilder.cpp
 	objloader.cpp
+	stlloader.cpp
 	tmesh.cpp
 	texpyramid.cpp
 )
