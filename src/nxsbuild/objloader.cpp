@@ -215,6 +215,9 @@ void ObjLoader::cacheVertices() {
 	file.seek(0);
 	char buffer[1024];
 	int cnt = 0;
+	
+	bool translate = (origin[0] != 0.0 || origin[1] != 0.0 || origin[2] != 0.0);
+	
 	while(1) {
 		
 		int s = file.readLine(buffer, 1024);
@@ -235,8 +238,20 @@ void ObjLoader::cacheVertices() {
 				Vertex &vertex = vertices[n_vertices];
 				n_vertices++;
 
-				int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
-				if(n != 3) throw QString("error parsing vertex line: %1").arg(buffer);
+				if(translate) {
+					vcg::Point3d p;
+					int n = sscanf(buffer, "v %lf %lf %lf", &p[0], &p[1], &p[2]);
+					if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
+					
+					p -= origin;
+					vertex.v[0] = (float)p[0];
+					vertex.v[1] = (float)p[1];
+					vertex.v[2] = (float)p[2];
+					
+				} else {
+					int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
+					if(n != 3) throw QString("error parsing vertex line: %1").arg(buffer);
+				}
 				cnt++;
 				if(quantization) {
 					quantize(vertex.v[0]);
@@ -469,6 +484,10 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
  */
 quint32 ObjLoader::getVertices(quint32 size, Splat *vertices) {
 	char buffer[1024];
+	
+	bool translate = (origin[0] != 0.0 || origin[1] != 0.0 || origin[2] != 0.0);
+	
+	cout << "translate: " << translate << endl;
 
 	quint32 count = 0;
 	while(count < size) {
@@ -484,9 +503,23 @@ quint32 ObjLoader::getVertices(quint32 size, Splat *vertices) {
 			continue; //skip other vertex properties{        //vertex coordinates
 
 		Vertex &vertex = vertices[count++];
+		
+		if(translate) {
+			vcg::Point3d p;
+			int n = sscanf(buffer, "v %lf %lf, %lf", &p[0], &p[1], &p[2]);
+			if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
+			
+			p -= origin;
+			vertex.v[0] = (float)p[0];
+			vertex.v[1] = (float)p[1];
+			vertex.v[2] = (float)p[2];
+			
+		} else {
 
-		int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
-		if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
+			int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
+			if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
+		}
+	
 		if(quantization) {
 			quantize(vertex.v[0]);
 			quantize(vertex.v[1]);

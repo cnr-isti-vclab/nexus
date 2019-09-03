@@ -37,6 +37,7 @@ public:
 	bool has_normals;
 	bool has_textures;
 	std::vector<QString> textures;
+	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 
 	Stream();
 	virtual ~Stream() {}

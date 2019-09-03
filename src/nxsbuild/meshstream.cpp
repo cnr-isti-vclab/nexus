@@ -69,6 +69,7 @@ void Stream::load(QStringList paths, QString material) {
 			throw QString("Input format not supported at the moment");
 
 		loader->setVertexQuantization(vertex_quantization);
+		loader->origin = origin;
 		loadMesh(loader);
 		has_colors &= loader->hasColors();
 		has_normals &= loader->hasNormals();
@@ -229,6 +230,8 @@ void StreamCloud::pushVertex(Splat &vertex) {
 
 	//ignore degenerate faces
 	vcg::Point3f p(vertex.v);
+	if(p[0] == 0 && p[1] == 0 && p[2] == 0)
+		cerr << "ZERO veertex!" << endl;
 	box.Add(p);
 
 	quint64 level = getLevel(current_triangle);

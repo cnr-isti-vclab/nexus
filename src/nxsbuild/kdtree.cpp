@@ -56,6 +56,7 @@ void KDTree::load(Stream *stream) {
 
 	float precision = boxFloatPrecision(node.box);
 	if(precision < 12) {
+			cout << node.box.min[0] << endl;
 			throw QString("quantiziation is too severe!\n"
 			              "The bounding box is far from the origin (with respect to its size),\n"
 			              "the model MIGHT be quantized.\n"
@@ -298,6 +299,8 @@ void KDTreeSoup::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 		else dest.push_back(t);
 	}
 	source.resize(n0);
+	if(source.size() == 0 || dest.size() == 0)
+		throw "Degenerate point cloud";
 	drop(child0.block);
 	drop(child1.block);
 }
@@ -361,6 +364,7 @@ void KDTreeCloud::loadElements(Stream *s) {
 		Cloud cloud = stream->streamVertices();
 		if(cloud.size() == 0) break;
 		for(uint i = 0; i < cloud.size(); i++) {
+			const vcg::Point3f &p = cloud[i].v;
 			pushVertex(cloud[i]);
 		}
 	}
@@ -403,6 +407,8 @@ void KDTreeCloud::findRealMiddle(KDCell &node) {
 
 	//node.middle = tmp[soup.size()/2];
 	node.middle = tmp[(int)(cloud.size()*ratio)];
+	if(node.middle == box.min[node.split] || node.middle == box.max[node.split])
+		throw "Bad node middle in kdtree.";
 }
 
 void KDTreeCloud::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
@@ -422,6 +428,8 @@ void KDTreeCloud::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 			dest.push_back(v);
 	}
 	source.resize(n0);
+	if(source.size() == 0 || dest.size() == 0)
+		throw "Degenerate point cloud";
 	drop(child0.block);
 	drop(child1.block);
 }

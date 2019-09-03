@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
 	int skiplevels = 0;
 	QString output("");                 //output file
 	QString mtl;
+	QString translate;
 
 
 	bool point_cloud = false;
@@ -93,9 +94,11 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('C', "colors", "save colors", &colors);
 	opt.addSwitch('c', "no colors", "do not store per vertex colors", &no_colors);
 	opt.addSwitch('u', "no textures", "do not store per vertex texture coordinates", &no_texcoords);
+	
 
 	//other options
 	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
+	opt.addOption('T', "origin", "new origin for the model X:Y:Z", &translate);
 	opt.parse();
 
 	//Check parameters are correct
@@ -129,6 +132,21 @@ int main(int argc, char *argv[]) {
 		cerr << "Patch size (" << node_size << ") out of bounds [2000-32536]" << endl;
 		return -1;
 	}
+	
+	vcg::Point3d origin(0, 0, 0);
+	if(!translate.isEmpty()) {
+		QStringList p = translate.split(':');
+		if(p.size() != 3) {
+			cerr << "Malformed translate parameter, expecting X:Y:Z" << endl;
+		}
+
+		bool ok = false;
+		for(int i = 0; i < 3; i++) {
+			origin[i] = p[i].toDouble(&ok);
+			if(!ok)
+				cerr << "Malformed translate parameter, expecting X:Y:Z" << endl;
+		}
+	}
 
 	Stream *stream = 0;
 	KDTree *tree = 0;
@@ -154,6 +172,7 @@ int main(int argc, char *argv[]) {
 
 		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
+		stream->origin = origin;
 		stream->load(inputs, mtl);
 
 		bool has_colors = stream->hasColors();

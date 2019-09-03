@@ -38,7 +38,8 @@ public:
 	virtual bool hasTextures() { return has_textures; }
 	std::vector<QString> texture_filenames;
 	int texOffset; //when returning triangles add texOffset to refer to the correct texture in stream.
-
+	vcg::Point3d origin;
+	
 protected:
 	bool has_colors;
 	bool has_normals;
