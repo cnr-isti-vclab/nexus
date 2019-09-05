@@ -43,30 +43,58 @@ void Stream::setVertexQuantization(double q) {
 	vertex_quantization = q;
 }
 
+MeshLoader *Stream::getLoader(QString file, QString material) {
+	MeshLoader *loader = nullptr;
+	if(file.endsWith(".ply"))
+		loader = new PlyLoader(file);
+
+	else if(file.endsWith(".tsp"))
+		loader = new TspLoader(file);
+
+	else if(file.endsWith(".obj"))
+		loader = new ObjLoader(file, material);
+
+	else if(file.endsWith(".stl"))
+		loader = new STLLoader(file);
+
+	/*        else if(file.endsWith(".off"))
+		loader = new OffLoader(file, vertex_quantization, max_memory);*/
+
+	else
+		throw QString("Input format not supported at the moment");
+	return loader;
+}
+
+vcg::Box3d Stream::getBox(QStringList paths) {
+
+	vcg::Box3d box;
+
+	quint32 length = (1<<20); //times 52 bytes. (128Mb of data)
+	Splat *vertices = new Splat[length];
+	
+	
+	foreach(QString file, paths) {
+		qDebug() << "Computing box for " << qPrintable(file);
+		MeshLoader *loader = getLoader(file, QString());
+		loader->setMaxMemory(512*(1<<20)); //read only once... does'nt really matter.
+		while(true) {
+			int count = loader->getVertices(length, vertices);
+			if(count == 0) break;
+		}
+		box.Add(loader->box);
+		delete loader;
+	}
+	delete []vertices;
+	return box;
+}
+
 void Stream::load(QStringList paths, QString material) {
 	has_colors = true;
 	has_normals = true;
 	has_textures = true;
 	foreach(QString file, paths) {
 		qDebug() << "Reading" << qPrintable(file);
-		MeshLoader *loader = NULL;
-		if(file.endsWith(".ply"))
-			loader = new PlyLoader(file);
-
-		else if(file.endsWith(".tsp"))
-			loader = new TspLoader(file);
-
-		else if(file.endsWith(".obj"))
-			loader = new ObjLoader(file, material);
-
-		else if(file.endsWith(".stl"))
-			loader = new STLLoader(file);
-
-		/*        else if(file.endsWith(".off"))
-			loader = new OffLoader(file, vertex_quantization, max_memory);*/
-
-		else
-			throw QString("Input format not supported at the moment");
+		MeshLoader *loader = getLoader(file, material);
 
 		loader->setVertexQuantization(vertex_quantization);
 		loader->origin = origin;
@@ -230,8 +258,6 @@ void StreamCloud::pushVertex(Splat &vertex) {
 
 	//ignore degenerate faces
 	vcg::Point3f p(vertex.v);
-	if(p[0] == 0 && p[1] == 0 && p[2] == 0)
-		cerr << "ZERO veertex!" << endl;
 	box.Add(p);
 
 	quint64 level = getLevel(current_triangle);

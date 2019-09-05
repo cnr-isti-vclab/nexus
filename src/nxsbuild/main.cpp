@@ -49,6 +49,7 @@ int main(int argc, char *argv[]) {
 	QString output("");                 //output file
 	QString mtl;
 	QString translate;
+	bool center = false;
 
 
 	bool point_cloud = false;
@@ -99,6 +100,7 @@ int main(int argc, char *argv[]) {
 	//other options
 	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
 	opt.addOption('T', "origin", "new origin for the model X:Y:Z", &translate);
+	opt.addSwitch('G', "center", "set origin in the bounding box center", &center);
 	opt.parse();
 
 	//Check parameters are correct
@@ -138,13 +140,20 @@ int main(int argc, char *argv[]) {
 		QStringList p = translate.split(':');
 		if(p.size() != 3) {
 			cerr << "Malformed translate parameter, expecting X:Y:Z" << endl;
+			return -1;
 		}
 
 		bool ok = false;
 		for(int i = 0; i < 3; i++) {
 			origin[i] = p[i].toDouble(&ok);
-			if(!ok)
+			if(!ok) {
 				cerr << "Malformed translate parameter, expecting X:Y:Z" << endl;
+				return -1;
+			}
+		}
+		if(center) {
+			cerr << "Can't specify both --center (-t) and --translate (-T)" << endl;
+			return -1;
 		}
 	}
 
@@ -172,7 +181,14 @@ int main(int argc, char *argv[]) {
 
 		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
-		stream->origin = origin;
+		if(center) {
+			vcg::Box3d box = stream->getBox(inputs);
+			vcg::Point3d m = box.min;
+			vcg::Point3d M = box.max;
+			cout << "Box: " << m[0] << " " << m[1] << " " << m[2] << "  --- " << M[0] << " " << M[1] << " " << M[2] << endl;
+			stream->origin = box.Center();
+		} else
+			stream->origin = origin;
 		stream->load(inputs, mtl);
 
 		bool has_colors = stream->hasColors();

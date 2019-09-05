@@ -56,7 +56,6 @@ void KDTree::load(Stream *stream) {
 
 	float precision = boxFloatPrecision(node.box);
 	if(precision < 12) {
-			cout << node.box.min[0] << endl;
 			throw QString("quantiziation is too severe!\n"
 			              "The bounding box is far from the origin (with respect to its size),\n"
 			              "the model MIGHT be quantized.\n"

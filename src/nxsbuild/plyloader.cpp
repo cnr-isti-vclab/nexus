@@ -211,8 +211,6 @@ void PlyLoader::cacheVertices() {
 	vertices.setElementsPerBlock(1<<20);
 	vertices.resize(n_vertices);
 
-	bool translate = (origin[0] != 0.0 || origin[1] != 0.0 || origin[2] != 0.0);
-	
 	PlyVertex vertex;
 	//caching vertices on temporary file
 	for(quint64 i = 0; i < n_vertices; i++) {
@@ -320,13 +318,15 @@ quint32 PlyLoader::getVertices(quint32 size, Splat *splats) {
 		current_vertex++;
 
 		if(double_coords) {
-			v.v[0] = vertex.dv[0] - origin[0];
-			v.v[1] = vertex.dv[1] - origin[1];
-			v.v[2] = vertex.dv[2] - origin[2];
+			box.Add(vcg::Point3d(vertex.dv) - origin);
+			v.v[0] = (float)(vertex.dv[0] - origin[0]);
+			v.v[1] = (float)(vertex.dv[1] - origin[1]);
+			v.v[2] = (float)(vertex.dv[2] - origin[2]);
 		} else {
-			v.v[0] = vertex.v[0] - origin[0];
-			v.v[1] = vertex.v[1] - origin[1];
-			v.v[2] = vertex.v[2] - origin[2];
+			box.Add(vcg::Point3d(vertex.v[0], vertex.v[1], vertex.v[2]) - origin);
+			v.v[0] = vertex.v[0] - (float)origin[0];
+			v.v[1] = vertex.v[1] - (float)origin[1];
+			v.v[2] = vertex.v[2] - (float)origin[2];
 		}
 		if(has_colors) {
 			v.c[0] = vertex.c[0];
