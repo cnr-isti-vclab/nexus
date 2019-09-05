@@ -36,12 +36,16 @@ facet normal nx ny nz
 endfacet */
 
 quint32 STLLoader::getTrianglesAscii(quint32 size, Triangle *buffer) {
-	int readed = 0;
+	quint32 readed = 0;
 	char line[1024];
 	char dummy[1024];
+	
+	bool translate = (origin[0] != 0.0 || origin[1] != 0.0 || origin[2] != 0.0);
+	
+	
 	for(int i = 0; i < size; i++) {
 
-		int ok = file.readLine(line, 1023); //facet
+		qint64 ok = file.readLine(line, 1023); //facet
 		if(ok <= 0) return readed;
 
 		ok = file.readLine(line, 1023); //normal
@@ -56,9 +60,19 @@ quint32 STLLoader::getTrianglesAscii(quint32 size, Triangle *buffer) {
 			ok = file.readLine(line, 1023); //normal
 			if(ok <= 0) return readed;
 
-			int n = sscanf(line, "%s %f %f %f", dummy, v, v+1, v+2);
-			if(n != 4)
-				throw QString("Invalid STL file");
+			if(translate) {
+				double d[3];
+				int n = sscanf(line, "%s %lf %lf %lf", dummy, &d[0], &d[1], &d[2]);
+				if(n != 4)
+					throw QString("Invalid STL file");
+				v[0] = (float)(d[0] - origin[0]);
+				v[1] = (float)(d[1] - origin[1]);
+				v[2] = (float)(d[2] - origin[1]);
+			} else {
+				int n = sscanf(line, "%s %f %f %f", dummy, v, v+1, v+2);
+				if(n != 4)
+					throw QString("Invalid STL file");
+			}
 		}
 		current_triangle++;
 		readed++;
@@ -89,7 +103,7 @@ quint32 STLLoader::getTrianglesBinary(quint32 size, Triangle *buffer) {
 		Triangle &tri = buffer[i];
 		for(int t = 0; t < 3; t++)
 			for(int k = 0; k < 3; k++)
-				tri.vertices[t].v[k] = pos[t*3 + k];
+				tri.vertices[t].v[k] = pos[t*3 + k] - origin[k];
 		tri.node = 0;
 		current_triangle++;
 		start += 50;
