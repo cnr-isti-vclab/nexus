@@ -216,8 +216,6 @@ void ObjLoader::cacheVertices() {
 	char buffer[1024];
 	int cnt = 0;
 	
-	bool translate = (origin[0] != 0.0 || origin[1] != 0.0 || origin[2] != 0.0);
-	
 	while(1) {
 		
 		int s = file.readLine(buffer, 1024);
@@ -227,8 +225,6 @@ void ObjLoader::cacheVertices() {
 
 		}
 		if(s == 0) continue;            //skip empty lines
-//		if(buffer[0] != 'v')            //skip all irrelevant staff
-//			continue;
 		buffer[s] = '\0';               //terminating line, readLine wont do this.
 
 		if(buffer[0] == 'v') {          //vertex
@@ -238,20 +234,16 @@ void ObjLoader::cacheVertices() {
 				Vertex &vertex = vertices[n_vertices];
 				n_vertices++;
 
-				if(translate) {
-					vcg::Point3d p;
-					int n = sscanf(buffer, "v %lf %lf %lf", &p[0], &p[1], &p[2]);
-					if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
-					
-					p -= origin;
-					vertex.v[0] = (float)p[0];
-					vertex.v[1] = (float)p[1];
-					vertex.v[2] = (float)p[2];
-					
-				} else {
-					int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
-					if(n != 3) throw QString("error parsing vertex line: %1").arg(buffer);
-				}
+				vcg::Point3d p;
+				int n = sscanf(buffer, "v %lf %lf %lf", &p[0], &p[1], &p[2]);
+				if(n != 3) throw QString("error parsing vertex line %1 while caching").arg(buffer);
+				p -= origin;
+				box.Add(p);
+				
+				vertex.v[0] = (float)p[0];
+				vertex.v[1] = (float)p[1];
+				vertex.v[2] = (float)p[2];
+
 				cnt++;
 				if(quantization) {
 					quantize(vertex.v[0]);
@@ -485,15 +477,12 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 quint32 ObjLoader::getVertices(quint32 size, Splat *vertices) {
 	char buffer[1024];
 	
-	bool translate = (origin[0] != 0.0 || origin[1] != 0.0 || origin[2] != 0.0);
-	
-	cout << "translate: " << translate << endl;
-
 	quint32 count = 0;
 	while(count < size) {
 		int s = file.readLine(buffer, 1024);
 		if(s == -1)                     //end of file
 			return count;
+		
 		if(buffer[0] != 'v')            //skip comments, faces, etc
 			continue;
 
@@ -502,23 +491,18 @@ quint32 ObjLoader::getVertices(quint32 size, Splat *vertices) {
 		if(buffer[1] != ' ')
 			continue; //skip other vertex properties{        //vertex coordinates
 
-		Vertex &vertex = vertices[count++];
+		Splat &vertex = vertices[count];
 		
-		if(translate) {
-			vcg::Point3d p;
-			int n = sscanf(buffer, "v %lf %lf, %lf", &p[0], &p[1], &p[2]);
-			if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
-			
-			p -= origin;
-			vertex.v[0] = (float)p[0];
-			vertex.v[1] = (float)p[1];
-			vertex.v[2] = (float)p[2];
-			
-		} else {
+		vcg::Point3d p;
+		int n = sscanf(buffer, "v %lf %lf %lf", &p[0], &p[1], &p[2]);
+		if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
+		
+		p -= origin;
+		box.Add(p);
 
-			int n = sscanf(buffer, "v %f %f %f", &(vertex.v[0]), &(vertex.v[1]), &(vertex.v[2]));
-			if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
-		}
+		vertex.v[0] = (float)p[0];
+		vertex.v[1] = (float)p[1];
+		vertex.v[2] = (float)p[2];
 	
 		if(quantization) {
 			quantize(vertex.v[0]);

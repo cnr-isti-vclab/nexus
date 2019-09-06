@@ -56,7 +56,6 @@ void KDTree::load(Stream *stream) {
 
 	float precision = boxFloatPrecision(node.box);
 	if(precision < 12) {
-			cout << node.box.min[0] << endl;
 			throw QString("quantiziation is too severe!\n"
 			              "The bounding box is far from the origin (with respect to its size),\n"
 			              "the model MIGHT be quantized.\n"
@@ -300,7 +299,7 @@ void KDTreeSoup::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 	}
 	source.resize(n0);
 	if(source.size() == 0 || dest.size() == 0)
-		throw "Degenerate point cloud";
+		cerr <<  "Degenerate point cloud" << cells.size() << endl;
 	drop(child0.block);
 	drop(child1.block);
 }

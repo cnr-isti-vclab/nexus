@@ -42,6 +42,7 @@ public:
 	Stream();
 	virtual ~Stream() {}
 	void setVertexQuantization(double q);
+	vcg::Box3d getBox(QStringList paths);
 	void load(QStringList paths, QString material);
 
 	//return a block of triangles. The buffer is valid until next call to getTriangles. Return null when finished
@@ -60,6 +61,8 @@ protected:
 	quint64 current_triangle;   //used both for loading and streaming
 	quint64 current_block;
 
+	MeshLoader *getLoader(QString file, QString material);
+		
 	virtual void flush() = 0;
 	virtual void loadMesh(MeshLoader *loader) = 0;
 	virtual void clearVirtual() = 0; //clear the virtualtrianglesoup or virtualtrianglebin

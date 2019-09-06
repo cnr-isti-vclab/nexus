@@ -31,26 +31,35 @@ struct PlyFace {
 	quint32 texNumber;
 	unsigned char n;
 };
+
+struct PlyVertex {
+	double dv[3];
+	float v[3];
+	float t[2]; //texture
+	float n[3];
+	unsigned char c[4]; //colors
+};
+
 //TODO add uv?
 PropDescriptor plyprop1[13]= {
-	{"vertex", "x",     T_FLOAT, T_FLOAT, offsetof(Vertex,v[0]),0,0,0,0,0,0},
-	{"vertex", "y",     T_FLOAT, T_FLOAT, offsetof(Vertex,v[1]),0,0,0,0,0,0},
-	{"vertex", "z",     T_FLOAT, T_FLOAT, offsetof(Vertex,v[2]),0,0,0,0,0,0},
-	{"vertex", "red"  , T_UCHAR, T_UCHAR, offsetof(Vertex,c[0]),0,0,0,0,0,0},
-	{"vertex", "green", T_UCHAR, T_UCHAR, offsetof(Vertex,c[1]),0,0,0,0,0,0},
-	{"vertex", "blue" , T_UCHAR, T_UCHAR, offsetof(Vertex,c[2]),0,0,0,0,0,0},
-	{"vertex", "alpha", T_UCHAR, T_UCHAR, offsetof(Vertex,c[3]),0,0,0,0,0,0},
-	{"vertex", "nx",    T_FLOAT, T_FLOAT, offsetof(Splat, n[0]),0,0,0,0,0,0},
-	{"vertex", "ny",    T_FLOAT, T_FLOAT, offsetof(Splat, n[1]),0,0,0,0,0,0},
-	{"vertex", "nz",    T_FLOAT, T_FLOAT, offsetof(Splat, n[2]),0,0,0,0,0,0},
-	{"vertex", "diffuse_red",   T_UCHAR, T_UCHAR, offsetof(Vertex,c[0]),0,0,0,0,0,0},
-	{"vertex", "diffuse_green", T_UCHAR, T_UCHAR, offsetof(Vertex,c[1]),0,0,0,0,0,0},
-	{"vertex", "diffuse_blue" , T_UCHAR, T_UCHAR, offsetof(Vertex,c[2]),0,0,0,0,0,0},
+	{"vertex", "x",     T_FLOAT, T_FLOAT, offsetof(PlyVertex,v[0]),0,0,0,0,0,0},
+	{"vertex", "y",     T_FLOAT, T_FLOAT, offsetof(PlyVertex,v[1]),0,0,0,0,0,0},
+	{"vertex", "z",     T_FLOAT, T_FLOAT, offsetof(PlyVertex,v[2]),0,0,0,0,0,0},
+	{"vertex", "red"  , T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[0]),0,0,0,0,0,0},
+	{"vertex", "green", T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[1]),0,0,0,0,0,0},
+	{"vertex", "blue" , T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[2]),0,0,0,0,0,0},
+	{"vertex", "alpha", T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[3]),0,0,0,0,0,0},
+	{"vertex", "nx",    T_FLOAT, T_FLOAT, offsetof(PlyVertex, n[0]),0,0,0,0,0,0},
+	{"vertex", "ny",    T_FLOAT, T_FLOAT, offsetof(PlyVertex, n[1]),0,0,0,0,0,0},
+	{"vertex", "nz",    T_FLOAT, T_FLOAT, offsetof(PlyVertex, n[2]),0,0,0,0,0,0},
+	{"vertex", "diffuse_red",   T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[0]),0,0,0,0,0,0},
+	{"vertex", "diffuse_green", T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[1]),0,0,0,0,0,0},
+	{"vertex", "diffuse_blue" , T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[2]),0,0,0,0,0,0},
 };
 PropDescriptor doublecoords[3] = {
-	{"vertex", "x",     T_DOUBLE, T_FLOAT, offsetof(Vertex,v[0]),0,0,0,0,0,0},
-	{"vertex", "y",     T_DOUBLE, T_FLOAT, offsetof(Vertex,v[1]),0,0,0,0,0,0},
-	{"vertex", "z",     T_DOUBLE, T_FLOAT, offsetof(Vertex,v[2]),0,0,0,0,0,0}
+	{"vertex", "x",     T_DOUBLE, T_DOUBLE, offsetof(PlyVertex,dv[0]),0,0,0,0,0,0},
+	{"vertex", "y",     T_DOUBLE, T_DOUBLE, offsetof(PlyVertex,dv[1]),0,0,0,0,0,0},
+	{"vertex", "z",     T_DOUBLE, T_DOUBLE, offsetof(PlyVertex,dv[2]),0,0,0,0,0,0}
 };
 
 PropDescriptor vindex[1]=	{
@@ -149,9 +158,11 @@ void PlyLoader::init() {
 	if(pf.AddToRead(plyprop1[0])==-1 ||
 			pf.AddToRead(plyprop1[1])==-1 ||
 			pf.AddToRead(plyprop1[2])==-1) {
+		
 		if(pf.AddToRead(doublecoords[0])==-1 ||
 				pf.AddToRead(doublecoords[1])==-1 ||
 				pf.AddToRead(doublecoords[2])==-1) {
+			double_coords = true;
 			throw QString("ply file is missing xyz coords");
 		}
 	}
@@ -200,10 +211,31 @@ void PlyLoader::cacheVertices() {
 	vertices.setElementsPerBlock(1<<20);
 	vertices.resize(n_vertices);
 
+	PlyVertex vertex;
 	//caching vertices on temporary file
 	for(quint64 i = 0; i < n_vertices; i++) {
 		Vertex &v = vertices[i];
-		pf.Read((void *)&v);
+		pf.Read((void *)&vertex);
+		if(double_coords) {
+			v.v[0] = vertex.dv[0] - origin[0];
+			v.v[1] = vertex.dv[1] - origin[1];
+			v.v[2] = vertex.dv[2] - origin[2];
+		} else {
+			v.v[0] = vertex.v[0] - origin[0];
+			v.v[1] = vertex.v[1] - origin[1];
+			v.v[2] = vertex.v[2] - origin[2];
+		}
+		if(has_colors) {
+			v.c[0] = vertex.c[0];
+			v.c[1] = vertex.c[1];
+			v.c[2] = vertex.c[2];
+			v.c[3] = vertex.c[3];
+		}
+		if(has_textures) {
+			v.t[0] = vertex.t[0];
+			v.t[1] = vertex.t[1];
+		}
+		
 		if(quantization) {
 			quantize(v.v[0]);
 			quantize(v.v[1]);
@@ -269,23 +301,54 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 	return count;
 }
 
-quint32 PlyLoader::getVertices(quint32 size, Splat *vertex) {
+quint32 PlyLoader::getVertices(quint32 size, Splat *splats) {
 	if(current_triangle > n_triangles) return 0;
 
+	PlyVertex vertex;
+	
 	Splat v;
 	v.node = 0;
 	v.c[3] = 255;
 	quint32 count = 0;
 	for(quint32 i = 0; i < size && current_vertex < n_vertices; i++) {
-		pf.Read((void *)&v);
+
+		pf.Read((void *)&vertex);
+
+		Splat &v = splats[count++];
+		current_vertex++;
+
+		if(double_coords) {
+			box.Add(vcg::Point3d(vertex.dv) - origin);
+			v.v[0] = (float)(vertex.dv[0] - origin[0]);
+			v.v[1] = (float)(vertex.dv[1] - origin[1]);
+			v.v[2] = (float)(vertex.dv[2] - origin[2]);
+		} else {
+			box.Add(vcg::Point3d(vertex.v[0], vertex.v[1], vertex.v[2]) - origin);
+			v.v[0] = vertex.v[0] - (float)origin[0];
+			v.v[1] = vertex.v[1] - (float)origin[1];
+			v.v[2] = vertex.v[2] - (float)origin[2];
+		}
+		if(has_colors) {
+			v.c[0] = vertex.c[0];
+			v.c[1] = vertex.c[1];
+			v.c[2] = vertex.c[2];
+			v.c[3] = vertex.c[3];
+		}
+		if(has_textures) {
+			v.t[0] = vertex.t[0];
+			v.t[1] = vertex.t[1];
+		}
+		if(has_normals) {
+			v.n[0] = vertex.n[0];
+			v.n[1] = vertex.n[1];
+			v.n[2] = vertex.n[2];
+		}
+
 		if(quantization) {
 			quantize(v.v[0]);
 			quantize(v.v[1]);
 			quantize(v.v[2]);
 		}
-		vertex[count] = v;
-		current_vertex++;
-		count++;
 	}
 	return count;
 }
