@@ -189,7 +189,21 @@ int main(int argc, char *argv[]) {
 			stream->origin = box.Center();
 		} else
 			stream->origin = origin;
+		
+		vcg::Point3d &o = stream->origin;
+		if(o[0] != 0.0 || o[1] != 0.0 || o[2] != 0.0) {
+			int lastPoint = output.lastIndexOf(".");
+			QString ref = output.left(lastPoint) + ".ref";
+			QFile file(ref);
+			if(!file.open(QFile::ReadWrite)) {
+				cerr << "Could not save reference file: " << qPrintable(ref) << endl;
+				return -1;
+			}
+			QTextStream stream(&file);
+			stream << "{ origin: [" << o[0] << ", " << o[1] << " " << o[2] << "] }\n";
+		}
 		stream->load(inputs, mtl);
+
 
 		bool has_colors = stream->hasColors();
 		bool has_normals = stream->hasNormals();
