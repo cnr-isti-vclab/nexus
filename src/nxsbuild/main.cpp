@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
 		vcg::Point3d &o = stream->origin;
 		if(o[0] != 0.0 || o[1] != 0.0 || o[2] != 0.0) {
 			int lastPoint = output.lastIndexOf(".");
-			QString ref = output.left(lastPoint) + ".ref";
+			QString ref = output.left(lastPoint) + ".js";
 			QFile file(ref);
 			if(!file.open(QFile::ReadWrite)) {
 				cerr << "Could not save reference file: " << qPrintable(ref) << endl;
