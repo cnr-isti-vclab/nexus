@@ -16,6 +16,7 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <iostream>
+#include <iomanip>
 
 #include <QtGui>
 #include <QVariant>
@@ -185,7 +186,7 @@ int main(int argc, char *argv[]) {
 			vcg::Box3d box = stream->getBox(inputs);
 			vcg::Point3d m = box.min;
 			vcg::Point3d M = box.max;
-			cout << "Box: " << m[0] << " " << m[1] << " " << m[2] << "  --- " << M[0] << " " << M[1] << " " << M[2] << endl;
+			cout << setprecision(12) << "Box: " << m[0] << " " << m[1] << " " << m[2] << "  --- " << M[0] << " " << M[1] << " " << M[2] << endl;
 			stream->origin = box.Center();
 		} else
 			stream->origin = origin;
@@ -200,7 +201,8 @@ int main(int argc, char *argv[]) {
 				return -1;
 			}
 			QTextStream stream(&file);
-			stream << "{ origin: [" << o[0] << ", " << o[1] << " " << o[2] << "] }\n";
+			stream.setRealNumberPrecision(12);
+			stream << "{ origin: [" << o[0] << ", " << o[1] << ", " << o[2] << "] }\n";
 		}
 		stream->load(inputs, mtl);
 

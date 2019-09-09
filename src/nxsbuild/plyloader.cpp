@@ -162,8 +162,9 @@ void PlyLoader::init() {
 		if(pf.AddToRead(doublecoords[0])==-1 ||
 				pf.AddToRead(doublecoords[1])==-1 ||
 				pf.AddToRead(doublecoords[2])==-1) {
-			double_coords = true;
 			throw QString("ply file is missing xyz coords");
+		} else {
+			double_coords = true;
 		}
 	}
 
