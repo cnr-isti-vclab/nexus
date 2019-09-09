@@ -96,6 +96,21 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 
 NexusObject.prototype = Object.create(THREE.Mesh.prototype);
 
+NexusObject.prototype.georef = function(url) {
+	var n = this;
+	var obj = new XMLHttpRequest();
+	obj.overrideMimeType("application/json");
+	obj.open('GET', url, true);
+	obj.onreadystatechange = function () {
+		if (obj.readyState == 4 && obj.status == "200") {
+			this.georef = JSON.parse(obj.responseText);
+			var o = this.georef.origin;
+			n.position.set(o[0], o[1], o[2]);
+		}
+	};
+	obj.send(null);  
+}
+
 NexusObject.prototype.computeBoundingBox = function() {
 	var instance = this.instance;
 	var nexus = instance.mesh;

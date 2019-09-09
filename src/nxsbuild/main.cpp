@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 			}
 			QTextStream stream(&file);
 			stream.setRealNumberPrecision(12);
-			stream << "{ origin: [" << o[0] << ", " << o[1] << ", " << o[2] << "] }\n";
+			stream << "{ \"origin\": [" << o[0] << ", " << o[1] << ", " << o[2] << "] }\n";
 		}
 		stream->load(inputs, mtl);
 
