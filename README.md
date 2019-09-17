@@ -82,7 +82,8 @@ basically the algorithm job is to send geometry to the GPU.
 
 ### Dependencies and Licenses
 
-All Nexus software is free and released under the GPL license (it depends on Qt and VCG lib).
+All C++ Nexus software is free and released under the GPL license (it depends on Qt and VCG lib).
+All Javascript Nexus software is free and release under the MIT license.
 
 
 ### Publications
