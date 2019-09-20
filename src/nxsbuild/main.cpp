@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
 		output += ".nxs";
 
 	if(node_size < 1000 || node_size >= 1<<16) {
-		cerr << "Patch size (" << node_size << ") out of bounds [2000-32536]" << endl;
+		cerr << "Patch size (" << node_size << ") out of bounds [1000-65536]" << endl;
 		return -1;
 	}
 	
