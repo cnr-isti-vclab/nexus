@@ -372,7 +372,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 	if(!success) {
 		cerr << "Failed packing: the texture in a single nexus node would be > 16K\n";
-		cerr << "Try to reduce the size of the nodes using -t 4000 (default is 16000)";
+		cerr << "Try to reduce the size of the nodes using -t (default is 4096)";
 		exit(0);
 	}
 
@@ -628,7 +628,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 				tmp.splitSeams(header.signature);
 				if(tmp.vert.size() > 60000) {
 					cerr << "Unable to properly simplify due to framented parametrization\n"
-						 << "Using a smaller node size (-f, default is 32000) might alleviate the problem" << endl;
+						 << "Try to reduce the size of the nodes using -f (default is 32768)" << endl;
 					exit(0);
 				}
 

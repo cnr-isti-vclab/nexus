@@ -31,6 +31,10 @@ using namespace std;
 using namespace nx;
 
 void printInfo(NexusData &nexus);
+void printNodes(NexusData& nexus);
+void printDag(NexusData& nexus);
+void printPatches(NexusData& nexus);
+void printTextures(NexusData& nexus);
 void checks(NexusData &nexus);
 void recomputeError(NexusData &nexus, QString mode);
 
@@ -81,9 +85,9 @@ int main(int argc, char *argv[]) {
 
 	//info options
 	opt.addSwitch('i', "info", "prints info about the nexus", &info);
-	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes); //DOESN'T WORK, TO CHECK
-	opt.addSwitch('q', "show patches", "prints info about payches", &show_patches); //DOESN'T WORK, TO CHECK
-	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag); //DOESN'T WORK, TO CHECK
+	opt.addSwitch('n', "show nodes", "prints info about nodes", &show_nodes);
+	opt.addSwitch('q', "show patches", "prints info about patches", &show_patches);
+	opt.addSwitch('d', "show dag", "prints info about dag", &show_dag);
 //	opt.addSwitch('c', "check", "performs various checks", &check); //DOESN'T WORK, TO CHECK
 
 	//extraction options
@@ -141,6 +145,26 @@ int main(int argc, char *argv[]) {
 
 		if(info) {
 			printInfo(nexus);
+			return 0;
+		}
+
+		if (show_nodes) {
+			printNodes(nexus);
+			return 0;
+		}
+
+		if (show_dag) {
+			printDag(nexus);
+			return 0;
+		}
+
+		if (show_patches) {
+			printPatches(nexus);
+			return 0;
+		}
+
+		if (show_textures) {
+			printTextures(nexus);
 			return 0;
 		}
 
@@ -311,7 +335,7 @@ int main(int argc, char *argv[]) {
 
 void printInfo(NexusData &nexus) {
 	Header &header = nexus.header;
-	cout << "Tot vertices: " << header.nvert << endl;
+	cout << "\nTot vertices: " << header.nvert << endl;
 	cout << "Tot faces   : " << header.nface << endl;
 
 	cout << "Components  :";
@@ -334,63 +358,76 @@ void printInfo(NexusData &nexus) {
 	cout << "Nodes       : " << header.n_nodes << endl;
 	cout << "Patches     : " << header.n_patches << endl;
 	cout << "Textures    : " << header.n_textures << endl;
+}
 
+void printNodes(NexusData& nexus) {
+	Header& header = nexus.header;
 	uint32_t n_nodes = header.n_nodes;
-	if(show_dag){
-		cout << "\nDag dump: \n";
-		for(uint i = 0; i < n_nodes-1; i++) {
-			nx::Node &node = nexus.nodes[i];
-			cout << "Node: " << i << "\t";
-			for(uint k = node.first_patch; k < node.last_patch(); k++)
-				cout << "[" << nexus.patches[k].node << "] ";
-			cout << "\n";
-		}
-	}
-	int last_level_size =0;
-	uint32_t sink = nexus.header.n_nodes -1;
-	if(show_nodes) {
+	int last_level_size = 0;
+	uint32_t sink = nexus.header.n_nodes - 1;
+	if (show_nodes) {
 		cout << "\nNode dump:\n";
 		double mean = 0;
-		for(uint i = 0; i < n_nodes-1; i++) {
-			nx::Node &node =  nexus.nodes[i];
+		for (uint i = 0; i < n_nodes - 1; i++) {
+			nx::Node& node = nexus.nodes[i];
 
-			if(nexus.patches[node.first_patch].node == sink)
+			if (nexus.patches[node.first_patch].node == sink)
 				last_level_size += node.getEndOffset() - node.getBeginOffset();
 
-			int n = nexus.header.signature.face.hasIndex()?node.nface:node.nvert;
+			int n = nexus.header.signature.face.hasIndex() ? node.nface : node.nvert;
 			//compute primitives
 			cout << "Node: " << i << "\t  Error: " << node.error << "\t"
-				 << " Sphere r: " << node.sphere.Radius() << "\t"
-				 << "Primitives: " << n << "\t"
-				 << "Size: " << node.getSize() << "\n";
+				<< " Sphere r: " << node.sphere.Radius() << "\t"
+				<< "Primitives: " << n << "\t"
+				<< "Size: " << node.getSize() << "\n";
 
 			mean += node.nface;
 		}
 		cout << endl;
 		mean /= n_nodes;
 		double std = 0;
-		for(uint i = 0; i < n_nodes; i++)
+		for (uint i = 0; i < n_nodes; i++)
 			std += pow(mean - nexus.nodes[i].nface, 2);
 		std /= n_nodes;
 		std = sqrt(std);
-		cout << "Mean faces: " << mean << "standard deviation: " << std << endl;
-		cout << "Last level size: " << last_level_size/(1024*1024) << "MB";
+		cout << "Mean faces: " << mean << " Standard deviation: " << std << endl;
+		cout << "Last level size: " << last_level_size / (1024 * 1024) << "MB\n";
 	}
-	if(show_patches) {
-		cout << "\nPatch dump:\n";
-		for(uint i = 0; i < nexus.header.n_patches; i++) {
-			nx::Patch &patch = nexus.patches[i];
-			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t texture: " << patch.texture << "\n";
+}
 
+void printDag(NexusData& nexus) {
+	Header& header = nexus.header;
+	uint32_t n_nodes = header.n_nodes;
+	if (show_dag) {
+		cout << "\nDag dump: \n";
+		for (uint i = 0; i < n_nodes - 1; i++) {
+			nx::Node& node = nexus.nodes[i];
+			cout << "Node: " << i << "\t";
+			for (uint k = node.first_patch; k < node.last_patch(); k++)
+				cout << "[" << nexus.patches[k].node << "] ";
+			cout << "\n";
 		}
 	}
-	if(show_textures) {
-		cout << "\nTexture dump: \n";
-		for(uint i = 0; i < nexus.header.n_textures; i++) {
-			nx::Texture &texture = nexus.textures[i];
-			cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
+}
+
+void printPatches(NexusData& nexus) {
+	if (show_patches) {
+		cout << "\nPatch dump:\n";
+		for (uint i = 0; i < nexus.header.n_patches; i++) {
+			nx::Patch& patch = nexus.patches[i];
+			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t Texture: " << patch.texture << "\n";
 		}
 	}
+}
+
+void printTextures(NexusData& nexus) {
+	if (show_textures) {
+			cout << "\nTexture dump: \n";
+			for (uint i = 0; i < nexus.header.n_textures; i++) {
+				nx::Texture& texture = nexus.textures[i];
+				cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
+			}
+		}
 }
 
 void recomputeError(NexusData &nexus, QString error_method) {

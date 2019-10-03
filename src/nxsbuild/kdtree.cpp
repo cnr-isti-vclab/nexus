@@ -56,10 +56,10 @@ void KDTree::load(Stream *stream) {
 
 	float precision = boxFloatPrecision(node.box);
 	if(precision < 12) {
-			throw QString("quantiziation is too severe!\n"
+			throw QString("Quantiziation is too severe!\n"
 			              "The bounding box is far from the origin (with respect to its size),\n"
-			              "the model MIGHT be quantized.\n"
-			              "In that case use MeshLab or CloudCompare to move the model closer to the origin\n");
+			              "The model might be quantized.\n"
+						  "Try to move the model closer to the origin using -T or -G");
 	}
 
 	//Enlarge box to avoid numerical instabilities. (sigh!)
@@ -298,8 +298,8 @@ void KDTreeSoup::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 		else dest.push_back(t);
 	}
 	source.resize(n0);
-	if(source.size() == 0 || dest.size() == 0)
-		cerr <<  "Degenerate point cloud" << cells.size() << endl;
+//	if(source.size() == 0 || dest.size() == 0)
+//		cerr <<  "Degenerate point cloud" << endl;
 	drop(child0.block);
 	drop(child1.block);
 }
@@ -427,8 +427,8 @@ void KDTreeCloud::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 			dest.push_back(v);
 	}
 	source.resize(n0);
-	if(source.size() == 0 || dest.size() == 0)
-		throw "Degenerate point cloud";
+//	if(source.size() == 0 || dest.size() == 0)
+//		throw "Degenerate point cloud";
 	drop(child0.block);
 	drop(child1.block);
 }
