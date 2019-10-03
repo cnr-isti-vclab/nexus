@@ -416,6 +416,7 @@ float Mesh::quadricSimplify(quint16 target) {
 	vcg::tri::UpdateTopology<Mesh>::VertexFace(*this);
 	vcg::tri::TriEdgeCollapseQuadricParameter qparams;
 	qparams.NormalCheck = true;
+	qparams.QualityQuadric = true;	
 	vcg::LocalOptimization<Mesh> DeciSession(*this,&qparams);
 
 	DeciSession.Init<TriEdgeCollapse>();
