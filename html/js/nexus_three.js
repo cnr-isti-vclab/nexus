@@ -175,18 +175,63 @@ NexusObject.prototype.computeBoundingBox = function() {
 
 
 NexusObject.prototype.raycast = function(raycaster, intersects) {
-	var instance = this.instance;
-	var nexus = instance.mesh;
+	var nexus = this.instance.mesh;
 	if(!nexus.sphere) return;
+
 	var sp = nexus.sphere;
 	var c = sp.center;
 	var center = new THREE.Vector3(c[0], c[1], c[2]);
 	var sphere = new THREE.Sphere(center, sp.radius);
-	sphere.applyMatrix4( this.matrixWorld );
+	var m = new THREE.Matrix4();
+	m.getInverse(this.matrixWorld);
+	var ray = new THREE.Ray();
+	ray.copy(raycaster.ray).applyMatrix4(m);
 
-	if ( raycaster.ray.intersectsSphere( sphere ) === false ) return;
-	//just check the last level spheres.
-	if(!nexus.sink) return;
+	var point = new THREE.Vector3(0, 0, 0);
+	var distance = -1.0;
+	var intersect = raycaster.ray.intersectSphere( sphere );
+	if(!intersect)
+		return;
+
+	if(!nexus.sink || !nexus.basei) {
+		//no mesh loaded, we can still use the sphere.
+		intersect.applyMatrix4(this.matrixWorld);
+		var d = intersect.distanceTo(raycaster.ray.origin);
+		if(d < raycaster.near || d > raycaster.far )  
+			distance = d;
+
+	} else {
+
+		var vert = nexus.basev;
+		var face = nexus.basei;
+
+		for(var j = 0; j < nexus.basei.length; j += 3) {
+			var a = face[j];
+			var b = face[j+1];
+			var c = face[j+2];
+			var A = new THREE.Vector3(vert[a*3], vert[a*3+1], vert[a*3+2]);
+			var B = new THREE.Vector3(vert[b*3], vert[b*3+1], vert[b*3+2]);
+			var C = new THREE.Vector3(vert[c*3], vert[c*3+1], vert[c*3+2]);
+			//TODO use material to determine if using doubleface or not!
+			var hit  = ray.intersectTriangle( C, B, A, false, point ); 
+			if(!hit) continue;
+
+			//check distances in world space
+			intersect.applyMatrix4(this.matrixWorld);
+			var d = intersect.distanceTo(raycaster.ray.origin);
+			if(d < raycaster.near || d > raycaster.far ) continue;
+			if(distance == -1.0 || d < distance) {
+				distance = d;
+				intersect = hit;
+			}
+		}
+	}
+
+	if(distance == -1.0) return;
+	intersects.push({ distance: distance, point: intersect, object: this} );
+	return;
+
+/* Kept for reference, should we want to implement a raycasting on the higher resolution nodes 
 
 	var distance = -1.0;
 	for(var i = 0; i < nexus.sink; i++) {
@@ -198,8 +243,8 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 		var z = nexus.nspheres[i*5+2];
 		var r = nexus.nspheres[i*5+4]; //tight radius
 		var sphere = new THREE.Sphere(new THREE.Vector3(x, y, z), r);
-		sphere.applyMatrix4( this.matrixWorld );
-		if ( raycaster.ray.intersectsSphere( sphere ) != false ) {
+
+		if (ray.intersectsSphere( sphere ) != false ) {
 			var d = sphere.center.lengthSq();
 			if(distance == -1.0 || d < distance)
 				distance = d;
@@ -207,5 +252,5 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 	}
 	if(distance == -1.0) return;
 
-	intersects.push({ distance: distance, object: this} );
+	intersects.push({ distance: distance, object: this} ); */
 }

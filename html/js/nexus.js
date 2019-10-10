@@ -1218,6 +1218,11 @@ function readyNode(node) {
 	if(nf == 0)
 		scramble(nv, v, no, co);
 
+	if(n == 1) {
+		m.basev = new Float32Array(vertices, 0, nv*3);
+		m.basei = new Uint16Array(indices, 0, nf*3);
+	}
+
 	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
