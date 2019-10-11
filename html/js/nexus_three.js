@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+function nocenter() { throw "Centering and in general applying matrix to geometry is unsupported."; }
+
 function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
@@ -29,14 +31,14 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	var gl = renderer.context;
 	var geometry = new THREE.BufferGeometry();
 
-	geometry.center = function() { 
-		throw "Centering and in general applying matrix to geometry is unsupported.";
+	geometry.center = nocenter;
 
-/*                var s = 1/instance.mesh.sphere.radius;
+/*function() { 
+                var s = 1/instance.mesh.sphere.radius;
                 var pos = instance.mesh.sphere.center;
                 mesh.position.set(-pos[0]*s, -pos[1]*s, -pos[2]*s);
-                mesh.scale.set(s, s, s); */
-	};
+                mesh.scale.set(s, s, s); 
+	}; */
 
 	var positions = new Float32Array(3);
 	geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -102,30 +104,49 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	};
 	instance.onUpdate = onUpdate;
 
-	this.onAfterRender = function(renderer, scene, camera, geometry, material, group) { 
-		if(!instance.isReady) return;
-		var s = renderer.getSize();
-		instance.updateView([0, 0, s.width, s.height], 
-			camera.projectionMatrix.elements, 
-			mesh.modelViewMatrix.elements);
 
-		var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
-		var attr = instance.attributes;
-		attr.position = renderer.context.getAttribLocation(program, "position");
-		attr.normal   = renderer.context.getAttribLocation(program, "normal");
-		attr.color    = renderer.context.getAttribLocation(program, "color");
-		attr.uv       = renderer.context.getAttribLocation(program, "uv");
-		attr.size     = renderer.context.getUniformLocation(program, "size");
-		attr.scale    = renderer.context.getUniformLocation(program, "scale");
-
-		instance.mode = attr.size ? "POINT" : "FILL";
-		instance.render();
-
-		Nexus.updateCache(renderer.context);
-	}
 }
 
 NexusObject.prototype = Object.create(THREE.Mesh.prototype);
+
+NexusObject.prototype.dispose = function() {
+	var context = this.instance.context;
+	var mesh = this.instance.mesh;
+	Nexus.flush(context, mesh);
+	for( var i = 0; i < context.meshes.length; i++) {
+		if ( context.meshes[i] === mesh) {
+			context.meshes.splice(i, 1); 
+			break;
+		}
+	}
+	this.geometry.dispose();
+	this.instance = null;
+}
+
+NexusObject.prototype.onAfterRender = function(renderer, scene, camera, geometry, material, group) {
+	var gl = renderer.context;
+	var instance = this.instance;
+	if(!instance || !instance.isReady) return;
+	var s = renderer.getSize();
+	instance.updateView([0, 0, s.width, s.height], 
+		camera.projectionMatrix.elements, 
+		this.modelViewMatrix.elements);
+
+	var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
+	var attr = instance.attributes;
+	attr.position = renderer.context.getAttribLocation(program, "position");
+	attr.normal   = renderer.context.getAttribLocation(program, "normal");
+	attr.color    = renderer.context.getAttribLocation(program, "color");
+	attr.uv       = renderer.context.getAttribLocation(program, "uv");
+	attr.size     = renderer.context.getUniformLocation(program, "size");
+	attr.scale    = renderer.context.getUniformLocation(program, "scale");
+
+	instance.mode = attr.size ? "POINT" : "FILL";
+	instance.render();
+
+	Nexus.updateCache(renderer.context);
+}
+
 
 NexusObject.prototype.georef = function(url) {
 	var n = this;

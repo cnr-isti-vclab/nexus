@@ -65,10 +65,12 @@ function loadMeco() {
 			node:{ nface: node.nface, nvert: node.nvert, buffer:node.buffer, request:this.count},
 			patches:patches
 		});
+		node.buffer = null;
 		this.requests[this.count++] = node;
 	};
 	meco.onmessage = function(e) {
 		var node = this.requests[e.data.request];
+		delete this.requests[e.data.request];
 		node.buffer = e.data.buffer;
 		readyNode(node);
 	};
@@ -82,10 +84,12 @@ function loadCorto() {
 	corto.count = 0;
 	corto.postRequest = function(node) {
 		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_normals: true });
+		node.buffer = null;
 		this.requests[this.count++] = node;
 	}
 	corto.onmessage = function(e) {
 		var node = this.requests[e.data.request];
+		delete this.requests[e.data.request];
 		node.buffer = e.data.buffer;
 		node.model = e.data.model;
 		readyNode(node);
@@ -1242,6 +1246,11 @@ function readyNode(node) {
 	}
 }
 
+function flush(context, mesh) {
+	for(var i = 0; i < mesh.nodesCount; i++)
+		removeNode(context, {mesh:mesh, id: i });
+}
+
 function updateCache(gl) {
 	var context = getContext(gl);
 
@@ -1290,7 +1299,7 @@ function setMaxCacheSize(gl, size) {
 }
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
-	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache,
+	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
 	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
 
 }();
