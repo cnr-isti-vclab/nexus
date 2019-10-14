@@ -50,7 +50,7 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	this.frustumCulled = false;
 
 	var mesh = this;
-	var instance = this.instance = new Nexus.Instance(gl);
+	var instance = this.geometry.instance = new Nexus.Instance(gl);
 	instance.open(url);
 	instance.onLoad = function() {
 		var c = instance.mesh.sphere.center;
@@ -104,33 +104,17 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	};
 	instance.onUpdate = onUpdate;
 
-
+	this.onAfterRender = onAfterRender;
 }
 
-NexusObject.prototype = Object.create(THREE.Mesh.prototype);
-
-NexusObject.prototype.dispose = function() {
-	var context = this.instance.context;
-	var mesh = this.instance.mesh;
-	Nexus.flush(context, mesh);
-	for( var i = 0; i < context.meshes.length; i++) {
-		if ( context.meshes[i] === mesh) {
-			context.meshes.splice(i, 1); 
-			break;
-		}
-	}
-	this.geometry.dispose();
-	this.instance = null;
-}
-
-NexusObject.prototype.onAfterRender = function(renderer, scene, camera, geometry, material, group) {
+function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	var gl = renderer.context;
-	var instance = this.instance;
+	var instance = geometry.instance;
 	if(!instance || !instance.isReady) return;
 	var s = renderer.getSize();
 	instance.updateView([0, 0, s.width, s.height], 
-		camera.projectionMatrix.elements, 
-		this.modelViewMatrix.elements);
+	camera.projectionMatrix.elements, 
+	this.modelViewMatrix.elements);
 
 	var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
 	var attr = instance.attributes;
@@ -148,6 +132,23 @@ NexusObject.prototype.onAfterRender = function(renderer, scene, camera, geometry
 }
 
 
+NexusObject.prototype = Object.create(THREE.Mesh.prototype);
+
+NexusObject.prototype.dispose = function() {
+	var instance = this.geometry.instance;
+	var context = instance.context;
+	var mesh = instance.mesh;
+	Nexus.flush(context, mesh);
+	for( var i = 0; i < context.meshes.length; i++) {
+		if ( context.meshes[i] === mesh) {
+			context.meshes.splice(i, 1); 
+			break;
+		}
+	}
+	this.geometry.instance = null;
+	this.geometry.dispose();
+}
+
 NexusObject.prototype.georef = function(url) {
 	var n = this;
 	var obj = new XMLHttpRequest();
@@ -164,7 +165,7 @@ NexusObject.prototype.georef = function(url) {
 }
 
 NexusObject.prototype.computeBoundingBox = function() {
-	var instance = this.instance;
+	var instance = this.geometry.instance;
 	var nexus = instance.mesh;
 	if(!nexus.sphere) return;
 
@@ -196,7 +197,9 @@ NexusObject.prototype.computeBoundingBox = function() {
 
 
 NexusObject.prototype.raycast = function(raycaster, intersects) {
-	var nexus = this.instance.mesh;
+	if(!this.geometry.instance) return;
+
+	var nexus = this.geometry.instance.mesh;
 	if(!nexus.sphere) return;
 
 	var sp = nexus.sphere;
