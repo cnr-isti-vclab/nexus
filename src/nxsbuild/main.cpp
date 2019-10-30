@@ -204,6 +204,7 @@ int main(int argc, char *argv[]) {
 			stream.setRealNumberPrecision(12);
 			stream << "{ \"origin\": [" << o[0] << ", " << o[1] << ", " << o[2] << "] }\n";
 		}
+		//TODO: actually the stream will store textures or normals or colors even if not needed
 		stream->load(inputs, mtl);
 
 
@@ -231,6 +232,11 @@ int main(int argc, char *argv[]) {
 		if(has_textures && !no_texcoords) {
 			components |= NexusBuilder::TEXTURES;
 			cout << "Textures enabled\n";
+		}
+		
+		//WORKAROUND to save loading textures not needed
+		if(!(components & NexusBuilder::TEXTURES)) {
+			stream->textures.clear();
 		}
 
 		NexusBuilder builder(components);
