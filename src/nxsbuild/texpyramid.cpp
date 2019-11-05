@@ -90,8 +90,8 @@ void TexLevel::build(TexLevel &parent) {
 	float scale = collection->scale;
 	tex = parent.tex;
 
-    int parentWidth = min ( maxSide, parent.width );
-    int parentHeight = min ( maxSide, parent.height );
+    int parentWidth = min ( collection->maxSide, parent.width );
+    int parentHeight = min ( collection->maxSide, parent.height );
 
     width = floor(parentWidth * scale);
     height = floor(parentHeight * scale);
