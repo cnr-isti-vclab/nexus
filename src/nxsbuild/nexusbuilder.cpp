@@ -38,6 +38,27 @@ using namespace std;
 
 using namespace nx;
 
+
+
+unsigned int nextPowerOf2 ( unsigned int n )
+{
+    unsigned count = 0;
+
+    // First n in the below condition
+    // is for the case where n is 0
+    if (n && !(n & (n - 1)))
+        return n;
+
+    while( n != 0)
+    {
+        n >>= 1;
+        count += 1;
+    }
+
+    return 1 << count;
+}
+
+
 NodeBox::NodeBox(KDTree *tree, uint32_t block) {
 	for(int k = 0; k < 3; k++)
 		axes[k] = tree->axes[k];
@@ -375,6 +396,11 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		cerr << "Try to reduce the size of the nodes using -t (default is 4096)";
 		exit(0);
 	}
+
+	if (createPowTwoTex) {
+        finalSize[ 0 ] = (int) nextPowerOf2( finalSize[ 0 ] );
+        finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
+    }
 
 	//	std::cout << "Boxes: " << boxes.size() << " Final size: " << finalSize[0] << " " << finalSize[1] << std::endl;
 	QImage image(finalSize[0], finalSize[1], QImage::Format_RGB32);

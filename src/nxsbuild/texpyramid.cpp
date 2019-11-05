@@ -89,8 +89,12 @@ void TexLevel::build(TexLevel &parent) {
 	int side = collection->side;
 	float scale = collection->scale;
 	tex = parent.tex;
-	width = floor(parent.width * scale);
-	height = floor(parent.height * scale);
+
+    int parentWidth = min ( maxSide, parent.width );
+    int parentHeight = min ( maxSide, parent.height );
+
+    width = floor(parentWidth * scale);
+    height = floor(parentHeight * scale);
 
 	tilew = 1 + (width-1)/side;
 	tileh = 1 + (height-1)/side;
@@ -103,8 +107,9 @@ void TexLevel::build(TexLevel &parent) {
 			int h = (y*side + side > height)? height - y*side : side;
 			int sx = x*oside;
 			int sy = y*oside;
-			int sw = (sx + oside > parent.width) ? parent.width - sx: oside;
-			int sh = (sy + oside > parent.height) ? parent.height - sy: oside;
+			int sw = (sx + oside > parentWidth) ? parent.width - sx: oside;
+			int sh = (sy + oside > parentHeight) ? parent.height - sy: oside;
+
 			QRect region(sx, sy, sw, sh);
 			QImage img = parent.read(region);
 			img = img.scaled(w, h);

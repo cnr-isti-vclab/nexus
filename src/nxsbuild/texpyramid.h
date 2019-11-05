@@ -71,6 +71,7 @@ public:
 	};
 
 	const int side = 4096;
+	const int maxSide = 4096;
 	std::vector<TexPyramid> pyramids;
 	float scale;
 	int quality;
