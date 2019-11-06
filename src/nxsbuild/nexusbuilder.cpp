@@ -328,6 +328,11 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	for(int i = 0; i < n_boxes; i++) {
 		if(box_texture[i] == -1)
 			continue;
+
+		auto box = boxes[ i ];
+        if ( box.DimX() > 0.9 || box.DimY() > 0.9 )
+            continue;
+
 		boxes[count] = boxes[i];
 		box_texture[count] = box_texture[i];
 		remap[i] = count++;
