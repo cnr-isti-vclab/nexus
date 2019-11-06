@@ -330,8 +330,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 			continue;
 
 		auto box = boxes[ i ];
-        if ( box.DimX() > 0.9 || box.DimY() > 0.9 )
-            continue;
+		if ( box.DimX() > 0.9 || box.DimY() > 0.9 )
+			continue;
 
 		boxes[count] = boxes[i];
 		box_texture[count] = box_texture[i];
@@ -403,9 +403,9 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 
 	if (createPowTwoTex) {
-        finalSize[ 0 ] = (int) nextPowerOf2( finalSize[ 0 ] );
-        finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
-    }
+		finalSize[ 0 ] = (int) nextPowerOf2( finalSize[ 0 ] );
+		finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
+	}
 
 	//	std::cout << "Boxes: " << boxes.size() << " Final size: " << finalSize[0] << " " << finalSize[1] << std::endl;
 	QImage image(finalSize[0], finalSize[1], QImage::Format_RGB32);
