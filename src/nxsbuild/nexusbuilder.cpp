@@ -294,12 +294,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
 		auto &t = mesh.vert[i].T().P();
-		t[0] = fmod(t[0], 1.0);
-		t[1] = fmod(t[1], 1.0);
-//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
-//				cout << "T: " << t[0] << " " << t[1] << endl;
-		if(t[0] != 0.0f || t[1] != 0.0f)
-			box.Add(t);
+		box.Add(t);
 	}
 	//erase boxes assigned to no texture, and remap vertex_to_box
 	int count = 0;
