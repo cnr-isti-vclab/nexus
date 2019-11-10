@@ -1,20 +1,14 @@
 **Dependencies**
 
-[VCG library](https://github.com/cnr-isti-vclab/vcglib) to be found in the parent directory of Nexus
+[VCG library](https://github.com/cnr-isti-vclab/vcglib) needs to be found in the parent directory of Nexus
 
 $ git clone git@github.com:cnr-isti-vclab/vcglib.git
 
-[Corto](https://github.com/cnr-isti-vclab/corto)
+[Corto](https://github.com/cnr-isti-vclab/corto) 
 
 $ git clone git@github.com:cnr-isti-vclab/corto.git
 
-Add  ../../../corto to the include_directories line:
-
-in ./src/nxsbuild/CMakeLists.txt
-in ./src/nxsedit/CMakeLists.txt
-in ./src/nxsview/CMakeLists.txt
-
-In linux you can install Corto after download (in Linux).
+Corto can be installed (in linux) after compilation:
 
 ```
 cmake ./
@@ -23,11 +17,23 @@ sudo make install
 sudo ldconfig
 ```
 
+or placed in the parent directory of Nexus, in which case you need to add  ../../../corto to the include_directories line:
+
+in ./src/nxsbuild/CMakeLists.txt
+in ./src/nxsedit/CMakeLists.txt
+in ./src/nxsview/CMakeLists.txt
+
+
+
 [Glew](https://github.com/nigels-com/glew)
 
 $ git clone git@github.com:nigels-com/glew.git
 
 $ brew install glew
+
+Again if glew is compiled and not installed, you need to add the include directory in CMakeLists.txt for nxsedit, nxsview and nxsbuild:
+
+include_directories(../../../vcglib ../../../vcglib/eigenlib  ../../../glew-2.1.0/include )
 
 On **MacOS**
 ### install xcode
