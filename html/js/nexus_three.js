@@ -125,9 +125,16 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	attr.size     = renderer.context.getUniformLocation(program, "size");
 	attr.scale    = renderer.context.getUniformLocation(program, "scale");
 
+	//hack to detect if threejs using point or triangle shaders
 	instance.mode = attr.size ? "POINT" : "FILL";
-	instance.render();
+	if(attr.size != -1) 
+		instance.pointsize = material.size;
 
+	//can't find docs or code on how material.scale is computed in threejs.
+	if(attr.scale != -1)
+		instance.pointscale = 2.0;
+
+	instance.render();
 	Nexus.updateCache(renderer.context);
 }
 

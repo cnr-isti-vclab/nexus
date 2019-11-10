@@ -346,7 +346,7 @@ Mesh.prototype = {
 					load.bind(this)();
 					break;
 				case 200:
-//					console.log("200 response: server does not support byte range requests.");
+					console.log("200 response: server does not support byte range requests.");
 			}
 		};
 		r.onerror = error;
@@ -839,8 +839,8 @@ Instance.prototype = {
 					var pointsize = Math.ceil(1.2* Math.min(error, 5));
 
 				if(typeof attr.size == 'object') { //threejs pointcloud rendering
-					gl.uniform1f(attr.size, 1.0);
-					gl.uniform1f(attr.scale, 1.0);
+					gl.uniform1f(attr.size, t.pointsize);
+					gl.uniform1f(attr.scale, t.pointscale);
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
