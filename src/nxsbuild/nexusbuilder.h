@@ -128,6 +128,7 @@ public:
 	float scaling;
 	bool useNodeTex; //use node textures
 	int tex_quality;
+	bool createPowTwoTex;
 	
 	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
 	int skipSimplifyLevels = 0;
