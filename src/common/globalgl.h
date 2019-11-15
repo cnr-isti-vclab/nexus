@@ -28,4 +28,10 @@ for more details.
 
 #endif
 
+#include <string>
+#include <iostream>
+
+void _glCheckError(const char *file, int line);
+#define glCheckError() _glCheckError(__FILE__,__LINE__)
+
 #endif // NX_GLOBALGL_H

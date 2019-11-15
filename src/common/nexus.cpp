@@ -26,6 +26,29 @@ for more details.
 
 using namespace nx;
 
+
+void _glCheckError(const char *file, int line) {
+#ifndef NDEBUG
+	GLenum err (glGetError());
+	
+	while(err != GL_NO_ERROR) {
+		std::string error;
+		
+		switch(err) {
+		case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
+		case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
+		case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
+		case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
+		case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
+		}
+		
+		std::cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<std::endl;
+		err=glGetError();
+	}
+#endif
+}
+
+
 Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stream(false) {
 }
 
@@ -99,6 +122,19 @@ bool Nexus::isReady() {
 	return loaded;
 }
 
+int nextPowerOf2(int n) {
+	unsigned count = 0;
+	
+	if (n && !(n & (n - 1)))
+		return n;
+	
+	while( n != 0) {
+		n >>= 1;
+		count += 1;
+	}
+	return 1 << count;
+}
+
 uint64_t Nexus::loadGpu(uint32_t n) {
 	NodeData &data = nodedata[n];
 	assert(data.memory);
@@ -113,7 +149,7 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 	char *vertex_start = data.memory;
 	char *face_start = vertex_start + vertex_size;
 
-	assert(!glGetError());
+	glCheckError();
 
 	glGenBuffers(1, (GLuint *)(&(data.vbo)));
 	glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
@@ -136,10 +172,25 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 			TextureData &data = texturedata[t];
 			data.count_gpu++;
 			if(texturedata[t].tex) continue;
-
-			assert(!glGetError());
+			
+			glCheckError();
 			glGenTextures(1, &data.tex);
 			glBindTexture(GL_TEXTURE_2D, data.tex);
+			
+			
+			int size = std::max(nextPowerOf2(data.width), nextPowerOf2(data.height));
+			std::vector<uchar> tmp(size*size, 0xff);
+			
+			void glTexSubImage2D(	GLenum target,
+				GLint level,
+				GLint xoffset,
+				GLint yoffset,
+				GLsizei width,
+				GLsizei height,
+				GLenum format,
+				GLenum type,
+				const void * pixels);
+			
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.memory);
 			glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -147,14 +198,33 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-			
-			assert(!glGetError());
+			glCheckError();
 			size += data.width*data.height*3;
 			//careful with cache... might create problems to return different sizes in get drop and size
-			/*			glGenerateMipmap(GL_TEXTURE_2D);  //Generate mipmaps now!!!
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); */
+			//glGenerateMipmap(GL_TEXTURE_2D);  //Generate mipmaps now!!!
+/*			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);
 
+			int red = 0xff0000ff;
+			glTexImage2D(GL_TEXTURE_2D, 1, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&red);
+			
+			int violet = 0x00ffffff;
+			
+			glTexImage2D(GL_TEXTURE_2D, 2, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&violet);
+
+			int blue = 0x0000ffff;
+			
+			glTexImage2D(GL_TEXTURE_2D, 3, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&blue);
+
+			int green = 0x00ff00ff;
+			
+			
+			glTexImage2D(GL_TEXTURE_2D, 4, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&green); */
+			
+			
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			
+			glCheckError();
 		}
 	}
 
