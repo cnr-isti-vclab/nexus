@@ -17,6 +17,7 @@ for more details.
 */
 #include "objloader.h"
 #include <QFileInfo>
+#include <QDir>
 #include <QTextStream>
 #include <iostream>
 
@@ -256,21 +257,15 @@ void ObjLoader::cacheVertices() {
 			continue;
 
 		} else if(buffer[0] == 'm' && strncmp(buffer, "mtllib", 6) == 0) {
-			char buf[1024];
-			mtl = QString(buffer).mid(7).trimmed();
-			//int n = sscanf(buffer, "mtllib %s", buf);
-			if(mtl.isNull()) {
+			if(!mtl.isNull()) {
 				QString fname = file.fileName();
 				QFileInfo info = QFileInfo(fname);
-			
-				//assuming mtl base file name the same as obj
-				
-				mtl = info.path() + "/" + QString(buf);
+
+				mtl = QString(buffer).mid(7).trimmed();
+				mtl = mtl.remove(QRegExp("^(\")"));
+				mtl = mtl.remove(QRegExp("(\")$"));
+				mtl = info.dir().filePath(mtl);
 			}
-			//remove "
-			mtl = mtl.remove(QRegExp("^(\")"));
-			mtl = mtl.remove(QRegExp("(\")$"));
-			
 		}
 	}
 }

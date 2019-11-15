@@ -61,7 +61,7 @@ MeshLoader *Stream::getLoader(QString file, QString material) {
 		loader = new OffLoader(file, vertex_quantization, max_memory);*/
 
 	else
-		throw QString("Input format not supported at the moment");
+		throw QString("Input format for file " + file + " is not supported at the moment");
 	return loader;
 }
 
