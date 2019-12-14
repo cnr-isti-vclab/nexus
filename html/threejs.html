@@ -83,15 +83,15 @@ var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } 
 */
 
 
-function onNexusLoad() {
-	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
+function onNexusLoad(nexus) {
+	var s   = 1/nexus.geometry.boundingSphere.radius;
 	var target = new THREE.Vector3();
-	var p = nexus_obj.geometry.boundingBox.getCenter(target).negate();
-	nexus_obj.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
-	nexus_obj.scale.set(s, s, s); 
+	var p = nexus.geometry.boundingBox.getCenter(target).negate();
+	nexus.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
+	nexus.scale.set(s, s, s); 
 	redraw = true;
 
-//	nexus_obj.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+//	nexus.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
 }
 
 function getURLParameter(name) {
