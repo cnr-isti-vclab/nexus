@@ -30,12 +30,31 @@ KDTree::KDTree(float adapt): adaptive(adapt) {
 	axes[2] = vcg::Point3f(0.0f, 0.0f, 1.0f);
 }
 
+/* this computes how many bits of the floating point can be used to
+ * pick a point within an interval.
+ * Moving intervals far away from the origin leaves less bits.
+ */
+
+float intervalPrecision(float a, float b) {
+	float max = std::max(fabs(a), fabs(b));
+	if(max < 1) return 23;
+	float diff = fabs(b - a);
+	if(diff < 1) return 23;
+
+	float lmax = log2(max);
+	float ldiff = log2(diff);
+
+	return ldiff - lmax + 23;
+
+
+}
+
 float boxFloatPrecision(const vcg::Box3f &box) {
 	vcg::Point3f dim = box.Dim();
 	vcg::Point3f center = box.Center();
 	vcg::Point3f px;
 	for(int i = 0; i < 3; i++)
-		px[i] = log2(fabs(dim[i])) - log2(fabs(center[i])) + 24; //2^ux is the unit at that scale.
+		px[i] = intervalPrecision(box.min[i], box.max[i]);
 
 	float r = std::min(px[0], std::min(px[1], px[2]));
 	return r;
