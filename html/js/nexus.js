@@ -736,7 +736,7 @@ Instance.prototype = {
 		//resolution is how long is a pixel at distance 1.
 		var error = t.mesh.nerrors[n]/(t.currentResolution*dist); //in pixels
 
-		if (!t.isVisible(cx, cy. cz, spheres[off+4]))
+		if (!t.isVisible(cx, cy, cz, spheres[off+4]))
 			error /= 1000.0;
 		return error;
 	},
