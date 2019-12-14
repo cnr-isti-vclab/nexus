@@ -18,3 +18,4 @@
 * use GLBufferAttribute instead of the dirty trick as soon as it's in threejs.
 * improve nxsview: copy and paste view parameters for comparing,
 * improve nxsview: better visualization of LOD, same for nexus.js
+* improve js: improve quality of the rendering when the trackball is not moving.
