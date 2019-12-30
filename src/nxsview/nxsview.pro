@@ -7,7 +7,7 @@ QMAKE_CXXFLAGS += -std=c++11
 
 DEFINES += GL_COMPATIBILITY 
 DEFINES += NDEBUG
-unix:DEFINES += USE_CURL
+unix:DEFINES -= USE_CURL
 win32:DEFINES += NOMINMAX
 
 INCLUDEPATH += \
@@ -18,7 +18,8 @@ win32:INCLUDEPATH += ../../../glew/include ../../../corto/include
 win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib ../../../corto/lib/corto.lib
 
 unix:INCLUDEPATH += /usr/local/lib
-unix:LIBS += -lGLEW -lGLU -lcurl -lcorto
+unix:LIBS += -lGLEW -lGLU  -lcorto
+#-lcurl
 
 SOURCES += \
     ../../../vcglib/wrap/gui/trackmode.cpp \

@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0", &skiplevels);
 	opt.addSwitch('O', "original textures", "use original textures, no repacking", &useOrigTex);
 	opt.addOption('m', "mtl file", "mtl for a single obj file", &mtl);
-	opt.addOption('k', "pow 2 textures", "create textures to be power of 2", &create_pow_two_tex);
+	opt.addSwitch('k', "pow 2 textures", "create textures to be power of 2", &create_pow_two_tex);
 
 	//btree options
 	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333", &adaptive);

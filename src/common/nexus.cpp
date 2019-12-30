@@ -135,6 +135,10 @@ int nextPowerOf2(int n) {
 	return 1 << count;
 }
 
+bool isPowerOfTwo(unsigned int x) {
+	return (x & (x - 1)) == 0;
+}
+
 uint64_t Nexus::loadGpu(uint32_t n) {
 	NodeData &data = nodedata[n];
 	assert(data.memory);
@@ -176,25 +180,16 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 			glCheckError();
 			glGenTextures(1, &data.tex);
 			glBindTexture(GL_TEXTURE_2D, data.tex);
-			
-			
-			int size = std::max(nextPowerOf2(data.width), nextPowerOf2(data.height));
-			std::vector<uchar> tmp(size*size, 0xff);
-			
-			void glTexSubImage2D(	GLenum target,
-				GLint level,
-				GLint xoffset,
-				GLint yoffset,
-				GLsizei width,
-				GLsizei height,
-				GLenum format,
-				GLenum type,
-				const void * pixels);
-			
+
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.memory);
 			glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			if(isPowerOfTwo(data.width) && isPowerOfTwo(data.height)) {
+				glGenerateMipmap(GL_TEXTURE_2D);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			} else
+				glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			
+
 			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
@@ -221,8 +216,7 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 			glTexImage2D(GL_TEXTURE_2D, 4, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&green); */
 			
 			
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
 			
 			glCheckError();
 		}

@@ -268,6 +268,7 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 
 		pf.Read((void *) &face);
 		Triangle &current = buffer[count];
+
 		for(int k = 0; k < 3; k++) {
 			Vertex &vertex = vertices[face.f[k]];
 			vertex.t[0] = face.t[k*2];
