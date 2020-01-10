@@ -545,11 +545,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	return image;
 }
 
-void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
-	KDTreeSoup *test = dynamic_cast<KDTreeSoup *>(in);
-	if(!test){
-		KDTreeCloud *input = dynamic_cast<KDTreeCloud *>(in);
-		StreamCloud *output = dynamic_cast<StreamCloud *>(out);
+void NexusBuilder::createCloudLevel(KDTreeCloud *input, StreamCloud *output, int level) {
 
 		for(uint block = 0; block < input->nBlocks(); block++) {
 			Cloud cloud = input->get(block);
@@ -599,12 +595,9 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 
 			delete []vertices;
 		}
+}
 
-
-	} else {
-		KDTreeSoup *input = dynamic_cast<KDTreeSoup *>(in);
-		StreamSoup *output = dynamic_cast<StreamSoup *>(out);
-
+void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int level) {
 		atlas.buildLevel(level);
 		if(level > 0)
 			atlas.flush(level-1);
@@ -674,6 +667,7 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 			} else {
 
 				if(useNodeTex) {
+					//static int counter = 0;
 					QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
 					area += nodetex.width()*nodetex.height();
 					output_pixels += nodetex.width()*nodetex.height();
@@ -688,7 +682,13 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 					writer.setProgressiveScanWrite(true);
 #endif
 					writer.write(nodetex);
-
+					
+/*					QString texname = QString::number(counter) + ".jpg";
+					nodetex.save(texname);
+					tmp.textures.push_back(texname.toStdString());
+					tmp.savePlyTex(QString::number(counter) + ".ply", texname);
+					counter++; */
+					
 					quint64 size = pad(nodeTex.size());
 					nodeTex.resize(size);
 					nodeTex.seek(size);
@@ -765,8 +765,18 @@ void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
 		delete workers.front();
 		workers.pop_front();
 	}*/
+}
 
-
+void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
+	KDTreeSoup *isSoup = dynamic_cast<KDTreeSoup *>(in);
+	if(!isSoup) {
+		KDTreeCloud *input = dynamic_cast<KDTreeCloud *>(in);
+		StreamCloud *output = dynamic_cast<StreamCloud *>(out);
+		createCloudLevel(input, output, level);
+	} else {
+		KDTreeSoup *input = dynamic_cast<KDTreeSoup *>(in);
+		StreamSoup *output = dynamic_cast<StreamSoup *>(out);
+		createMeshLevel(input, output, level);
 	}
 }
 

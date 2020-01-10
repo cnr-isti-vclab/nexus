@@ -89,6 +89,9 @@ public:
 	bool initAtlas(std::vector<QString> &textures);
 	void create(KDTree *input, Stream *output, uint top_node_size);
 	void createLevel(KDTree *input, Stream *output, int level);
+	void createCloudLevel(KDTreeCloud *input, StreamCloud *output, int level);
+	void createMeshLevel(KDTreeSoup *input, StreamSoup *output, int level);
+
 
 	void setMaxMemory(quint64 m) {
 		max_memory = m;
