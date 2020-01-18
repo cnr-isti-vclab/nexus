@@ -79,7 +79,7 @@ function loadMeco() {
 var corto = null;
 function loadCorto() {
 
-	corto = new Worker(path.replace('nexus.js', 'corto.js'));
+	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
