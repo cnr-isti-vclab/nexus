@@ -1,0 +1,80 @@
+<html>
+    <head>
+        <script type="text/javascript" src="x3dom-full.js"></script>
+        <link rel="stylesheet" href="x3dom.css"></link>
+        <style>
+            html, body, x3d { width:100%; height:100%; margin: 0; padding: 0; border: none; overflow: hidden;}
+            body {background: radial-gradient(ellipse at center, rgba(202,202,202,1) 0%,rgba(255,255,255,1) 100%) }
+            .gltf { position: absolute; bottom: 25px; left: 25px; width: 10%; height: auto; display: block; z-index: 1000;}
+            .cesium { position: absolute; bottom: 25px; right: 25px; width: 25%; height: auto; display: block; z-index: 1000;}
+        </style>
+    </head>
+    <body>
+        <a class="gltf" href="https://github.com/KhronosGroup/glTF" target="_blank"><img style="width: 100%; height: auto;" src="gltf.png"></a>
+        <a class="cesium" href="https://cesiumjs.org/" target="_blank"><img style="width: 100%; height: auto;" src="cesium.png"></a>
+        <x3d id="x3d"> 
+            <scene>
+                <Transform>
+                    <NavigationInfo headlight="true"></NavigationInfo>
+
+                 
+                    <Viewpoint position="8.51103 5.79523 -9.84850" orientation="-0.06426 0.98558 0.15653 2.43642" zNear="0.01000" zFar="1000.00000" description=""></Viewpoint>
+
+
+                    <!-- EXTERNAL GEOMETRY (X3DOM MILKTRUCK) -->
+
+                	<Transform translation="-1 0 -2">
+	 					<!-- Front Wheels -->
+	                    <Transform rotation="0 0 -0.0884856 0.996077" translation="1.43267 0.427722 -2.98023e-008">
+	                        <Shape>
+		                        <Appearance DEF="X3DOMMilkTruck">
+                                    <Material diffuseColor="0 0 0" specularColor="0.04 0.04 0.04" shininess="5"></Material>
+		                        	<ImageTexture  url="https://examples.x3dom.org/gltf/X3DOMMilkTruck.png"></ImageTexture>
+	                            </Appearance>
+		                        <ExternalGeometry id="exshape" url="https://examples.x3dom.org/gltf/CesiumMilkTruck.glb#Geometry-mesh001"></ExternalGeometry>
+	                        </Shape>
+	                    </Transform>
+
+	                    <!-- Rear Wheels -->
+<!--	                    <Transform rotation="0 0 -0.0884856 0.996077" translation="-1.35233 0.427722 -2.98023e-008">
+	                        <Shape>
+		                        <Appearance USE="X3DOMMilkTruck"></Appearance>
+		                        <ExternalGeometry id="exshape" url="gargo_0.glb"></ExternalGeometry>
+	                        </Shape>
+	                    </Transform> -->
+
+	                    <!-- Truck Body -->
+	                    <Transform>
+	                    	<Shape>	                    	
+		                        <Appearance USE="X3DOMMilkTruck"></Appearance>
+		                        <ExternalGeometry id="exshape" url="https://examples.x3dom.org/gltf/CesiumMilkTruck.glb#Geometry-mesh002"></ExternalGeometry>
+	                        </Shape>
+	                    </Transform>
+					</Transform>
+
+
+					<!-- EXTERNAL SHAPE (CESIUM MILKTRUCK) -->
+
+					<Transform translation="1 0 2">
+						<!-- Front Wheels -->
+	                    <Transform rotation="0 0 -0.0884856 0.996077" translation="1.43267 0.427722 -2.98023e-008">
+	                        <ExternalShape id="exshape" url="https://examples.x3dom.org/gltf/CesiumMilkTruck.glb#Geometry-mesh001"></ExternalShape>
+	                    </Transform>
+
+	                    <!-- Rear Wheels -->
+	                    <Transform rotation="0 0 -0.0884856 0.996077" translation="-1.35233 0.427722 -2.98023e-008">
+	                        <ExternalShape id="exshape" url="https://examples.x3dom.org/gltf/CesiumMilkTruck.glb#Geometry-mesh001"></ExternalShape>
+	                    </Transform>
+
+	                    <!-- Truck Body -->
+	                    <Transform>
+	                        <ExternalShape id="exshape" url="https://examples.x3dom.org/gltf/CesiumMilkTruck.glb#Geometry-mesh002"></ExternalShape>
+	                    </Transform>
+                    </Transform>
+
+                </Transform>                
+            </scene> 
+        </x3d>       
+    </body>
+</html>
+

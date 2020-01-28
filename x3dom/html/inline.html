@@ -1,0 +1,242 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1,IE=edge" />
+    <meta name="theme-color" content="#86c540">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title>X3DOM // GLTF 2.0</title>
+    <script type="text/javascript" src="x3dom_include.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700,900" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; border: none; font-family: 'Roboto', 'sans serif'; font-size: 15px; user-select: none;}
+        .x3dom-canvas {  cursor: default; }
+        .x3dom-logcontainer {  cursor: default; position: absolute; bottom: 15px; right: 15px; width: 400px; opacity: 0.5;}
+        
+        .topbar
+        { 
+            position: absolute;
+            z-index: 3;
+            display: flex;
+            width: 100%;
+            height: 56px;
+            background: #000000;
+            align-items: center;
+            padding: 0 16px;
+            box-sizing: border-box;
+            box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        }
+
+        .topbar-icon
+        {
+            color: white;
+            cursor: pointer;
+        }
+
+        .topbar-label
+        {
+            color: white;
+            font-size: 22px;
+            font-weight: 500;
+            margin-left: 15px;
+        }
+
+        .main-wrapper
+        {
+            width: 100%;
+            height: calc(100% - 56px);
+            position: absolute;
+            top: 56px;
+            left: 0;
+            display: flex;
+            flex-direction: row;
+        }
+        
+        .sidebar
+        {
+            display: flex; 
+            flex-direction: column; 
+            width: 250px; 
+            height: 100%; 
+            background: rgba(255,255,255,0.95); 
+            overflow-x: hidden;
+            overflow-y: scroll;
+            box-sizing: border-box; 
+            padding-bottom: 8px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+            position: relative;
+            left: 0;
+        }  
+        .sidebar-entry {width: 100%; font-size: 14px; color: #888; cursor: pointer; padding: 8px 32px; box-sizing: border-box; font-weight: 500; white-space: nowrap;}
+        .sidebar-entry:hover { background: #ddd; }
+        .sidebar-header {width: 100%; font-size: 14px; margin: 0 0 5px 0; font-weight: 500; color: #000000; padding: 16px; box-sizing: border-box; white-space: nowrap;}
+        
+        x3d
+        { 
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            border: none;
+            background: rgb(44, 44, 44);
+        }
+
+    </style>
+
+    <script>
+        
+        var g_runtime;
+        var g_direction = "posZ";
+        var g_open = true;
+
+        function onDownloadsFinished()
+        {
+            g_runtime.showAll(g_direction, true);
+        };
+    
+        function onload()
+        {
+            x3d = document.getElementById("x3d");           
+            x3d.addEventListener( "downloadsfinished", onDownloadsFinished );
+            
+            g_runtime = x3d.runtime;
+        };
+
+        function updateInline(url)
+        {
+            document.getElementById("inline").setAttribute("url", url);
+
+            g_runtime.showAll(g_direction, true);
+            
+        }
+
+        function load(file, type, direction)
+        {
+            var suffix = (type == "Binary") ? ".glb" : ".gltf"; 
+
+            type = (type != undefined) ? "-" + type : "";
+
+            g_direction = direction || "posZ";
+            
+            var repo = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/";
+
+            url = repo + file + "/glTF" + type + "/" + file + suffix;
+            
+            updateInline(url);
+        }
+
+        function togglemenu()
+        {
+            if(g_open)
+            {
+                document.querySelector(".sidebar").style.left = "-250px";
+                document.querySelector(".sidebar").style.width = "0px";
+                g_open = false;
+            }
+            else
+            {
+                document.querySelector(".sidebar").style.left = "0px";
+                document.querySelector(".sidebar").style.width = "250px";
+                g_open = true;
+            }
+        }
+    
+    </script>
+</head>
+
+     
+<body onload="onload();">
+
+    <section class="topbar">
+        <i class="material-icons topbar-icon" onclick="togglemenu();">menu</i>
+        <span class="topbar-label">X3DOM // GLTF 2.0</span>
+    </section>
+  
+
+    <section class="main-wrapper">
+
+        <section class="sidebar">
+
+            <div class="sidebar-header">Basic Tests</div>
+    
+            <div class="sidebar-entry" onclick="load('Triangle')">Triangle</div>
+            <div class="sidebar-entry" onclick="load('TriangleWithoutIndices',undefined,'negZ')">Triangle Without Indices</div>
+            <div class="sidebar-entry" onclick="load('SimpleMeshes',undefined,'negZ')">Simple Meshes</div>
+            <div class="sidebar-entry" onclick="updateInline('https://raw.githubusercontent.com/cx20/gltf-test/master/tutorialModels/SimpleMaterial/glTF/SimpleMaterial.gltf')">Simple Material</div>
+            <div class="sidebar-entry" onclick="updateInline('https://raw.githubusercontent.com/bghgary/glTF-Asset-Generator/master/Output/Material_MetallicRoughness/Material_MetallicRoughness_09.gltf')">Simple Meshes</div>
+            <div class="sidebar-header">Feature Tests</div>
+    
+            <div class="sidebar-entry" onclick="load('VertexColorTest', undefined, 'negZ')">Vertex Color Test</div>
+            <div class="sidebar-entry" onclick="load('TextureCoordinateTest',undefined,'negZ')">Texture Coordinate Test</div>
+            <div class="sidebar-entry" onclick="load('TextureSettingsTest',undefined,'negZ')">Texture Settings Test</div>
+            <div class="sidebar-entry" onclick="load('NormalTangentTest',undefined,'negZ')">Normal Tangent Test</div>
+            <div class="sidebar-entry" onclick="load('NormalTangentMirrorTest',undefined,'negZ')">Normal Tangent Mirror Test</div>
+            <div class="sidebar-entry" onclick="load('MetalRoughSpheres',undefined,'negZ')">Metal Roughness Spheres</div>
+            
+    
+            <div class="sidebar-header">Advanced Tests</div>
+    
+            <div class="sidebar-entry" onclick="load('Box')">Box</div>
+            <div class="sidebar-entry" onclick="load('BoxVertexColors')">Box with Vertex Colors</div>
+            <div class="sidebar-entry" onclick="load('BoxTextured')">Box Textured</div>
+            <div class="sidebar-entry" onclick="load('BoxTextured', 'Embedded')">Box Textured (embedded)</div>
+            <div class="sidebar-entry" onclick="load('BoxTextured', 'Binary')">Box Textured (binary)</div>
+            <div class="sidebar-entry" onclick="load('BoxInterleaved')">Box Interleaved</div>
+            <div class="sidebar-entry" onclick="load('BoxTexturedNonPowerOfTwo')">Box Textured NPOT</div>
+            <div class="sidebar-entry" onclick="load('Duck')">Duck</div>
+            <div class="sidebar-entry" onclick="load('2CylinderEngine')">2 Cylinder Engine</div>
+            <div class="sidebar-entry" onclick="load('ReciprocatingSaw')">Reciprocating Saw</div>
+            <div class="sidebar-entry" onclick="load('GearboxAssy')">Gearbox Assy</div>
+            <div class="sidebar-entry" onclick="load('Buggy')">Buggy</div>
+            <div class="sidebar-entry" onclick="load('CesiumMilkTruck')">Cesium Milk Truck</div>
+    
+            <div class="sidebar-header">PBR Tests</div>
+        
+            <div class="sidebar-entry" onclick="load('Avocado')">Avocado</div>
+            <div class="sidebar-entry" onclick="load('BarramundiFish')">BarramundiFish</div>
+            <div class="sidebar-entry" onclick="load('Lantern')">Lantern</div>
+            <div class="sidebar-entry" onclick="load('BoomBox')">Boom Box</div>
+            <div class="sidebar-entry" onclick="load('Corset')">Corset</div>
+            <div class="sidebar-entry" onclick="load('WaterBottle')">WaterBottle</div>
+            <div class="sidebar-entry" onclick="load('DamagedHelmet')">Damaged Helmet</div>
+            <div class="sidebar-entry" onclick="load('Suzanne')">Suzanne</div>
+            <div class="sidebar-entry" onclick="load('TwoSidedPlane')">TwoSidedPlane</div>
+            <div class="sidebar-entry" onclick="load('Cube')">Cube</div>
+            <div class="sidebar-entry" onclick="load('SciFiHelmet')">SciFiHelmet</div>  
+            <div class="sidebar-entry" onclick="updateInline('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF/FlightHelmet.gltf')">Flight Helmet</div>
+            <div class="sidebar-entry" onclick="updateInline('http://localhost/cerberus/glTF/cerberus.gltf')">Cerberus</div>
+           
+
+			<div class="sidebar-header">VR Controller</div>
+			
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/vive.glb')">Vive</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/oculus-go.glb')">Oculus Go</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/oculus-left.glb')">Oculus Left</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/oculus-right.glb')">Oculus Right</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/daydream.glb')">Daydream</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/gearvr.glb')">GearVR</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/microsoft-left.glb')">Microsoft Left</div>
+			<div class="sidebar-entry" onclick="updateInline('https://x3dom.org/download/assets/vr/microsoft-right.glb')">Microsoft Right</div>
+           
+		   
+        </section>
+
+        
+
+        <X3D id="x3d" >
+            <Scene>
+                <navigationinfo headlight="false"></navigationinfo>
+                <physicalenvironmentlight></physicalenvironmentlight>
+                <background backURL="https://x3dom.org/download/assets/pbr/museumDiffuse.dds"></background>
+                <Transform translation="0 0 0">
+                    <Inline id="inline" url="" nameSpaceName="gltf" mapDEFToID="true"></Inline>
+                </Transform>
+            </Scene>
+        </X3D>
+
+    </section>
+    
+</body>
+</html>
