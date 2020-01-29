@@ -14,10 +14,10 @@ onmessage = async function(job) {
 /*	if(decoder.attributes.color && job.data.rgba_colors)
 		decoder.attributes.color.outcomponents = 4; */
 	
-	var model = CortoDecoder.decode(buffer, true, job.data.short_normals);
+	var geometry = CortoDecoder.decode(buffer, job.data.short_index, job.data.short_normals);
 
 	//pass back job
-	postMessage({ model: model, buffer: buffer, request: job.data.request});
+	postMessage({ geometry: geometry, request: job.data.request});
 };
 
 var CortoDecoder = (function() {
@@ -135,7 +135,7 @@ var CortoDecoder = (function() {
 				nptr = sbrk(nvert * 6);
 				exports.setNormals16(decoder, nptr);
 			} else {
-				pptr = sbrk(nvert * 12);
+				nptr = sbrk(nvert * 12);
 				exports.setNormals32(decoder, nptr);
 			}
 		}
@@ -159,6 +159,7 @@ var CortoDecoder = (function() {
 		}
 
 		geometry.position = new Float32Array(new Float32Array(heap.buffer, pptr, nvert*3));
+
 
 		if(hasNormal) {
 			if(shortNormal)

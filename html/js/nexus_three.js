@@ -100,7 +100,7 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 			var indices = new Uint32Array(3);
 			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
 		} */
-		if(onLoad) onLoad(this);
+		if(onLoad) onLoad(mesh);
 	};
 	instance.onUpdate = function() { onUpdate(this) };
 
