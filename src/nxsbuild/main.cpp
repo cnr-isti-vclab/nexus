@@ -33,7 +33,6 @@ for more details.
 using namespace std;
 
 int main(int argc, char *argv[]) {
-
 	// we create a QCoreApplication just so that QT loads image IO plugins (for jpg and tiff loading)
 	QCoreApplication myUselessApp(argc, argv);
 	setlocale(LC_ALL, "C");

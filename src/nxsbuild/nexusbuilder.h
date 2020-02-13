@@ -117,7 +117,7 @@ public:
 	VirtualChunks chunks;
 	std::vector<NodeBox> boxes; //a box for each node
 
-	nx::Header header;
+	nx::Header3 header;
 	std::vector<nx::Node> nodes;
 	std::vector<nx::Patch> patches;
 	std::vector<nx::Texture> textures;

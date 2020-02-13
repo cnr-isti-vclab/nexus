@@ -77,6 +77,7 @@ void NexusData::flush() {
 }
 
 void NexusData::loadHeader() {
+	
 	//fread(&header, sizeof(Header), 1, file);
 	int readed = file.read((char *)&header, sizeof(Header));
 	if(readed != sizeof(Header))

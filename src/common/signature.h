@@ -66,23 +66,21 @@ public:
 
 class VertexElement: public Element {
 public:
-	enum Component { COORD = 0, NORM =1, COLOR = 2, TEX = 3, DATA0 = 4 };
-
+	enum Component { POSITION = 0, NORM =1, COLOR = 2, UV = 3, UV_1 = 4, TANGENT= 5, WEIGHTS= 6, JOINTS= 7 };
+	bool has(Component c) { return !attributes[c].isNull(); }
+	
 	bool hasNormals() { return !attributes[NORM].isNull(); }
 	bool hasColors() { return !attributes[COLOR].isNull(); }
-	bool hasTextures() { return !attributes[TEX].isNull(); }
-	bool hasData(int i) { return !attributes[DATA0 + i].isNull(); }
+	bool hasTextures() { return !attributes[UV].isNull(); }
 };
 
 class FaceElement: public Element {
 public:
 	enum Component { INDEX = 0, NORM =1, COLOR = 2, TEX = 3, DATA0 = 4 };
 
+	bool has(Component c) { return !attributes[c].isNull(); }		
 	bool hasIndex() { return !attributes[INDEX].isNull(); }
-	bool hasNormals() { return !attributes[NORM].isNull(); }
-	bool hasColors() { return !attributes[COLOR].isNull(); }
-	bool hasTextures() { return !attributes[TEX].isNull(); }
-	bool hasData(int i) { return !attributes[DATA0 + i].isNull(); }
+
 };
 
 class Signature {
@@ -91,14 +89,12 @@ public:
 	FaceElement face;
 
 	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4 };
-	uint32_t flags;
+	uint32_t flags = 0;
 	void setFlag(Flags f) { flags |= f; }
 	void unsetFlag(Flags f) { flags &= ~f; }
 
 	bool hasPTextures() { return (bool)(flags | PTEXTURE); }
 	bool isCompressed() { return (bool)(flags & (MECO|CORTO)); }
-
-	Signature(): flags(0) {}
 };
 
 }//namespace

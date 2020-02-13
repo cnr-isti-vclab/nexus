@@ -41,9 +41,9 @@ namespace nx {
 
 #define NEXUS_PADDING 256
 // Magic is: "Nxs "
-struct Header {
+struct Header2 {
 
-	Header(): magic(0x4E787320), version(0), nvert(0), nface(0), n_nodes(0), n_patches(0), n_textures(0) {}
+	Header2(): magic(0x4E787320), version(0), nvert(0), nface(0), n_nodes(0), n_patches(0), n_textures(0) {}
 	uint32_t magic;
 	uint32_t version;
 	uint64_t nvert;            //total number of vertices (at full resolution)
@@ -53,6 +53,29 @@ struct Header {
 	uint32_t n_patches;        //number of links (patches) in the dag
 	uint32_t n_textures;       //number of textures
 	vcg::Sphere3f sphere;      //bounding sphere
+};
+
+struct Header3 {
+	//this data
+	uint32_t magic = 0x4E787320;
+	uint32_t version = 0;
+	uint32_t json_length = 0;   //needs to be padded to 4 bytes!
+	
+	//this data is now read from the json.
+	uint64_t nvert = 0;            //total number of vertices (at full resolution)
+	uint64_t nface = 0;            //total number of faces
+	Signature signature;
+	uint32_t n_nodes = 0;          //number of nodes in the dag
+	uint32_t n_patches = 0;        //number of links (patches) in the dag
+	uint32_t n_textures = 0;       //number of textures
+	vcg::Sphere3f sphere;      //bounding sphere
+
+	uint32_t index_offset;
+	uint32_t index_length;
+
+	//throws on error, returns 0 on success, return the actual number of bytes needed otherwise.
+	int read(char *buffer, int length);
+	std::vector<char> write();
 };
 
 struct Node {

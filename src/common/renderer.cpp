@@ -317,12 +317,12 @@ void Renderer::renderSelected(Nexus *nexus) {
 
 #ifdef GL_COMPATIBILITY
 		glVertexPointer(3, GL_FLOAT, 0, (void *)start);
-		start += node.nvert*sig.vertex.attributes[VertexElement::COORD].size();
+		start += node.nvert*sig.vertex.attributes[VertexElement::POSITION].size();
 		
 		if(draw_texcoords)
 			glTexCoordPointer(2, GL_FLOAT, 0, (void *)start);
 		if(sig.vertex.hasTextures())
-			start += node.nvert * sig.vertex.attributes[VertexElement::TEX].size();
+			start += node.nvert * sig.vertex.attributes[VertexElement::UV].size();
 		
 		if(draw_normals)
 			glNormalPointer(GL_SHORT, 0, (void *)start);

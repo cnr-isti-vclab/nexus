@@ -79,7 +79,7 @@ public:
 
 class NexusData {
 public:
-	Header header;
+	Header3 header;
 	Node *nodes;
 	Patch *patches;
 	Texture *textures;

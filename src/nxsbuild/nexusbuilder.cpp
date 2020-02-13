@@ -89,7 +89,7 @@ vector<bool> NodeBox::markBorders(Node &node, vcg::Point3f *p, uint16_t *f) {
 NexusBuilder::NexusBuilder(quint32 components): chunks("cache_chunks"), scaling(0.5), useNodeTex(true), tex_quality(92), nodeTex("cache_tex") {
 
 	Signature &signature = header.signature;
-	signature.vertex.setComponent(VertexElement::COORD, Attribute(Attribute::FLOAT, 3));
+	signature.vertex.setComponent(VertexElement::POSITION, Attribute(Attribute::FLOAT, 3));
 	if(components & FACES)     //ignore normals for meshes
 		signature.face.setComponent(FaceElement::INDEX, Attribute(Attribute::UNSIGNED_SHORT, 3));
 	if(components & NORMALS)
@@ -99,7 +99,7 @@ NexusBuilder::NexusBuilder(quint32 components): chunks("cache_chunks"), scaling(
 	if(components & TEXTURES)
 		signature.vertex.setComponent(FaceElement::TEX, Attribute(Attribute::FLOAT, 2));
 
-	header.version = 2;
+	header.version = 3;
 	header.signature = signature;
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 
@@ -107,7 +107,7 @@ NexusBuilder::NexusBuilder(quint32 components): chunks("cache_chunks"), scaling(
 }
 
 NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scaling(0.5) {
-	header.version = 2;
+	header.version = 3;
 	header.signature = signature;
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 }
@@ -852,7 +852,7 @@ void NexusBuilder::save(QString filename) {
 	header.n_patches = patches.size();
 
 	header.n_textures = textures.size();
-	header.version = 2;
+	header.version = 3;
 
 	//find roots and adjust error
 	uint32_t nroots = header.n_nodes;
@@ -872,8 +872,9 @@ void NexusBuilder::save(QString filename) {
 		header.nface += node.nface;
 		header.nvert += node.nvert;
 	}
+	vector<char> header_dump = header.write();
 
-	quint64 size = sizeof(Header)  +
+	quint64 size = header_dump.size()  +
 			nodes.size()*sizeof(Node) +
 			patches.size()*sizeof(Patch) +
 			textures.size()*sizeof(Texture);
@@ -910,7 +911,7 @@ void NexusBuilder::save(QString filename) {
 		}
 	}
 
-	qint64 r = file.write((char*)&header, sizeof(Header));
+	qint64 r = file.write(header_dump.data(), header_dump.size());
 	if(r == -1)
 		throw(file.errorString());
 	assert(nodes.size());

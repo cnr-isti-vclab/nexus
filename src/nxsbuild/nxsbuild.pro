@@ -19,6 +19,7 @@ win32-msvc: DEFINES += NOMINMAX
 SOURCES += \
     ../../../vcglib/wrap/system/qgetopt.cpp \
     ../../../vcglib/wrap/ply/plylib.cpp \
+    ../common/dag.cpp \
     ../common/virtualarray.cpp \
     ../common/cone.cpp \
     main.cpp \
@@ -37,6 +38,7 @@ SOURCES += \
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
     ../../../vcglib/wrap/ply/plylib.h \
+    ../common/dag.h \
     ../common/signature.h \
     ../common/cone.h \
     ../common/virtualarray.h \
