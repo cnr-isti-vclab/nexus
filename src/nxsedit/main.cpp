@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
 }
 
 void printInfo(NexusData &nexus) {
-	Header &header = nexus.header;
+	Header3 &header = nexus.header;
 	cout << "\nTot vertices: " << header.nvert << endl;
 	cout << "Tot faces   : " << header.nface << endl;
 
@@ -361,7 +361,7 @@ void printInfo(NexusData &nexus) {
 }
 
 void printNodes(NexusData& nexus) {
-	Header& header = nexus.header;
+	Header3& header = nexus.header;
 	uint32_t n_nodes = header.n_nodes;
 	int last_level_size = 0;
 	uint32_t sink = nexus.header.n_nodes - 1;
@@ -396,7 +396,7 @@ void printNodes(NexusData& nexus) {
 }
 
 void printDag(NexusData& nexus) {
-	Header& header = nexus.header;
+	Header3& header = nexus.header;
 	uint32_t n_nodes = header.n_nodes;
 	if (show_dag) {
 		cout << "\nDag dump: \n";
@@ -520,7 +520,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 
 	nexus.nodes[nexus.header.n_nodes - 1].error = min_error;
 
-	nexus.file.seek(sizeof(Header));
+	nexus.file.seek(nexus.header.index_offset);
 	nexus.file.write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
 	//fseek(nexus.file, sizeof(Header), SEEK_SET);
 	//fwrite(nexus.nodes, sizeof(nx::Node), nexus.header.n_nodes, nexus.file);
@@ -595,7 +595,7 @@ void checkSpheres(NexusData &nexus) {
 	}
 
 	//write back nodes.
-	nexus.file.seek(sizeof(Header));
+	nexus.file.seek(nexus.header.index_offset);
 	nexus.file.write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
 	//fseek(nexus.file, sizeof(Header), SEEK_SET);
 	//fwrite(nexus.nodes, sizeof(Node), n_nodes, nexus.file);

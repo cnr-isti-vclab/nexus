@@ -14,7 +14,7 @@ T bread(char *&buffer) {
 }
 
 template<typename T> 
-void bwrite(char *buffer, T value) {
+void bwrite(char *&buffer, T value) {
 	*(T *)buffer = value;
 	buffer += sizeof(T);
 }
@@ -39,7 +39,7 @@ static Signature signatureFromJson(JSON json) {
 	JSON vertex = json["vertex"];
 	for(int i = 0; i < 8; i++) {
 		if(vertex.hasKey(components[i])) {		
-			auto velement = sig.vertex.attributes[i];
+			auto &velement = sig.vertex.attributes[i];
 			velement.type   = vertex[components[i]]["type"].ToInt();
 			velement.number = vertex[components[i]]["number"].ToInt();
 		}
@@ -47,12 +47,13 @@ static Signature signatureFromJson(JSON json) {
 	
 	JSON face = json["face"];
 	if(face.hasKey("INDEX")) {
-		auto felement = sig.face.attributes[FaceElement::INDEX];
+		auto &felement = sig.face.attributes[FaceElement::INDEX];
 		felement.type   = face["INDEX"]["type"].ToInt();
-		felement.number = face["number"].ToInt();
+		felement.number = face["INDEX"]["number"].ToInt();
 	}
 	
 	sig.flags = json["flags"].ToInt();
+	return sig;
 }
 
 static JSON signatureToJson(Signature sig) {
@@ -72,6 +73,7 @@ static JSON signatureToJson(Signature sig) {
 		json["face"]["INDEX"]["type"] = index.type;
 		json["face"]["INDEX"]["number"] = index.number;
 	}
+	return json;
 }
 
 
@@ -108,12 +110,12 @@ int Header3::read(char *buffer, int length) {
 			return 12 + json_length;
 		
 		JSON obj = JSON::Load( buffer );
-		nvert = obj['nvert'].ToInt();
-		nface = obj['nvert'].ToInt();
-		signature = signatureFromJson(obj['signature']);
-		n_nodes = obj['n_nodes'].ToInt();
-		n_patches = obj['n_patches'].ToInt();
-		n_textures = obj['n_textures'].ToInt();
+		nvert      = obj["nvert"].ToInt();
+		nface      = obj["nvert"].ToInt();
+		signature  = signatureFromJson(obj["signature"]);
+		n_nodes    = obj["n_nodes"].ToInt();
+		n_patches  = obj["n_patches"].ToInt();
+		n_textures = obj["n_textures"].ToInt();
 		
 		index_offset = json_length + 12;
 		index_length = n_nodes*44 + n_patches*12 + n_textures*68;
@@ -148,10 +150,11 @@ std::vector<char> Header3::write() {
 	bwrite<uint32_t>(data, magic);
 	bwrite<uint32_t>(data, version);
 	bwrite<uint32_t>(data, json_length);
-	bwrite<uint32_t>(data, str.size()+1);
+	assert(strlen(str.c_str()) == str.size());
 	memcpy(data, str.c_str(), str.size()+1);
 	
 	index_offset = json_length + 12;
 	index_length = n_nodes*44 + n_patches*12 + n_textures*68;
+	return buffer;
 }
 

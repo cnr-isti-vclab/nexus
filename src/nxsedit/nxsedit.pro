@@ -33,7 +33,8 @@ SOURCES += \
     ../nxszip/abitstream.cpp \
     ../nxszip/atunstall.cpp \
     main.cpp \
-    extractor.cpp
+    extractor.cpp \
+    ../common/dag.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \

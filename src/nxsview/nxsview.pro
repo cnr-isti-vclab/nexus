@@ -38,7 +38,8 @@ SOURCES += \
     ../nxszip/meshdecoder.cpp \
     main.cpp \
     gl_nxsview.cpp \
-    scene.cpp
+    scene.cpp \
+    ../common/dag.cpp
 
 HEADERS  += \
     ../../../vcglib/wrap/gcache/token.h \

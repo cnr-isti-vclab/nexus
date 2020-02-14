@@ -77,19 +77,35 @@ void NexusData::flush() {
 }
 
 void NexusData::loadHeader() {
+
+	int hint_size = 2048;
+	vector<char> buffer(hint_size);
 	
 	//fread(&header, sizeof(Header), 1, file);
-	int readed = file.read((char *)&header, sizeof(Header));
-	if(readed != sizeof(Header))
+	int readed = file.read(buffer.data(), hint_size);
+	if(readed != hint_size) {
+		cout << qPrintable(file.errorString()) << endl;
+
 		throw QString("could not read header, file too short");
-	if(header.magic != 0x4E787320)
-		throw QString("could not read header, probably not a nexus file");
+	}
+	int needed = header.read(buffer.data(), hint_size);
+	if(needed != 0) {
+		file.seek(0);
+		buffer.resize(needed);
+		int readed = file.read(buffer.data(), hint_size);
+		if(readed != hint_size)
+			throw QString("could not read header, file too short");
+		needed = header.read(buffer.data(), hint_size);
+		assert(needed == 0);
+	}
+	file.seek(header.index_offset);
 }
 
 void NexusData::loadHeader(char *buffer) {
-	header = *(Header *)buffer;
+	throw "Unimplemented";
+	/*header = *(Header *)buffer;
 	if(header.magic != 0x4E787320)
-		throw QString("could not read header, probably not a nexus file");
+		throw QString("could not read header, probably not a nexus file"); */
 }
 
 void NexusData::countRoots() {

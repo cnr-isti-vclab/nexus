@@ -76,7 +76,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	if(!file.open(QIODevice::WriteOnly | QFile::Truncate))
 		throw QString("could not open file " + output + " for writing");
 	
-	nx::Header header = nexus->header;
+	nx::Header3 header = nexus->header;
 	header.signature = signature;
 	header.nvert = 0;
 	header.nface = 0;
@@ -132,8 +132,10 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	header.n_patches = patches.size();
 	header.n_textures = textures.size();
 	
+	vector<char> header_dump = header.write();
+
 	
-	quint64 size = sizeof(nx::Header)  +
+	quint64 size = header_dump.size()  +
 			nodes.size()*sizeof(nx::Node) +
 			patches.size()*sizeof(nx::Patch) +
 			textures.size()*sizeof(nx::Texture);
@@ -145,7 +147,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	
 	//TODO should actually remove textures not used anymore.
 	
-	file.write((char *)&header, sizeof(header));
+	file.write(header_dump.data(), header_dump.size());
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
 	file.write((char *)&*textures.begin(), sizeof(nx::Texture)*textures.size());
@@ -199,7 +201,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 		textures.back().offset = file.pos()/NEXUS_PADDING;
 	}
 	
-	file.seek(sizeof(nx::Header));
+	file.seek(header.index_offset);
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
 	file.write((char *)&*textures.begin(), sizeof(nx::Texture)*textures.size());
