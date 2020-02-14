@@ -111,12 +111,16 @@ int Header3::read(char *buffer, int length) {
 		
 		JSON obj = JSON::Load( buffer );
 		nvert      = obj["nvert"].ToInt();
-		nface      = obj["nvert"].ToInt();
+		nface      = obj["nface"].ToInt();
 		signature  = signatureFromJson(obj["signature"]);
 		n_nodes    = obj["n_nodes"].ToInt();
 		n_patches  = obj["n_patches"].ToInt();
 		n_textures = obj["n_textures"].ToInt();
-		
+		JSON jsphere = obj["sphere"];
+		sphere.Radius() = jsphere["radius"].ToFloat();
+		sphere.Center()[0] = jsphere["center"][0].ToFloat();
+		sphere.Center()[1] = jsphere["center"][1].ToFloat();
+		sphere.Center()[2] = jsphere["center"][2].ToFloat();
 		index_offset = json_length + 12;
 		index_length = n_nodes*44 + n_patches*12 + n_textures*68;
 		return 0;
@@ -133,13 +137,19 @@ std::vector<char> Header3::write() {
 	
 	//vector<char> buffer(12);
 	JSON json = json::Object();
-	json["nvert"] = nvert;
-	json["nface"] = nvert;
 	json["signature"] = signatureToJson(signature);
-	json["n_nodes"] = n_nodes;
-	json["n_patches"] = n_patches;
+
+	json["nvert"]      = nvert;
+	json["nface"]      = nface;
+	json["n_nodes"]    = n_nodes;
+	json["n_patches"]  = n_patches;
 	json["n_textures"] = n_textures;
 	
+	JSON jsphere = json::Object();
+	jsphere["radius"] = sphere.Radius();
+	jsphere["center"] = json::Array(sphere.Center()[0],sphere.Center()[1], sphere.Center()[2]);
+	json["sphere"] = jsphere;
+			
 	string str = json.dump();
 	json_length = str.size() + 1;
 	while((json_length % 4) != 0)
