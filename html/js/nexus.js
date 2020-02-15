@@ -83,14 +83,15 @@ function loadCorto() {
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
-		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_index: true, short_normals: true });
+		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_index: true, short_normals: true});
 		node.buffer = null;
 		this.requests[this.count++] = node;
 	}
 	corto.onmessage = function(e) {
-		var node = this.requests[e.data.request];
-		delete this.requests[e.data.request];
-		node.model = e.data.geometry;
+		var request = e.data.request;
+		var node = this.requests[request];
+		delete this.requests[request];
+		node.model = e.data.model;
 		readyNode(node);
 	};
 }
