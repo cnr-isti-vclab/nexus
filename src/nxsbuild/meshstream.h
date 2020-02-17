@@ -23,6 +23,7 @@ for more details.
 
 #include "trianglesoup.h"
 #include "meshloader.h"
+#include "../common/material.h"
 
 /* triangles are organized in levels, each one with half the triangle of the lower one
    we have a buffer for each level, when filled it gets written to disk.
@@ -30,13 +31,16 @@ for more details.
    and a  vector of vectors holding which blocks belongs to which level
    */
 
+//Buld materials holds references to the different texture groups
+
+
 class Stream {
 public:
 	vcg::Box3f box;
 	bool has_colors;
 	bool has_normals;
 	bool has_textures;
-	std::vector<QString> textures;
+	std::vector<BuildMaterial> materials;
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 
 	Stream();
@@ -46,7 +50,7 @@ public:
 	void load(QStringList paths, QString material);
 
 	//return a block of triangles. The buffer is valid until next call to getTriangles. Return null when finished
-	void clear();
+	virtual void clear();
 	virtual quint64 size() = 0;
 	virtual void setMaxMemory(quint64 m) = 0;
 	virtual bool hasColors() { return has_colors; }

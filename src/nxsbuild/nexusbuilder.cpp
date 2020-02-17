@@ -112,9 +112,16 @@ NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scalin
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 }
 
-bool NexusBuilder::initAtlas(std::vector<QString> &filenames) {
-	if(filenames.size()) {
-		bool success = atlas.addTextures(filenames);
+void NexusBuilder::unifyMaterials() {
+	cout << "TODO!" << endl;
+	for(int i = 0; i < materials.size(); i++)
+		materials_map[i] = i;
+}
+
+bool NexusBuilder::initAtlas() {
+	//std::vector<QString> &filenames;
+	for(auto &material: materials) {
+		bool success = atlas.addTextures(material.textures);
 		if(!success)
 			return false;
 	}
@@ -263,13 +270,19 @@ public:
 	}
 
 };
+//move this to a different class.
+//we need access to:
+//pyramid for the images
+//materials  and material_map (which will unify materials)
+//a mesh, return an error
+//create power of 2 option for mipmaps.
+//returns a set of TextureGroups, one for each MAPPED material.
 
 QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge) {
 	std::vector<vcg::Box2f> boxes;
 	std::vector<int> box_texture; //which texture each box belongs;
 	std::vector<int> vertex_to_tex(mesh.vert.size(), -1);
 	std::vector<int> vertex_to_box;
-
 
 	UnionFind components;
 	components.init(mesh.vert.size());
@@ -634,6 +647,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				mesh1.load(soup);
 				input->lock(mesh1, block);
 				mesh_size = mesh1.serializedSize(header.signature);
+
 			} else {
 				mesh.load(soup);
 				input->lock(mesh, block);
@@ -667,13 +681,13 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 			} else {
 
 				if(useNodeTex) {
-					//static int counter = 0;
+					//actually we need to extract a set of textures for pbr
+					//if different materials we would need to extract a different set for each material.
 					QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
 					area += nodetex.width()*nodetex.height();
 					output_pixels += nodetex.width()*nodetex.height();
 					Texture t;
 					t.offset = nodeTex.size()/NEXUS_PADDING;
-					textures.push_back(t);
 
 					QImageWriter writer(&nodeTex, "jpg");
 					writer.setQuality(tex_quality);
@@ -682,16 +696,21 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 					writer.setProgressiveScanWrite(true);
 #endif
 					writer.write(nodetex);
-					
-/*					QString texname = QString::number(counter) + ".jpg";
+					 //actually replace witht
+
+/*
+ * //static int counter = 0;
+					QString texname = QString::number(counter) + ".jpg";
 					nodetex.save(texname);
 					tmp.textures.push_back(texname.toStdString());
 					tmp.savePlyTex(QString::number(counter) + ".ply", texname);
 					counter++; */
 					
-					quint64 size = pad(nodeTex.size());
+					qint64 size = pad(nodeTex.size());
 					nodeTex.resize(size);
 					nodeTex.seek(size);
+					t.size = uint32_t(nodeTex.size() - t.offset * NEXUS_PADDING);
+					textures.push_back(t);
 				}
 
 				tmp.serialize(buffer, header.signature, node_patches);
@@ -933,8 +952,7 @@ void NexusBuilder::save(QString filename) {
 	//TEXTURES
 	//	QString basename = filename.left(filename.length()-4);
 	//compute textures offsetse
-	//Image should store all the mipmaps
-	if(textures.size()) {
+	if(hasTextures()) {
 		if(useNodeTex) {
 			//todo split into pieces.
 			nodeTex.seek(0);
@@ -943,7 +961,8 @@ void NexusBuilder::save(QString filename) {
 				throw QString("failed writing texture");
 
 		} else {
-			for(int i = 0; i < textures.size()-1; i++) {
+			throw "Preserving original textures not supported anymode";
+/*			for(int i = 0; i < textures.size()-1; i++) {
 				Texture &tex = textures[i];
 				assert(tex.offset == file.pos()/NEXUS_PADDING);
 				QFile image(images[i]);
@@ -957,7 +976,7 @@ void NexusBuilder::save(QString filename) {
 				s = pad(s);
 				file.resize(s);
 				file.seek(s);
-			}
+			} */
 		}
 	}
 	if(textures.size())
@@ -968,9 +987,9 @@ void NexusBuilder::save(QString filename) {
 	file.close();
 }
 
-quint32 NexusBuilder::pad(quint32 s) {
-	const quint32 padding = NEXUS_PADDING;
-	quint64 m = (s-1) & ~(padding -1);
+qint64 NexusBuilder::pad(qint64 s) {
+	const qint64 padding = NEXUS_PADDING;
+	qint64 m = (s-1) & ~(padding -1);
 	return m + padding;
 }
 

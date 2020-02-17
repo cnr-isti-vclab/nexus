@@ -139,12 +139,16 @@ void TexPyramid::buildLevel(int level) {
 
 
 bool TexAtlas::addTextures(std::vector<QString> &filenames) {
-	pyramids.resize(filenames.size());
-	for(size_t i = 0; i < pyramids.size(); i++) {
-		TexPyramid &py = pyramids[i];
-		bool ok = py.init(i, this, filenames[i]);
+	for(QString &filename: filenames) {
+		if(texture_map.count(filename))
+			continue;
+		int id = pyramids.size();
+		texture_map[filename] = id;
+		pyramids.push_back(TexPyramid());
+		TexPyramid &py = pyramids.back();
+		bool ok = py.init(id, this, filename);
 		if(!ok) {
-			throw ("could not load texture: " + filenames[i]);
+			throw ("could not load texture: " + filename);
 		}
 	}
 	return true;

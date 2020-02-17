@@ -66,7 +66,7 @@ float boxFloatPrecision(const vcg::Box3f &box) {
 
 void KDTree::load(Stream *stream) {
 
-	textures = stream->textures;
+//	=textures = stream->textures;
 
 	KDCell node;
 	node.block = 0;

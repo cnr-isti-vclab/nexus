@@ -51,9 +51,10 @@ private:
 	quint64 current_vertex;
 	qint64  current_tri_pos = 0;
 	quint32  current_color = 0;
-	qint32  current_texture_id = -1;
-	QMap<QString, quint32> colors_map;
-	QMap<QString, QString> textures_map;
+	qint32  current_material_id = -1;
+	//QMap<QString, quint32> colors_map;
+	//QMap<QString, QString> textures_map;
+	QMap<QString, int> material_map;
 	
 	
 };

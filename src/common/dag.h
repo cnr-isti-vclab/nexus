@@ -36,10 +36,14 @@ typedef unsigned __int64 uint64_t;
 
 #include "cone.h"
 #include "signature.h"
+#include "material.h"
 
 namespace nx {
 
 #define NEXUS_PADDING 256
+
+
+
 // Magic is: "Nxs "
 struct Header2 {
 
@@ -67,11 +71,13 @@ struct Header3 {
 	Signature signature;
 	uint32_t n_nodes = 0;          //number of nodes in the dag
 	uint32_t n_patches = 0;        //number of links (patches) in the dag
-	uint32_t n_textures = 0;       //number of textures
+	uint32_t n_textures = 0;       //number of textures groups
 	vcg::Sphere3f sphere;      //bounding sphere
 
+	std::vector<Material> materials;
 	uint32_t index_offset;
 	uint32_t index_length;
+
 
 	//throws on error, returns 0 on success, return the actual number of bytes needed otherwise.
 	int read(char *buffer, int length);
@@ -79,7 +85,8 @@ struct Header3 {
 };
 
 struct Node {
-	uint32_t offset;           //offset on disk (could be moved), granularity NEXUS_PADDING) //use the function
+	uint32_t offset; //offset on disk (could be moved), granularity NEXUS_PADDING) //use the function
+	uint32_t size;   //in bytes
 	uint16_t nvert;
 	uint16_t nface;
 	float error;
@@ -90,28 +97,31 @@ struct Node {
 	uint32_t last_patch() { return (this + 1)->first_patch; } //this node is ALWAYS inside an array.
 	vcg::Sphere3f tightSphere() { return vcg::Sphere3f(sphere.Center(), tight_radius); }
 
-	uint64_t getBeginOffset() { return (uint64_t)offset * (uint64_t) NEXUS_PADDING; }
-	uint64_t getEndOffset() { return (this+1)->getBeginOffset(); }
-	uint64_t getSize() { return getEndOffset() - getBeginOffset(); }
+	uint64_t getBeginOffset() { return uint64_t(offset) * uint64_t(NEXUS_PADDING); }
+	uint64_t getEndOffset() { return getBeginOffset() + size; }
+	uint64_t getSize() { return size; }
 };
 
+//todo read index node, patch and texrture are different!!!
 struct Patch {
 	uint32_t node;             //destination node
 	uint32_t triangle_offset;  //end of the triangles in the node triangle list. //begin from previous patch.
 	uint32_t texture;          //index of the texture in the array of textures
+	uint32_t material;         //index of the materials
 };
 
-struct Texture {
-	uint32_t offset;
-	float matrix[16];
-	Texture(): offset(-1) {
-		for(int i = 0; i < 16; i++)
-			matrix[i] = 0;
-	}
 
-	uint64_t getBeginOffset() { return (uint64_t)offset * (uint64_t) NEXUS_PADDING; }
-	uint64_t getEndOffset() { return (this+1)->getBeginOffset(); }
-	uint64_t getSize() { return getEndOffset() - getBeginOffset(); }
+
+//pbr materials will have more than 1 textures. so this is actually a group of textures.
+//when loading we don't know the material.
+//so [n_maps][size][ jpg ].... [size][jpg]
+struct Texture {
+	uint32_t offset; //offset on disk (could be moved), granularity NEXUS_PADDING)
+	uint32_t size; //in bytes`
+
+	uint64_t getBeginOffset() { return uint64_t(offset) * uint64_t(NEXUS_PADDING); }
+	uint64_t getEndOffset() { return getBeginOffset() + size; }
+	uint64_t getSize() { return  uint64_t(size); }
 };
 
 }//

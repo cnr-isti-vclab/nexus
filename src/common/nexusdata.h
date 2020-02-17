@@ -64,16 +64,19 @@ public:
 	static uint16_t *faces(Signature &sig, uint32_t nvert, char *mem);
 };
 
+class TextureGroupData {
+public:
+	uint32_t firstTextureData = 0;
+	uint16_t count_ram = 0;           //number of nodes using the texture
+	uint16_t count_gpu = 0;           //number of nodes using the texture
+};
+
 class TextureData {
 public:
-	TextureData(): memory(NULL), width(0), height(0), tex(0), count_ram(0), count_gpu(0) {}
-	char *memory;             //some form of raw data (probably compressed jpeg)
-	uint32_t width;            //size of image
-	uint32_t height;
-
-	uint32_t tex;             //opengl identifier
-	uint32_t count_ram;           //number of nodes using the texture
-	uint32_t count_gpu;           //number of nodes using the texture
+	char *memory = nullptr;             //some form of raw data (probably compressed jpeg)
+	uint32_t tex = 0;             //opengl identifier
+	uint16_t width = 0;            //size of image
+	uint16_t height = 0;
 };
 
 
@@ -85,6 +88,9 @@ public:
 	Texture *textures;
 
 	NodeData *nodedata;
+	TextureGroupData *texturegroup;
+	//problem: we do not know ho many there are in advance, it depends on the materials.
+	//this info is in the patches that point to a material and a texture
 	TextureData *texturedata;
 
 	std::string url;

@@ -104,7 +104,6 @@ void ObjLoader::readMTL() {
 	QFile f(mtl);
 	if (!f.open(QFile::ReadOnly))
 		return;
-	int cnt = 0;
 	int head_linewas_read = false;
 	while (1) {
 		int s = 0;
@@ -127,11 +126,13 @@ void ObjLoader::readMTL() {
 		QString str(buffer);
 		str = str.simplified();
 		if (str.startsWith("newmtl", Qt::CaseInsensitive)){
+			BuildMaterial material;
+
 			QString mtltag = str.section(" ", 1);
 			QString txtfname;
-			qint32 R = 0;
-			qint32 G = 0;
-			qint32 B = 0;
+			qint32 R = 255;
+			qint32 G = 255;
+			qint32 B = 255;
 			qint32 A = 255;
 
 			do {
@@ -164,6 +165,9 @@ void ObjLoader::readMTL() {
 					txtfname = str.mid(7).trimmed();
 					txtfname = txtfname.remove(QRegExp("^(\")"));
 					txtfname = txtfname.remove(QRegExp("(\")$"));
+					material.color_map = material.textures.size();
+					material.textures.push_back(txtfname);
+					has_textures = true;
 					continue;
 				}
 				if(str.startsWith("Kd", Qt::CaseInsensitive)){
@@ -174,22 +178,25 @@ void ObjLoader::readMTL() {
 					QString kd;
 					data_stream >> kd >>r >> g >> b;
 					int n = 3;
-					//cout << qPrintable(data_string);
-					//cout << (const char*)(data_string.simplified().constData());
 					if (n == 3) {
 						R = ((qint32(255 * r)) << 24) & 0xff000000;
 						G = ((qint32(255 * g)) << 16) & 0x00ff0000;
 						B = ((qint32(255 * b)) << 8) & 0x0000ff00;
 					}
+					material.color[0] = R;
+					material.color[1] = G;
+					material.color[2] = B;
+					material.color[3] = A;
 					continue;
 				}
 
 			} while (true);
 
-			qint32 color = R + G + B + A;
-			colors_map.insert(mtltag, color);
+//			qint32 color = R + G + B + A;
+//			colors_map.insert(mtltag, color);
 
-			if (txtfname.length() > 0) {
+/* Materials and textures will be merged at the end of the loading!
+ * 			if (txtfname.length() > 0) {
 				textures_map.insert(mtltag, txtfname);
 				bool exists = false;
 				for (auto fn : texture_filenames)
@@ -199,16 +206,9 @@ void ObjLoader::readMTL() {
 					}
 				if (!exists)
 					texture_filenames.push_back(txtfname);
-			}
-			//std::cout << buffer;// << endl;
-			cnt++;
+			} */
 		}
 	}
-	cout << "Colors read: " << cnt << endl;
-	for (auto fn : texture_filenames)
-		cout << qPrintable("Texture: " + fn) << endl;
-	if (cnt)
-		has_colors = true;
 }
 
 void ObjLoader::cacheVertices() {
@@ -288,9 +288,6 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 		readMTL();
 	}
 
-	if (texture_filenames.size() > 0)
-		has_textures = true;
-
 	char buffer[1024];
 	file.seek(current_tri_pos);
 
@@ -312,28 +309,12 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 			break;
 		}
 
-		if (has_colors && buffer[0] == 'u') {
+		if(buffer[0] == 'u') {
 			QString str = QString(buffer).simplified().section(" ", 1);
-			current_color = colors_map[str];
-			if (current_color) {
-				//cout << "cur color " << buffer+7 << " " << RED(current_color) <<" "<< GREEN(current_color) << " " << BLUE(current_color) << " " << endl;
-			}
-			else {
-				current_color = default_color;
-			}
+			if(!material_map.count(str))
+				throw QString("Could not find material: " + str);
 
-			current_texture_id = -1;
-			QString txtfname = textures_map[str];
-			if (txtfname.length() > 0) {
-				for (int i = 0; i < texture_filenames.size(); i++) {
-					if (texture_filenames[i] == txtfname)
-						current_texture_id = i;
-				}
-			}
-			
-			if (current_texture_id > -1) {
-				//cout << "txt ok: " << qPrintable(str) << " " << qPrintable(txtfname) << endl;
-			}
+			current_material_id = material_map[str];
 			continue;
 		}
 
@@ -416,7 +397,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 						for (int j = 0; j < 2; j++)
 							current.vertices[k].t[j] = vtxtuv[vtxt1[m * 3 + k] * 2 + j];
 				}
-				current.tex = current_texture_id;
+				current.tex = current_material_id;
 				if (has_colors && current_color) {
 					current.vertices[0].c[0] = RED(current_color);
 					current.vertices[0].c[1] = GREEN(current_color);

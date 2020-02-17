@@ -98,31 +98,38 @@ void Stream::load(QStringList paths, QString material) {
 
 		loader->setVertexQuantization(vertex_quantization);
 		loader->origin = origin;
+		loader->materialOffset = materials.size();
+
 		loadMesh(loader);
+		//TODO here we assume the dataset is omogenous in case we discard.
+		//we could actually do the reverse now that we have materials
+		//for example 0,0 textures for materials without color_map or other maps.
 		has_colors &= loader->hasColors();
 		has_normals &= loader->hasNormals();
 		has_textures &= loader->hasTextures();
 
-		if(has_textures) {
-			QFileInfo file(paths[0]);
-			QString path = file.path();
-			for(auto &tex: loader->texture_filenames)
-				textures.push_back(path + "/" + tex);
+		QFileInfo info(paths[0]);
+		QString path = info.path();
+
+		for(auto m: loader->materials) {
+			//convert path to absolute paths!
+			for(auto &tex: m.textures)
+				tex = path + "/" + tex;
+			materials.push_back(m);
 		}
 
-		//box.Add(loader->box); //this lineB AFTER the mesh is streamed
 		delete loader;
 	}
+
 	current_triangle = 0;
 	flush();
 }
-
 
 void Stream::clear() {
 	clearVirtual();
 	levels.clear();
 	order.clear();
-	textures.clear();
+	materials.clear();
 	current_triangle = 0;
 	current_block = 0;
 	box = vcg::Box3f();
@@ -157,7 +164,6 @@ StreamSoup::StreamSoup(QString prefix):
 
 void StreamSoup::loadMesh(MeshLoader *loader) {
 	loader->setMaxMemory(maxMemory());
-	loader->texOffset = textures.size();
 	//get 128Mb of data
 	quint32 length = (1<<20); //times 52 bytes.
 	Triangle *triangles = new Triangle[length];

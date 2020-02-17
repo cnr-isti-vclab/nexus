@@ -49,7 +49,7 @@ public:
 	float ratio;
 	std::vector<KDCell> cells;
 	std::vector<vcg::Box3f> block_boxes;      //bounding box associated to the blocks (leaf nodes)
-	std::vector<QString> textures;
+	//std::vector<QString> textures;
 
 	KDTree(float adapt = 0.333);
 	virtual ~KDTree() {}

@@ -29,6 +29,7 @@ for more details.
 #include "../common/signature.h"
 #include "../common/dag.h"
 #include "../common/virtualarray.h"
+#include "../common/material.h"
 #include "texpyramid.h"
 
 
@@ -86,7 +87,7 @@ public:
 	bool hasColors() { return header.signature.vertex.hasColors(); }
 	bool hasTextures() { return header.signature.vertex.hasTextures(); }
 
-	bool initAtlas(std::vector<QString> &textures);
+	bool initAtlas();
 	void create(KDTree *input, Stream *output, uint top_node_size);
 	void createLevel(KDTree *input, Stream *output, int level);
 	void createCloudLevel(KDTreeCloud *input, StreamCloud *output, int level);
@@ -121,7 +122,12 @@ public:
 	std::vector<nx::Node> nodes;
 	std::vector<nx::Patch> patches;
 	std::vector<nx::Texture> textures;
-	std::vector<QString> images;
+	//std::vector<QString> images;
+	std::vector<BuildMaterial> materials;
+	std::vector<std::vector<int32_t>> nodes_to_textures;
+	//after loading the meshes, materials get unified, and this map will be needed when processing
+	std::map<int32_t, int32_t> materials_map;
+
 
 	quint64 input_pixels, output_pixels;
 	nx::TexAtlas atlas;
@@ -136,6 +142,7 @@ public:
 	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
 	int skipSimplifyLevels = 0;
 
+	void unifyMaterials();
 
 	QImage extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge);
 	void invertNodes(); //
@@ -143,7 +150,7 @@ public:
 	void optimizeNode(quint32 node, uchar *chunk);
 	void uniformNormals();
 	void appendBorderVertices(uint32_t origin, uint32_t destination, std::vector<NVertex> &vertices);
-	quint32 pad(quint32 s);
+	qint64 pad(qint64 s);
 
 	void testSaturation();
 };

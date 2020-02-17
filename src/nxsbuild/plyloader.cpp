@@ -28,7 +28,7 @@ using namespace std;
 struct PlyFace {
 	quint32 f[3];
 	float t[6];
-	quint32 texNumber;
+	qint32 texNumber;
 	unsigned char n;
 };
 
@@ -109,28 +109,35 @@ PlyLoader::PlyLoader(QString filename):
 	}
 	init();
 	for(int co = 0; co < int(pf.comments.size()); ++co) {
-		std::string TFILE = "TEXTUREFILE";
+		std::string tfile = "TEXTUREFILE";
 		std::string &c = pf.comments[co];
 		std::string bufstr,bufclean;
 		int i,n;
 
-		std::string start = c.substr(0,TFILE.length());
+		std::string start = c.substr(0,tfile.length());
 		for_each(start.begin(), start.end(), [](char& in){ in = ::toupper(in); });
 
-		if( TFILE == start )
+		if( tfile == start )
 		{
-			bufstr = c.substr(TFILE.length()+1);
+			bufstr = c.substr(tfile.length()+1);
 			n = static_cast<int>(bufstr.length());
 			for(i=0;i<n;i++)
 				if(bufstr[i]!='\t' && bufstr[i]>=32 && bufstr[i]<=126 )	bufclean.push_back(bufstr[i]);
 
 			char buf2[255];
 			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2 );
-			texture_filenames.push_back(QString(buf2).trimmed());
+			BuildMaterial material;
+			material.color_map = 0;
+			material.textures.push_back(QString(buf2).trimmed());
+			materials.push_back(material);
 		}
 	}
-	if(has_textures && texture_filenames.size() == 0)
+
+	if(materials.size() == 0) {
+		//create an empty material
+		materials.push_back(BuildMaterial());
 		has_textures = false;
+	}
 }
 
 PlyLoader::~PlyLoader() {
@@ -266,7 +273,7 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 	face.texNumber = 0;
 	for(quint32 i = 0; i < size && current_triangle < n_triangles; i++) {
 
-		pf.Read((void *) &face);
+		pf.Read(&face);
 		Triangle &current = buffer[count];
 
 		for(int k = 0; k < 3; k++) {
@@ -290,7 +297,7 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 		//TODO! detect complicated texture coordinates
 		
 		current.node = 0;
-		current.tex = face.texNumber + texOffset;
+		current.tex = face.texNumber + materialOffset;
 
 		current_triangle++;
 
@@ -314,7 +321,7 @@ quint32 PlyLoader::getVertices(quint32 size, Splat *splats) {
 	quint32 count = 0;
 	for(quint32 i = 0; i < size && current_vertex < n_vertices; i++) {
 
-		pf.Read((void *)&vertex);
+		pf.Read(&vertex);
 
 		Splat &v = splats[count++];
 		current_vertex++;

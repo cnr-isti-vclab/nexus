@@ -33,7 +33,9 @@ SOURCES += \
     objloader.cpp \
     tmesh.cpp \
     texpyramid.cpp \
-    stlloader.cpp
+    stlloader.cpp \
+    ../common/signature.cpp \
+    nodetexcreator.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -55,7 +57,9 @@ HEADERS += \
     tmesh.h \
     vertex_cache_optimizer.h \
     texpyramid.h \
-    stlloader.h
+    stlloader.h \
+    ../common/material.h \
+    nodetexcreator.h
 
 DESTDIR = "../../bin"
 

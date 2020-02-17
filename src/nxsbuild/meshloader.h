@@ -22,6 +22,7 @@ for more details.
 #include "trianglesoup.h"
 #include <vcg/space/point3.h>
 #include <vcg/space/box3.h>
+#include "../common/material.h"
 
 class MeshLoader {
 public:
@@ -40,8 +41,11 @@ public:
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 	vcg::Box3d box;
 	
-	std::vector<QString> texture_filenames;
-	int texOffset; //when returning triangles add texOffset to refer to the correct texture in stream.
+	std::vector<BuildMaterial> materials;
+	//when returning triangles add materialOffset to refer to the correct texture in stream.
+	int materialOffset = 0;
+	//std::vector<QString> texture_filenames;
+	//int texOffset;
 
 	
 protected:
@@ -50,7 +54,7 @@ protected:
 	bool has_textures;
 	float quantization;
 
-	void quantize(float &value);
+	virtual void quantize(float &value);
 };
 
 #endif // NX_MESHLOADER_H

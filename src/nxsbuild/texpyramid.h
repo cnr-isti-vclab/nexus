@@ -14,7 +14,7 @@ class TexAtlas;
 class TexLevel {
 public:
 	TexAtlas *collection;
-	int tex, level;
+	int tex, level; //TODO tex is pretty useless...
 	int width, height;
 	int tilew, tileh;              //how many tiles to make up side.
 	//std::vector<qint64> offsets; //where each tile starts in the cache.
@@ -72,12 +72,14 @@ public:
 
 	const int side = 4096;
 	std::vector<TexPyramid> pyramids;
+	std::map<QString, int> texture_map;
 	float scale;
 	int quality;
 
 	TexAtlas(): scale(M_SQRT1_2), quality(92), cache_max(2000000000), cache_size(0), access(1) {}
 
 	bool addTextures(std::vector<QString> &filenames);
+	int getTextureId(QString filename);
 	QImage read(int tex, int level, QRect region);
 	void buildLevel(int level);
 

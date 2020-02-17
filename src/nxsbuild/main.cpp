@@ -237,7 +237,8 @@ int main(int argc, char *argv[]) {
 		
 		//WORKAROUND to save loading textures not needed
 		if(!(components & NexusBuilder::TEXTURES)) {
-			stream->textures.clear();
+			throw "Need to convert texture materials into color materials!";
+			//stream->textures.clear();
 		}
 
 		NexusBuilder builder(components);
@@ -247,7 +248,8 @@ int main(int argc, char *argv[]) {
 		builder.useNodeTex = !useOrigTex;
 		builder.createPowTwoTex = create_pow_two_tex;
 		builder.tex_quality = tex_quality;
-		bool success = builder.initAtlas(stream->textures);
+		builder.materials = stream->materials;
+		bool success = builder.initAtlas();
 		if(!success) {
 			cerr << "Exiting" << endl;
 			return 1;

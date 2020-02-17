@@ -29,8 +29,8 @@ typedef unsigned __int64 uint64_t;
 #include <stdint.h>
 #endif
 
+#include <vector>
 #include <assert.h>
-
 namespace nx {
 
 class Attribute {
@@ -83,11 +83,11 @@ public:
 
 };
 
+
 class Signature {
 public:
 	VertexElement vertex;
 	FaceElement face;
-
 	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4 };
 	uint32_t flags = 0;
 	void setFlag(Flags f) { flags |= f; }

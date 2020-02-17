@@ -6,18 +6,19 @@ using namespace nx;
 using namespace std;
 using namespace json;
 
-template<typename T> 
+template<typename T>
 T bread(char *&buffer) {
 	T data = *(T *)(buffer);
 	buffer += sizeof(T);
 	return data;
 }
 
-template<typename T> 
+template<typename T>
 void bwrite(char *&buffer, T value) {
 	*(T *)buffer = value;
 	buffer += sizeof(T);
 }
+
 
 //USING glTf naming, might add more :)
 string components[8] = { "POSITION", "NORMAL", "COLOR_0", "UV_0", "UV_1", "WEIGHTS_0", "JOINTS_0" }; 
@@ -167,4 +168,128 @@ std::vector<char> Header3::write() {
 	index_length = n_nodes*44 + n_patches*12 + n_textures*68;
 	return buffer;
 }
+
+
+/*
+{
+	pbrMetallicRoughness: {
+		baseColorTexture: { index: 1, texCoord: 1 }
+		baseColorFactor: [ 1, 0, 1, 1],
+		metallicRoughnessTexture: { index: 1, texCoord: 1 }
+		metallicFactor: 1.0,
+		roughnessFactor: 1.0,
+	},
+	specular: [1, 1, 1, 1],
+	glossines: [1, 1, 1, 1],
+	normalTexture: { scale:0.9, index: 1, texCoord: 1 },
+	//bump, specular, glossines, mr, ao
+
+}
+*/
+
+
+
+int readMaterial(JSON &json) {
+	Material m;
+	JSON pbr = json["pbrMetallicRoughness"];
+
+	//BASECOLOR
+	if(pbr.hasKey("baseColorTexture"))
+		m.color_map = pbr["baseColorTexture"]["index"].ToInt();
+	if(pbr.hasKey("baseColorFactor")) {
+		JSON cf = pbr["baseColorFactor"];
+		for(int i = 0; i < 4; i++)
+			m.color[i] = cf[i].ToFloat()*255;
+	}
+
+	//METALLIC
+	if(pbr.hasKey("metallicRoughnessTexture"))
+		m.metallic_map = pbr["metallicRoughnessTexture"]["index"].ToInt();
+
+	if(pbr.hasKey("metallicFactor"))
+		m.metallic = pbr["metallicFactor"].ToFloat()*255;
+
+	if(json.hasKey("roughnessFactor"))
+		m.roughness = pbr["roughnessFactor"].ToFloat()*255;
+
+	//NORMAL
+	if(json.hasKey("normalTexture")) {
+		m.norm_map=  json["normalTexture"]["index"].ToInt();
+		m.norm_scale=  json["normalTexture"]["scale"].ToFloat()/255;
+	}
+
+	if(json.hasKey("bumpTexture")) {
+		m.norm_map=  json["bumpTexture"]["index"].ToInt();
+	}
+
+	//SPECULAR
+	if(json.hasKey("specularFactor")) {
+		JSON s = pbr["specularFactor"];
+		for(int i = 0; i < 4; i++)
+			m.specular[i] = s[i].ToFloat()*255;
+	}
+	if(json.hasKey("specularTexture"))
+		m.glossines = pbr["specularTexture"].ToInt();
+
+	//GLOSSINESS
+	if(json.hasKey("glossinesFactor"))
+		m.glossines = pbr["glossinesFactor"].ToFloat()*255;
+
+	if(json.hasKey("glossinesTexture"))
+		m.glossines = pbr["glossinesTexture"]["index"].ToInt();
+
+
+	//OCCLUSION
+	if(json.hasKey("occlusionFactor"))
+
+	if(json.hasKey("occlusionTexture")) {
+		m.glossines_map = pbr["occlusionTexture"]["index"].ToInt();
+		m.glossines = pbr["occlusionFactor"]["strength"].ToFloat()*255;
+	}
+}
+
+JSON writeMAterial(Material &m) {
+	JSON json = json::Object();
+	if(m.color[3] != 0 || m.color_map != -1 || m.metallic != 0 || m.roughness != 0 || m.metallic_map != 0) {
+		JSON pbr = json::Object();
+		if(m.color[3] != 0)
+			pbr["baseColorFactor"] = json::Array(m.color[0]/225.f, m.color[1]/225.f, m.color[2]/225.f, m.color[3]/255.f);
+		if(m.color_map != -1)
+			pbr["baseColorTexture"] = { "index", m.color_map };
+
+		if(m.metallic != 0)
+			pbr["metallicFactor"] = m.metallic/255.f;
+		if(m.roughness != 0)
+			pbr["roughnessFactor"] = m.metallic/255.f;
+		if(m.metallic_map != -1)
+			pbr["metallicRoughnessTexture"] = { "index", m.metallic_map };
+		\
+		json["pbrMetallicRoughness"] = pbr;
+	}
+	if(m.norm_map != -1)
+		json["normalTexture"] = {
+			"scale", m.norm_scale/255.f,
+			"index", m.norm_map,
+			};
+
+	if(m.specular_map != -1)
+		json["specularTexture"] = { "index", m.norm_map };
+	if(m.specular[4] != 0)
+		json["specularFactor"] = json::Array(m.specular[0]/255.f, m.specular[1]/255.f, m.specular[2]/255.f, m.specular[3]/255.f);
+
+
+	if(m.glossines_map  != -1)
+		json["glossinessTexture"] = { "index", m.norm_map };
+	if(m.glossines != 0)
+		json["glossinesFactor"] = m.glossines/255.f;
+
+	if(m.occlusion_map >= 0)
+		json["occlusionTexture"] = {
+			"strength", m.occlusion/255.f,
+			"index", m.occlusion_map,
+			};
+
+	return json;
+}
+
 

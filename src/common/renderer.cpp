@@ -409,7 +409,8 @@ void Renderer::renderSelected(Nexus *nexus) {
 							//if(patch.texture == current_texture) {
 							
 							if(draw_textures && !draw_texcoords) {
-								Texture &texture = nexus->textures[patch.texture];
+								throw "Projective textures still unsupported";
+/*								Texture &texture = nexus->textures[patch.texture];
 								glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
 								glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
 								glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
@@ -418,7 +419,7 @@ void Renderer::renderSelected(Nexus *nexus) {
 								glTexGenfv(GL_S, GL_OBJECT_PLANE, &texture.matrix[0]);
 								glTexGenfv(GL_T, GL_OBJECT_PLANE, &texture.matrix[4]);
 								glTexGenfv(GL_R, GL_OBJECT_PLANE, &texture.matrix[8]);
-								glTexGenfv(GL_Q, GL_OBJECT_PLANE, &texture.matrix[12]);
+								glTexGenfv(GL_Q, GL_OBJECT_PLANE, &texture.matrix[12]); */
 							}
 							TextureData &tdata = nexus->texturedata[patch.texture];
 							glBindTexture(GL_TEXTURE_2D, tdata.tex);
