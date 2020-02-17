@@ -44,7 +44,7 @@ public:
 	}
 	int compact(std::vector<int> &node_component) { //change numbering of the connected components, return number
 		node_component.resize(parents.size());
-		std::map<int, int> remap;// inser root here and order them.
+		std::map<int, int> remap;                   // insert root here and order them.
 		for(size_t i = 0; i < parents.size(); i++) {
 			int root = i;
 			while(root != parents[root])
@@ -56,6 +56,7 @@ public:
 	}
 
 };
+
 
 TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	TextureGroup group;

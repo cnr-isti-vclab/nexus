@@ -50,32 +50,48 @@ so we can save a texture every 2 levels.
 
 */
 class Material {
-public:                              // gltf                  //obj
+public:                               // gltf                  //obj
 
-	uint8_t color[4] = { 0, 0, 0, 0};                // baseColorFactor       //kd
-	uint8_t color_map = -1;          // baseColorTexture      //map_kd
+	uint8_t color[4] = { 0, 0, 0, 0}; // baseColorFactor       //kd
+	uint8_t color_map = -1;           // baseColorTexture      //map_kd
 
-	uint8_t metallic = 0;            //metallicFactor
-	uint8_t roughness = 0;           //roughnessFactor
+	uint8_t metallic = 0;             //metallicFactor
+	uint8_t roughness = 0;            //roughnessFactor
 	uint8_t metallic_map = 255;       //metallicRoughnessTexture
 
-	uint8_t norm_scale = 255;        //normalTexture scale
-	uint8_t norm_map = -1;           //normalTextuire         //norm
-	uint8_t bump_map = -1;           //                       //bump bumb_map
+	uint8_t norm_scale = 255;         //normalTexture scale
+	uint8_t norm_map = -1;            //normalTextuire         //norm
+	uint8_t bump_map = -1;            //                       //bump bumb_map
 
-	uint8_t specular[4] = { 0, 0, 0, 0};                                     //Ks
+	uint8_t specular[4] = { 0, 0, 0, 0};                       //Ks
 	uint8_t specular_map = 255;                                //map_ks
 
 	uint8_t glossines = 255;                                  //Ns
-	uint8_t glossines_map = 255;                               //
+	uint8_t glossines_map = 255;                              //
 
-	uint8_t occlusion = 255;         //occlusionTexture->strength
-	uint8_t occlusion_map = 255;             //occlustionTexture
+	uint8_t occlusion = 255;          //occlusionTexture->strength
+	uint8_t occlusion_map = 255;      //occlustionTexture
 };
 
 class BuildMaterial: public Material {
 public:
 	std::vector<QString> textures;
+};
+
+class BuildMaterials: public std::vector<Material> {
+public:
+	void unifyMaterials() { 
+		//not implemented still
+	}
+	
+	//materials with same parameters (which textures, and color, specular, norms_scale, etc)
+	//points to the first. those pointint to hitself will be the surviving materials.
+	std::vector<uint32_t> material_map;
+	
+	//materials with same textures (but different materials parameters , color, specular etc.
+	//points to the first material with the same texture files. (all of them)
+	std::vector<uint32_t> texture_map;
+	
 };
 
 

@@ -116,14 +116,15 @@ public:
 	QFile file;
 
 	VirtualChunks chunks;
-	std::vector<NodeBox> boxes; //a box for each node
+	std::vector<NodeBox> boxes; //a box for each node needed to speed up normal unification!
 
 	nx::Header3 header;
 	std::vector<nx::Node> nodes;
 	std::vector<nx::Patch> patches;
 	std::vector<nx::Texture> textures;
+	
 	//std::vector<QString> images;
-	std::vector<BuildMaterial> materials;
+	BuildMaterials materials;
 	std::vector<std::vector<int32_t>> nodes_to_textures;
 	//after loading the meshes, materials get unified, and this map will be needed when processing
 	std::map<int32_t, int32_t> materials_map;
