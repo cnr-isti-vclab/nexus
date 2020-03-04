@@ -21,7 +21,7 @@ void bwrite(char *&buffer, T value) {
 
 
 //USING glTf naming, might add more :)
-string components[8] = { "POSITION", "NORMAL", "COLOR_0", "UV_0", "UV_1", "WEIGHTS_0", "JOINTS_0" }; 
+string components[8] = { "POSITION", "NORMAL", "COLOR_0", "UV_0", "UV_1", "WEIGHTS_0", "JOINTS_0" };
 
 /* signature {
  * vertex: {
@@ -41,16 +41,16 @@ static Signature signatureFromJson(JSON json) {
 	for(int i = 0; i < 8; i++) {
 		if(vertex.hasKey(components[i])) {		
 			auto &velement = sig.vertex.attributes[i];
-			velement.type   = vertex[components[i]]["type"].ToInt();
-			velement.number = vertex[components[i]]["number"].ToInt();
+			velement.type   = uint8_t(vertex[components[i]]["type"].ToInt());
+			velement.number = uint8_t(vertex[components[i]]["number"].ToInt());
 		}
 	}	
 	
 	JSON face = json["face"];
 	if(face.hasKey("INDEX")) {
 		auto &felement = sig.face.attributes[FaceElement::INDEX];
-		felement.type   = face["INDEX"]["type"].ToInt();
-		felement.number = face["INDEX"]["number"].ToInt();
+		felement.type   = uint8_t(face["INDEX"]["type"].ToInt());
+		felement.number = uint8_t(face["INDEX"]["number"].ToInt());
 	}
 	
 	sig.flags = json["flags"].ToInt();
@@ -101,7 +101,6 @@ int Header3::read(char *buffer, int length) {
 		index_offset = buffer - start;
 		index_length = n_nodes*44 + n_patches*12 + n_textures*68;
 		return 0;
-		break;
 		
 	case 3: {
 
@@ -118,16 +117,14 @@ int Header3::read(char *buffer, int length) {
 		n_patches  = obj["n_patches"].ToInt();
 		n_textures = obj["n_textures"].ToInt();
 		JSON jsphere = obj["sphere"];
-		sphere.Radius() = jsphere["radius"].ToFloat();
-		sphere.Center()[0] = jsphere["center"][0].ToFloat();
-		sphere.Center()[1] = jsphere["center"][1].ToFloat();
-		sphere.Center()[2] = jsphere["center"][2].ToFloat();
+		sphere.Radius() = float(jsphere["radius"].ToFloat());
+		sphere.Center()[0] = float(jsphere["center"][0].ToFloat());
+		sphere.Center()[1] = float(jsphere["center"][1].ToFloat());
+		sphere.Center()[2] = float(jsphere["center"][2].ToFloat());
 		index_offset = json_length + 12;
 		index_length = n_nodes*44 + n_patches*12 + n_textures*68;
-		return 0;
 		}
-		break;
-
+		return 0;
 	default: 
 		throw "Unsupported nexus version.";
 	}
@@ -199,23 +196,23 @@ int readMaterial(JSON &json) {
 	if(pbr.hasKey("baseColorFactor")) {
 		JSON cf = pbr["baseColorFactor"];
 		for(int i = 0; i < 4; i++)
-			m.color[i] = cf[i].ToFloat()*255;
+			m.color[i] = float(cf[i].ToFloat());
 	}
 
 	//METALLIC
 	if(pbr.hasKey("metallicRoughnessTexture"))
-		m.metallic_map = pbr["metallicRoughnessTexture"]["index"].ToInt();
+		m.metallic_map = int32_t(pbr["metallicRoughnessTexture"]["index"].ToInt());
 
 	if(pbr.hasKey("metallicFactor"))
-		m.metallic = pbr["metallicFactor"].ToFloat()*255;
+		m.metallic = float(pbr["metallicFactor"].ToFloat());
 
 	if(json.hasKey("roughnessFactor"))
-		m.roughness = pbr["roughnessFactor"].ToFloat()*255;
+		m.roughness = float(pbr["roughnessFactor"].ToFloat());
 
 	//NORMAL
 	if(json.hasKey("normalTexture")) {
-		m.norm_map=  json["normalTexture"]["index"].ToInt();
-		m.norm_scale=  json["normalTexture"]["scale"].ToFloat()/255;
+		m.norm_map=  int32_t(json["normalTexture"]["index"].ToInt());
+		m.norm_scale=  float(json["normalTexture"]["scale"].ToFloat());
 	}
 
 	if(json.hasKey("bumpTexture")) {
@@ -226,41 +223,41 @@ int readMaterial(JSON &json) {
 	if(json.hasKey("specularFactor")) {
 		JSON s = pbr["specularFactor"];
 		for(int i = 0; i < 4; i++)
-			m.specular[i] = s[i].ToFloat()*255;
+			m.specular[i] = float(s[i].ToFloat());
 	}
 	if(json.hasKey("specularTexture"))
-		m.glossines = pbr["specularTexture"].ToInt();
+		m.specular_map = int32_t(pbr["specularTexture"].ToInt());
 
 	//GLOSSINESS
 	if(json.hasKey("glossinesFactor"))
-		m.glossines = pbr["glossinesFactor"].ToFloat()*255;
+		m.glossines = float(pbr["glossinesFactor"].ToFloat());
 
 	if(json.hasKey("glossinesTexture"))
-		m.glossines = pbr["glossinesTexture"]["index"].ToInt();
+		m.glossines_map = int32_t(pbr["glossinesTexture"]["index"].ToInt());
 
 
 	//OCCLUSION
 	if(json.hasKey("occlusionFactor"))
 
 	if(json.hasKey("occlusionTexture")) {
-		m.glossines_map = pbr["occlusionTexture"]["index"].ToInt();
-		m.glossines = pbr["occlusionFactor"]["strength"].ToFloat()*255;
+		m.glossines_map = int32_t(pbr["occlusionTexture"]["index"].ToInt());
+		m.glossines = float(pbr["occlusionFactor"]["strength"].ToFloat());
 	}
 }
 
 JSON writeMAterial(Material &m) {
 	JSON json = json::Object();
-	if(m.color[3] != 0 || m.color_map != -1 || m.metallic != 0 || m.roughness != 0 || m.metallic_map != 0) {
+	if(m.color[3] != 0.0f || m.color_map != -1 || m.metallic != 0.0f || m.roughness != 0.0f || m.metallic_map != 0) {
 		JSON pbr = json::Object();
-		if(m.color[3] != 0)
-			pbr["baseColorFactor"] = json::Array(m.color[0]/225.f, m.color[1]/225.f, m.color[2]/225.f, m.color[3]/255.f);
+		if(m.color[3] != 0.0f)
+			pbr["baseColorFactor"] = json::Array(m.color[0], m.color[1], m.color[2], m.color[3]);
 		if(m.color_map != -1)
 			pbr["baseColorTexture"] = { "index", m.color_map };
 
-		if(m.metallic != 0)
-			pbr["metallicFactor"] = m.metallic/255.f;
-		if(m.roughness != 0)
-			pbr["roughnessFactor"] = m.metallic/255.f;
+		if(m.metallic != 0.0f)
+			pbr["metallicFactor"] = m.metallic;
+		if(m.roughness != 0.0f)
+			pbr["roughnessFactor"] = m.metallic;
 		if(m.metallic_map != -1)
 			pbr["metallicRoughnessTexture"] = { "index", m.metallic_map };
 		\
@@ -268,24 +265,24 @@ JSON writeMAterial(Material &m) {
 	}
 	if(m.norm_map != -1)
 		json["normalTexture"] = {
-			"scale", m.norm_scale/255.f,
+			"scale", m.norm_scale,
 			"index", m.norm_map,
 			};
 
 	if(m.specular_map != -1)
 		json["specularTexture"] = { "index", m.norm_map };
-	if(m.specular[4] != 0)
-		json["specularFactor"] = json::Array(m.specular[0]/255.f, m.specular[1]/255.f, m.specular[2]/255.f, m.specular[3]/255.f);
+	if(m.specular[3] != 0.0f)
+		json["specularFactor"] = json::Array(m.specular[0], m.specular[1], m.specular[2], m.specular[3]);
 
 
 	if(m.glossines_map  != -1)
 		json["glossinessTexture"] = { "index", m.norm_map };
-	if(m.glossines != 0)
-		json["glossinesFactor"] = m.glossines/255.f;
+	if(m.glossines != 0.0f)
+		json["glossinesFactor"] = m.glossines;
 
 	if(m.occlusion_map >= 0)
 		json["occlusionTexture"] = {
-			"strength", m.occlusion/255.f,
+			"strength", m.occlusion,
 			"index", m.occlusion_map,
 			};
 

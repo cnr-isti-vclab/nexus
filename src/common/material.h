@@ -18,6 +18,15 @@ typedef unsigned __int64 uint64_t;
 #include <QString>
 #include <vector>
 
+
+/* Material loading strategy:
+ * Create list of materials (1 for texture in ply, might be more in Obj or gltf)
+ * Each triangle is tagged with the material + material_offset (in case we load more than one mesh)
+ * Unify materials which are exatly the same create a material map.
+ * Create another map to unify materials with same parameters (and just different texture) will be used in the nodetex
+ */
+
+
 /*  Plan for version 3
  *
  * Add support for multiple materials:
@@ -52,30 +61,44 @@ so we can save a texture every 2 levels.
 class Material {
 public:                              // gltf                  //obj
 
-	uint8_t color[4] = { 0, 0, 0, 0};                // baseColorFactor       //kd
-	uint8_t color_map = -1;          // baseColorTexture      //map_kd
+	float ambient[4] = { 0, 0, 0, 0};
+	float color[4] = { 0, 0, 0, 0};// baseColorFactor       //kd
 
-	uint8_t metallic = 0;            //metallicFactor
-	uint8_t roughness = 0;           //roughnessFactor
-	uint8_t metallic_map = 255;       //metallicRoughnessTexture
+	float metallic = 0;            //metallicFactor
+	float roughness = 0;           //roughnessFactor
 
-	uint8_t norm_scale = 255;        //normalTexture scale
-	uint8_t norm_map = -1;           //normalTextuire         //norm
-	uint8_t bump_map = -1;           //                       //bump bumb_map
+	float norm_scale = 0.0f;        //normalTexture scale
+	float specular[4] = { 0, 0, 0, 0};                                     //Ks
+	float glossines = 0.0f;                                  //Ns
+	float occlusion = 0.0f;         //occlusionTexture->strength
 
-	uint8_t specular[4] = { 0, 0, 0, 0};                                     //Ks
-	uint8_t specular_map = 255;                                //map_ks
-
-	uint8_t glossines = 255;                                  //Ns
-	uint8_t glossines_map = 255;                               //
-
-	uint8_t occlusion = 255;         //occlusionTexture->strength
-	uint8_t occlusion_map = 255;             //occlustionTexture
+	uint8_t nmaps = 0;
+	//map number in texture group.
+	int8_t color_map = -1;          // baseColorTexture      //map_kd
+	int8_t metallic_map = -1;       //metallicRoughnessTexture
+	int8_t norm_map = -1;           //normalTextuire         //norm
+	int8_t bump_map = -1;           //                       //bump bumb_map
+	int8_t specular_map = -1;                                //map_ks
+	int8_t glossines_map = -1;                               //
+	int8_t occlusion_map = -1;             //occlustionTexture
 };
 
 class BuildMaterial: public Material {
 public:
+	int32_t atlas_offset;
 	std::vector<QString> textures;
+};
+
+class BuildMaterials: public std::vector<BuildMaterial> {
+public:
+	//map identical materials
+	std::vector<int> material_map;
+	//map materials with just a different texture
+	std::vector<int> texture_map;
+
+	void unifyMaterials();
+	void unifyTextures();
+
 };
 
 

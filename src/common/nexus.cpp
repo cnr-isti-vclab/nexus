@@ -167,6 +167,8 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 
 	int size = vertex_size + face_size;
 	if(header.n_textures) {
+		throw "Texture groups!";
+		/*
 		//be sure to load images
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 			Patch &patch = patches[p];
@@ -197,29 +199,14 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 			size += data.width*data.height*3;
 			//careful with cache... might create problems to return different sizes in get drop and size
 			//glGenerateMipmap(GL_TEXTURE_2D);  //Generate mipmaps now!!!
-/*			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 4);
 
-			int red = 0xff0000ff;
-			glTexImage2D(GL_TEXTURE_2D, 1, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&red);
-			
-			int violet = 0x00ffffff;
-			
-			glTexImage2D(GL_TEXTURE_2D, 2, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&violet);
-
-			int blue = 0x0000ffff;
-			
-			glTexImage2D(GL_TEXTURE_2D, 3, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&blue);
-
-			int green = 0x00ff00ff;
-			
-			
-			glTexImage2D(GL_TEXTURE_2D, 4, GL_RGB, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, (char *)&green); */
 			
 			
 
 			
 			glCheckError();
 		}
+		*/
 	}
 
 	return size;
@@ -242,6 +229,8 @@ uint64_t Nexus::dropGpu(uint32_t n) {
 	int size = vertex_size + face_size;
 
 	if(header.n_textures) {
+		throw "Texture groups";
+		/*
 		//be sure to load images
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 			uint32_t t = patches[p].texture;
@@ -254,7 +243,7 @@ uint64_t Nexus::dropGpu(uint32_t n) {
 			glDeleteTextures(1, &tdata.tex);
 			tdata.tex = 0;
 			size += tdata.width*tdata.height*3;
-		}
+		} */
 	}
 	return size;
 }

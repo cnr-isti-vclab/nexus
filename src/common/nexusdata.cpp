@@ -130,7 +130,7 @@ void NexusData::initIndex() {
 	textures = new Texture[header.n_textures];
 
 	nodedata = new NodeData[header.n_nodes];
-	texturedata = new TextureData[header.n_textures];
+	texturedata.resize(header.n_textures);// = new TextureData[header.n_textures];
 }
 
 void NexusData::loadIndex() {
@@ -253,6 +253,8 @@ uint64_t NexusData::loadRam(uint32_t n) {
 			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
 
+			throw "TextureGroups!";
+			/*
 			TextureData &data = texturedata[t];
 			data.count_ram++;
 			if(data.count_ram > 1)
@@ -288,7 +290,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				memcpy(mem, img.scanLine(i), linesize);
 				mem -= linesize;
 			}
-			size += imgsize;
+			size += imgsize; */
 		}
 	}
 	return size;
@@ -314,17 +316,18 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 				node.nface * header.signature.face.size();
 
 	if(header.n_textures) {
+		throw "Texture groups!";
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
 
-			TextureData &tdata = texturedata[t];
+/*			TextureData &tdata = texturedata[t];
 			tdata.count_ram--;
 			if(tdata.count_ram != 0) continue;
 
 			delete []tdata.memory;
 			tdata.memory = NULL;
-			size += tdata.width*tdata.height*4;
+			size += tdata.width*tdata.height*4; */
 		}
 	}
 	return size;

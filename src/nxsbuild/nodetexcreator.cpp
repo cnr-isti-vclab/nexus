@@ -2,6 +2,7 @@
 
 #include "nodetexcreator.h"
 #include <QDebug>
+#include <QPainter>
 
 using namespace nx;
 using namespace std;
@@ -45,7 +46,7 @@ public:
 	int compact(std::vector<int> &node_component) { //change numbering of the connected components, return number
 		node_component.resize(parents.size());
 		std::map<int, int> remap;// inser root here and order them.
-		for(size_t i = 0; i < parents.size(); i++) {
+		for(int i = 0; i < parents.size(); i++) {
 			int root = i;
 			while(root != parents[root])
 				root = parents[root];
@@ -57,6 +58,22 @@ public:
 
 };
 
+/*
+ * each face reference a material.
+ * use material_map in materials to unify identical materials
+ * materials can also be grouped if all parameters are the same (but not the same texture), using texture_map.
+ *
+ * Step 1: find connected components texture-wise
+ * Step 2: build a vertex-to-tex index (actually material as unified in material_map)
+ *		PROBLEM: how to deal with non textured materials?
+ * Step 3: compute the box for each (material)
+ *		 erase boxes assigned to non textured materials.
+ * Step 4: enlarge box by 1 pix and compute origin and sizes
+ *		PROBLEM: resoluition between specular/diuffuse maps could be different!
+ * Step 5: pack boxes into a single tex
+ *		we actually can pack only if unified by texture_map
+ */
+
 TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	TextureGroup group;
 	float &error = group.error;
@@ -64,22 +81,25 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 
 	std::vector<vcg::Box2f> boxes;
 	std::vector<int> box_texture; //which texture each box belongs;
-	std::vector<int> vertex_to_tex(mesh.vert.size(), -1);
+	std::vector<int> vertex_to_material(mesh.vert.size(), -1);
 	std::vector<int> vertex_to_box;
+	std::set<int> material_set;
 
 	UnionFind components;
 	components.init(mesh.vert.size());
 
 	for(auto &face: mesh.face) {
 		int v[3];
+		assert(face.tex >= 0 && face.tex < materials->material_map.size());
+		face.tex = materials->material_map[face.tex];
 		for(int i = 0; i < 3; i++) {
 			v[i] = face.V(i) - &*mesh.vert.begin();
 
-
-			int &t = vertex_to_tex[v[i]];
-
-			if(t != -1 && t != face.tex) qDebug() << "Missing vertex replication across seams\n";
+			int &t = vertex_to_material[v[i]];
+			if(t != -1 && t != face.tex)
+				qDebug() << "Missing vertex replication across seams\n";
 			t = face.tex;
+			material_set.insert(t);
 		}
 		components.link(v[0], v[1]);
 		components.link(v[0], v[2]);
@@ -88,15 +108,10 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	int n_boxes = components.compact(vertex_to_box);
 
 	for(auto &face: mesh.face) {
-		int v[3];
 		for(int i = 0; i < 3; i++) {
 			int v = face.V(i) - &*mesh.vert.begin();
-			vertex_to_tex[v] = face.tex;
+			vertex_to_material[v] = face.tex;
 		}
-		/*		assert(vertex_to_box[v[0]] == vertex_to_box[v[1]]);
-		assert(vertex_to_box[v[0]] == vertex_to_box[v[2]]);
-		assert(components.root(v[0]) == components.root(v[2]));
-		assert(components.root(v[0]) == components.root(v[1])); */
 	}
 	//assign all boxes to a tex (and remove boxes where the tex is -1
 
@@ -105,14 +120,14 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	box_texture.resize(n_boxes, -1);
 	for(size_t i = 0; i < mesh.vert.size(); i++) {
 		int b = vertex_to_box[i];
-		int tex = vertex_to_tex[i];
+		int tex = vertex_to_material[i];
 		if(tex < 0) continue; //vertex not assigned.
 
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
 		auto &t = mesh.vert[i].T().P();
-		t[0] = fmod(t[0], 1.0);
-		t[1] = fmod(t[1], 1.0);
+		t[0] = fmod(t[0], 1.0f);
+		t[1] = fmod(t[1], 1.0f);
 		//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
 		//				cout << "T: " << t[0] << " " << t[1] << endl;
 		if(t[0] != 0.0f || t[1] != 0.0f)
@@ -122,8 +137,10 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	int count = 0;
 	std::vector<int> remap(mesh.vert.size(), -1);
 	for(int i = 0; i < n_boxes; i++) {
-		if(box_texture[i] == -1)
+		int tex = box_texture[i];
+		if(!materials->at(tex).nmaps)
 			continue;
+
 		boxes[count] = boxes[i];
 		box_texture[count] = box_texture[i];
 		remap[i] = count++;
@@ -133,6 +150,8 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	for(int &b: vertex_to_box)
 		b = remap[b];
 
+
+	//enlarge box by 1 pix and compute origin and sizes
 	std::vector<vcg::Point2i> sizes(boxes.size());
 	std::vector<vcg::Point2i> origins(boxes.size());
 	for(size_t b = 0; b < boxes.size(); b++) {
@@ -140,8 +159,9 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 		int tex = box_texture[b];
 
 		//enlarge 1 pixel
-		float w = atlas.width(tex, level); //img->size().width();
-		float h = atlas.height(tex, level); //img->size().height();
+		int32_t first_tex = materials->at(tex).atlas_offset;
+		float w = atlas->width(first_tex, level); //img->size().width();
+		float h = atlas->height(first_tex, level); //img->size().height();
 		float px = 1/(float)w;
 		float py = 1/(float)h;
 		box.Offset(vcg::Point2f(px, py));
@@ -157,13 +177,18 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 		size[1] = std::min(h, ceil(box.max[1]/py)) - origin[1];
 		if(size[0] <= 0) size[0] = 1;
 		if(size[1] <= 0) size[1] = 1;
-
-		//		cout << "Box: " << box_texture[b] << " [" << box.min[0] << "  " << box.min[1] << " ] [ " << box.max[0] << "  " << box.max[1] << "]" << std::endl;
-		//		cout << "Size: " << size[0] << " - " << size[1] << endl << endl;
-		//		getchar();
 	}
 
-	//pack boxes;
+	//unify materials by texture.
+	std::set<int32_t> final_materials;
+	for(int32_t m: material_set)
+		final_materials.insert(materials->texture_map[m]);
+	if(final_materials.size() > 1)
+		throw "More than one material not supported at the moment. Unless they differ only for the texture";
+
+
+	//Here we should slit the boxes by material, then pack!
+	//Pack boxes
 	std::vector<vcg::Point2i> mapping;
 	vcg::Point2i maxSize(1096, 1096);
 	vcg::Point2i finalSize;
@@ -198,13 +223,20 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 		finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
 	}
 
-	//	std::cout << "Boxes: " << boxes.size() << " Final size: " << finalSize[0] << " " << finalSize[1] << std::endl;
-	QImage image(finalSize[0], finalSize[1], QImage::Format_RGB32);
-	image.fill(QColor(127, 127, 127));
+	//temporary: here we sould just create image and split by materials for each texture_map material
+	int32_t material_id = *final_materials.begin();
+	BuildMaterial &material = materials->at(material_id);
+
+	group.material = material_id;
+	group.resize(material.nmaps);
+	for(int8_t i = 0; i < material.nmaps; i++) {
+		group[i] = QImage(finalSize[0], finalSize[1], QImage::Format_RGB32);
+		group[i].fill(QColor(127, 127, 127));
+	}
 	//copy boxes using mapping
 
-	float pdx = 1/(float)image.width();
-	float pdy = 1/(float)image.height();
+	float pdx = 1/(float)finalSize[0];
+	float pdy = 1/(float)finalSize[1];
 
 	for(size_t i = 0; i < mesh.vert.size(); i++) {
 		auto &p = mesh.vert[i];
@@ -218,9 +250,9 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 		vcg::Point2i m = mapping[b];
 
 		//QImageReader &img = textures[box_texture[b]];
-		int tex = box_texture[b];
-		float w = atlas.width(tex, level); //img->size().width();
-		float h = atlas.height(tex, level); //img->size().height();
+		int mat = box_texture[b];
+		float w = atlas->width(materials->at(mat).atlas_offset, level); //img->size().width();
+		float h = atlas->height(materials->at(mat).atlas_offset, level); //img->size().height();
 		float px = 1/(float)w;
 		float py = 1/(float)h;
 
@@ -240,6 +272,7 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 		assert(!isnan(uv[0]));
 		assert(!isnan(uv[1]));
 	}
+
 	//compute error:
 	float pdx2 = pdx*pdx;
 	error = 0.0;
@@ -276,27 +309,34 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 	}
 	//cout << "Area: " << (int)(100*areausage) << "% --- " << (int)areausage*finalSize[0]*finalSize[1] << " vs: " << finalSize[0]*finalSize[1] << "\n";
 
-	{
+	for(int8_t t =0; t < material.nmaps; t++) {
+		cout << "Group size: " << group.size() << endl;
+		assert(t < group.size());
 		//	static int boxid = 0;
-		QPainter painter(&image);
-		//convert tex coordinates using mapping
-		for(int i = 0; i < boxes.size(); i++) {
+		//parentesys needed to create a scope for the painter.
+		{
+			QPainter painter(&group[t]);
+			//convert tex coordinates using mapping
+			for(int i = 0; i < boxes.size(); i++) {
 
-			/*		vcg::Color4b  color;
-		color[2] = ((boxid % 11)*171)%63 + 63;
-		//color[1] = 255*log2((i+1))/log2(nexus->header.n_patches);
-		color[1] = ((boxid % 7)*57)%127 + 127;
-		color[0] = ((boxid % 16)*135)%127 + 127; */
+				/*		vcg::Color4b  color;
+			color[2] = ((boxid % 11)*171)%63 + 63;
+			//color[1] = 255*log2((i+1))/log2(nexus->header.n_patches);
+			color[1] = ((boxid % 7)*57)%127 + 127;
+			color[0] = ((boxid % 16)*135)%127 + 127; */
 
-			int source = box_texture[i];
-			vcg::Point2i &o = origins[i];
-			vcg::Point2i &s = sizes[i];
+				int source_material = box_texture[i];
+				int tex = materials->at(source_material).atlas_offset + t;
+				vcg::Point2i &o = origins[i];
+				vcg::Point2i &s = sizes[i];
 
-			QImage rect = atlas.read(source, level, QRect(o[0], o[1], s[0], s[1]));
-			painter.drawImage(mapping[i][0], mapping[i][1], rect);
+				assert(tex >= 0 && tex < atlas->pyramids.size());
+				QImage rect = atlas->read(tex, level, QRect(o[0], o[1], s[0], s[1]));
+				painter.drawImage(mapping[i][0], mapping[i][1], rect);
 
-			//		painter.fillRect(mapping[i][0], mapping[i][1], s[0], s[1], QColor(color[0], color[1], color[2]));
-			//		boxid++;
+		//		painter.fillRect(mapping[i][0], mapping[i][1], s[0], s[1], QColor(color[0], color[1], color[2]));
+		//		boxid++;
+			}
 		}
 
 
@@ -332,11 +372,10 @@ TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
 			painter.drawEllipse(x-10, y-10, 20, 20);
 			painter.drawPoint(x, y);
 		} */
-
+		group[t] = group[t].mirrored();
 	}
 
-	image = image.mirrored();
 	//static int imgcount = 0;
 	//image.save(QString("OUT_test_%1.jpg").arg(imgcount++));
-	return image;
+	return group;
 }

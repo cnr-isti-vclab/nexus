@@ -237,8 +237,8 @@ int main(int argc, char *argv[]) {
 		
 		//WORKAROUND to save loading textures not needed
 		if(!(components & NexusBuilder::TEXTURES)) {
-			throw "Need to convert texture materials into color materials!";
-			//stream->textures.clear();
+			//TODO: here we need to convert the materials with texture
+			//into basic materials.
 		}
 
 		NexusBuilder builder(components);

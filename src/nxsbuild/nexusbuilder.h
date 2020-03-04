@@ -31,8 +31,7 @@ for more details.
 #include "../common/virtualarray.h"
 #include "../common/material.h"
 #include "texpyramid.h"
-
-
+#include "nodetexcreator.h"
 
 class KDTree;
 class KDTreeSoup;
@@ -123,14 +122,14 @@ public:
 	std::vector<nx::Patch> patches;
 	std::vector<nx::Texture> textures;
 	//std::vector<QString> images;
-	std::vector<BuildMaterial> materials;
-	std::vector<std::vector<int32_t>> nodes_to_textures;
-	//after loading the meshes, materials get unified, and this map will be needed when processing
-	std::map<int32_t, int32_t> materials_map;
+	BuildMaterials materials;
 
+//	std::vector<std::vector<int32_t>> nodes_to_textures;
 
 	quint64 input_pixels, output_pixels;
+
 	nx::TexAtlas atlas;
+	NodeTexCreator nodeTexCreator;
 	QTemporaryFile nodeTex; //texure images for each node stored here.
 	quint64 max_memory;
 
@@ -141,8 +140,6 @@ public:
 	
 	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
 	int skipSimplifyLevels = 0;
-
-	void unifyMaterials();
 
 	QImage extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge);
 	void invertNodes(); //

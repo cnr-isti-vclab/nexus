@@ -120,6 +120,8 @@ void Stream::load(QStringList paths, QString material) {
 
 		delete loader;
 	}
+	materials.unifyMaterials();
+	materials.unifyTextures();
 
 	current_triangle = 0;
 	flush();

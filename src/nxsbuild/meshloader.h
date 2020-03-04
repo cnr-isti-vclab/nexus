@@ -24,6 +24,7 @@ for more details.
 #include <vcg/space/box3.h>
 #include "../common/material.h"
 
+
 class MeshLoader {
 public:
 	MeshLoader(): has_colors(false), has_normals(false), has_textures(false), quantization(0) {}
@@ -44,10 +45,7 @@ public:
 	std::vector<BuildMaterial> materials;
 	//when returning triangles add materialOffset to refer to the correct texture in stream.
 	int materialOffset = 0;
-	//std::vector<QString> texture_filenames;
-	//int texOffset;
 
-	
 protected:
 	bool has_colors;
 	bool has_normals;

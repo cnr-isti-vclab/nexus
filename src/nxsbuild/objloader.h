@@ -37,12 +37,14 @@ public:
 
 private:
 	
-	void readMTL();
+	void readMTLs();
+	void readMTL(QString mtl_path);
 	void cacheTextureUV();
 	void cacheVertices();
 	
 	QFile file;
-	QString mtl;
+	bool use_custom_mtl = false;
+	std::vector<QString> mtls;
 	VirtualArray<Vertex> vertices;
 	std::vector<float> vtxtuv;
 	quint64 n_vertices;
@@ -52,10 +54,7 @@ private:
 	qint64  current_tri_pos = 0;
 	quint32  current_color = 0;
 	qint32  current_material_id = -1;
-	//QMap<QString, quint32> colors_map;
-	//QMap<QString, QString> textures_map;
+
 	QMap<QString, int> material_map;
-	
-	
 };
 #endif // NX_OBJLOADER_H

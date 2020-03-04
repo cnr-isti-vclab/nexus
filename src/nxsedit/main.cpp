@@ -415,19 +415,19 @@ void printPatches(NexusData& nexus) {
 		cout << "\nPatch dump:\n";
 		for (uint i = 0; i < nexus.header.n_patches; i++) {
 			nx::Patch& patch = nexus.patches[i];
-			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t Texture: " << patch.texture << "\n";
+			cout << "Patch: " << i << "\t Offset: " << patch.triangle_offset << "\t Texture: " << patch.texture << "\t Material: " << patch.material << "\n";
 		}
 	}
 }
 
 void printTextures(NexusData& nexus) {
 	if (show_textures) {
-			cout << "\nTexture dump: \n";
-			for (uint i = 0; i < nexus.header.n_textures; i++) {
-				nx::Texture& texture = nexus.textures[i];
-				cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
-			}
+		cout << "\nTexture dump: \n";
+		for (uint i = 0; i < nexus.header.n_textures; i++) {
+			nx::Texture& texture = nexus.textures[i];
+			cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
 		}
+	}
 }
 
 void recomputeError(NexusData &nexus, QString error_method) {
@@ -509,7 +509,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 			switch(method) {
 			case AVERAGE: error /= count; break;
 			case QUADRATIC: error = sqrt(error/count); break;
-			case LOGARITHMIC: error = exp(error/(2*count)); //2 accounts for the square roots
+			case LOGARITHMIC: error = exp(error/(2*count)); break; //2 accounts for the square roots
 			case CURVATURE: break;
 			}
 		}

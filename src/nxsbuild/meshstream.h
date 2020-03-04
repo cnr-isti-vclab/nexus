@@ -40,7 +40,7 @@ public:
 	bool has_colors;
 	bool has_normals;
 	bool has_textures;
-	std::vector<BuildMaterial> materials;
+	BuildMaterials materials;
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 
 	Stream();

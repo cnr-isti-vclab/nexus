@@ -35,7 +35,8 @@ SOURCES += \
     texpyramid.cpp \
     stlloader.cpp \
     ../common/signature.cpp \
-    nodetexcreator.cpp
+    nodetexcreator.cpp \
+    ../common/material.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \

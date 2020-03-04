@@ -127,7 +127,7 @@ PlyLoader::PlyLoader(QString filename):
 			char buf2[255];
 			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2 );
 			BuildMaterial material;
-			material.color_map = 0;
+			material.color_map = material.nmaps++;
 			material.textures.push_back(QString(buf2).trimmed());
 			materials.push_back(material);
 		}

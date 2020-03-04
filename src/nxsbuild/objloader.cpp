@@ -29,13 +29,34 @@ for more details.
 #define ALPHA(c) (c & 0xff)
 
 
+void getColor(char *buffer, float *color) {
+	char field[12];
+	float r, g, b;
+	int n = sscanf(buffer, "%s %f %f %f", field, color, color+1, color+2);
+	if(n != 4)
+		throw QString("Failed parsing material value: ") + buffer;
+	color[3] = 255;
+}
+
+void getValue(char *buffer, float &value) {
+	char field[12];
+	int n = sscanf(buffer, "%s %f", field, &value);
+
+	if(n != 2)
+		throw QString("Failed parsing material value: ") + buffer;
+}
+
+
 ObjLoader::ObjLoader(QString filename, QString _mtl):
 	vertices("cache_plyvertex"),
 	n_vertices(0),
 	n_triangles(0),
 	current_vertex(0) {
 
-	mtl =_mtl;
+	if(!_mtl.isNull()) {
+		mtls.push_back(_mtl);
+		use_custom_mtl = true;
+	}
 	file.setFileName(filename);
 	if(!file.open(QFile::ReadOnly))
 		throw QString("could not open file %1. Error: %2").arg(filename).arg(file.errorString());
@@ -53,11 +74,9 @@ void ObjLoader::cacheTextureUV() {
 
 	char buffer[1024];
 	file.seek(0);
-	int nidx = 0;
-	int cnt = 0;
 	while (1) {
 		
-		int s = file.readLine(buffer, 1024);
+		int64_t s = file.readLine(buffer, 1024);
 		if (s == -1) {                     //end of file
 			break;
 		}
@@ -72,7 +91,6 @@ void ObjLoader::cacheTextureUV() {
 			float vt0 = 0.0, vt1 = 0.0;
 			int n = sscanf(buffer, "vt %f %f", &vt0, &vt1);
 			if (n != 2) throw QString("error parsing vtxt  line: %1").arg(buffer);
-			cnt++;
 			vtxtuv.push_back(vt0);
 			vtxtuv.push_back(vt1);
 
@@ -81,27 +99,45 @@ void ObjLoader::cacheTextureUV() {
 	}
 }
 
-void ObjLoader::readMTL() {
-	
-	quint64 pos = file.pos();
+/* TODO there might be more than one material! */
+void ObjLoader::readMTLs() {
+	for(auto mtl: mtls)
+		readMTL(mtl);
 
+	//TODO
+	/* Materials and textures will be merged at the end of the loading!
+	 * 			if (txtfname.length() > 0) {
+					textures_map.insert(mtltag, txtfname);
+					bool exists = false;
+					for (auto fn : texture_filenames)
+						if (fn == txtfname) {
+							exists = true;
+							break;
+						}
+					if (!exists)
+						texture_filenames.push_back(txtfname);
+				} */
+}
+
+
+void ObjLoader::readMTL(QString mtl_path) {
 	char buffer[1024];
 	
-	if (!mtl.isNull()) {
-		if(!QFileInfo::exists(mtl))
-			throw QString("Could not find .mtl file: %1").arg(mtl);
+	if (!mtl_path.isNull()) {
+		if(!QFileInfo::exists(mtl_path))
+			throw QString("Could not find .mtl file: %1").arg(mtl_path);
 	} else {
 		QString fname = file.fileName();
 		QFileInfo info = QFileInfo(fname);
 	
 		//assuming mtl base file name the same as obj
-		mtl = info.path() + "/" + info.completeBaseName() + ".mtl";
+		mtl_path = info.path() + "/" + info.completeBaseName() + ".mtl";
 	}
 		
-	if (!QFileInfo::exists(mtl))
+	if (!QFileInfo::exists(mtl_path))
 		return;
 
-	QFile f(mtl);
+	QFile f(mtl_path);
 	if (!f.open(QFile::ReadOnly))
 		return;
 	int head_linewas_read = false;
@@ -110,10 +146,9 @@ void ObjLoader::readMTL() {
 		if (!head_linewas_read) {
 			
 			s = f.readLine(buffer, 1024);
-			if (s == -1) {                     //end of file
-
+			if (s == -1)                     //end of file
 				break;
-			}
+
 			if (s == 0) continue;            //skip empty lines
 			if (buffer[0] == '#')            //skip comments
 				continue;
@@ -124,20 +159,19 @@ void ObjLoader::readMTL() {
 		}
 		
 		QString str(buffer);
+		//trim whitespaces at start and end and merge spaces
 		str = str.simplified();
 		if (str.startsWith("newmtl", Qt::CaseInsensitive)){
 			BuildMaterial material;
 
 			QString mtltag = str.section(" ", 1);
 			QString txtfname;
-			qint32 R = 255;
-			qint32 G = 255;
-			qint32 B = 255;
-			qint32 A = 255;
 
 			do {
 				s = f.readLine(buffer, 1024);
-				if (s == -1) break;
+				if (s == -1) {
+					break; //end of space
+				}
 				buffer[s] = '\0';
 				QString str(buffer);
 				str = str.simplified();
@@ -147,66 +181,51 @@ void ObjLoader::readMTL() {
 					break;
 				}
 				if (str.startsWith("d", Qt::CaseInsensitive)){
-
 					float d = 1.0;
 					int n = sscanf(buffer, "d %f", &d);
 					if(n == 1)
-						A = 255 * d;
+						uint8_t A = uint8_t(255.0f * d);
 					continue;
 				}
 				if(str.startsWith("Tr", Qt::CaseInsensitive)){
 					float tr = 0.0;
 					int n = sscanf(buffer, "d %f", &tr);
 					if (n == 1)
-						A = 255 * (1.0f - tr);
+						uint8_t A = 255 * (1.0f - tr);
 					continue;
 				}
 				if(str.startsWith("Map_Kd", Qt::CaseInsensitive)){
 					txtfname = str.mid(7).trimmed();
 					txtfname = txtfname.remove(QRegExp("^(\")"));
 					txtfname = txtfname.remove(QRegExp("(\")$"));
-					material.color_map = material.textures.size();
+
+					material.color_map = material.nmaps++;
 					material.textures.push_back(txtfname);
 					has_textures = true;
 					continue;
 				}
+				if(str.startsWith("Ka", Qt::CaseInsensitive)){
+					getColor(buffer, material.ambient);
+					continue;
+				}
 				if(str.startsWith("Kd", Qt::CaseInsensitive)){
-					float r, g, b;
-					QString data_string(buffer);
-					data_string = data_string.simplified();
-					QTextStream data_stream(&data_string);
-					QString kd;
-					data_stream >> kd >>r >> g >> b;
-					int n = 3;
-					if (n == 3) {
-						R = ((qint32(255 * r)) << 24) & 0xff000000;
-						G = ((qint32(255 * g)) << 16) & 0x00ff0000;
-						B = ((qint32(255 * b)) << 8) & 0x0000ff00;
-					}
-					material.color[0] = R;
-					material.color[1] = G;
-					material.color[2] = B;
-					material.color[3] = A;
+					getColor(buffer, material.color);
+					continue;
+				}
+				if(str.startsWith("Ks", Qt::CaseInsensitive)){
+					getColor(buffer, material.specular);
+					continue;
+				}
+				if(str.startsWith("Ns", Qt::CaseInsensitive)){
+					getValue(buffer, material.glossines);
 					continue;
 				}
 
+
 			} while (true);
 
-//			qint32 color = R + G + B + A;
-//			colors_map.insert(mtltag, color);
-
-/* Materials and textures will be merged at the end of the loading!
- * 			if (txtfname.length() > 0) {
-				textures_map.insert(mtltag, txtfname);
-				bool exists = false;
-				for (auto fn : texture_filenames)
-					if (fn == txtfname) {
-						exists = true;
-						break;
-					}
-				if (!exists)
-					texture_filenames.push_back(txtfname);
-			} */
+			material_map[mtltag] = materials.size() + materialOffset;
+			materials.push_back(material);
 		}
 	}
 }
@@ -219,7 +238,7 @@ void ObjLoader::cacheVertices() {
 	
 	while(1) {
 		
-		int s = file.readLine(buffer, 1024);
+		int64_t s = file.readLine(buffer, 1024);
 		if (s == -1) {                     //end of file
 			cout << "Vertices read: " << cnt << endl;
 			break;
@@ -241,12 +260,12 @@ void ObjLoader::cacheVertices() {
 				p -= origin;
 				box.Add(p);
 				
-				vertex.v[0] = (float)p[0];
-				vertex.v[1] = (float)p[1];
-				vertex.v[2] = (float)p[2];
+				vertex.v[0] = float(p[0]);
+				vertex.v[1] = float(p[1]);
+				vertex.v[2] = float(p[2]);
 
 				cnt++;
-				if(quantization) {
+				if(quantization != 0.0f) {
 					quantize(vertex.v[0]);
 					quantize(vertex.v[1]);
 					quantize(vertex.v[2]);
@@ -257,14 +276,15 @@ void ObjLoader::cacheVertices() {
 			continue;
 
 		} else if(buffer[0] == 'm' && strncmp(buffer, "mtllib", 6) == 0) {
-			if(!mtl.isNull()) {
+			if(!use_custom_mtl) {
 				QString fname = file.fileName();
 				QFileInfo info = QFileInfo(fname);
 
-				mtl = QString(buffer).mid(7).trimmed();
+				QString mtl = QString(buffer).mid(7).trimmed();
 				mtl = mtl.remove(QRegExp("^(\")"));
 				mtl = mtl.remove(QRegExp("(\")$"));
 				mtl = info.dir().filePath(mtl);
+				mtls.push_back(mtl);
 			}
 		}
 	}
@@ -285,25 +305,18 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 	if (n_triangles == 0) {
 		cacheVertices();
 		cacheTextureUV();
-		readMTL();
+		readMTLs();
 	}
 
 	char buffer[1024];
 	file.seek(current_tri_pos);
-
-	qint32 R = (0x7f << 24);
-	qint32 G = (0x7f << 16);
-	qint32 B = (0x7f << 8);
-
-	qint32 A = 255;
-	quint32 default_color = R + G + B + A;
 	
 	quint32 count = 0;
 	qint64 cpos = current_tri_pos;
 
 	while (count < size) {
 		cpos = file.pos();
-		int s = file.readLine(buffer, 1024);
+		qint64 s = file.readLine(buffer, 1024);
 		if (s == -1) {                     //end of file
 			cpos = file.pos();
 			break;
