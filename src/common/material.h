@@ -59,7 +59,7 @@ so we can save a texture every 2 levels.
 
 */
 class Material {
-public:                              // gltf                  //obj
+public:                               // gltf                  //obj
 
 	float ambient[4] = { 0, 0, 0, 0};
 	float color[4] = { 0, 0, 0, 0};// baseColorFactor       //kd
@@ -98,7 +98,6 @@ public:
 
 	void unifyMaterials();
 	void unifyTextures();
-
 };
 
 

@@ -115,12 +115,13 @@ public:
 	QFile file;
 
 	VirtualChunks chunks;
-	std::vector<NodeBox> boxes; //a box for each node
+	std::vector<NodeBox> boxes; //a box for each node needed to speed up normal unification!
 
 	nx::Header3 header;
 	std::vector<nx::Node> nodes;
 	std::vector<nx::Patch> patches;
 	std::vector<nx::Texture> textures;
+	
 	//std::vector<QString> images;
 	BuildMaterials materials;
 

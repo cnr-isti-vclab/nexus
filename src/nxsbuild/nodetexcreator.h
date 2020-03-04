@@ -1,11 +1,13 @@
 #ifndef NODETEXCREATOR_H
 #define NODETEXCREATOR_H
 
-#include <QImage>
 #include <vector>
+#include <map>
 #include "tmesh.h"
 #include "texpyramid.h"
 #include "../common/material.h"
+
+#include <QImage>
 
 namespace nx {
 	class TexAtlas;

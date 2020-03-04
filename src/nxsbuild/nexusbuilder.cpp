@@ -310,6 +310,20 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 			Soup soup = input->get(block);
 			assert(soup.size() < (1<<16));
 			if(soup.size() == 0) continue;
+			
+			/*sequence of operations:
+			1) load from soup
+			2) lock			
+			3) if(textures) make a copy and split the seams.
+			4) compute serialize size
+			5) allocate the chunk.
+			6) if(texture) create the textures and save in temporary file. (we could skip and save right away
+			7) serialize to chunk
+			8) get node data 
+			10) simplify and compute error 
+			11) finalize the node (we need the error)
+			12) stream the triangles
+			*/
 
 			TMesh mesh;
 			TMesh tmp; //this is needed saving a mesh with vertices on seams duplicated., and for node tex coordinates to be rearranged
@@ -319,10 +333,12 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 
 			if(!hasTextures()) {
 				mesh1.load(soup);
+
 				input->lock(mesh1, block);
 				mesh_size = mesh1.serializedSize(header.signature);
-
+				
 			} else {
+				
 				mesh.load(soup);
 				input->lock(mesh, block);
 				//we need to replicate vertices where textured seams occours

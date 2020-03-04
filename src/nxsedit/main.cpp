@@ -145,28 +145,25 @@ int main(int argc, char *argv[]) {
 
 		if(info) {
 			printInfo(nexus);
-			return 0;
 		}
 
 		if (show_nodes) {
 			printNodes(nexus);
-			return 0;
 		}
 
 		if (show_dag) {
 			printDag(nexus);
-			return 0;
 		}
 
 		if (show_patches) {
 			printPatches(nexus);
-			return 0;
 		}
 
 		if (show_textures) {
 			printTextures(nexus);
-			return 0;
 		}
+		if(info)
+			return 0;
 
 		cout << "Reading " << qPrintable(inputs[0].toLatin1()) << endl;
 
