@@ -28,7 +28,7 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
 
-	var gl = renderer.context;
+	var gl = renderer.getContext();
 	var geometry = new THREE.BufferGeometry();
 
 	geometry.center = nocenter;
@@ -41,7 +41,7 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	}; */
 
 	var positions = new Float32Array(3);
-	geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
 	if(!material)
 		this.autoMaterial = true;
@@ -65,14 +65,14 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 
 		if(this.mesh.vertex.normal) {
 			var normals = new Float32Array(3);
-			geometry.addAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
+			geometry.setAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
 		}
 
 		if(this.mesh.vertex.color && this.mesh.vertex.texCoord) {
 			var uv = new Float32Array(2);
 			var colors = new Float32Array(4);
-			geometry.addAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
-			geometry.addAttribute( 'color', new THREE.BufferAttribute(colors, 4));
+			geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
+			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
 			if(mesh.autoMaterial) {
 				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
 				texture.needsUpdate = true;
@@ -81,13 +81,13 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 		}
 		else if(this.mesh.vertex.color) {
 			var colors = new Float32Array(4);
-			geometry.addAttribute( 'color', new THREE.BufferAttribute(colors, 4));
+			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
 			if(mesh.autoMaterial)
 				mesh.material = new THREE.MeshLambertMaterial({ vertexColors: THREE.VertexColors });
 		}
 		else if(this.mesh.vertex.texCoord) {
 			var uv = new Float32Array(2);
-			geometry.addAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
+			geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
 			if(mesh.autoMaterial) {
 				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
 				texture.needsUpdate = true;
@@ -108,22 +108,23 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 }
 
 function onAfterRender(renderer, scene, camera, geometry, material, group) {
-	var gl = renderer.context;
+	var gl = renderer.getContext();
 	var instance = geometry.instance;
 	if(!instance || !instance.isReady) return;
-	var s = renderer.getSize();
+	var s = new THREE.Vector2();
+	renderer.getSize(s);
 	instance.updateView([0, 0, s.width, s.height], 
 	camera.projectionMatrix.elements, 
 	this.modelViewMatrix.elements);
 
-	var program = renderer.context.getParameter(gl.CURRENT_PROGRAM);
+	var program = renderer.getContext().getParameter(gl.CURRENT_PROGRAM);
 	var attr = instance.attributes;
-	attr.position = renderer.context.getAttribLocation(program, "position");
-	attr.normal   = renderer.context.getAttribLocation(program, "normal");
-	attr.color    = renderer.context.getAttribLocation(program, "color");
-	attr.uv       = renderer.context.getAttribLocation(program, "uv");
-	attr.size     = renderer.context.getUniformLocation(program, "size");
-	attr.scale    = renderer.context.getUniformLocation(program, "scale");
+	attr.position = renderer.getContext().getAttribLocation(program, "position");
+	attr.normal   = renderer.getContext().getAttribLocation(program, "normal");
+	attr.color    = renderer.getContext().getAttribLocation(program, "color");
+	attr.uv       = renderer.getContext().getAttribLocation(program, "uv");
+	attr.size     = renderer.getContext().getUniformLocation(program, "size");
+	attr.scale    = renderer.getContext().getUniformLocation(program, "scale");
 
 	//hack to detect if threejs using point or triangle shaders
 	instance.mode = attr.size ? "POINT" : "FILL";
@@ -135,7 +136,7 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 		instance.pointscale = 2.0;
 
 	instance.render();
-	Nexus.updateCache(renderer.context);
+	Nexus.updateCache(renderer.getContext());
 }
 
 
