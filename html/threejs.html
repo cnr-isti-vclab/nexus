@@ -5,8 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <style>body { margin: 0px; overflow: hidden; }</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/97/three.js"></script>
-<!-- <script src="js/three.js"></script> -->
+<script src="js/three.min.js"></script>
 <script src="js/nexus.js"></script>
 <script src="js/nexus_three.js"></script>
 <script src="js/trackball_three.js"></script>
@@ -18,29 +17,8 @@
 
 <script>
 
-function onWindowResize() {
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-
-	renderer.setSize( window.innerWidth, window.innerHeight );
-
-	controls.handleResize();
-	controls.update();
-	renderer.render( scene, camera );
-}
-
-var redraw = true;
-function animate() {
-	requestAnimationFrame(animate);
-
-	controls.update();
-	if(redraw)
-		renderer.render( scene, camera );
-	redraw = false;
-}
-
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
-camera.position.z = 3;
+camera.position.z = 4.0;
 
 var controls = new THREE.TrackballControls( camera );
 controls.target.set( 0, 0, 0 );
@@ -55,10 +33,9 @@ controls.keys = [ 65, 83, 68 ];
 controls.addEventListener( 'change', function() { redraw = true; } );
 
 var scene = new THREE.Scene();
+scene.background = new THREE.Color( 0x000000 );
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
 scene.add( new THREE.AmbientLight( 0x444444 ) );
-scene.background = new THREE.Color( 0x000000 );
-
 
 var light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
 light1.position.set( 1, 1, -1 );
@@ -83,16 +60,16 @@ texture.needsUpdate = true;
 var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
 */
 
-
-function onNexusLoad(nexus) {
-	var s   = 1/nexus.geometry.boundingSphere.radius;
+function onNexusLoad() {
+	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
 	var target = new THREE.Vector3();
-	var p = nexus.geometry.boundingBox.getCenter(target).negate();
-	nexus.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
-	nexus.scale.set(s, s, s); 
+	var p = nexus_obj.geometry.boundingBox.getCenter(target).negate();
+
+	nexus_obj.position.set(p.x*s, p.y*s, p.z*s);
+	nexus_obj.scale.set(s, s, s); 
 	redraw = true;
 
-//	nexus.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+//	nexus_obj.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
 }
 
 function getURLParameter(name) {
@@ -105,6 +82,29 @@ var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; 
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+	controls.handleResize();
+	controls.update();
+	redraw = true;
+}
+
+var redraw = true;
+function animate() {
+	requestAnimationFrame(animate);
+
+	controls.update();
+
+	if(redraw) {
+		renderer.render( scene, camera );
+		redraw = false;
+	}
+}
 
 animate();
 
