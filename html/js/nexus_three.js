@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+function nocenter() { throw "Centering and in general applying matrix to geometry is unsupported."; }
+
 function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
@@ -29,14 +31,14 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	var gl = renderer.getContext();
 	var geometry = new THREE.BufferGeometry();
 
-	geometry.center = function() { 
-		throw "Centering and in general applying matrix to geometry is unsupported.";
+	geometry.center = nocenter;
 
-/*                var s = 1/instance.mesh.sphere.radius;
+/*function() { 
+                var s = 1/instance.mesh.sphere.radius;
                 var pos = instance.mesh.sphere.center;
                 mesh.position.set(-pos[0]*s, -pos[1]*s, -pos[2]*s);
-                mesh.scale.set(s, s, s); */
-	};
+                mesh.scale.set(s, s, s); 
+	}; */
 
 	var positions = new Float32Array(3);
 	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -48,7 +50,7 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	this.frustumCulled = false;
 
 	var mesh = this;
-	var instance = this.instance = new Nexus.Instance(gl);
+	var instance = this.geometry.instance = new Nexus.Instance(gl);
 	instance.open(url);
 	instance.onLoad = function() {
 		var c = instance.mesh.sphere.center;
@@ -98,35 +100,62 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 			var indices = new Uint32Array(3);
 			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
 		} */
-		if(onLoad) onLoad();
+		if(onLoad) onLoad(mesh);
 	};
-	instance.onUpdate = onUpdate;
+	instance.onUpdate = function() { onUpdate(this) };
 
-	this.onAfterRender = function(renderer, scene, camera, geometry, material, group) { 
-		if(!instance.isReady) return;
-		var s = new THREE.Vector2();
-		renderer.getSize(s);
-		instance.updateView([0, 0, s.width, s.height], 
-			camera.projectionMatrix.elements, 
-			mesh.modelViewMatrix.elements);
-
-		var program = renderer.getContext().getParameter(gl.CURRENT_PROGRAM);
-		var attr = instance.attributes;
-		attr.position = renderer.getContext().getAttribLocation(program, "position");
-		attr.normal   = renderer.getContext().getAttribLocation(program, "normal");
-		attr.color    = renderer.getContext().getAttribLocation(program, "color");
-		attr.uv       = renderer.getContext().getAttribLocation(program, "uv");
-		attr.size     = renderer.getContext().getUniformLocation(program, "size");
-		attr.scale    = renderer.getContext().getUniformLocation(program, "scale");
-
-		instance.mode = attr.size ? "POINT" : "FILL";
-		instance.render();
-
-		Nexus.updateCache(renderer.getContext());
-	}
+	this.onAfterRender = onAfterRender;
 }
 
+function onAfterRender(renderer, scene, camera, geometry, material, group) {
+	var gl = renderer.getContext();
+	var instance = geometry.instance;
+	if(!instance || !instance.isReady) return;
+	var s = new THREE.Vector2();
+	renderer.getSize(s);
+	instance.updateView([0, 0, s.width, s.height], 
+	camera.projectionMatrix.elements, 
+	this.modelViewMatrix.elements);
+
+	var program = renderer.getContext().getParameter(gl.CURRENT_PROGRAM);
+	var attr = instance.attributes;
+	attr.position = renderer.getContext().getAttribLocation(program, "position");
+	attr.normal   = renderer.getContext().getAttribLocation(program, "normal");
+	attr.color    = renderer.getContext().getAttribLocation(program, "color");
+	attr.uv       = renderer.getContext().getAttribLocation(program, "uv");
+	attr.size     = renderer.getContext().getUniformLocation(program, "size");
+	attr.scale    = renderer.getContext().getUniformLocation(program, "scale");
+
+	//hack to detect if threejs using point or triangle shaders
+	instance.mode = attr.size ? "POINT" : "FILL";
+	if(attr.size != -1) 
+		instance.pointsize = material.size;
+
+	//can't find docs or code on how material.scale is computed in threejs.
+	if(attr.scale != -1)
+		instance.pointscale = 2.0;
+
+	instance.render();
+	Nexus.updateCache(renderer.getContext());
+}
+
+
 NexusObject.prototype = Object.create(THREE.Mesh.prototype);
+
+NexusObject.prototype.dispose = function() {
+	var instance = this.geometry.instance;
+	var context = instance.context;
+	var mesh = instance.mesh;
+	Nexus.flush(context, mesh);
+	for( var i = 0; i < context.meshes.length; i++) {
+		if ( context.meshes[i] === mesh) {
+			context.meshes.splice(i, 1); 
+			break;
+		}
+	}
+	this.geometry.instance = null;
+	this.geometry.dispose();
+}
 
 NexusObject.prototype.georef = function(url) {
 	var n = this;
@@ -144,7 +173,7 @@ NexusObject.prototype.georef = function(url) {
 }
 
 NexusObject.prototype.computeBoundingBox = function() {
-	var instance = this.instance;
+	var instance = this.geometry.instance;
 	var nexus = instance.mesh;
 	if(!nexus.sphere) return;
 
@@ -176,18 +205,65 @@ NexusObject.prototype.computeBoundingBox = function() {
 
 
 NexusObject.prototype.raycast = function(raycaster, intersects) {
-	var instance = this.instance;
-	var nexus = instance.mesh;
+	if(!this.geometry.instance) return;
+
+	var nexus = this.geometry.instance.mesh;
 	if(!nexus.sphere) return;
+
 	var sp = nexus.sphere;
 	var c = sp.center;
 	var center = new THREE.Vector3(c[0], c[1], c[2]);
 	var sphere = new THREE.Sphere(center, sp.radius);
-	sphere.applyMatrix4( this.matrixWorld );
+	var m = new THREE.Matrix4();
+	m.getInverse(this.matrixWorld);
+	var ray = new THREE.Ray();
+	ray.copy(raycaster.ray).applyMatrix4(m);
 
-	if ( raycaster.ray.intersectsSphere( sphere ) === false ) return;
-	//just check the last level spheres.
-	if(!nexus.sink) return;
+	var point = new THREE.Vector3(0, 0, 0);
+	var distance = -1.0;
+	var intersect = raycaster.ray.intersectSphere( sphere );
+	if(!intersect)
+		return;
+
+	if(!nexus.sink || !nexus.basei) {
+		//no mesh loaded, we can still use the sphere.
+		intersect.applyMatrix4(this.matrixWorld);
+		var d = intersect.distanceTo(raycaster.ray.origin);
+		if(d < raycaster.near || d > raycaster.far )  
+			distance = d;
+
+	} else {
+
+		var vert = nexus.basev;
+		var face = nexus.basei;
+
+		for(var j = 0; j < nexus.basei.length; j += 3) {
+			var a = face[j];
+			var b = face[j+1];
+			var c = face[j+2];
+			var A = new THREE.Vector3(vert[a*3], vert[a*3+1], vert[a*3+2]);
+			var B = new THREE.Vector3(vert[b*3], vert[b*3+1], vert[b*3+2]);
+			var C = new THREE.Vector3(vert[c*3], vert[c*3+1], vert[c*3+2]);
+			//TODO use material to determine if using doubleface or not!
+			var hit  = ray.intersectTriangle( C, B, A, false, point ); 
+			if(!hit) continue;
+
+			//check distances in world space
+			intersect.applyMatrix4(this.matrixWorld);
+			var d = intersect.distanceTo(raycaster.ray.origin);
+			if(d < raycaster.near || d > raycaster.far ) continue;
+			if(distance == -1.0 || d < distance) {
+				distance = d;
+				intersect = hit;
+			}
+		}
+	}
+
+	if(distance == -1.0) return;
+	intersects.push({ distance: distance, point: intersect, object: this} );
+	return;
+
+/* Kept for reference, should we want to implement a raycasting on the higher resolution nodes 
 
 	var distance = -1.0;
 	for(var i = 0; i < nexus.sink; i++) {
@@ -199,8 +275,8 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 		var z = nexus.nspheres[i*5+2];
 		var r = nexus.nspheres[i*5+4]; //tight radius
 		var sphere = new THREE.Sphere(new THREE.Vector3(x, y, z), r);
-		sphere.applyMatrix4( this.matrixWorld );
-		if ( raycaster.ray.intersectsSphere( sphere ) != false ) {
+
+		if (ray.intersectsSphere( sphere ) != false ) {
 			var d = sphere.center.lengthSq();
 			if(distance == -1.0 || d < distance)
 				distance = d;
@@ -208,5 +284,5 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 	}
 	if(distance == -1.0) return;
 
-	intersects.push({ distance: distance, object: this} );
+	intersects.push({ distance: distance, object: this} ); */
 }
