@@ -355,6 +355,8 @@ void printInfo(NexusData &nexus) {
 	cout << "Nodes       : " << header.n_nodes << endl;
 	cout << "Patches     : " << header.n_patches << endl;
 	cout << "Textures    : " << header.n_textures << endl;
+
+	cout << header.write().data() + 12 << endl;
 }
 
 void printNodes(NexusData& nexus) {
@@ -421,7 +423,7 @@ void printTextures(NexusData& nexus) {
 	if (show_textures) {
 		cout << "\nTexture dump: \n";
 		for (uint i = 0; i < nexus.header.n_textures; i++) {
-			nx::Texture& texture = nexus.textures[i];
+			nx::TextureGroup& texture = nexus.textures[i];
 			cout << "Texture: " << i << "\t Offset: " << texture.getBeginOffset() << " \t size: " << texture.getSize() << "\n";
 		}
 	}
@@ -551,7 +553,7 @@ void checks(NexusData &nexus) {
 		assert(nexus.patches[n_patches-1].texture = n_textures);
 
 	for(uint i = 0; i < n_textures-1; i++) {
-		Texture &texture = nexus.textures[i];
+		TextureGroup &texture = nexus.textures[i];
 		if(texture.offset * (quint64)NEXUS_PADDING >= nexus.file.size()) {
 			cout << "Texture " << i << " offset " << texture.offset*NEXUS_PADDING << " file size " << nexus.file.size() << endl;
 		}

@@ -120,7 +120,7 @@ public:
 	nx::Header3 header;
 	std::vector<nx::Node> nodes;
 	std::vector<nx::Patch> patches;
-	std::vector<nx::Texture> textures;
+	std::vector<nx::TextureGroup> textures;
 	
 	//std::vector<QString> images;
 	BuildMaterials materials;

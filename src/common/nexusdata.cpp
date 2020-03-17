@@ -72,8 +72,6 @@ void NexusData::flush() {
 	delete []nodes;
 	delete []patches;
 	delete []textures;
-	delete []nodedata;
-	delete []texturedata;
 }
 
 void NexusData::loadHeader() {
@@ -121,16 +119,16 @@ void NexusData::countRoots() {
 uint64_t NexusData::indexSize() {
 	return header.n_nodes * sizeof(Node) +
 			header.n_patches * sizeof(Patch) +
-			header.n_textures * sizeof(Texture);
+			header.n_textures * sizeof(TextureGroup);
 }
 
 void NexusData::initIndex() {
 	nodes = new Node[header.n_nodes];
 	patches = new Patch[header.n_patches];
-	textures = new Texture[header.n_textures];
+	textures = new TextureGroup[header.n_textures];
 
-	nodedata = new NodeData[header.n_nodes];
-	texturedata.resize(header.n_textures);// = new TextureData[header.n_textures];
+	nodedata.resize(header.n_nodes);
+	texturegroupdata.resize(header.n_textures);
 }
 
 void NexusData::loadIndex() {
@@ -141,7 +139,7 @@ void NexusData::loadIndex() {
 	//fread(textures, sizeof(Texture), header.n_textures, file);
 	file.read((char *)nodes, sizeof(Node)*header.n_nodes);
 	file.read((char *)patches, sizeof(Patch)*header.n_patches);
-	file.read((char *)textures, sizeof(Texture)*header.n_textures);
+	file.read((char *)textures, sizeof(TextureGroup)*header.n_textures);
 	countRoots();
 }
 
@@ -156,7 +154,7 @@ void NexusData::loadIndex(char *buffer) {
 	memcpy(patches, buffer, size);
 	buffer += size;
 
-	size = sizeof(Texture)*header.n_textures;
+	size = sizeof(TextureGroup)*header.n_textures;
 	memcpy(textures, buffer, size);
 
 	countRoots();
@@ -253,19 +251,55 @@ uint64_t NexusData::loadRam(uint32_t n) {
 			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
 
-			throw "TextureGroups!";
-			/*
-			TextureData &data = texturedata[t];
-			data.count_ram++;
-			if(data.count_ram > 1)
+
+			TextureGroupData &groupdata = texturegroupdata[t];
+			groupdata.count_ram++;
+			if(groupdata.count_ram > 1)
+
 				continue;
 
-			Texture &texture = textures[t];
-			data.memory = (char *)file.map(texture.getBeginOffset(), texture.getSize());
-			if(!data.memory) {
+			TextureGroup &group = textures[t];
+			char *tmp = (char *)file.map(group.getBeginOffset(), group.getSize());
+			if(!tmp) {
 				cerr << "Failed mapping texture data" << endl;
 				exit(0);
 			}
+			char *pos = tmp;
+			groupdata.ntex = *(int32_t *)pos; pos += 4;
+			groupdata.firstTextureData = texturedata.size();
+
+			for(int32_t i = 0; i < groupdata.ntex; i++) {
+				int32_t jpgsize = *(int32_t *)pos; pos += 4;
+				QImage img;
+				bool success = img.loadFromData((uchar *)pos, jpgsize); pos += jpgsize;
+				if(!success) {
+					cerr << "Failed loading texture" << endl;
+					exit(0);
+				}
+
+				img = img.convertToFormat(QImage::Format_RGBA8888);
+				TextureData data;
+				data.width = img.width();
+				data.height = img.height();
+
+				int imgsize = data.width*data.height*4;
+				data.memory = new char[imgsize];
+
+				//flip memory for texture
+				int linesize = img.width()*4;
+				char *mem = data.memory + linesize*(img.height()-1);
+				for(int i = 0; i < img.height(); i++) {
+					memcpy(mem, img.scanLine(i), linesize);
+					mem -= linesize;
+				}
+				size += imgsize;
+				texturedata.push_back(data);
+			}
+
+			/*
+
+			Texture &texture = textures[t];
+
 
 			QImage img;
 			bool success = img.loadFromData((uchar *)data.memory, texture.getSize());

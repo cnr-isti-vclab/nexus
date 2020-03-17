@@ -74,8 +74,8 @@ public:
  *		we actually can pack only if unified by texture_map
  */
 
-TextureGroup NodeTexCreator::process(TMesh &mesh, int level) {
-	TextureGroup group;
+TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
+	TextureGroupBuild group;
 	float &error = group.error;
 	float &pixelXedge = group.pixelXEdge;
 

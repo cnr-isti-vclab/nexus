@@ -85,15 +85,15 @@ struct Header3 {
 };
 
 struct Node {
-	uint32_t offset; //offset on disk (could be moved), granularity NEXUS_PADDING) //use the function
-	uint32_t size;   //in bytes
-	uint16_t nvert;
-	uint16_t nface;
-	float error;
+	uint32_t offset = 0; //offset on disk (could be moved), granularity NEXUS_PADDING) //use the function
+	uint32_t size = 0;   //in bytes
+	uint16_t nvert = 0;
+	uint16_t nface = 0;
+	float error = 0.0f;
 	nx::Cone3s cone;           //cone of normals
 	vcg::Sphere3f sphere;      //saturated sphere (extraction)
-	float tight_radius;        //tight sphere (frustum culling)
-	uint32_t first_patch;      //index of the first patch in the array of patches.
+	float tight_radius = 0.0f;        //tight sphere (frustum culling)
+	uint32_t first_patch = 0;      //index of the first patch in the array of patches.
 	uint32_t last_patch() { return (this + 1)->first_patch; } //this node is ALWAYS inside an array.
 	vcg::Sphere3f tightSphere() { return vcg::Sphere3f(sphere.Center(), tight_radius); }
 
@@ -104,10 +104,10 @@ struct Node {
 
 //todo read index node, patch and texrture are different!!!
 struct Patch {
-	uint32_t node;             //destination node
-	uint32_t triangle_offset;  //end of the triangles in the node triangle list. //begin from previous patch.
-	uint32_t texture;          //index of the texture in the array of textures
-	uint32_t material;         //index of the materials
+	uint32_t node = 0;             //destination node
+	uint32_t triangle_offset = 0;  //end of the triangles in the node triangle list. //begin from previous patch.
+	uint32_t texture = 0;          //index of the texture in the array of textures
+	uint32_t material = 0;         //index of the materials
 };
 
 
@@ -115,7 +115,7 @@ struct Patch {
 //pbr materials will have more than 1 textures. so this is actually a group of textures.
 //when loading we don't know the material.
 //so [n_maps][size][ jpg ].... [size][jpg]
-struct Texture {
+struct TextureGroup {
 	uint32_t offset; //offset on disk (could be moved), granularity NEXUS_PADDING)
 	uint32_t size; //in bytes`
 

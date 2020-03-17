@@ -167,46 +167,39 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 
 	int size = vertex_size + face_size;
 	if(header.n_textures) {
-		throw "Texture groups!";
-		/*
-		//be sure to load images
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 			Patch &patch = patches[p];
 			uint32_t t = patch.texture;
 			if(t == 0xffffffff) continue;
 
-			TextureData &data = texturedata[t];
-			data.count_gpu++;
-			if(texturedata[t].tex) continue;
+			TextureGroupData group = texturegroupdata[t];
+			group.count_gpu++;
+			for(int i = 0; i < group.ntex; i++) {
+				TextureData &data = texturedata[group.firstTextureData + i];
+
+				if(data.tex) continue;
 			
-			glCheckError();
-			glGenTextures(1, &data.tex);
-			glBindTexture(GL_TEXTURE_2D, data.tex);
+				glGenTextures(1, &data.tex);
+				glBindTexture(GL_TEXTURE_2D, data.tex);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.memory);
-			glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			if(isPowerOfTwo(data.width) && isPowerOfTwo(data.height)) {
-				glGenerateMipmap(GL_TEXTURE_2D);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			} else
-				glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.memory);
+				glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				if(isPowerOfTwo(data.width) && isPowerOfTwo(data.height)) {
+					glGenerateMipmap(GL_TEXTURE_2D);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				} else
+					glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			
 
-			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+				//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+				//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-			glCheckError();
-			size += data.width*data.height*3;
+				size += data.width*data.height*3;
+			}
 			//careful with cache... might create problems to return different sizes in get drop and size
 			//glGenerateMipmap(GL_TEXTURE_2D);  //Generate mipmaps now!!!
-
-			
-			
-
-			
-			glCheckError();
 		}
-		*/
+
 	}
 
 	return size;

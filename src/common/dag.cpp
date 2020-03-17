@@ -78,6 +78,8 @@ static JSON signatureToJson(Signature sig) {
 }
 
 
+Material readMaterial(JSON &json);
+
 int Header3::read(char *buffer, int length) {
 	if(length < 12) return 88;
 	char *start = buffer;
@@ -121,8 +123,18 @@ int Header3::read(char *buffer, int length) {
 		sphere.Center()[0] = float(jsphere["center"][0].ToFloat());
 		sphere.Center()[1] = float(jsphere["center"][1].ToFloat());
 		sphere.Center()[2] = float(jsphere["center"][2].ToFloat());
+
+		//materials
+		JSON mats = obj["materials"];
+		for(int i = 0; i < mats.length(); i++) {
+			JSON &mat = mats.at(i);
+			Material m = readMaterial(mat);
+			materials.push_back(m);
+		}
+
 		index_offset = json_length + 12;
 		index_length = n_nodes*44 + n_patches*12 + n_textures*68;
+
 		}
 		return 0;
 	default: 
@@ -130,6 +142,8 @@ int Header3::read(char *buffer, int length) {
 	}
 }
 
+
+JSON writeMaterial(Material &m);
 
 std::vector<char> Header3::write() {
 	
@@ -147,6 +161,11 @@ std::vector<char> Header3::write() {
 	jsphere["radius"] = sphere.Radius();
 	jsphere["center"] = json::Array(sphere.Center()[0],sphere.Center()[1], sphere.Center()[2]);
 	json["sphere"] = jsphere;
+
+	JSON mats = json::Array();
+	for(Material &m: materials)
+		mats.append(writeMaterial(m));
+	json["materials"] = mats;
 			
 	string str = json.dump();
 	json_length = str.size() + 1;
@@ -160,6 +179,7 @@ std::vector<char> Header3::write() {
 	bwrite<uint32_t>(data, json_length);
 	assert(strlen(str.c_str()) == str.size());
 	memcpy(data, str.c_str(), str.size()+1);
+
 	
 	index_offset = json_length + 12;
 	index_length = n_nodes*44 + n_patches*12 + n_textures*68;
@@ -186,7 +206,7 @@ std::vector<char> Header3::write() {
 
 
 
-int readMaterial(JSON &json) {
+Material readMaterial(JSON &json) {
 	Material m;
 	JSON pbr = json["pbrMetallicRoughness"];
 
@@ -243,9 +263,10 @@ int readMaterial(JSON &json) {
 		m.glossines_map = int32_t(pbr["occlusionTexture"]["index"].ToInt());
 		m.glossines = float(pbr["occlusionFactor"]["strength"].ToFloat());
 	}
+	return m;
 }
 
-JSON writeMAterial(Material &m) {
+JSON writeMaterial(Material &m) {
 	JSON json = json::Object();
 	if(m.color[3] != 0.0f || m.color_map != -1 || m.metallic != 0.0f || m.roughness != 0.0f || m.metallic_map != 0) {
 		JSON pbr = json::Object();

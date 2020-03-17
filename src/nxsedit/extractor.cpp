@@ -86,7 +86,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	
 	vector<nx::Node> nodes;
 	vector<nx::Patch> patches;
-	vector<nx::Texture> textures;
+	vector<nx::TextureGroup> textures;
 	
 	uint n_nodes = nexus->header.n_nodes;
 	vector<int> node_remap(n_nodes, -1);
@@ -138,7 +138,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	quint64 size = header_dump.size()  +
 			nodes.size()*sizeof(nx::Node) +
 			patches.size()*sizeof(nx::Patch) +
-			textures.size()*sizeof(nx::Texture);
+			textures.size()*sizeof(nx::TextureGroup);
 	size = pad(size);
 	
 	for(uint i = 0; i < nodes.size(); i++) {
@@ -150,7 +150,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	file.write(header_dump.data(), header_dump.size());
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
-	file.write((char *)&*textures.begin(), sizeof(nx::Texture)*textures.size());
+	file.write((char *)&*textures.begin(), sizeof(nx::TextureGroup)*textures.size());
 	file.seek(size);
 	
 	for(uint i = 0; i < node_remap.size()-1; i++) {
@@ -188,8 +188,8 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	//save textures
 	if(textures.size()) {
 		for(uint i = 0; i < textures.size()-1; i++) {
-			Texture &in = nexus->textures[i];
-			Texture &out = textures[i] = in;
+			TextureGroup &in = nexus->textures[i];
+			TextureGroup &out = textures[i] = in;
 			
 			quint64 start = in.getBeginOffset();
 			quint64 size = in.getSize();
@@ -204,7 +204,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	file.seek(header.index_offset);
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
-	file.write((char *)&*textures.begin(), sizeof(nx::Texture)*textures.size());
+	file.write((char *)&*textures.begin(), sizeof(nx::TextureGroup)*textures.size());
 	file.close();
 }
 

@@ -372,19 +372,19 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 
 			} else {
 
-				TextureGroup group = nodeTexCreator.process(tmp, level);
+				TextureGroupBuild group = nodeTexCreator.process(tmp, level);
 				//TODO area!!
 				//QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
 				//area += nodetex.width()*nodetex.height();
-				Texture texture;
+				TextureGroup texture;
 				texture.offset = nodeTex.size()/NEXUS_PADDING;
 				int32_t nimages = group.size();
 				nodeTex.write((char *)&nimages, 4);
 				int64_t	pos = texture.offset + 4;
 				for(QImage nodetex: group) {
 					output_pixels += nodetex.width()*nodetex.height();
-					//reserve space for image size.
-					nodeTex.write((char *)&texture.offset, 4);
+					//reserve space for image size, will be overwritten.
+					nodeTex.write((char *)&texture.size, 4);
 					QImageWriter writer(&nodeTex, "jpg");
 					writer.setQuality(tex_quality);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
@@ -400,17 +400,20 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 					tmp.textures.push_back(texname.toStdString());
 					tmp.savePlyTex(QString::number(counter) + ".ply", texname);
 					counter++; */
-					qint64 file_end = pad(nodeTex.size());
-
-					nodeTex.resize(file_end);
-					nodeTex.seek(file_end);
-					int32_t tex_size = file_end - pos - 4; //pos points at the dimension int now
+					//No padding needed!
+					//qint64 file_end = pad(nodeTex.size());
+					int64_t image_end = nodeTex.size();
+					int32_t tex_size = image_end - pos - 4; //pos points at the dimension int now
 
 					nodeTex.seek(pos);
 					nodeTex.write((char *)&tex_size, 4);
-					nodeTex.seek(file_end);
-					pos = file_end;
+					nodeTex.seek(image_end);
+					pos = image_end;
 				}
+				int64_t file_end = pad(nodeTex.size());
+				nodeTex.resize(file_end);
+				nodeTex.seek(file_end);
+
 				texture.size = uint32_t(nodeTex.size() - texture.offset * NEXUS_PADDING);
 				textures.push_back(texture);
 
@@ -555,9 +558,6 @@ void NexusBuilder::reverseDag() {
 
 void NexusBuilder::save(QString filename) {
 
-	//cout << "Saving to file " << qPrintable(filename) << endl;
-	//cout << "Input squaresize " << sqrt(input_pixels) <<  " Output size " << sqrt(output_pixels) << "\n";
-
 	file.setFileName(filename);
 	if(!file.open(QIODevice::ReadWrite | QIODevice::Truncate))
 		throw QString("could not open file " + filename);
@@ -566,13 +566,14 @@ void NexusBuilder::save(QString filename) {
 		uniformNormals();
 
 	if(textures.size())
-		textures.push_back(Texture());
+		textures.push_back(TextureGroup());
 
+
+	// Prepare the header
 	header.nface = 0;
 	header.nvert = 0;
 	header.n_nodes = nodes.size();
 	header.n_patches = patches.size();
-
 	header.n_textures = textures.size();
 	header.version = 3;
 
@@ -594,12 +595,17 @@ void NexusBuilder::save(QString filename) {
 		header.nface += node.nface;
 		header.nvert += node.nvert;
 	}
+	//unify materials, writing to header.materials.
+	std::vector<int> material_map = materials.compact(header.materials);
+	for(Patch &patch: patches)
+		patch.material = material_map[patch.material];
+
 	vector<char> header_dump = header.write();
 
 	quint64 size = header_dump.size()  +
 			nodes.size()*sizeof(Node) +
 			patches.size()*sizeof(Patch) +
-			textures.size()*sizeof(Texture);
+			textures.size()*sizeof(TextureGroup);
 	size = pad(size);
 	quint64 index_size = size;
 
@@ -641,7 +647,7 @@ void NexusBuilder::save(QString filename) {
 	if(patches.size())
 		file.write((char*)&(patches[0]), sizeof(Patch)*patches.size());
 	if(textures.size())
-		file.write((char*)&(textures[0]), sizeof(Texture)*textures.size());
+		file.write((char*)&(textures[0]), sizeof(TextureGroup)*textures.size());
 	file.seek(index_size);
 
 	//NODES

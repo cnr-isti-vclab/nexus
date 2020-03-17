@@ -13,7 +13,7 @@ namespace nx {
 	class TexAtlas;
 }
 
-struct TextureGroup: public std::vector<QImage> {
+struct TextureGroupBuild: public std::vector<QImage> {
 	int32_t material;
 	float error = 0.f;
 	float pixelXEdge = 0.f;
@@ -25,7 +25,7 @@ public:
 	nx::TexAtlas *atlas = nullptr;
 	BuildMaterials *materials = nullptr;
 
-	TextureGroup process(TMesh &mesh, int level);
+	TextureGroupBuild process(TMesh &mesh, int level);
 };
 
 #endif // NODETEXCREATOR_H
