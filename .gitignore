@@ -1,0 +1,7 @@
+*.o
+*.pro.user*
+*.cmake
+ui_*.h
+build*Desktop*
+html/models*
+*~

@@ -259,19 +259,19 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				continue;
 
 			TextureGroup &group = textures[t];
-			char *tmp = (char *)file.map(group.getBeginOffset(), group.getSize());
+			uchar *tmp = file.map(group.getBeginOffset(), group.getSize());
 			if(!tmp) {
 				cerr << "Failed mapping texture data" << endl;
 				exit(0);
 			}
-			char *pos = tmp;
+			uchar *pos = tmp;
 			groupdata.ntex = *(int32_t *)pos; pos += 4;
 			groupdata.firstTextureData = texturedata.size();
 
 			for(int32_t i = 0; i < groupdata.ntex; i++) {
 				int32_t jpgsize = *(int32_t *)pos; pos += 4;
 				QImage img;
-				bool success = img.loadFromData((uchar *)pos, jpgsize); pos += jpgsize;
+				bool success = img.loadFromData(pos, jpgsize); pos += jpgsize;
 				if(!success) {
 					cerr << "Failed loading texture" << endl;
 					exit(0);
@@ -295,36 +295,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				size += imgsize;
 				texturedata.push_back(data);
 			}
-
-			/*
-
-			Texture &texture = textures[t];
-
-
-			QImage img;
-			bool success = img.loadFromData((uchar *)data.memory, texture.getSize());
-			file.unmap((uchar *)data.memory);
-
-			if(!success) {
-				cerr << "Failed loading texture" << endl;
-				exit(0);
-			}
-
-			img = img.convertToFormat(QImage::Format_RGBA8888);
-			data.width = img.width();
-			data.height = img.height();
-
-			int imgsize = data.width*data.height*4;
-			data.memory = new char[imgsize];
-
-			//flip memory for texture
-			int linesize = img.width()*4;
-			char *mem = data.memory + linesize*(img.height()-1);
-			for(int i = 0; i < img.height(); i++) {
-				memcpy(mem, img.scanLine(i), linesize);
-				mem -= linesize;
-			}
-			size += imgsize; */
+			file.unmap(tmp);
 		}
 	}
 	return size;
@@ -350,18 +321,23 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 				node.nface * header.signature.face.size();
 
 	if(header.n_textures) {
-		throw "Texture groups!";
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
 
-/*			TextureData &tdata = texturedata[t];
-			tdata.count_ram--;
-			if(tdata.count_ram != 0) continue;
+			TextureGroupData &group = texturegroupdata[t];
+			group.count_ram--;
+			if(group.count_ram != 0) continue;
 
-			delete []tdata.memory;
-			tdata.memory = NULL;
-			size += tdata.width*tdata.height*4; */
+			for(int i = 0; i < group.ntex; i++) {
+				TextureData &data = texturedata[group.firstTextureData + i];
+
+
+				delete []data.memory;
+				data.memory = NULL;
+				size += data.width*data.height*4;
+
+			}
 		}
 	}
 	return size;

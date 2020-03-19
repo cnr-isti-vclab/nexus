@@ -194,6 +194,10 @@ void ObjLoader::readMTL(QString mtl_path) {
 						uint8_t A = 255 * (1.0f - tr);
 					continue;
 				}
+				if(str.startsWith("Kd", Qt::CaseInsensitive)){
+					getColor(buffer, material.color);
+					continue;
+				}
 				if(str.startsWith("Map_Kd", Qt::CaseInsensitive)){
 					txtfname = str.mid(7).trimmed();
 					txtfname = txtfname.remove(QRegExp("^(\")"));
@@ -208,16 +212,34 @@ void ObjLoader::readMTL(QString mtl_path) {
 					getColor(buffer, material.ambient);
 					continue;
 				}
-				if(str.startsWith("Kd", Qt::CaseInsensitive)){
-					getColor(buffer, material.color);
-					continue;
-				}
+
 				if(str.startsWith("Ks", Qt::CaseInsensitive)){
 					getColor(buffer, material.specular);
 					continue;
 				}
+				if(str.startsWith("Map_Ks", Qt::CaseInsensitive)){
+					txtfname = str.mid(7).trimmed();
+					txtfname = txtfname.remove(QRegExp("^(\")"));
+					txtfname = txtfname.remove(QRegExp("(\")$"));
+
+					material.specular_map = material.nmaps++;
+					material.textures.push_back(txtfname);
+					has_textures = true;
+					continue;
+				}
 				if(str.startsWith("Ns", Qt::CaseInsensitive)){
 					getValue(buffer, material.glossines);
+					continue;
+				}
+
+				if(str.startsWith("map_bump", Qt::CaseInsensitive)){
+					txtfname = str.mid(9).trimmed();
+					txtfname = txtfname.remove(QRegExp("^(\")"));
+					txtfname = txtfname.remove(QRegExp("(\")$"));
+
+					material.bump_map = material.nmaps++;
+					material.textures.push_back(txtfname);
+					has_textures = true;
 					continue;
 				}
 

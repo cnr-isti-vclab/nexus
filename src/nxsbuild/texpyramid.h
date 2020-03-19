@@ -78,6 +78,7 @@ public:
 
 	TexAtlas(): scale(M_SQRT1_2), quality(92), cache_max(2000000000), cache_size(0), access(1) {}
 
+	int32_t addTexture(QString &filename);
 	bool addTextures(std::vector<QString> &filenames);
 	int getTextureId(QString filename);
 	QImage read(int tex, int level, QRect region);

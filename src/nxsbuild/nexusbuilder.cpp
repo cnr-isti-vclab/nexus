@@ -109,9 +109,7 @@ NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scalin
 }
 
 bool NexusBuilder::initAtlas() {
-	//std::vector<QString> &filenames;
 	for(auto &material: materials) {
-		material.atlas_offset = atlas.pyramids.size();
 		bool success = atlas.addTextures(material.textures);
 		if(!success)
 			return false;
@@ -262,6 +260,7 @@ void NexusBuilder::createCloudLevel(KDTreeCloud *input, StreamCloud *output, int
 			quint32 current_node = nodes.size();
 			nx::Node node = mesh.getNode();
 			node.offset = chunk; //temporaryle remember which chunk belongs to which node
+			node.size = mesh_size;
 			node.error = mesh.averageDistance();
 			node.first_patch = patch_offset;
 			nodes.push_back(node);
@@ -366,13 +365,14 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 			std::vector<Patch> node_patches;
 
 			float error;
-			float pixelXedge;
 			if(!hasTextures()) {
 				mesh1.serialize(buffer, header.signature, node_patches);
 
 			} else {
 
 				TextureGroupBuild group = nodeTexCreator.process(tmp, level);
+				error = group.error;
+
 				//TODO area!!
 				//QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
 				//area += nodetex.width()*nodetex.height();
@@ -380,7 +380,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				texture.offset = nodeTex.size()/NEXUS_PADDING;
 				int32_t nimages = group.size();
 				nodeTex.write((char *)&nimages, 4);
-				int64_t	pos = texture.offset + 4;
+				int64_t	pos = nodeTex.size();
 				for(QImage nodetex: group) {
 					output_pixels += nodetex.width()*nodetex.height();
 					//reserve space for image size, will be overwritten.
@@ -454,15 +454,14 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 					nvert = soup.size();
 				} 
 				
-				float e = mesh.simplify(nvert, TMesh::QUADRICS);
-				if(!useNodeTex)
-					error = e;
+				mesh.simplify(nvert, TMesh::QUADRICS);
 				nface = mesh.fn;
 			}
 
 			quint32 current_node = nodes.size();
 
 			node.offset = chunk; //temporarily remember which chunk belongs to which node
+			node.size = mesh_size;
 			node.error = error;
 			node.first_patch = patch_offset;
 			nodes.push_back(node);

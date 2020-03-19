@@ -159,7 +159,8 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 		int tex = box_texture[b];
 
 		//enlarge 1 pixel
-		int32_t first_tex = materials->at(tex).atlas_offset;
+		//herre we assume all the textures share the same w, h and parametrization
+		int32_t first_tex = atlas->getTextureId(materials->at(tex).textures[0]);
 		float w = atlas->width(first_tex, level); //img->size().width();
 		float h = atlas->height(first_tex, level); //img->size().height();
 		float px = 1/(float)w;
@@ -183,8 +184,9 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 	std::set<int32_t> final_materials;
 	for(int32_t m: material_set)
 		final_materials.insert(materials->texture_map[m]);
-	if(final_materials.size() > 1)
-		throw "More than one material not supported at the moment. Unless they differ only for the texture";
+	//TODO CHECK this!
+	//if(final_materials.size() > 1)
+	//	throw "More than one material not supported at the moment. Unless they differ only for the texture";
 
 
 	//Here we should slit the boxes by material, then pack!
@@ -251,8 +253,10 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 
 		//QImageReader &img = textures[box_texture[b]];
 		int mat = box_texture[b];
-		float w = atlas->width(materials->at(mat).atlas_offset, level); //img->size().width();
-		float h = atlas->height(materials->at(mat).atlas_offset, level); //img->size().height();
+		int32_t first_tex = atlas->getTextureId(materials->at(mat).textures[0]);
+
+		float w = atlas->width(first_tex, level); //img->size().width();
+		float h = atlas->height(first_tex, level); //img->size().height();
 		float px = 1/(float)w;
 		float py = 1/(float)h;
 
@@ -310,7 +314,6 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 	//cout << "Area: " << (int)(100*areausage) << "% --- " << (int)areausage*finalSize[0]*finalSize[1] << " vs: " << finalSize[0]*finalSize[1] << "\n";
 
 	for(int8_t t =0; t < material.nmaps; t++) {
-		cout << "Group size: " << group.size() << endl;
 		assert(t < group.size());
 		//	static int boxid = 0;
 		//parentesys needed to create a scope for the painter.
@@ -326,7 +329,7 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 			color[0] = ((boxid % 16)*135)%127 + 127; */
 
 				int source_material = box_texture[i];
-				int tex = materials->at(source_material).atlas_offset + t;
+				int tex = atlas->getTextureId(materials->at(source_material).textures[t]);
 				vcg::Point2i &o = origins[i];
 				vcg::Point2i &s = sizes[i];
 

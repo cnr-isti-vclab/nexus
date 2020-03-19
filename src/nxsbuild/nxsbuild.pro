@@ -60,7 +60,8 @@ HEADERS += \
     texpyramid.h \
     stlloader.h \
     ../common/material.h \
-    nodetexcreator.h
+    nodetexcreator.h \
+    ../common/json.hpp
 
 DESTDIR = "../../bin"
 

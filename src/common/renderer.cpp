@@ -421,10 +421,14 @@ void Renderer::renderSelected(Nexus *nexus) {
 								glTexGenfv(GL_R, GL_OBJECT_PLANE, &texture.matrix[8]);
 								glTexGenfv(GL_Q, GL_OBJECT_PLANE, &texture.matrix[12]); */
 							}
-							TextureData &tdata = nexus->texturedata[patch.texture];
-							glBindTexture(GL_TEXTURE_2D, tdata.tex);
-							//glBindTexture(GL_TEXTURE_2D, 0);
+							TextureGroupData &group = nexus->texturegroupdata[patch.texture];
+							for(int i = 0; i < group.ntex; i++) {
+								TextureData &tdata = nexus->texturedata[group.firstTextureData + i];
+								glActiveTexture(GL_TEXTURE0 + i); // Texture unit 0
+								glBindTexture(GL_TEXTURE_2D, tdata.tex);
+							}
 							last_texture = patch.texture;
+
 						}
 					} else {
 						glBindTexture(GL_TEXTURE_2D, 0);

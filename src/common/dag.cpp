@@ -168,9 +168,11 @@ std::vector<char> Header3::write() {
 	json["materials"] = mats;
 			
 	string str = json.dump();
-	json_length = str.size() + 1;
-	while((json_length % 4) != 0)
+	json_length = str.size() ;
+	while((json_length % 4) != 0) {
 		json_length++;
+		str.push_back(' ');
+	}
 	
 	std::vector<char> buffer(json_length + 12);
 	char *data = buffer.data();
