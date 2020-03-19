@@ -445,16 +445,16 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				nface = mesh1.fn;
 			} else {
 				
-				int nvert = soup.size()*scaling;
+				int target_faces = soup.size()*scaling;
 				//if(pixelXedge > 10) {
 				//When textures are too big for the amount of geometry we skip some level of geometry simplification.
 				//It should be automatic based on pixelXedge....
 				if(skipSimplifyLevels > 0) {
 					//cout << "Too much texture! Skipping vertex simplification" << endl;
-					nvert = soup.size();
+					target_faces = soup.size();
 				} 
 				
-				mesh.simplify(nvert, TMesh::QUADRICS);
+				mesh.simplify(target_faces, TMesh::QUADRICS);
 				nface = mesh.fn;
 			}
 

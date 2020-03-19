@@ -5,3 +5,6 @@ ui_*.h
 build*Desktop*
 html/models*
 *~
+*Makefile
+*CMakeCache.txt
+*CMakeFiles*

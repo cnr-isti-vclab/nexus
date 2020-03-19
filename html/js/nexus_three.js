@@ -63,12 +63,12 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 		if(mesh.autoMaterial)
 			mesh.material = new THREE.MeshLambertMaterial( { color: 0xffffff } );
 
-		if(this.mesh.vertex.normal) {
+		if(this.mesh.vertex.NORMAL) {
 			var normals = new Float32Array(3);
 			geometry.addAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
 		}
 
-		if(this.mesh.vertex.color && this.mesh.vertex.texCoord) {
+		if(this.mesh.vertex.COLOR && this.mesh.vertex.UV_0) {
 			var uv = new Float32Array(2);
 			var colors = new Float32Array(4);
 			geometry.addAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
@@ -79,13 +79,13 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 				mesh.material = new THREE.MeshLambertMaterial( { vertexColors: THREE.VertexColors, map: texture } );
 			}
 		}
-		else if(this.mesh.vertex.color) {
+		else if(this.mesh.vertex.COLOR) {
 			var colors = new Float32Array(4);
 			geometry.addAttribute( 'color', new THREE.BufferAttribute(colors, 4));
 			if(mesh.autoMaterial)
 				mesh.material = new THREE.MeshLambertMaterial({ vertexColors: THREE.VertexColors });
 		}
-		else if(this.mesh.vertex.texCoord) {
+		else if(this.mesh.vertex.UV_0) {
 			var uv = new Float32Array(2);
 			geometry.addAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
 			if(mesh.autoMaterial) {

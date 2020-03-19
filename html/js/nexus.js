@@ -322,7 +322,7 @@ Mesh.prototype = {
 					mesh[i] = header[i];
 				mesh.vertex = mesh.signature.vertex;
 				mesh.face = mesh.signature.face;
-				mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
+				mesh.renderMode = mesh.face.INDEX?["FILL", "POINT"]:["POINT"];
 				mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
 				mesh.meco = (mesh.signature.flags & 2);
 				mesh.corto = (mesh.signature.flags & 4);
@@ -376,7 +376,7 @@ Mesh.prototype = {
 
 		var n = t.n_nodes;
 
-		let v3 = t.version == 3;
+		t.v3 = t.version == 3;
 		t.noffsets  = new Uint32Array(n);
 		t.nsizes  = new Uint32Array(n);
 		t.nvertices = new Uint32Array(n);
@@ -388,7 +388,7 @@ Mesh.prototype = {
 
 		for(i = 0; i < n; i++) {
 			t.noffsets[i] = padding*getUint32(view); //offset
-			if(v3)
+			if(t.v3)
 				t.nsizes[i] = getUint32(view);
 			t.nvertices[i] = getUint16(view);        //verticesCount
 			t.nfaces[i] = getUint16(view);           //facesCount
@@ -398,7 +398,7 @@ Mesh.prototype = {
 				t.nspheres[i*5+k] = getFloat32(view);       //sphere + tight
 			t.nfirstpatch[i] = getUint32(view);          //first patch
 		}
-		if(!v3) {
+		if(!t.v3) {
 		    for(i = 0; i < n-1; i++)
 			    t.nsizes[i] = t.noffsets[i+1] - t.noffsets[i];
 		}
@@ -406,7 +406,7 @@ Mesh.prototype = {
 		t.sink = n -1;
 
 
-		if(v3)
+		if(t.v3)
 			t.patches = new Uint32Array(view.buffer, view.offset, t.n_patches*4); //node, lastTriangle, texture, material
 		else {
 			let tmp = new Uint32Array(view.buffer, view.offset, t.n_patches*3); //node, lastTriangle, texture
@@ -427,16 +427,17 @@ Mesh.prototype = {
 			}
 		}
 
-		if(v3)
+		if(t.v3)
 			view.offset += t.n_patches*16;
 		else
 			view.offset += t.n_patches*12;
 
 
 		t.texref = new Uint32Array(t.n_textures);
-		if(v3) {
+		if(t.v3) {
 			t.textures = new Uint32Array(view.buffer, view.offset, t.n_textures*2);
-
+			for(let i = 0; i < t.n_textures; i++)
+				t.textures[2*i] *= padding;
 		} else {
 			t.textures = new Uint32Array(t.n_textures*2);
 			for(let i = 0; i < t.n_textures; i++) {
@@ -447,7 +448,7 @@ Mesh.prototype = {
 				t.textures[2*i+1] = t.textures[2*(i+1)] - t.textures[2*i];
 		}
 
-		t.vsize = 12 + (t.vertex.normal?6:0) + (t.vertex.color?4:0) + (t.vertex.texCoord?8:0);
+		t.vsize = 12 + (t.vertex.NORMAL?6:0) + (t.vertex.COLOR?4:0) + (t.vertex.UV_0?8:0);
 		t.fsize = 6;
 
 		//problem: I have no idea how much space a texture is needed in GPU. 10x factor assumed.
@@ -493,17 +494,17 @@ Mesh.prototype = {
 		return e;
 	},
 
-	importVertex: function(view) {	//enum POSITION, NORMAL, COLOR, TEXCOORD, DATA0
+	importVertex: function(view) {	//enum POSITION, NORMAL, COLOR, UV_0, DATA0
 		var e = this.importElement(view);
 		var color = e[2];
 		if(color) {
 			color.type = 2; //unsigned byte
 			color.glType = attrGlMap[2];
 		}
-		return { position: e[0], normal: e[1], color: e[2], texCoord: e[3], data: e[4] };
+		return { POSITION: e[0], NORMAL: e[1], COLOR: e[2], UV_0: e[3], data: e[4] };
 	},
 
-	//enum INDEX, NORMAL, COLOR, TEXCOORD, DATA0
+	//enum INDEX, NORMAL, COLOR, UV, DATA0
 	importFace: function(view) {
 		var e = this.importElement(view);
 		var color = e[2];
@@ -511,7 +512,7 @@ Mesh.prototype = {
 			color.type = 2; //unsigned byte
 			color.glType = attrGlMap[2];
 		}
-		return { index: e[0], normal: e[1], color: e[2], texCoord: e[3], data: e[4] };
+		return { INDEX: e[0], NORMAL: e[1], COLOR: e[2], UV_0: e[3], data: e[4] };
 	},
 
 	importSignature: function(view) {
@@ -557,10 +558,10 @@ Mesh.prototype = {
 	importHeader3: function(view) {
 		var h = {};
 		let jsonLength = getUint32(view);
-		if(jsonLength < view.length - 12) {
-			this.headerSize = jsonLength + 12;
+		this.headerSize = jsonLength + 12;
+		if(this.headerSize < view.length)
 			return null;
-		}
+		
 		var str = String.fromCharCode.apply(null, new Uint8Array(view.buffer, 12, jsonLength));
 		h = JSON.parse(str);		
 		h.version = 3;
@@ -858,15 +859,15 @@ Instance.prototype = {
 			var nv = m.nvertices[n];
 			var offset = nv*12;
 
-			if(m.vertex.texCoord && attr.uv >= 0){
+			if(m.vertex.UV_0 && attr.uv >= 0){
 				gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset), offset += nv*8;
 				gl.enableVertexAttribArray(attr.uv);
 			}
-			if(m.vertex.color && attr.color >= 0){
+			if(m.vertex.COLOR && attr.color >= 0){
 				gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset), offset += nv*4;
 				gl.enableVertexAttribArray(attr.color);
 			}
-			if(m.vertex.normal && attr.normal >= 0){
+			if(m.vertex.NORMAL && attr.normal >= 0){
 				gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset);
 				gl.enableVertexAttribArray(attr.normal);
 			}
@@ -913,7 +914,7 @@ Instance.prototype = {
 
 				var count = nv;
 				if(count != 0) {
-					if(m.vertex.texCoord) {
+					if(m.vertex.UV_0) {
 						var texid = m.patches[m.nfirstpatch[n]*4+2];
 						if(texid != -1 && texid != last_texture) { //bind texture
 							var tex = m.texids[texid];
@@ -940,7 +941,7 @@ Instance.prototype = {
 						continue;
 				}
 				if(end > offset) {
-					if(m.vertex.texCoord) {
+					if(m.vertex.UV_0) {
 						var texid = m.patches[p*4+2];
 						if(texid != -1 && texid != last_texture) { //bind texture
 							var tex = m.texids[texid];
@@ -1033,7 +1034,7 @@ function removeNode(context, node) {
 	context.gl.deleteBuffer(m.ibo[n]);
 	m.vbo[n] = m.ibo[n] = null;
 
-	if(!m.vertex.texCoord) return;
+	if(!m.vertex.UV_0) return;
 	if (m.texreq && m.texreq.readyState != 4) m.texreq.abort();
 	var tex = m.patches[m.nfirstpatch[n]*4+2]; //TODO assuming one texture per node
 	m.texref[tex]--;
@@ -1088,7 +1089,7 @@ function requestNodeTexture(context, node) {
 	var n = node.id;
 	var m = node.mesh;
 
-	if(!m.vertex.texCoord) return;
+	if(!m.vertex.UV_0) return;
 
 	var tex = m.patches[m.nfirstpatch[n]*4+2];
 	m.texref[tex]++;
@@ -1106,7 +1107,7 @@ function requestNodeTexture(context, node) {
 		function() {
 			removeNode(context, node);
 		},
-		'blob'
+		'arraybuffer'
 	);
 }
 
@@ -1147,7 +1148,7 @@ function loadNodeGeometry(request, context, node) {
 	if(!m.compressed)
 		readyNode(node);
 	else if(m.meco) {
-		var sig = { texcoords: m.vertex.texCoord, normals:m.vertex.normal, colors:m.vertex.color, indices: m.face.index }
+		var sig = { texcoords: m.vertex.UV_0, normals:m.vertex.NORMAL, colors:m.vertex.COLOR, indices: m.face.INDEX }
 		var patches = [];
 		for(var k = m.nfirstpatch[n]; k < m.nfirstpatch[n+1]; k++)
 			patches.push(m.patches[k*4+1]);
@@ -1164,16 +1165,26 @@ function loadNodeTexture(request, context, node, texid) {
 	var m = node.mesh;
 	if(m.status[n] == 0) return;
 
-	var blob = request.response;
-	let view = new DataView(request.response);
-	view.offset = 0;
-	let ntext = getUint32(view); 
+	let ntex = 1;
 
+	let offset = 0;
+	let size = request.response.size;
+	let view;
+	if(m.v3) {
+		view = new DataView(request.response);
+		view.offset = 0;
+		ntext = getUint32(view); 
+	}
 	m.status[n] += ntex-1;
 	for(let i = 0; i < ntex; i++) {
-		let size = getUint32(view);
-		let blob = new Uint8Array(view.buffer, view.offset, size);
-		view.offset += size;
+		if(m.v3) {
+			size = getUint32(view);
+			offset = view.offset;
+			view.offset += size;
+		}
+
+		let blob = new Blob([new Uint8Array(request.response, offset, size)]);
+
 		var urlCreator = window.URL || window.webkitURL;
 		var img = document.createElement('img');
 		img.onerror = function(e) { console.log("Texture loading error!"); };
@@ -1181,6 +1192,7 @@ function loadNodeTexture(request, context, node, texid) {
 
 		var gl = context.gl;
 		img.onload = function() {
+			console.log(img);
 			urlCreator.revokeObjectURL(img.src);
 
 			var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
@@ -1243,28 +1255,31 @@ function readyNode(node) {
 
 	if(!m.corto) {
 		indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
+//TODO why vertices is not build using node.buffer?
+//suspect: might be with the byte alignmente required:
+//coords, uv, color (4 bytes), normal
 		vertices = new Uint8Array(nv*m.vsize);
 		var view = new Uint8Array(node.buffer, 0, nv*m.vsize);
 		var v = view.subarray(0, nv*12);
 		vertices.set(v);
 		var off = nv*12;
-		if(m.vertex.texCoord) {
+		if(m.vertex.UV_0) {
 			var uv = view.subarray(off, off + nv*8);
 			vertices.set(uv, off);
 			off += nv*8;
 		}
-		if(m.vertex.normal && m.vertex.color) {
+		if(m.vertex.NORMAL && m.vertex.COLOR) {
 			var no = view.subarray(off, off + nv*6);
 			var co = view.subarray(off + nv*6, off + nv*6 + nv*4);
 			vertices.set(co, off);
 			vertices.set(no, off + nv*4);
 		}
 		else {
-			if(m.vertex.normal) {
+			if(m.vertex.NORMAL) {
 				var no = view.subarray(off, off + nv*6);
 				vertices.set(no, off);
 			}
-			if(m.vertex.color) {
+			if(m.vertex.COLOR) {
 				var co = view.subarray(off, off + nv*4);
 				vertices.set(co, off);
 			}
@@ -1280,9 +1295,9 @@ function readyNode(node) {
 			uv.set(model.uv);
 			off += nv*8;
 		}
-		if(model.color) {
+		if(model.COLOR) {
 			var co = new Uint8Array(vertices, off, nv*4);
-			co.set(model.color);
+			co.set(model.COLOR);
 			off += nv*4;
 		}
 		if(model.normal) {

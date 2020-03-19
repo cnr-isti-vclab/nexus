@@ -373,11 +373,13 @@ void printNodes(NexusData& nexus) {
 			if (nexus.patches[node.first_patch].node == sink)
 				last_level_size += node.getEndOffset() - node.getBeginOffset();
 
-			int n = nexus.header.signature.face.hasIndex() ? node.nface : node.nvert;
+			int nv = node.nvert;
+			int nf = node.nface;
 			//compute primitives
 			cout << "Node: " << i << "\t  Error: " << node.error << "\t"
 				<< " Sphere r: " << node.sphere.Radius() << "\t"
-				<< "Primitives: " << n << "\t"
+				<< "NF: " << nf << "\t"
+				<< "NV: " << nv << "\t"
 				<< "Size: " << node.getSize() << "\n";
 
 			mean += node.nface;

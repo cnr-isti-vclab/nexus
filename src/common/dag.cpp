@@ -180,7 +180,7 @@ std::vector<char> Header3::write() {
 	bwrite<uint32_t>(data, version);
 	bwrite<uint32_t>(data, json_length);
 	assert(strlen(str.c_str()) == str.size());
-	memcpy(data, str.c_str(), str.size()+1);
+	memcpy(data, str.c_str(), str.size());
 
 	
 	index_offset = json_length + 12;
