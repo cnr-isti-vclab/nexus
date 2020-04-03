@@ -110,12 +110,13 @@ NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scalin
 
 bool NexusBuilder::initAtlas() {
 	for(auto &material: materials) {
-		bool success = atlas.addTextures(material.textures);
+		bool success = atlas.addTextures(material.textures, material.flipY);
 		if(!success)
 			return false;
 	}
 	nodeTexCreator.atlas = &atlas;
 	nodeTexCreator.materials = &materials;
+	nodeTexCreator.createPowTwoTex = createPowTwoTex;
 	return true;
 }
 
@@ -393,13 +394,15 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 #endif
 					writer.write(nodetex);
 
-/* DEBUG
+//#define SAVE_NODE_MESH
+#ifdef  SAVE_NODE_MESH
 					static int counter = 0;
 					QString texname = QString::number(counter) + ".jpg";
 					nodetex.save(texname);
 					tmp.textures.push_back(texname.toStdString());
 					tmp.savePlyTex(QString::number(counter) + ".ply", texname);
-					counter++; */
+					counter++;
+#endif
 					//No padding needed!
 					//qint64 file_end = pad(nodeTex.size());
 					int64_t image_end = nodeTex.size();
@@ -445,6 +448,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				nface = mesh1.fn;
 			} else {
 				
+cout << "e do not need skiplevel: qwe need to group and do not simplify increasing the number of triangles per mesh! with a max of texel per patch instead." << endl;
 				int target_faces = soup.size()*scaling;
 				//if(pixelXedge > 10) {
 				//When textures are too big for the amount of geometry we skip some level of geometry simplification.
@@ -619,6 +623,8 @@ void NexusBuilder::save(QString filename) {
 		size += chunks.chunkSize(chunk);
 	}
 	nodes.back().offset = size/NEXUS_PADDING;
+	//TODO if notes textures are not shared, put them consecutively
+	//so
 
 	if(textures.size()) {
 		if(!useNodeTex) { //texture.offset keeps the size of each texture

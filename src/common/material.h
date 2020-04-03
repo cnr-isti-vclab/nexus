@@ -17,6 +17,7 @@ typedef unsigned __int64 uint64_t;
 
 #include <QString>
 #include <vector>
+#include <map>
 
 
 /* Material loading strategy:
@@ -69,24 +70,29 @@ public:                               // gltf                  //obj
 
 	float norm_scale = 0.0f;        //normalTexture scale
 	float specular[4] = { 0, 0, 0, 0};                                     //Ks
-	float glossines = 0.0f;                                  //Ns
+	float glossiness = 0.0f;                                  //Ns
 	float occlusion = 0.0f;         //occlusionTexture->strength
 
 	uint8_t nmaps = 0;
+
+	//TODO this should best be an array with enum index or just use gltf material
 	//map number in texture group.
 	int8_t color_map = -1;          // baseColorTexture      //map_kd
 	int8_t metallic_map = -1;       //metallicRoughnessTexture
-	int8_t norm_map = -1;           //normalTextuire         //norm
+	int8_t normal_map = -1;           //normalTextuire         //norm
 	int8_t bump_map = -1;           //                       //bump bumb_map
 	int8_t specular_map = -1;                                //map_ks
-	int8_t glossines_map = -1;                               //
+	int8_t glossiness_map = -1;                               //
 	int8_t occlusion_map = -1;             //occlustionTexture
+
 };
 
 class BuildMaterial: public Material {
 public:
 	int32_t atlas_offset;
+	bool flipY = true;
 	std::vector<QString> textures;
+	std::map<int32_t, int8_t> countMaps();
 };
 
 class BuildMaterials: public std::vector<BuildMaterial> {

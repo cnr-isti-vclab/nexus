@@ -27,17 +27,35 @@ bool textureCompatible(BuildMaterial &a, BuildMaterial &b) {
 		sameParameter(a.roughness, b.roughness) &&
 		sameParameter(a.norm_scale, b.norm_scale) &&
 		sameColor(a.specular, b.specular) &&
-		sameParameter(a.glossines, b.glossines) &&
+		sameParameter(a.glossiness, b.glossiness) &&
 		sameParameter(a.occlusion, b.occlusion) &&
 		a.nmaps == b.nmaps &&
 		sameMap(a.color_map, b.color_map) &&
 		sameMap(a.metallic_map, b.metallic_map) &&
-		sameMap(a.norm_map, b.norm_map) &&
+		sameMap(a.normal_map, b.normal_map) &&
 		sameMap(a.bump_map, b.bump_map) &&
 		sameMap(a.specular_map, b.specular_map) &&
-		sameMap(a.glossines_map, b.glossines_map) &&
+		sameMap(a.glossiness_map, b.glossiness_map) &&
 		sameMap(a.occlusion_map, b.occlusion_map);
 }
+
+map<int32_t, int8_t> BuildMaterial::countMaps() {
+	nmaps = 0;
+	map<int32_t, int8_t> remap;
+
+	int count = 0;
+	if(color_map >= 0      && !remap.count(color_map))      remap[color_map] = count++;
+	if(metallic_map >= 0   && !remap.count(metallic_map))   remap[metallic_map] = count++;
+	if(normal_map >= 0     && !remap.count(normal_map))     remap[normal_map] = count++;
+	if(bump_map >= 0       && !remap.count(bump_map))       remap[bump_map] = count++;
+	if(specular_map >= 0   && !remap.count(specular_map))   remap[specular_map] = count++;
+	if(glossiness_map >= 0 && !remap.count(glossiness_map)) remap[glossiness_map] = count++;
+	if(occlusion_map >= 0  && !remap.count(occlusion_map))  remap[occlusion_map] = count++;
+
+	nmaps = remap.size();
+	return remap;
+}
+
 
 
 void BuildMaterials::unifyMaterials() {

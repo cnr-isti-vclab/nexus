@@ -24,6 +24,30 @@ unsigned int nextPowerOf2 ( unsigned int n ) {
 	return 1 << count;
 }
 
+void closestPowerOf2(int32_t &p) {
+	int32_t n = nextPowerOf2(p);
+	if(n/(float)p > 1.40)
+		n /= 2;
+	p = n;
+}
+
+
+void closestPowerOf2(vcg::Point2i &p) {
+	closestPowerOf2(p[0]);
+	closestPowerOf2(p[1]);
+	return;
+	//find the smallest power of two that contains the box
+	uint32_t W = nextPowerOf2(p[0]);
+	uint32_t H = nextPowerOf2(p[1]);
+	//compute scaling factore and compare with the shrinking factor.
+	float scaling = W/(float)p[0];
+	if(scaling > 4.0f/3.0f) {
+		W /= 2; H /= 2;
+	}
+	p[0] = W;
+	p[1] = H;
+}
+
 class UnionFind {
 public:
 	std::vector<int> parents;
@@ -94,6 +118,14 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 		face.tex = materials->material_map[face.tex];
 		for(int i = 0; i < 3; i++) {
 			v[i] = face.V(i) - &*mesh.vert.begin();
+			/* DEBUG
+			TVertex &v0 = *face.V(i);
+			TVertex &v1 = *face.V((i+1)%3);
+			auto &p0 = v0.T().P();
+			auto &p1 = v1.T().P();
+			float dx = fabs(v0.T().P()[0] - v1.T().P()[0]);
+			if(dx > 0.1)
+				cout << "Cosa succede?\n"; */
 
 			int &t = vertex_to_material[v[i]];
 			if(t != -1 && t != face.tex)
@@ -193,11 +225,11 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 	//Pack boxes
 	std::vector<vcg::Point2i> mapping;
 	vcg::Point2i maxSize(1096, 1096);
-	vcg::Point2i finalSize;
+	vcg::Point2i packedSize;
 	bool success = false;
 	for(int i = 0; i < 5; i++, maxSize[0]*= 2, maxSize[1]*= 2) {
 		if(sizes.size() == 0) { //no texture!
-			finalSize = vcg::Point2i(1, 1);
+			packedSize = vcg::Point2i(1, 1);
 			success = true;
 			break;
 		}
@@ -210,7 +242,7 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 			continue;
 		}
 		mapping.clear(); //TODO this should be done inside the packer
-		success = vcg::RectPacker<float>::PackInt(sizes, maxSize, mapping, finalSize);
+		success = vcg::RectPacker<float>::PackInt(sizes, maxSize, mapping, packedSize);
 		if(success)
 			break;
 	}
@@ -220,10 +252,19 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 		exit(0);
 	}
 
+	vcg::Point2i finalSize = packedSize;
+
+//	if (createPowTwoTex) {
+
+//		finalSize[ 0 ] = (int) nextPowerOf2( finalSize[ 0 ] );
+//		finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
+//	}
+
 	if (createPowTwoTex) {
-		finalSize[ 0 ] = (int) nextPowerOf2( finalSize[ 0 ] );
-		finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
+		//could use bigger size of 2 or separated closest
+		closestPowerOf2(finalSize);
 	}
+
 
 	//temporary: here we sould just create image and split by materials for each texture_map material
 	int32_t material_id = *final_materials.begin();
@@ -232,13 +273,15 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 	group.material = material_id;
 	group.resize(material.nmaps);
 	for(int8_t i = 0; i < material.nmaps; i++) {
-		group[i] = QImage(finalSize[0], finalSize[1], QImage::Format_RGB32);
+		group[i] = QImage(packedSize[0], packedSize[1], QImage::Format_RGB32);
 		group[i].fill(QColor(127, 127, 127));
 	}
-	//copy boxes using mapping
 
-	float pdx = 1/(float)finalSize[0];
-	float pdy = 1/(float)finalSize[1];
+	//Compute uv using origins and mapping
+
+	//size of a pixel in texture coordinates
+	float pdx = 1/(float)packedSize[0];
+	float pdy = 1/(float)packedSize[1];
 
 	for(size_t i = 0; i < mesh.vert.size(); i++) {
 		auto &p = mesh.vert[i];
@@ -248,15 +291,14 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 			uv = vcg::Point2f(0.0f, 0.0f);
 			continue;
 		}
-		vcg::Point2i &o = origins[b];
-		vcg::Point2i m = mapping[b];
+		vcg::Point2i &o = origins[b]; //of the box in the original texture (in pixels)
+		vcg::Point2i m = mapping[b]; //position of the box in the new texture (in pixels)
 
-		//QImageReader &img = textures[box_texture[b]];
 		int mat = box_texture[b];
 		int32_t first_tex = atlas->getTextureId(materials->at(mat).textures[0]);
 
-		float w = atlas->width(first_tex, level); //img->size().width();
-		float h = atlas->height(first_tex, level); //img->size().height();
+		float w = atlas->width(first_tex, level);
+		float h = atlas->height(first_tex, level);
 		float px = 1/(float)w;
 		float py = 1/(float)h;
 
@@ -265,6 +307,7 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 		if(uv[1] < 0.0f)
 			uv[1] = 0.0f;
 
+		//dx and dy coordinate relative to the box in pixels.
 		float dx = uv[0]/px - o[0];
 		float dy = uv[1]/py - o[1];
 		if(dx < 0.0f) dx = 0.0f;
@@ -281,6 +324,7 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 	float pdx2 = pdx*pdx;
 	error = 0.0;
 	pixelXedge = 0.0f;
+	float avgerror = 0.0f;
 	for(auto &face: mesh.face) {
 		for(int k = 0; k < 3; k++) {
 			int j = (k==2)?0:k+1;
@@ -336,31 +380,52 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 				assert(tex >= 0 && tex < atlas->pyramids.size());
 				QImage rect = atlas->read(tex, level, QRect(o[0], o[1], s[0], s[1]));
 				painter.drawImage(mapping[i][0], mapping[i][1], rect);
-
-		//		painter.fillRect(mapping[i][0], mapping[i][1], s[0], s[1], QColor(color[0], color[1], color[2]));
-		//		boxid++;
 			}
+
+#ifdef PAINT_TEX_TRIANGLES
+			painter.setPen(QColor(255,0,255));
+			for(int i = 0; i < mesh.face.size(); i++) {
+				auto &face = mesh.face[i];
+				int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
+				vcg::Point2i &o = origins[b];
+				vcg::Point2i m = mapping[b];
+
+				for(int k = 0; k < 3; k++) {
+					int j = (k==2)?0:k+1;
+					auto V0 = face.V(k);
+					auto V1 = face.V(j);
+					float x0 = V0->T().P()[0]/pdx; //how many pixels from the origin
+					float y0 = V0->T().P()[1]/pdy; //how many pixels from the origin
+					float x1 = V1->T().P()[0]/pdx; //how many pixels from the origin
+					float y1 = V1->T().P()[1]/pdy; //how many pixels from the origin
+					painter.drawLine(x0, y0, x1, y1);
+				}
+			}
+#endif
 		}
 
 
-		/*	painter.setPen(QColor(255,0,255));
-		for(int i = 0; i < mesh.face.size(); i++) {
-			auto &face = mesh.face[i];
-			int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
-			vcg::Point2i &o = origins[b];
-			vcg::Point2i m = mapping[b];
 
-			for(int k = 0; k < 3; k++) {
-				int j = (k==2)?0:k+1;
-				auto V0 = face.V(k);
-				auto V1 = face.V(j);
-				float x0 = V0->T().P()[0]/pdx; //how many pixels from the origin
-				float y0 = V0->T().P()[1]/pdy; //how many pixels from the origin
-				float x1 = V1->T().P()[0]/pdx; //how many pixels from the origin
-				float y1 = V1->T().P()[1]/pdy; //how many pixels from the origin
-				painter.drawLine(x0, y0, x1, y1);
-			}
-		}*/
+
+		//		painter.fillRect(mapping[i][0], mapping[i][1], s[0], s[1], QColor(color[0], color[1], color[2]));
+		//		boxid++;
+
+		if (createPowTwoTex) {
+			QImage final(finalSize[0], finalSize[1], QImage::Format_RGB32);
+			final.fill(QColor(127, 127, 127));
+			QPainter painter(&final);
+			painter.drawImage(QRectF(0, 0, finalSize[0], finalSize[1]), group[t],
+				QRectF(0, 0, packedSize[0], packedSize[1]));
+
+			group[t] = final;
+		}
+
+
+
+
+
+
+
 		/*
 		for(int i = 0; i < mesh.vert.size(); i++) {
 			auto &p = mesh.vert[i];
@@ -376,6 +441,10 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 			painter.drawPoint(x, y);
 		} */
 		group[t] = group[t].mirrored();
+#ifdef SAVE_NODE_TEX
+		static int imgcount = 0;
+		group[t].save(QString("OUT_test_%1_%2.jpg").arg(imgcount++).arg(t));
+#endif
 	}
 
 	//static int imgcount = 0;

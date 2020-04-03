@@ -1,5 +1,5 @@
 #include "dag.h"
-#include "json.hpp"
+#include "simplejson.hpp"
 #include <string.h>
 
 using namespace nx;
@@ -233,12 +233,12 @@ Material readMaterial(JSON &json) {
 
 	//NORMAL
 	if(json.hasKey("normalTexture")) {
-		m.norm_map=  int32_t(json["normalTexture"]["index"].ToInt());
+		m.normal_map=  int32_t(json["normalTexture"]["index"].ToInt());
 		m.norm_scale=  float(json["normalTexture"]["scale"].ToFloat());
 	}
 
 	if(json.hasKey("bumpTexture")) {
-		m.norm_map=  json["bumpTexture"]["index"].ToInt();
+		m.normal_map=  json["bumpTexture"]["index"].ToInt();
 	}
 
 	//SPECULAR
@@ -251,19 +251,17 @@ Material readMaterial(JSON &json) {
 		m.specular_map = int32_t(pbr["specularTexture"].ToInt());
 
 	//GLOSSINESS
-	if(json.hasKey("glossinesFactor"))
-		m.glossines = float(pbr["glossinesFactor"].ToFloat());
+	if(json.hasKey("glossinessFactor"))
+		m.glossiness = float(pbr["glossinesFactor"].ToFloat());
 
-	if(json.hasKey("glossinesTexture"))
-		m.glossines_map = int32_t(pbr["glossinesTexture"]["index"].ToInt());
+	if(json.hasKey("glossinessTexture"))
+		m.glossiness_map = int32_t(pbr["glossinesTexture"]["index"].ToInt());
 
 
 	//OCCLUSION
-	if(json.hasKey("occlusionFactor"))
-
 	if(json.hasKey("occlusionTexture")) {
-		m.glossines_map = int32_t(pbr["occlusionTexture"]["index"].ToInt());
-		m.glossines = float(pbr["occlusionFactor"]["strength"].ToFloat());
+		m.glossiness_map = int32_t(pbr["occlusionTexture"]["index"].ToInt());
+		m.glossiness = float(pbr["occlusionFactor"]["strength"].ToFloat());
 	}
 	return m;
 }
@@ -286,22 +284,25 @@ JSON writeMaterial(Material &m) {
 		\
 		json["pbrMetallicRoughness"] = pbr;
 	}
-	if(m.norm_map != -1)
+	if(m.normal_map != -1)
 		json["normalTexture"] = {
 			"scale", m.norm_scale,
-			"index", m.norm_map,
+			"index", m.normal_map,
 			};
 
+	if(m.bump_map != -1)
+		json["bumpTexture"] = { "index", m.bump_map };
+
 	if(m.specular_map != -1)
-		json["specularTexture"] = { "index", m.norm_map };
+		json["specularTexture"] = { "index", m.specular_map };
 	if(m.specular[3] != 0.0f)
 		json["specularFactor"] = json::Array(m.specular[0], m.specular[1], m.specular[2], m.specular[3]);
 
 
-	if(m.glossines_map  != -1)
-		json["glossinessTexture"] = { "index", m.norm_map };
-	if(m.glossines != 0.0f)
-		json["glossinesFactor"] = m.glossines;
+	if(m.glossiness_map  != -1)
+		json["glossinessTexture"] = { "index", m.glossiness_map };
+	if(m.glossiness != 0.0f)
+		json["glossinessFactor"] = m.glossiness;
 
 	if(m.occlusion_map >= 0)
 		json["occlusionTexture"] = {

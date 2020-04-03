@@ -134,6 +134,7 @@ PlyLoader::PlyLoader(QString filename):
 	}
 
 	if(materials.size() == 0) {
+
 		//create an empty material
 		materials.push_back(BuildMaterial());
 		has_textures = false;

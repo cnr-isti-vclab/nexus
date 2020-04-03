@@ -5,7 +5,7 @@ CONFIG   += console
 CONFIG   -= app_bundle
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++11 -g
+QMAKE_CXXFLAGS += -std=c++14 -g
 
 INCLUDEPATH += \
     ../../../vcglib \
@@ -36,7 +36,8 @@ SOURCES += \
     stlloader.cpp \
     ../common/signature.cpp \
     nodetexcreator.cpp \
-    ../common/material.cpp
+    ../common/material.cpp \
+    gltfloader.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -61,7 +62,8 @@ HEADERS += \
     stlloader.h \
     ../common/material.h \
     nodetexcreator.h \
-    ../common/json.hpp
+    ../common/json.hpp \
+    gltfloader.h
 
 DESTDIR = "../../bin"
 

@@ -35,7 +35,7 @@ void getColor(char *buffer, float *color) {
 	int n = sscanf(buffer, "%s %f %f %f", field, color, color+1, color+2);
 	if(n != 4)
 		throw QString("Failed parsing material value: ") + buffer;
-	color[3] = 255;
+	color[3] = 1.0f;
 }
 
 void getValue(char *buffer, float &value) {
@@ -103,6 +103,16 @@ void ObjLoader::cacheTextureUV() {
 void ObjLoader::readMTLs() {
 	for(auto mtl: mtls)
 		readMTL(mtl);
+
+	if(mtls.size() > 0)
+		return;
+
+	//create a basic material when no mtl has been specified.
+	//material_map[mtltag] = materials.size() + materialOffset;
+	BuildMaterial material;
+	material.color[0] = material.color[1] = material.color[2] = 1.0f;
+	materials.push_back(material);
+
 
 	//TODO
 	/* Materials and textures will be merged at the end of the loading!
@@ -228,11 +238,12 @@ void ObjLoader::readMTL(QString mtl_path) {
 					continue;
 				}
 				if(str.startsWith("Ns", Qt::CaseInsensitive)){
-					getValue(buffer, material.glossines);
+					getValue(buffer, material.glossiness);
 					continue;
 				}
 
-				if(str.startsWith("map_bump", Qt::CaseInsensitive)){
+				//TODO check for bump also str.startsWith("bump", Qt::CaseInsensitive) ||
+				if(str.startsWith("map_bump", Qt::CaseInsensitive)) {
 					txtfname = str.mid(9).trimmed();
 					txtfname = txtfname.remove(QRegExp("^(\")"));
 					txtfname = txtfname.remove(QRegExp("(\")$"));

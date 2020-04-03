@@ -24,6 +24,7 @@ for more details.
 #include "tsploader.h"
 #include "objloader.h"
 #include "stlloader.h"
+#include "gltfloader.h"
 
 
 #include <iostream>
@@ -56,6 +57,9 @@ MeshLoader *Stream::getLoader(QString file, QString material) {
 
 	else if(file.endsWith(".stl"))
 		loader = new STLLoader(file);
+
+	else if(file.endsWith(".gltf"))
+		loader = new GltfLoader(file);
 
 	/*        else if(file.endsWith(".off"))
 		loader = new OffLoader(file, vertex_quantization, max_memory);*/

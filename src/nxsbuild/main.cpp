@@ -128,7 +128,11 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if(output == "") output = inputs[0].left(inputs[0].length()-4);
+	if(output == "") {
+		int lastPoint = inputs[0].lastIndexOf(".");
+		output = inputs[0].left(lastPoint);
+	}
+
 	if(!output.endsWith(".nxs"))
 		output += ".nxs";
 

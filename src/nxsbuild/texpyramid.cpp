@@ -9,7 +9,7 @@
 using namespace nx;
 using namespace std;
 
-bool TexLevel::init(int t, TexAtlas *c, QString filename) {
+bool TexLevel::init(int t, TexAtlas *c, QString filename, bool flipY) {
 	tex = t;
 	level = 0;
 	collection = c;
@@ -20,19 +20,22 @@ bool TexLevel::init(int t, TexAtlas *c, QString filename) {
 	width = test.size().width();
 	height = test.size().height();
 
+
 	tilew = (width-1)/side +1;
 	tileh = (height-1)/side +1;
 
 	for(int y = 0; y < tileh; y++) {
+		int sy = y*side;
+		int wy = (sy + side > height)? height - sy : side;
+		if(flipY)
+			sy = height - (sy + wy);
+
 		for(int x = 0; x < tilew; x++) {
 			int sx = x*side;
 			int wx = (sx + side > width)? width - sx : side;
-			int sy = y*side;
-			int wy = (sy + side > height)? height - sy : side;
 			QImageReader reader(filename);
-			//invert y.
-			int isy = height - (sy + wy);
-			reader.setClipRect(QRect(sx, isy, wx, wy));
+
+			reader.setClipRect(QRect(sx, sy, wx, wy));
 
 			QImage img(wx, wy, QImage::Format_RGB32);
 			bool ok = reader.read(&img);
@@ -40,7 +43,8 @@ bool TexLevel::init(int t, TexAtlas *c, QString filename) {
 				cout << "Failed reading texture: " << qPrintable(reader.fileName()) << qPrintable(reader.errorString()) <<  endl;
 				return false;
 			}
-			img = img.mirrored();
+			if(flipY)
+				img = img.mirrored();
 			collection->addImg(TexAtlas::Index(tex, level, x + y*tilew), img);
 		}
 	}
@@ -107,18 +111,18 @@ void TexLevel::build(TexLevel &parent) {
 			int sh = (sy + oside > parent.height) ? parent.height - sy: oside;
 			QRect region(sx, sy, sw, sh);
 			QImage img = parent.read(region);
-			img = img.scaled(w, h);
+			img = img.scaled(w, h,Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 			collection->addImg(TexAtlas::Index(tex, level, x + tilew*y), img);
 		}
 	}
 }
 
-bool TexPyramid::init(int tex, TexAtlas *c, const QString &file) {
+bool TexPyramid::init(int tex, TexAtlas *c, const QString &file, bool flipY) {
 	collection = c;
 	//create level zero.
 	levels.resize(1);
 	TexLevel &level = levels.back();
-	return level.init(tex, collection, file);
+	return level.init(tex, collection, file, flipY);
 }
 
 QImage TexPyramid::read(int level, QRect region) {
@@ -142,7 +146,7 @@ int TexAtlas::getTextureId(QString filename) {
 	return texture_map[filename];
 }
 
-int32_t TexAtlas::addTexture(QString &filename) {
+int32_t TexAtlas::addTexture(QString &filename, bool flipY) {
 	if(texture_map.count(filename))
 		return texture_map[filename];
 
@@ -150,14 +154,14 @@ int32_t TexAtlas::addTexture(QString &filename) {
 	texture_map[filename] = id;
 	pyramids.push_back(TexPyramid());
 	TexPyramid &py = pyramids.back();
-	bool ok = py.init(id, this, filename);
+	bool ok = py.init(id, this, filename, flipY);
 	if(!ok) {
 		throw ("could not load texture: " + filename);
 	}
 	return id;
 }
 
-bool TexAtlas::addTextures(std::vector<QString> &filenames) {
+bool TexAtlas::addTextures(std::vector<QString> &filenames, bool flipY) {
 	for(QString &filename: filenames) {
 		if(texture_map.count(filename))
 			continue;
@@ -165,7 +169,7 @@ bool TexAtlas::addTextures(std::vector<QString> &filenames) {
 		texture_map[filename] = id;
 		pyramids.push_back(TexPyramid());
 		TexPyramid &py = pyramids.back();
-		bool ok = py.init(id, this, filename);
+		bool ok = py.init(id, this, filename, flipY);
 		if(!ok) {
 			throw ("could not load texture: " + filename);
 		}
