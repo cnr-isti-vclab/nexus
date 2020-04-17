@@ -175,7 +175,7 @@ protected:
 			soup = input->getSoup(block, true);
 		}
 		mesh.load(soup);
-		input->lock(mesh, block);
+		input->lock(mesh, bbufferlock);
 
 		{
 			//QMutexLocker locker(&builder.m_input);

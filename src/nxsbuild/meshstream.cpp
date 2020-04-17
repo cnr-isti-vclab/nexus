@@ -58,7 +58,7 @@ MeshLoader *Stream::getLoader(QString file, QString material) {
 	else if(file.endsWith(".stl"))
 		loader = new STLLoader(file);
 
-	else if(file.endsWith(".gltf"))
+	else if(file.endsWith(".gltf") || file.endsWith(".glb"))
 		loader = new GltfLoader(file);
 
 	/*        else if(file.endsWith(".off"))

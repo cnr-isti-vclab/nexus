@@ -314,17 +314,23 @@ void GltfLoader::setMaxMemory(quint64 max_memory) {
 }
 
 quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
-	if(current_mesh == 0 && current_primitive == 0 && current_triangle == 0)
+	//current_node?!
+
+	if(current_node == 0 && current_primitive == 0 && current_triangle == 0)
 		cacheVertices();
 
-	if(current_mesh >= doc->meshes.size())
+	auto &nodes = doc->scenes[0].nodes;
+
+	if(current_node >= nodes.size())
 		return 0;
 
-	gltf::Mesh &mesh = doc->meshes[current_mesh];
+	gltf::Node &node = doc->nodes[nodes[current_node]];
+	//node.matrix
+	gltf::Mesh &mesh = doc->meshes[node.mesh];
 
 	if(current_primitive >= mesh.primitives.size()) {
 		current_primitive = 0;
-		current_mesh++;
+		current_node++;
 		return getTriangles(size, buffer);
 	}
 
@@ -348,11 +354,17 @@ quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
 	uint16_t *spos = (uint16_t *)(fbuffer.data.data() + accessor.byteOffset + view.byteOffset);
 	uint32_t *ipos = (uint32_t *)(fbuffer.data.data() + accessor.byteOffset + view.byteOffset);
 
+	vcg::Matrix44f m(node.matrix.data());
+	m.transposeInPlace();
+
 	for(uint32_t i = 0; i < toread; i++) {
 		current_triangle++;
 
 		Triangle &triangle = buffer[count];
 		triangle.tex = primitive.material;
+		triangle.node = 0;
+
+
 		for(int k = 0; k < 3; k++) {
 			uint32_t v = 0;
 			if(accessor.componentType == gltf::Accessor::ComponentType::UnsignedShort)
@@ -362,7 +374,14 @@ quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
 			else
 				throw QString("Unsupported type for indexes (only short and int)");
 
-			Vertex &vertex = vertices[v + offset];
+			Vertex vertex = vertices[v + offset];
+			//apply matrix;
+
+			vcg::Point3f p(vertex.v);
+			p = m*p;
+			vertex.v[0] = p[0];
+			vertex.v[1] = p[1];
+			vertex.v[2] = p[2];
 			triangle.vertices[k] = vertex;
 		}
 

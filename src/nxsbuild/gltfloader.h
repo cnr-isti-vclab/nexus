@@ -28,6 +28,8 @@ private:
 
 
 	VirtualArray<Vertex> vertices;
+
+	int32_t current_node = 0;
 	int32_t current_mesh = 0;
 	int32_t current_primitive = 0; //inside mesh
 	int32_t current_triangle = 0; //inside primitive
