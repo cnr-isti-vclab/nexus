@@ -70,7 +70,12 @@ GltfLoader::GltfLoader(QString filename): vertices("cache_gltfvertex") {
 
 	try {
 		doc = new gltf::Document;
-		*doc = fx::gltf::LoadFromText(filename.toStdString(), readQuotas);
+		if(filename.endsWith("glb")) {
+			*doc = fx::gltf::LoadFromBinary(filename.toStdString(), readQuotas);
+		} else {
+			*doc = fx::gltf::LoadFromText(filename.toStdString(), readQuotas);
+		}
+
 		gltf::Document &model = *doc;
 
 		//look for buffers where to read.

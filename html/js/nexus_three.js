@@ -294,10 +294,16 @@ NexusObject.prototype.createMaterialsV3 = function(createMaterial) {
 		options.shininess = m.glossiness;
 	}
 
-	if(0 && mesh.vertex.NORMAL) {
+	if(mesh.vertex.NORMAL) {
 		var normals = new Float32Array([1, 1, 1]);
 		geometry.setAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
+	} else {
+		options.flatShading = true;
 	}
+
+//TODO test these options
+//	options.vertexTangents = true;
+//	options.wireframe = true;
 
 
 	if(createMaterial) {

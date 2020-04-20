@@ -4,7 +4,7 @@
 <title>Nexus threejs</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-<style>body { margin: 0px; overflow: hidden; }</style>
+<style>body { margin: 0px;}</style>
 <script src="js/nexus.js"></script>
 </head>
 
@@ -19,10 +19,8 @@
 		<a href="nxsloader.html?model=models/sketchfab/knabe.gltf/scene.nxs ">Knabe gltf</a>
 		<a href="nxsloader.html?model=models/sketchfab/monkey.gltf/scene.nxs ">Monkey gltf</a>        
 		<a href="nxsloader.html?model=models/sketchfab/naiad.gltf/scene.nxs ">Naiad gltf</a>        
-
-		<a href="nxsloader.html?model=models/gltf/2.0/2CylinderEngine/glTF/2CylinderEngine.nxs">2CylinderEngine</a>        
-
-
+		<a href="nxsloader.html?model=models/gltf/2.0/2CylinderEngine/glTF/2CylinderEngine.nxs">2CylinderEngine</a>   
+		<a href="nxsloader.html?model=models/alex/pile.nxs">Pile</a>             
 	</p>
 	<div id="container"><canvas id="canvas" style="width:100vw; height:90vh"></canvas></div>
 </body>
@@ -130,7 +128,7 @@ function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
-var model = getURLParameter('model') || "models/tutan.nxs";
+var model = getURLParameter('model') || "models/alex/pile.nxs";
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
 
