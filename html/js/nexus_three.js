@@ -1,7 +1,7 @@
 /*
-The MIT License
-
-Copyright (c) 2012-2019, Visual Computing Lab, ISTI - CNR, Nexus.
+Nexus
+Copyright (c) 2012-2020, Visual Computing Lab, ISTI - CNR
+All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,12 +33,14 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 
 	geometry.center = nocenter;
 
-/*function() { 
+/*
+function() { 
                 var s = 1/instance.mesh.sphere.radius;
                 var pos = instance.mesh.sphere.center;
                 mesh.position.set(-pos[0]*s, -pos[1]*s, -pos[2]*s);
                 mesh.scale.set(s, s, s); 
-	}; */
+};
+*/
 
 	var positions = new Float32Array(3);
 	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -96,10 +98,12 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 		}
 
 		//this seems not to be needed to setup the attributes and shaders
-/*		if(this.mesh.face.index) {
+/*
+		if(this.mesh.face.index) {
 			var indices = new Uint32Array(3);
 			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
-		} */
+		}
+*/
 		if(onLoad) onLoad(mesh);
 	};
 	instance.onUpdate = function() { onUpdate(this) };
