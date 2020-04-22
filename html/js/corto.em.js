@@ -1,6 +1,26 @@
-// This file is part of corto library and is distributed under the terms of MIT License.
-// Copyright (C) 2019-2020, by Federico Ponchio (ponchio@gmail.com)
+/*
+Corto
+Copyright (c) 2017-2020, Visual Computing Lab, ISTI - CNR
+All rights reserved.
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
 
 onmessage = async function(job) {
 	if(typeof(job.data) == "string") return;
@@ -10,10 +30,9 @@ onmessage = async function(job) {
 	if(!CortoDecoder.instance)
 		await CortoDecoder.ready;
 
-//TODO support 3 component colors
-/*	if(decoder.attributes.color && job.data.rgba_colors)
-		decoder.attributes.color.outcomponents = 4; */
-	
+//	TODO support 3 component colors
+//	if(decoder.attributes.color && job.data.rgba_colors) decoder.attributes.color.outcomponents = 4;
+
 	var geometry = CortoDecoder.decode(buffer, job.data.short_index, job.data.short_normals);
 
 	//pass back job
@@ -159,7 +178,6 @@ var CortoDecoder = (function() {
 		}
 
 		geometry.position = new Float32Array(new Float32Array(heap.buffer, pptr, nvert*3));
-
 
 		if(hasNormal) {
 			if(shortNormal)

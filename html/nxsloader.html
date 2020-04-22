@@ -19,15 +19,10 @@
 		<a href="nxsloader.html?model=models/sketchfab/knabe.gltf/scene.nxs ">Knabe gltf</a>
 		<a href="nxsloader.html?model=models/sketchfab/monkey.gltf/scene.nxs ">Monkey gltf</a>        
 		<a href="nxsloader.html?model=models/sketchfab/naiad.gltf/scene.nxs ">Naiad gltf</a>        
-
 		<a href="nxsloader.html?model=models/gltf/2.0/2CylinderEngine/glTF/2CylinderEngine.nxs">2CylinderEngine</a>        
-
-
 	</p>
 	<div id="container"><canvas id="canvas" style="width:100vw; height:90vh"></canvas></div>
 </body>
-
-
 
 <script type="module">
 import * as THREE from './js/three.module.js';
@@ -36,7 +31,7 @@ import { OrbitControls } from './js/controls/OrbitControls.js';
 
 
 function onWindowResize() {
-	let w = window.innerWidth - 50;
+	let w = window.innerWidth;
 	let h = window.innerHeight;
 	camera.aspect = w / h;
 	camera.updateProjectionMatrix();
@@ -62,12 +57,10 @@ function animate() {
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 20 );
 camera.position.z = 4;
 
-
 var scene = new THREE.Scene();
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
 scene.add( new THREE.AmbientLight( 0x444444 ) );
 scene.background = new THREE.Color( 0x000000 );
-
 
 var light1 = new THREE.DirectionalLight( 0xffffff, 1.0 );
 light1.position.set( 1, 1, -1 );
@@ -87,9 +80,6 @@ renderer.setPixelRatio( window.devicePixelRatio );
 //var container = document.getElementById( 'container');
 //container.appendChild( renderer.domElement );
 
-
-
-
 let controls = new OrbitControls( camera, renderer.domElement );
 controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
 controls.rotateSpeed = 0.7;
@@ -105,13 +95,11 @@ controls.addEventListener( 'change', ()=> { redraw = true; } );
 function onNexusLoad(nexus) {
 	scene.add( nexus );
 
-	let boundingBox = new THREE.Box3();	
+	let boundingBox = new THREE.Box3();
 	boundingBox = nexus.computeBoundingBox();
 	//boundingBox.setFromObject( nexus )
-	let center = new THREE.Vector3();	
+	let center = new THREE.Vector3();
 	boundingBox.getCenter(center);
-	
-	
 
 	let size = new THREE.Vector3();
 	boundingBox.getSize(size);
@@ -119,10 +107,10 @@ function onNexusLoad(nexus) {
 	let s = 2/Math.max(size.x, size.y, size.z);
 
 	nexus.scale.copy(new THREE.Vector3(s, s, s));
-	
+
 	center.multiplyScalar(s);
 	controls.target = center;
-	
+
 	redraw = true;
 }
 
@@ -130,7 +118,7 @@ function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
-var model = getURLParameter('model') || "models/tutan.nxs";
+var model = getURLParameter('model') || "models/man.nxs";
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
 
@@ -138,7 +126,7 @@ window.addEventListener( 'resize', onWindowResize, false );
 onWindowResize();
 animate();
 
-window.camera = camera; //porcatroia!
+window.camera = camera;
 </script>
 
 

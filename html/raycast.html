@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <style>body { margin: 0px; overflow: hidden; }</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.js"></script>
+<script src="js/three.min.js"></script>
 <script src="js/nexus.js"></script>
 <script src="js/nexus_three.js"></script>
 <script src="js/trackball_three.js"></script>
@@ -18,10 +18,10 @@
 <script>
 
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
-camera.position.z = 4;
+camera.position.z = 4.0;
 
 var controls = new THREE.TrackballControls( camera );
-controls.target.set( 0, 0, -1 );
+controls.target.set( 0, 0, 0 );
 controls.rotateSpeed = 10.0;
 controls.zoomSpeed = 1.5;
 controls.panSpeed = 0.8;
@@ -30,9 +30,10 @@ controls.noPan = false;
 controls.staticMoving = true;
 controls.dynamicDampingFactor = 0.3;
 controls.keys = [ 65, 83, 68 ];
-controls.addEventListener( 'change', render );
+controls.addEventListener( 'change', function() { redraw = true; } );
 
 var scene = new THREE.Scene();
+scene.background = new THREE.Color( 0x000000 );
 scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
 scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -43,7 +44,6 @@ scene.add( light1 );
 var light2 = new THREE.DirectionalLight( 0xffffff, 1.0 );
 light2.position.set( -1, -1, 1 );
 scene.add( light2 );
-
 
 var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster();
@@ -68,9 +68,8 @@ function onDocumentMouseMove( event ) {
 			nexus_obj.material.vertexColors = THREE.VertexColors; 
 	}
 	nexus_obj.material.needsUpdate = true;
-	render();
+	redraw = true;
 }
-
 
 var renderer = new THREE.WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
@@ -78,7 +77,6 @@ renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( window.innerWidth, window.innerHeight);
 
 renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
-
 
 var container = document.getElementById( 'container');
 container.appendChild( renderer.domElement );
@@ -94,7 +92,8 @@ function onNexusLoad() {
 	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
 	var target = new THREE.Vector3();
 	var p = nexus_obj.geometry.boundingBox.getCenter(target).negate();
-	nexus_obj.position.set(p.x*s, p.y*s, p.y*s); //.set(p.x, p.y, p.z); // = p; //.set(p.x, p.y, p.z);
+
+	nexus_obj.position.set(p.x*s, p.y*s, p.z*s);
 	nexus_obj.scale.set(s, s, s); 
 	redraw = true;
 
@@ -107,16 +106,12 @@ function getURLParameter(name) {
 
 var model = getURLParameter('model') || "models/gargo.nxz";
 
-//var nexus_obj = new NexusObject(model, renderer, render);
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );
-render();
-
 
 function onWindowResize() {
-
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
 
@@ -124,24 +119,22 @@ function onWindowResize() {
 
 	controls.handleResize();
 	controls.update();
-	render();
+	redraw = true;
 }
 
+var redraw = true;
 function animate() {
-	requestAnimationFrame( animate );
+	requestAnimationFrame(animate);
+
 	controls.update();
-}
 
-function render() {
-
-	Nexus.beginFrame(renderer.context);
-	renderer.render( scene, camera );
-	Nexus.endFrame(renderer.context);
+	if(redraw) {
+		renderer.render( scene, camera );
+		redraw = false;
+	}
 }
 
 animate();
-
-
 
 </script>
 
