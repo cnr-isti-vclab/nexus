@@ -1,7 +1,7 @@
 /*
-The MIT License
-
-Copyright (c) 2012-2019, Visual Computing Lab, ISTI - CNR, Nexus.
+Nexus
+Copyright (c) 2012-2020, Visual Computing Lab, ISTI - CNR
+All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +94,6 @@ function loadCorto() {
 		readyNode(node);
 	};
 }
-
 
 /* UTILITIES */
 
@@ -267,12 +266,13 @@ PriorityQueue.prototype = {
 
 var padding = 256;
 var Debug = {
+	verbose : false,  //debug messages
 	nodes   : false,  //color each node
-//	culling : false,  //visibility culling disabled
 	draw    : false,  //final rendering call disabled
-	extract : false,  //no extraction
-//	request : false,  //no network requests
-//	worker  : false   //no web workers
+	extract : false,  //extraction disabled
+//	culling : false,  //visibility culling disabled
+//	request : false,  //network requests disabled
+//	worker  : false   //web workers disabled
 };
 
 
@@ -306,13 +306,13 @@ Mesh.prototype = {
 			0,
 			mesh.headerSize,
 			function() {
-//				console.log("Loading header for " + mesh.url);
+				if(Debug.verbose) console.log("Loading header for " + mesh.url);
 				var view = new DataView(this.response);
 				view.offset = 0;
 				mesh.reqAttempt++;
 				var header = mesh.importHeader(view);
 				if(!header) {
-					console.log("Empty header!");
+					if(Debug.verbose) console.log("Empty header!");
 					if(mesh.reqAttempt < maxReqAttempt) mesh.open(mesh.url + '?' + Math.random()); // BLINK ENGINE CACHE BUG PATCH
 					return;
 				}
@@ -347,7 +347,7 @@ Mesh.prototype = {
 					load.bind(this)();
 					break;
 				case 200:
-					console.log("200 response: server does not support byte range requests.");
+//					console.log("200 response: server does not support byte range requests.");
 			}
 		};
 		r.onerror = error;
@@ -362,7 +362,7 @@ Mesh.prototype = {
 		mesh.httpRequest(
 			mesh.indexStart,
 			mesh.indexEnd,
-			function() { mesh.handleIndex(this.response); },
+			function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
 			function() { console.log("Index request error!");},
 			function() { console.log("Index request abort!");}
 		);
@@ -443,7 +443,7 @@ Mesh.prototype = {
 					offset: padding*g[2*i],
 					size: g[2*i+1],
 					ref: 0,
-					textures: []			
+					textures: []
 				};
 			}
 		} else {
@@ -452,7 +452,7 @@ Mesh.prototype = {
 					offset: padding*getUint32(view),
 					size: 0,
 					ref: 0,
-					textures: []			
+					textures: []
 				};
 			}
 			for(let i = 0; i < t.groups.length-1; i++)
@@ -594,7 +594,6 @@ Mesh.prototype = {
 		this.indexEnd = this.indexStart + h.n_nodes*48 + h.n_patches*16 + h.n_textures*8;
 		return h;
 	}
-
 };
 
 Instance = function(gl) {
@@ -1063,7 +1062,7 @@ function removeNode(context, node) {
 	var m = node.mesh;
 	if(m.status[n] == 0) return;
 
-//	console.log("Removing " + m.url + " node: " + n);
+	if(Debug.verbose) console.log("Removing " + m.url + " node: " + n);
 	m.status[n] = 0;
 
 	if (m.georeq.readyState != 4) m.georeq.abort();
@@ -1075,8 +1074,8 @@ function removeNode(context, node) {
 
 	if(!m.vertex.UV_0) return;
 	if (m.texreq && m.texreq.readyState != 4) m.texreq.abort();
+
 	let texgroup = m.patches[m.nfirstpatch[n]*4+2]; //TODO assuming one texture per node
-	
 	let group = m.groups[texgroup];
 	group.ref--;
 
@@ -1088,7 +1087,6 @@ function removeNode(context, node) {
 }
 
 function requestNode(context, node) {
-
 	var n = node.id;
 	var m = node.mesh;
 
@@ -1117,11 +1115,11 @@ function requestNodeGeometry(context, node) {
 		m.noffsets[n] + m.nsizes[n],
 		function() { loadNodeGeometry(this, context, node); },
 		function() {
-//			console.log("Geometry request error!");
+			if(Debug.verbose) console.log("Geometry request error!");
 			recoverNode(context, node, 0);
 		},
 		function() {
-//			console.log("Geometry request abort!");
+			if(Debug.verbose) console.log("Geometry request abort!");
 			removeNode(context, node);
 		},
 		'arraybuffer'
@@ -1136,19 +1134,22 @@ function requestNodeTexture(context, node) {
 
 	var texgroup = m.patches[m.nfirstpatch[n]*4+2];
 	m.groups[texgroup].ref++;
+
 	if(m.groups[texgroup].ref > 1) //already in use.
 		return;
 
 	m.status[n]++; //pending
-	console.log("What is this texreq");
+
 	m.texreq = m.httpRequest(
 		m.groups[texgroup].offset, 
 		m.groups[texgroup].offset + m.groups[texgroup].size, 
 		function() { loadNodeTexture(this, context, node, texgroup); },
 		function() {
+			if(Debug.verbose) console.log("Texture request error!");
 			recoverNode(context, node, 1);
 		},
 		function() {
+			if(Debug.verbose) console.log("Texture request abort!");
 			removeNode(context, node);
 		},
 		'arraybuffer'
@@ -1163,7 +1164,7 @@ function recoverNode(context, node, id) {
 	m.status[n]--;
 
 	if(node.reqAttempt > maxReqAttempt) {
-//		console.log("Max request limit for " + m.url + " node: " + n);
+		if(Debug.verbose) console.log("Max request limit for " + m.url + " node: " + n);
 		removeNode(context, node);
 		return;
 	}
@@ -1173,11 +1174,13 @@ function recoverNode(context, node, id) {
 	switch (id){
 		case 0:
 			requestNodeGeometry(context, node);
-			console.log("Recovering geometry for " + m.url + " node: " + n);
+			if(Debug.verbose) console.log("Recovering geometry for " + m.url + " node: " + n);
 			break;
 		case 1:
+			var texgroup = m.patches[m.nfirstpatch[n]*4+2];
+			m.groups[texgroup].ref--;
 			requestNodeTexture(context, node);
-			console.log("Recovering texture for " + m.url + " node: " + n);
+			if(Debug.verbose) console.log("Recovering texture for " + m.url + " node: " + n);
 			break;
 	}
 }
@@ -1225,7 +1228,6 @@ function loadNodeTexture(request, context, node, groupid) {
 	}
 
 	m.status[n] += ntex-1;
-	
 
 	for(let i = 0; i < ntex; i++) {
 		if(m.v3) {
@@ -1284,7 +1286,6 @@ function loadNodeTexture(request, context, node, groupid) {
 		}
 	}
 }
-
 
 function scramble(n, coords, normals, colors) {
 	while (n > 0) {
@@ -1405,9 +1406,7 @@ function flush(context, mesh) {
 }
 
 function updateCache(gl) {
-
 	var context = getContext(gl);
-
 
 	var best = null;
 	context.candidates.forEach(function(e) {

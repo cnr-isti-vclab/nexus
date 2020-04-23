@@ -1,7 +1,7 @@
 /*
-The MIT License
-
-Copyright (c) 2012-2019, Visual Computing Lab, ISTI - CNR, Nexus.
+Nexus
+Copyright (c) 2012-2020, Visual Computing Lab, ISTI - CNR
+All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,6 @@ import * as THREE from './three.module.js';
 
 function nocenter() { throw "Centering and in general applying matrix to geometry is unsupported."; }
 
-
-
-
 function NexusObject(url, onLoad, onUpdate, renderer, material) {
 	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
@@ -38,12 +35,14 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 
 	geometry.center = nocenter;
 
-/*function() { 
-                var s = 1/instance.mesh.sphere.radius;27386,3906,31292,42588,73880,3815,13030,10779,97689,454030
+/*
+function() { 
+                var s = 1/instance.mesh.sphere.radius;
                 var pos = instance.mesh.sphere.center;
                 mesh.position.set(-pos[0]*s, -pos[1]*s, -pos[2]*s);
                 mesh.scale.set(s, s, s); 
-	}; */
+};
+*/
 
 	let positions = new Float32Array(3);
 	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -74,10 +73,12 @@ function NexusObject(url, onLoad, onUpdate, renderer, material) {
 
 
 		//this seems not to be needed to setup the attributes and shaders
-/*		if(this.mesh.face.index) {
+/*
+		if(this.mesh.face.index) {
 			var indices = new Uint32Array(3);
 			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
-		} */
+		}
+*/
 		if(onLoad) onLoad(nexus);
 	};
 	instance.onUpdate = function() { onUpdate(this) };
@@ -110,8 +111,8 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	});
 
 //	each material has a few maps, we need to test more than one material
-//  problem! we are only using a material (is there a way to change material?
-//  should we gltf brutally?
+//  	problem! we are only using a material (is there a way to change material?)
+//  	should we gltf brutally?
 
 	let samplers = instance.samplers;
 
@@ -192,7 +193,6 @@ NexusObject.prototype.createMaterialsV2 = function(createMaterial) {
 	let geometry = this.geometry;
 	let mesh = geometry.instance.mesh;
 
-	
 	let options = {};
 
 	if(mesh.vertex.COLOR && mesh.vertex.UV_0) {
@@ -236,7 +236,7 @@ NexusObject.prototype.createMaterialsV3 = function(createMaterial) {
 	let mesh = geometry.instance.mesh;
 
 
-	let m = mesh.materials[0];			
+	let m = mesh.materials[0];
 
 	let type = 'standard';
 	let options = {};
@@ -314,7 +314,6 @@ NexusObject.prototype.createMaterialsV3 = function(createMaterial) {
 		}
 	}
 }
-
 
 
 NexusObject.prototype.computeBoundingBox = function() {
