@@ -4,7 +4,7 @@
 <title>Nexus threejs</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-<style>body { margin: 0px;}</style>
+<style> body { margin:0; width:100vw; height:100vh; } #container { width:100vw; height:100vh; } p { position:absolute; bottom:0; margin:0; width:100%; line-height:2.5; background-color:white;}</style>
 <script src="js/nexus.js"></script>
 </head>
 
@@ -15,14 +15,14 @@
 		<a href="nxsloader.html?model=models/sketchfab/goddess.gltf/scene.nxs">Goddess gltf</a> 
 		<a href="nxsloader.html?model=models/sketchfab/goddess.obj/source/cihuatoetl.nxs ">Goddess obj</a>
 		<a href="nxsloader.html?model=models/sketchfab/arrowhead.gltf/scene.nxs ">Arrow gltf</a>
-		<a href="nxsloader.html?model=models/sketchfab/eicheln.gltf/scene.nxs ">Acorn gltf</a>    
+		<a href="nxsloader.html?model=models/sketchfab/eicheln.gltf/scene.nxs ">Acorn gltf</a>
 		<a href="nxsloader.html?model=models/sketchfab/knabe.gltf/scene.nxs ">Knabe gltf</a>
-		<a href="nxsloader.html?model=models/sketchfab/monkey.gltf/scene.nxs ">Monkey gltf</a>        
-		<a href="nxsloader.html?model=models/sketchfab/naiad.gltf/scene.nxs ">Naiad gltf</a>        
-		<a href="nxsloader.html?model=models/gltf/2.0/2CylinderEngine/glTF/2CylinderEngine.nxs">2CylinderEngine</a>   
-		<a href="nxsloader.html?model=models/alex/pile.nxs">Pile</a>             
+		<a href="nxsloader.html?model=models/sketchfab/monkey.gltf/scene.nxs ">Monkey gltf</a>
+		<a href="nxsloader.html?model=models/sketchfab/naiad.gltf/scene.nxs ">Naiad gltf</a>
+		<a href="nxsloader.html?model=models/gltf/2.0/2CylinderEngine/glTF/2CylinderEngine.nxs">2CylinderEngine</a>
+		<a href="nxsloader.html?model=models/alex/pile.nxs">Pile</a>
 	</p>
-	<div id="container"><canvas id="canvas" style="width:100vw; height:90vh"></canvas></div>
+	<div id="container"><canvas id="canvas"></canvas></div>
 </body>
 
 <script type="module">
@@ -98,7 +98,8 @@ function onNexusLoad(nexus) {
 
 	let boundingBox = new THREE.Box3();
 	boundingBox = nexus.computeBoundingBox();
-	//boundingBox.setFromObject( nexus )
+//	boundingBox.setFromObject(nexus);
+
 	let center = new THREE.Vector3();
 	boundingBox.getCenter(center);
 
