@@ -4,7 +4,7 @@
 <title>Nexus threejs</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-<style>body { margin: 0px; overflow: hidden; }</style>
+<style> body { margin:0; width:100vw; height:100vh; } #container { width:100vw; height:100vh; } </style>
 <script src="js/three.min.js"></script>
 <script src="js/nexus.js"></script>
 <script src="js/nexus_three.js"></script>
@@ -48,7 +48,7 @@ scene.add( light2 );
 var renderer = new THREE.WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
 renderer.setPixelRatio( window.devicePixelRatio );
-renderer.setSize( window.innerWidth, window.innerHeight);
+renderer.setSize( window.innerWidth, window.innerHeight );
 
 var container = document.getElementById( 'container');
 container.appendChild( renderer.domElement );
