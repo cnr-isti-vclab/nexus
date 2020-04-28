@@ -9,6 +9,7 @@ QMAKE_CXXFLAGS += -std=c++11
 
 DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
+DEFINES += NDEBUG
 
 INCLUDEPATH += \
     ../../../vcglib \
@@ -32,7 +33,8 @@ SOURCES += \
     ../nxszip/abitstream.cpp \
     ../nxszip/atunstall.cpp \
     main_compress.cpp \
-    extractor.cpp
+    extractor.cpp \
+    ../common/dag.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
