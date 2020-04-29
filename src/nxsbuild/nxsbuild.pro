@@ -11,10 +11,11 @@ INCLUDEPATH += \
     ../../../vcglib \
     ../../../vcglib/eigenlib
 
+win32:INCLUDEPATH += ../../../draco/include
+win32:LIBS += ../../../draco/lib/dracodec.lib
 
-win32:LIBS += ../../../draco/libdracodec.lib
-unix:LIBS  += -l dracodec
 unix:INCLUDEPATH += /usr/local/include/draco
+unix:LIBS  += -l dracodec
 
 DEFINES += _FILE_OFFSET_BITS=64
 DEFINES += _USE_MATH_DEFINES
