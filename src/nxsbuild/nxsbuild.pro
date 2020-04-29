@@ -11,6 +11,11 @@ INCLUDEPATH += \
     ../../../vcglib \
     ../../../vcglib/eigenlib
 
+
+win32:LIBS += ../../../draco/libdracodec.lib
+unix:LIBS  += -l dracodec
+unix:INCLUDEPATH += /usr/local/include/draco
+
 DEFINES += _FILE_OFFSET_BITS=64
 DEFINES += _USE_MATH_DEFINES
 
@@ -37,7 +42,8 @@ SOURCES += \
     ../common/signature.cpp \
     nodetexcreator.cpp \
     ../common/material.cpp \
-    gltfloader.cpp
+    gltfloader.cpp \
+    gltf.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \

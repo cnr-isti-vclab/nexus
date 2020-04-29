@@ -1,6 +1,7 @@
 #include "gltfloader.h"
 #include "../common/gltf.h"
 
+#include <draco/compression/decode.h>
 #include <QFile>
 
 #include <iostream>
@@ -9,15 +10,36 @@
 using namespace std;
 using namespace fx;
 
+
 //PROBLEM int8_t for b.color_map: if we have a lot of textures this would be a problem.
 //we could use a temporary array if int342_t with enum (seee materials)
 //TODO might want to use gltf materials directly!
 int8_t GltfLoader::addTexture(BuildMaterial &m, int8_t &i, std::map<int32_t, int8_t> &remap) {
 	if(i < 0) return i;
-	assert(i < doc->images.size());
-	gltf::Image &image = doc->images[i];
-	if(image.bufferView)
-		throw QString("Unsupported images in bufferView");
+	assert(i < doc->textures.size());
+	gltf::Texture &texture = doc->textures[i];
+	gltf::Image &image = doc->images[texture.source];
+
+	if(image.uri.size() == 0 || image.IsEmbeddedResource()) {
+		if(image.IsEmbeddedResource()) {
+			throw "Embedded resources still not supported for images";
+		}
+		//just extract the image
+		gltf::BufferView &view = doc->bufferViews[image.bufferView];
+		gltf::Buffer &buffer = doc->buffers[view.buffer];
+		QString ext;
+		if(image.mimeType == "image/png")
+			ext = "png";
+		else if (image.mimeType == "image/jpeg")
+			ext = "jpg";
+		else
+			throw QString("Unsupported image mimetype: ") + image.mimeType.c_str();
+		QString filename = QString("cache_img%1.").arg(image.bufferView) + ext;
+		image.uri = filename.toStdString();
+		QFile file(filename);
+		file.open(QFile::WriteOnly);
+		file.write((char *)buffer.data.data() + view.byteOffset, view.byteLength);
+	}
 	i = remap[i];
 	m.textures[i] = QString(image.uri.c_str());
 	return i;
@@ -58,6 +80,7 @@ BuildMaterial GltfLoader::convertMaterial(gltf::Material &m) {
 }
 
 GltfLoader::GltfLoader(QString filename): vertices("cache_gltfvertex") {
+
 	QFile file(filename);
 	if(!file.exists())
 		throw QString("Could not find file: ") + filename;
@@ -131,10 +154,134 @@ GltfLoader::GltfLoader(QString filename): vertices("cache_gltfvertex") {
 		for(auto &material: model.materials)
 			materials.push_back(convertMaterial(material));
 
+
+		//draco support
+
+		for(auto &mesh: model.meshes) {
+			for(auto &primitive: mesh.primitives) {
+				if(primitive.extensionsAndExtras.is_null())
+					continue;
+
+
+				nlohmann::json &extensions = primitive.extensionsAndExtras["extensions"];
+				cout << extensions << endl;
+				if(!extensions.count("KHR_draco_mesh_compression"))
+					continue;
+
+				cout << "Draco compressed" << endl;
+				auto &dra = extensions["KHR_draco_mesh_compression"];
+				int bufferViewId = dra["bufferView"];
+
+				gltf::BufferView &view = doc->bufferViews[bufferViewId];
+				gltf::Buffer &gltf_buffer = doc->buffers[view.buffer];
+
+				const char *ptr = (char *)gltf_buffer.data.data() + view.byteOffset;
+				uint32_t length = view.byteLength;
+
+				draco::DecoderBuffer buffer;
+				buffer.Init(ptr, length);
+
+				draco::EncodedGeometryType geom_type = draco::Decoder::GetEncodedGeometryType(&buffer).value();
+				draco::Decoder decoder;
+				if (geom_type != draco::TRIANGULAR_MESH)
+					throw "Unsupported point clouds!";
+				unique_ptr<draco::Mesh> dmesh = decoder.DecodeMeshFromBuffer(&buffer).value();
+				int32_t nf = dmesh->num_faces();
+
+				gltf::Buffer face_buffer;
+				face_buffer.byteLength = nf * 3 * 12;
+				face_buffer.data.resize(face_buffer.byteLength);
+
+				gltf::BufferView face_view;
+				face_view.buffer = doc->buffers.size();
+				face_view.byteLength = face_buffer.byteLength;
+				face_view.target = gltf::BufferView::TargetType::ElementArrayBuffer;
+				face_view.byteOffset = 0;
+				face_view.byteStride = 12;
+				doc->bufferViews.push_back(face_view);
+
+
+
+				gltf::Accessor &face_accessor = doc->accessors[primitive.indices];
+				face_accessor.bufferView = doc->bufferViews.size()-1;
+				face_accessor.byteOffset = 0;
+				face_accessor.componentType = gltf::Accessor::ComponentType::UnsignedInt;
+				assert(face_accessor.count == nf*3);
+
+				int max = 0;
+				uint32_t *face_ptr = (uint32_t *)face_buffer.data.data();
+				for(uint32_t i = 0; i < nf; i++) {
+					draco::FaceIndex f(i);
+					for(int k = 0 ;k < 3; k++) {
+						int n = face_ptr[i*3 + k] = dmesh->face(f)[k].value();
+						max = std::max(n, max);
+					}
+				}
+				doc->buffers.push_back(face_buffer); //only after having it filled.
+
+				int nvert = dmesh->num_points();
+
+				auto &dra_attributes = dra["attributes"];
+
+				for(auto dra_attr: dra_attributes.items()) {
+					const draco::PointAttribute *attr = dmesh->GetAttributeByUniqueId(dra_attr.value());
+
+					std::string attribute_name = dra_attr.key(); //COLOR POSITION ETC -> this needs to be matched to the primitives attributes
+					if(!primitive.attributes.count(attribute_name))
+						throw "Mismatch between draco attributes and primitive attribtues";
+
+					gltf::Accessor &v_accessor = doc->accessors[primitive.attributes[attribute_name]];
+					int num_components = 1;
+					switch(v_accessor.type) {
+					case gltf::Accessor::Type::Scalar: num_components = 1;break;
+					case gltf::Accessor::Type::Vec2: num_components = 2; break;
+					case gltf::Accessor::Type::Vec3: num_components = 3; break;
+					case gltf::Accessor::Type::Vec4: num_components = 4; break;
+					default: throw "Unsupported vectors above 4. Sorry."; break;
+					}
+					int component_size = 4;
+					switch(v_accessor.componentType) {
+					case gltf::Accessor::ComponentType::Float:
+					case gltf::Accessor::ComponentType::UnsignedInt: component_size = 4; break;
+					case gltf::Accessor::ComponentType::Short:
+					case gltf::Accessor::ComponentType::UnsignedShort: component_size = 2; break;
+					case gltf::Accessor::ComponentType::Byte:
+					case gltf::Accessor::ComponentType::UnsignedByte: component_size = 1; break;
+					default: break;
+					}
+
+					if(num_components != attr->num_components())
+						throw "Mismatch in draco glft attributes";
+
+					gltf::Buffer v_buffer;
+					v_buffer.byteLength = nvert * num_components * component_size;
+					v_buffer.data.resize(v_buffer.byteLength);
+					for(int i = 0; i < nvert; i++) {
+						draco::AttributeValueIndex mapped = attr->mapped_index(draco::PointIndex(i));
+						attr->GetValue(mapped, v_buffer.data.data() + i*num_components*component_size);
+					}
+					doc->buffers.push_back(v_buffer);
+
+					gltf::BufferView v_view;
+					v_view.buffer = doc->buffers.size() -1;
+					v_view.byteLength = v_buffer.byteLength;
+					v_view.target = gltf::BufferView::TargetType::ElementArrayBuffer;
+					v_view.byteOffset = 0;
+					v_view.byteStride = num_components*component_size;
+					doc->bufferViews.push_back(v_view);
+
+					v_accessor.bufferView = doc->bufferViews.size()-1;
+				}
+			}
+		}
+
+
 	} catch(QString s) {
 		throw s;
 	} catch (std::runtime_error error) {
 		cout << error.what() << endl;
+	} catch(const char *s) {
+		throw QString(s);
 	} catch(...) {
 		throw QString("Could not open or parse gltf file.");
 	}
@@ -324,14 +471,19 @@ quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
 	if(current_node == 0 && current_primitive == 0 && current_triangle == 0)
 		cacheVertices();
 
-	auto &nodes = doc->scenes[0].nodes;
+	auto &nodes = doc->nodes; //scenes[0].nodes;
 
 	if(current_node >= nodes.size())
 		return 0;
 
-	gltf::Node &node = doc->nodes[nodes[current_node]];
+	gltf::Node &node = doc->nodes[current_node];//nodes[current_node]];
+	if(node.mesh == -1) {
+		current_node++;
+		return getTriangles(size, buffer);
+	}
 	//node.matrix
 	gltf::Mesh &mesh = doc->meshes[node.mesh];
+
 
 	if(current_primitive >= mesh.primitives.size()) {
 		current_primitive = 0;

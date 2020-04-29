@@ -558,8 +558,12 @@ void NexusBuilder::reverseDag() {
 	}
 }
 
+void NexusBuilder::saveGLTF(QFile &file) {
 
-void NexusBuilder::save(QString filename) {
+}
+
+
+void NexusBuilder::save(QString filename, bool gltf) {
 
 	file.setFileName(filename);
 	if(!file.open(QIODevice::ReadWrite | QIODevice::Truncate))
@@ -602,6 +606,15 @@ void NexusBuilder::save(QString filename) {
 	std::vector<int> material_map = materials.compact(header.materials);
 	for(Patch &patch: patches)
 		patch.material = material_map[patch.material];
+
+	if(gltf)
+		saveGLTF(file);
+	else
+		saveNXS(file);
+}
+
+void NexusBuilder::saveNXS(QFile &file) {
+
 
 	vector<char> header_dump = header.write();
 
@@ -697,7 +710,7 @@ void NexusBuilder::save(QString filename) {
 		for(int i = 0; i < textures.size()-1; i++) {
 			QFile::remove(QString("nexus_tmp_tex%1.png").arg(i));
 		}
-	cout << "Saving to file " << qPrintable(filename) << endl;
+	//cout << "Saving to file " << qPrintable(filename) << endl;
 	file.close();
 }
 

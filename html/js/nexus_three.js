@@ -130,7 +130,7 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 				if(pbr.baseColorTexture && samplers.map >= 0)
 					mat.mapping[pbr.baseColorTexture.index] = samplers.map;
 				if(pbr.metallicRoughnessTexture && samplers.roughnessMap >= 0)
-					mat.mapping[pbr.metallicRoughnessTexture.index] = roughnessMap;
+					mat.mapping[pbr.metallicRoughnessTexture.index] = samplers.roughnessMap;
 			}
 			if(mat.normalTexture)
 				mat.mapping[mat.normalTexture.index] = samplers.normalMap;

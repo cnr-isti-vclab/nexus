@@ -103,7 +103,9 @@ public:
 	void saturate();
 
 	void reverseDag();
-	void save(QString filename);
+	void save(QString filename, bool gltf=false);
+	void saveGLTF(QFile &file);
+	void saveNXS(QFile &file);
 
 	//void addNode(mesh)
 	//    void process(Nexus &input, std::vector<bool> &selection);
