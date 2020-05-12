@@ -1421,7 +1421,7 @@ function updateCache(gl) {
 		context.meshes.forEach(function(m) {
 			var n = m.n_nodes;
 			for(i = 0; i < n; i++)
-				if(!worst || (m.status[i] == 1 && m.errors[i] < worst.error))
+				if(m.status[i] == 1 && (!worst ||  m.errors[i] < worst.error))
 					worst = {error: m.errors[i], frame: m.frames[i], mesh:m, id:i};
 		});
 
