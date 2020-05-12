@@ -195,7 +195,7 @@ NexusObject.prototype.createMaterialsV2 = function(createMaterial) {
 
 	let options = {};
 
-	if(mesh.vertex.COLOR && mesh.vertex.UV_0) {
+	if(mesh.vertex.COLOR_0 && mesh.vertex.UV_0) {
 		let uv = new Float32Array(2);
 		let colors = new Float32Array(4);
 		geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
@@ -207,7 +207,7 @@ NexusObject.prototype.createMaterialsV2 = function(createMaterial) {
 		}
 	}
 
-	if(mesh.vertex.COLOR) {
+	if(mesh.vertex.COLOR_0) {
 		let colors = new Float32Array(4);
 		geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
 		options.vertexColors = THREE.VertexColors;
@@ -248,7 +248,7 @@ NexusObject.prototype.createMaterialsV3 = function(createMaterial) {
 			options.map = texture;
 		}
 
-		if(mesh.vertex.COLOR) {
+		if(mesh.vertex.COLOR_0) {
 			let colors = new Float32Array(4);
 			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
 			options.vertexColors = THREE.VertexColors;

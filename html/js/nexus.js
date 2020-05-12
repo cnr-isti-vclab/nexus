@@ -467,7 +467,7 @@ Mesh.prototype = {
 				t.tgroups[2*i+1] = t.tgroups[2*(i+1)] - t.tgroups[2*i]; */
 		}
 
-		t.vsize = 12 + (t.vertex.NORMAL?6:0) + (t.vertex.COLOR?4:0) + (t.vertex.UV_0?8:0);
+		t.vsize = 12 + (t.vertex.NORMAL?6:0) + (t.vertex.COLOR_0?4:0) + (t.vertex.UV_0?8:0);
 		t.fsize = 6;
 
 		//problem: I have no idea how much space a texture is needed in GPU. 10x factor assumed.
@@ -519,14 +519,14 @@ Mesh.prototype = {
 		return e;
 	},
 
-	importVertex: function(view) {	//enum POSITION, NORMAL, COLOR, UV_0, DATA0
+	importVertex: function(view) {	//enum POSITION, NORMAL, COLOR_0, UV_0, DATA0
 		var e = this.importElement(view);
 		var color = e[2];
 		if(color) {
 			color.type = 2; //unsigned byte
 			color.glType = attrGlMap[2];
 		}
-		return { POSITION: e[0], NORMAL: e[1], COLOR: e[2], UV_0: e[3], data: e[4] };
+		return { POSITION: e[0], NORMAL: e[1], COLOR_0: e[2], UV_0: e[3], data: e[4] };
 	},
 
 	//enum INDEX, NORMAL, COLOR, UV, DATA0
@@ -537,7 +537,7 @@ Mesh.prototype = {
 			color.type = 2; //unsigned byte
 			color.glType = attrGlMap[2];
 		}
-		return { INDEX: e[0], NORMAL: e[1], COLOR: e[2], UV_0: e[3], data: e[4] };
+		return { INDEX: e[0], NORMAL: e[1], COLOR_0: e[2], UV_0: e[3], data: e[4] };
 	},
 
 	importSignature: function(view) {
@@ -888,7 +888,7 @@ Instance.prototype = {
 				gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset), offset += nv*8;
 				gl.enableVertexAttribArray(attr.uv);
 			}
-			if(m.vertex.COLOR && attr.color >= 0){
+			if(m.vertex.COLOR_0 && attr.color >= 0){
 				gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset), offset += nv*4;
 				gl.enableVertexAttribArray(attr.color);
 			}
@@ -1195,7 +1195,7 @@ function loadNodeGeometry(request, context, node) {
 	if(!m.compressed)
 		readyNode(node);
 	else if(m.meco) {
-		var sig = { texcoords: m.vertex.UV_0, normals:m.vertex.NORMAL, colors:m.vertex.COLOR, indices: m.face.INDEX }
+		var sig = { texcoords: m.vertex.UV_0, normals:m.vertex.NORMAL, colors:m.vertex.COLOR_0, indices: m.face.INDEX }
 		var patches = [];
 		for(var k = m.nfirstpatch[n]; k < m.nfirstpatch[n+1]; k++)
 			patches.push(m.patches[k*4+1]);
@@ -1335,7 +1335,7 @@ function readyNode(node) {
 			vertices.set(uv, off);
 			off += nv*8;
 		}
-		if(m.vertex.NORMAL && m.vertex.COLOR) {
+		if(m.vertex.NORMAL && m.vertex.COLOR_0) {
 			var no = view.subarray(off, off + nv*6);
 			var co = view.subarray(off + nv*6, off + nv*6 + nv*4);
 			vertices.set(co, off);
@@ -1346,7 +1346,7 @@ function readyNode(node) {
 				var no = view.subarray(off, off + nv*6);
 				vertices.set(no, off);
 			}
-			if(m.vertex.COLOR) {
+			if(m.vertex.COLOR_0) {
 				var co = view.subarray(off, off + nv*4);
 				vertices.set(co, off);
 			}
@@ -1362,9 +1362,9 @@ function readyNode(node) {
 			uv.set(model.uv);
 			off += nv*8;
 		}
-		if(model.COLOR) {
+		if(model.COLOR_0) {
 			var co = new Uint8Array(vertices, off, nv*4);
-			co.set(model.COLOR);
+			co.set(model.COLOR_0);
 			off += nv*4;
 		}
 		if(model.normal) {
