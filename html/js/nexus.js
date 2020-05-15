@@ -1099,6 +1099,10 @@ function loadNodeGeometry(request, context, node) {
 	}
 }
 
+function powerOf2(n) {
+    return n && (n & (n - 1)) === 0;
+}
+
 function loadNodeTexture(request, context, node, texid) {
 	var n = node.id;
 	var m = node.mesh;
@@ -1126,7 +1130,7 @@ function loadNodeTexture(request, context, node, texid) {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-		if(context.version > 1 || (powerOf2(img.width) && powerOf2(img.height))) {
+		if(gl instanceof WebGL2RenderingContext || (powerOf2(img.width) && powerOf2(img.height))) {
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 			gl.generateMipmap(gl.TEXTURE_2D);
 		} else {
