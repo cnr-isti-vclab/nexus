@@ -646,7 +646,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				}
 				tmp.splitSeams(header.signature);
 				if(tmp.vert.size() > 60000) {
-					cerr << "Unable to properly simplify due to framented parametrization\n"
+					cerr << "Unable to properly simplify due to fragmented parametrization\n"
 						 << "Try to reduce the size of the nodes using -f (default is 32768)" << endl;
 					exit(0);
 				}
