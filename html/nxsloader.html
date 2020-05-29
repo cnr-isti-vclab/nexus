@@ -25,10 +25,13 @@
 	<div id="container"><canvas id="canvas"></canvas></div>
 </body>
 
+<script src="js/three.min.js"></script>
+<script src="js/nexus_three.js"></script>
+<script src="js/controls/OrbitControls.js"></script>
 <script type="module">
-import * as THREE from './js/three.module.js';
+/*import * as THREE from './js/three.module.js';
 import { NexusObject } from './js/nexus_three.js';
-import { OrbitControls } from './js/controls/OrbitControls.js';
+import { OrbitControls } from './js/controls/OrbitControls.js'; */
 
 
 function onWindowResize() {
@@ -81,7 +84,7 @@ renderer.setPixelRatio( window.devicePixelRatio );
 //var container = document.getElementById( 'container');
 //container.appendChild( renderer.domElement );
 
-let controls = new OrbitControls( camera, renderer.domElement );
+let controls = new THREE.OrbitControls( camera, renderer.domElement );
 controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
 controls.rotateSpeed = 0.7;
 controls.zoomSpeed = 2.5;

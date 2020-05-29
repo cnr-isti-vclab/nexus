@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-import * as THREE from './three.module.js';
+/*import * as THREE from './three.module.js'; */
 
 function nocenter() { throw "Centering and in general applying matrix to geometry is unsupported."; }
 
@@ -431,5 +431,5 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 	intersects.push({ distance: distance, object: this} ); */
 }
 
-export { NexusObject };
+/*export { NexusObject }; */
 

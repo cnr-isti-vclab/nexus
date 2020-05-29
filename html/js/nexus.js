@@ -79,7 +79,7 @@ function loadMeco() {
 var corto = null;
 function loadCorto() {
 
-	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
+	corto = new Worker(path.replace('nexus.js', 'corto.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
@@ -90,7 +90,7 @@ function loadCorto() {
 	corto.onmessage = function(e) {
 		var node = this.requests[e.data.request];
 		delete this.requests[e.data.request];
-		node.model = e.data.geometry;
+		node.model = e.data.geometry || e.data.model;  //for old corto.js compatibility
 		readyNode(node);
 	};
 }
@@ -1335,6 +1335,8 @@ function readyNode(node) {
 			vertices.set(uv, off);
 			off += nv*8;
 		}
+		//unfortunately normals comes before color in nxs, but we want the reverse in the buffer
+
 		if(m.vertex.NORMAL && m.vertex.COLOR_0) {
 			var no = view.subarray(off, off + nv*6);
 			var co = view.subarray(off + nv*6, off + nv*6 + nv*4);
@@ -1362,9 +1364,9 @@ function readyNode(node) {
 			uv.set(model.uv);
 			off += nv*8;
 		}
-		if(model.COLOR_0) {
+		if(model.color) {
 			var co = new Uint8Array(vertices, off, nv*4);
-			co.set(model.COLOR_0);
+			co.set(model.color);
 			off += nv*4;
 		}
 		if(model.normal) {
