@@ -280,9 +280,10 @@ var glP = WebGLRenderingContext.prototype;
 var attrGlMap = [glP.NONE, glP.BYTE, glP.UNSIGNED_BYTE, glP.SHORT, glP.UNSIGNED_SHORT, glP.INT, glP.UNSIGNED_INT, glP.FLOAT, glP.DOUBLE];
 var attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
 
-var targetError   = 2.0;
-var targetFps     = 15;
-var maxPending    = 2;
+var targetError   = 2.0;    //error won't go lower than this if we reach it.
+var maxError      = 15;     //error won't go over this even if fps is low
+var minFps        = 15;
+var maxPending    = 3;
 var maxBlocked    = 3;
 var maxReqAttempt = 2;
 var maxCacheSize  = 512*(1<<20); //TODO DEBUG
@@ -727,8 +728,8 @@ Instance.prototype = {
 		for(var i = 0; i < t.mesh.nroots; i++)
 			t.insertNode(i);
 
-		t.targetError = t.context.currentError;
-		t.currentError = 1e20;
+		t.currentError = t.context.currentError;
+		t.realError = 1e20;
 		t.drawSize = 0;
 		t.nblocked = 0;
 
@@ -746,7 +747,7 @@ Instance.prototype = {
 				t.nblocked++;
 			else {
 				t.selected[node] = 1;
-				t.currentError = error;
+				t.realError = error;
 			}
 			t.insertChildren(node, blocked);
 		}
@@ -757,7 +758,7 @@ Instance.prototype = {
 		t.visited[node] = 1;
 
 		var error = t.nodeError(node);
-		if(node > 0 && error < t.targetError) return;  //2% speed TODO check if needed
+		if(node > 0 && error < t.currentError) return;  //2% speed TODO check if needed
 
 		var errors = t.mesh.errors;
 		var frames = t.mesh.frames;
@@ -781,8 +782,8 @@ Instance.prototype = {
 
 	expandNode : function (node, error) {
 		var t = this;
-		if(node > 0 && error < t.targetError) {
-//			console.log("Reached error", error, t.targetError);
+		if(node > 0 && error < t.currentError) {
+//			console.log("Reached error", error, t.currentError);
 			return false;
 		}
 
@@ -934,7 +935,7 @@ Instance.prototype = {
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
-//				var fraction = (error/t.currentError - 1);
+//				var fraction = (error/t.realError - 1);
 //				if(fraction > 1) fraction = 1;
 
 				var count = nv;
@@ -993,6 +994,7 @@ Instance.prototype = {
 		}
 
 		t.context.rendered += rendered;
+		t.context.realError = Math.max(t.context.realError, t.realError);
 
 		if(!vertexEnabled) gl.disableVertexAttribArray(attr.position);
 		if(!normalEnabled && attr.normal >= 0) gl.disableVertexAttribArray(attr.normal);
@@ -1025,7 +1027,7 @@ function getContext(gl) {
 	let version = gl.getParameter(gl.SHADING_LANGUAGE_VERSION);
 	version = parseInt(version[14]);
 	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0, version: version,
-		targetFps: targetFps, targetError: targetError, currentError: targetError };
+		minFps: minFps, targetError: targetError, currentError: targetError, maxError: maxError, realError: 0 };
 	contexts.push(c);
 	return c;
 }
@@ -1037,20 +1039,21 @@ function beginFrame(gl, fps) { //each context has a separate frame count.
 
 	c.frame++;
 	c.candidates = [];
-	if(fps && c.targetFps) {
-		var r = c.targetFps/fps;
+	if(fps && c.minFps) {
+		c.currentFps = fps;
+		var r = c.minFps/fps;
 		if(r > 1.1)
 			c.currentError *= 1.05;
 		if(r < 0.9)
 			c.currentError *= 0.95;
 
-		if(c.currentError < c.targetError)
-			c.currentError = c.targetError;
-		if(c.currentError > 10) c.currentError = 10;
+		c.currentError = Math.max(c.targetError, Math.min(c.maxError, c.currentError));
+
 	} else
 		c.currentError = c.targetError;
-//	console.log("current", c.currentError, "fps", fps, "targetFps", c.targetFps, "rendered", c.rendered);
+
 	c.rendered = 0;
+	c.realError = 0;
 }
 
 function endFrame(gl) {
@@ -1417,16 +1420,15 @@ function updateCache(gl) {
 	context.candidates = [];
 	if(!best) return;
 
-	while(context.cacheSize > maxCacheSize) {
+	while(context.cacheSize > context.maxCacheSize) {
 		var worst = null;
-		//find worst in cache
+		//find node with smallest error in cache
 		context.meshes.forEach(function(m) {
 			var n = m.n_nodes;
 			for(i = 0; i < n; i++)
 				if(m.status[i] == 1 && (!worst ||  m.errors[i] < worst.error))
 					worst = {error: m.errors[i], frame: m.frames[i], mesh:m, id:i};
 		});
-
 		if(!worst || (worst.error >= best.error && worst.frame == best.frame))
 			return;
 		removeNode(context, worst);
@@ -1446,8 +1448,12 @@ function setTargetError(gl, error) {
 	context.targetError = error;
 }
 function setTargetFps(gl, fps) {
+	console.log('setTargetFps has been deprecated. Use setMinFps');
+	setMinFps(gl, fps);
+}
+function setMinFps(gl, fps) {
 	var context = getContext(gl);
-	context.targetFps = fps;
+	context.minFps = fps;
 }
 function setMaxCacheSize(gl, size) {
 	var context = getContext(gl);
@@ -1456,6 +1462,6 @@ function setMaxCacheSize(gl, size) {
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
-	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
+	setTargetError:setTargetError, setTargetFps:setTargetFps, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize };
 
 }();
