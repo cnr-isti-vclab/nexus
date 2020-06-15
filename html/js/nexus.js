@@ -846,7 +846,7 @@ Instance.prototype = {
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
-//				var fraction = (error/t.currentError - 1);
+//				var fraction = (error/t.realError - 1);
 //				if(fraction > 1) fraction = 1;
 
 				var count = nv;
@@ -1288,16 +1288,15 @@ function updateCache(gl) {
 				if(m.status[i] == 1 && (!worst ||  m.errors[i] < worst.error))
 					worst = {error: m.errors[i], frame: m.frames[i], mesh:m, id:i};
 		});
-		console.log("worst: ", worst);
 		if(!worst || (worst.error >= best.error && worst.frame == best.frame))
 			return;
 		removeNode(context, worst);
 	}
 
-	requestNode(context, best);
-
-	if(context.pending < maxPending)
+	if(context.pending < maxPending) {
+		requestNode(context, best);
 		updateCache(gl);
+	}
 }
 
 //nodes are loaded asincronously, just update mesh content (VBO) cache size is kept globally.
@@ -1308,8 +1307,12 @@ function setTargetError(gl, error) {
 	context.targetError = error;
 }
 function setTargetFps(gl, fps) {
+	console.log('setTargetFps has been deprecated. Use setMinFps');
+	setMinFps(gl, fps);
+}
+function setMinFps(gl, fps) {
 	var context = getContext(gl);
-	context.targetFps = fps;
+	context.minFps = fps;
 }
 function setMaxCacheSize(gl, size) {
 	var context = getContext(gl);
@@ -1318,6 +1321,6 @@ function setMaxCacheSize(gl, size) {
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
-	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
+	setTargetError:setTargetError, setTargetFps:setTargetFps, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize };
 
 }();
