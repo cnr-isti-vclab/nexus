@@ -972,7 +972,10 @@ function removeNode(context, node) {
 	if(Debug.verbose) console.log("Removing " + m.url + " node: " + n);
 	m.status[n] = 0;
 
-	if (m.georeq.readyState != 4) m.georeq.abort();
+	if (m.georeq.readyState != 4) {
+		m.georeq.abort();
+		context.pending--;
+	}
 
 	context.cacheSize -= m.nsize[n];
 	context.gl.deleteBuffer(m.vbo[n]);
