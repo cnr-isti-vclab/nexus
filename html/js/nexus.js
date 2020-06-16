@@ -1026,7 +1026,7 @@ function getContext(gl) {
 
 	let version = gl.getParameter(gl.SHADING_LANGUAGE_VERSION);
 	version = parseInt(version[14]);
-	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0, version: version,
+	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0, version: version, maxCacheSize: maxCacheSize,
 		minFps: minFps, targetError: targetError, currentError: targetError, maxError: maxError, realError: 0 };
 	contexts.push(c);
 	return c;
@@ -1443,25 +1443,18 @@ function updateCache(gl) {
 //nodes are loaded asincronously, just update mesh content (VBO) cache size is kept globally.
 //but this could be messy.
 
-function setTargetError(gl, error) {
-	var context = getContext(gl);
-	context.targetError = error;
-}
-function setTargetFps(gl, fps) {
-	console.log('setTargetFps has been deprecated. Use setMinFps');
-	setMinFps(gl, fps);
-}
-function setMinFps(gl, fps) {
-	var context = getContext(gl);
-	context.minFps = fps;
-}
-function setMaxCacheSize(gl, size) {
-	var context = getContext(gl);
-	context.maxCacheSize = size;
-}
+
+function getTargetError(gl)  { return getContext(gl).targetError; }
+function getMinFps(gl)       { return getContext(gl).minFps; }
+function getMaxCacheSize(gl) { return getContext(gl).maxCacheSize; }
+
+function setTargetError(gl, error) { getContext(gl).targetError = error; }
+function setMinFps(gl, fps)        { getContext(gl).minFps = fps; }
+function setMaxCacheSize(gl, size) { getContext(gl).maxCacheSize = size; }
+
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
-	setTargetError:setTargetError, setTargetFps:setTargetFps, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize };
+	setTargetError:setTargetError, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize };
 
 }();
