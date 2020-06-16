@@ -672,18 +672,21 @@ Instance.prototype = {
 		var mi = t.modelViewProjInv;
 		var p = t.planes;
 
-		//left, right, bottom, top as Ax + By + Cz + D = 0;
-		p[0]  =  m[0] + m[3]; p[1]  =  m[4] + m[7]; p[2]  =  m[8] + m[11]; p[3]  =  m[12] + m[15];
-		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11]; p[7]  = -m[12] + m[15];
-		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11]; p[11] =  m[13] + m[15];
-		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11]; p[15] = -m[13] + m[15];
-		p[16] = -m[2] + m[3]; p[17] = -m[6] + m[7]; p[18] = -m[10] + m[11]; p[19] = -m[14] + m[15];
-		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15];
 
-		for(var i = 0; i < 16; i+= 4) {
+		//frustum plane equation Ax + By + Cz + D = 0;
+		p[0]  =  m[0] + m[3]; p[1]  =  m[4] + m[7]; p[2]  =  m[8] + m[11];  p[3]  =  m[12] + m[15]; //left
+		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11];  p[7]  = -m[12] + m[15]; //right
+		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11];  p[11] =  m[13] + m[15]; //bottom
+		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11];  p[15] = -m[13] + m[15]; //top
+		p[16] =  m[2];        p[17] =  m[6];        p[18] =  m[10];         p[19] =  m[14];        //near
+		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15];//far
+
+		//normalize planes to get also distances
+		for(var i = 0; i < 24; i+= 4) {
 			var l = Math.sqrt(p[i]*p[i] + p[i+1]*p[i+1] + p[i+2]*p[i+2]);
 			p[i] /= l; p[i+1] /= l; p[i+2] /= l; p[i+3] /= l;
 		}
+
 		//side is M'(1,0,0,1) - M'(-1,0,0,1) and they lie on the planes
 		var r3 = mi[3] + mi[15];
 		var r0 = (mi[0]  + mi[12 ])/r3;
@@ -729,7 +732,6 @@ Instance.prototype = {
 			t.insertNode(i);
 
 		t.currentError = t.context.currentError;
-		t.realError = 1e20;
 		t.drawSize = 0;
 		t.nblocked = 0;
 
@@ -747,7 +749,6 @@ Instance.prototype = {
 				t.nblocked++;
 			else {
 				t.selected[node] = 1;
-				t.realError = error;
 			}
 			t.insertChildren(node, blocked);
 		}
@@ -835,7 +836,7 @@ Instance.prototype = {
 	isVisible : function (x, y, z, r) {
 		var p = this.planes;
 		for (i = 0; i < 24; i +=4) {
-			if(p[i]*x + p[i+1]*y + p[i+2]*z +p[i+3] + r < 0) //ax+by+cz+w = 0;
+			if(p[i]*x + p[i+1]*y + p[i+2]*z +p[i+3] + r < 0) //plane is ax+by+cz+w = 0;
 				return false;
 		}
 		return true;
@@ -854,6 +855,7 @@ Instance.prototype = {
 
 		var rendered = 0;
 		var last_texture = -1;
+		t.realError = 0.0;
 		for(var n = 0; n < m.n_nodes; n++) {
 			if(!t.selected[n]) continue;
 
@@ -874,6 +876,9 @@ Instance.prototype = {
 			var off = n*5;
 			if(!t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+4])) //tight radius
 				continue;
+
+			let err = t.nodeError(n, true);
+			t.realError = Math.max(err, t.realError);
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, m.vbo[n]);
 			if(t.mode != "POINT")
