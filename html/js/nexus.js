@@ -281,7 +281,7 @@ var glP = WebGLRenderingContext.prototype;
 var attrGlMap = [glP.NONE, glP.BYTE, glP.UNSIGNED_BYTE, glP.SHORT, glP.UNSIGNED_SHORT, glP.INT, glP.UNSIGNED_INT, glP.FLOAT, glP.DOUBLE];
 var attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
 
-var targetError   = 2.0;    //error won't go lower than this if we reach it.
+var targetError   = 2.0;    //error won't go lower than this if we reach it
 var maxError      = 15;     //error won't go over this even if fps is low
 var minFps        = 15;
 var maxPending    = 3;
@@ -920,7 +920,7 @@ Instance.prototype = {
 };
 
 
-//keep track of meshes and which GL they belong to. (no sharing between contexts)
+//keep track of meshes and which GL they belong to (no sharing between contexts)
 var contexts = [];
 
 function getContext(gl) {
@@ -1112,7 +1112,7 @@ function loadNodeGeometry(request, context, node) {
 }
 
 function powerOf2(n) {
-    return n && (n & (n - 1)) === 0;
+	return n && (n & (n - 1)) === 0;
 }
 
 function loadNodeTexture(request, context, node, texid) {
@@ -1311,7 +1311,6 @@ function updateCache(gl) {
 //nodes are loaded asincronously, just update mesh content (VBO) cache size is kept globally.
 //but this could be messy.
 
-
 function getTargetError(gl)  { return getContext(gl).targetError; }
 function getMinFps(gl)       { return getContext(gl).minFps; }
 function getMaxCacheSize(gl) { return getContext(gl).maxCacheSize; }
@@ -1320,9 +1319,8 @@ function setTargetError(gl, error) { getContext(gl).targetError = error; }
 function setMinFps(gl, fps)        { getContext(gl).minFps = fps; }
 function setMaxCacheSize(gl, size) { getContext(gl).maxCacheSize = size; }
 
-
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
-	setTargetError:setTargetError, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize };
+	setTargetError:setTargetError, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize, getTargetError:getTargetError, getMinFps: getMinFps, getMaxCacheSize:getMaxCacheSize };
 
 }();
