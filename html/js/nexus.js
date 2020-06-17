@@ -919,7 +919,6 @@ Instance.prototype = {
 	}
 };
 
-
 //keep track of meshes and which GL they belong to (no sharing between contexts)
 var contexts = [];
 
@@ -935,8 +934,6 @@ function getContext(gl) {
 	contexts.push(c);
 	return c;
 }
-
-
 
 function beginFrame(gl, fps) { //each context has a separate frame count.
 	var c = getContext(gl);
