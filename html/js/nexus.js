@@ -588,8 +588,8 @@ Instance.prototype = {
 		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11];  p[7]  = -m[12] + m[15]; //right
 		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11];  p[11] =  m[13] + m[15]; //bottom
 		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11];  p[15] = -m[13] + m[15]; //top
-		p[16] =  m[2];        p[17] =  m[6];        p[18] =  m[10];         p[19] =  m[14];        //near
-		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15];//far
+		p[16] = -m[2] + m[3]; p[17] = -m[6] + m[7]; p[18] = -m[10] + m[11]; p[19] = -m[14] + m[15]; //near
+		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15]; //far
 
 		//normalize planes to get also correct distances
 		for(var i = 0; i < 24; i+= 4) {
@@ -821,7 +821,7 @@ Instance.prototype = {
 				var palette = [
 					[1, 1, 1, 1], //white
 					[1, 1, 1, 1], //white
-					[1, 0.5, 1, 1], //magenta
+					[1, 0, 1, 1], //magenta
 					[0, 1, 1, 1], //cyan
 					[1, 1, 0, 1], //yellow
 					[0, 0, 1, 1], //blue
