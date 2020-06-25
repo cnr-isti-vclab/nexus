@@ -79,7 +79,7 @@ function loadMeco() {
 var corto = null;
 function loadCorto() {
 
-	corto = new Worker(path.replace('nexus.js', 'corto.js'));
+	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
@@ -280,7 +280,7 @@ var glP = WebGLRenderingContext.prototype;
 var attrGlMap = [glP.NONE, glP.BYTE, glP.UNSIGNED_BYTE, glP.SHORT, glP.UNSIGNED_SHORT, glP.INT, glP.UNSIGNED_INT, glP.FLOAT, glP.DOUBLE];
 var attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
 
-var targetError   = 2.0;    //error won't go lower than this if we reach it.
+var targetError   = 2.0;    //error won't go lower than this if we reach it
 var maxError      = 15;     //error won't go over this even if fps is low
 var minFps        = 15;
 var maxPending    = 3;
@@ -672,16 +672,15 @@ Instance.prototype = {
 		var mi = t.modelViewProjInv;
 		var p = t.planes;
 
-
-		//frustum plane equation Ax + By + Cz + D = 0;
+		//frustum planes Ax + By + Cz + D = 0;
 		p[0]  =  m[0] + m[3]; p[1]  =  m[4] + m[7]; p[2]  =  m[8] + m[11];  p[3]  =  m[12] + m[15]; //left
 		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11];  p[7]  = -m[12] + m[15]; //right
 		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11];  p[11] =  m[13] + m[15]; //bottom
 		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11];  p[15] = -m[13] + m[15]; //top
-		p[16] =  m[2];        p[17] =  m[6];        p[18] =  m[10];         p[19] =  m[14];        //near
-		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15];//far
+		p[16] = -m[2] + m[3]; p[17] = -m[6] + m[7]; p[18] = -m[10] + m[11]; p[19] = -m[14] + m[15]; //near
+		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15]; //far
 
-		//normalize planes to get also distances
+		//normalize planes to get also correct distances
 		for(var i = 0; i < 24; i+= 4) {
 			var l = Math.sqrt(p[i]*p[i] + p[i+1]*p[i+1] + p[i+2]*p[i+2]);
 			p[i] /= l; p[i+1] /= l; p[i+2] /= l; p[i+3] /= l;
@@ -836,7 +835,7 @@ Instance.prototype = {
 	isVisible : function (x, y, z, r) {
 		var p = this.planes;
 		for (i = 0; i < 24; i +=4) {
-			if(p[i]*x + p[i+1]*y + p[i+2]*z +p[i+3] + r < 0) //plane is ax+by+cz+w = 0;
+			if(p[i]*x + p[i+1]*y + p[i+2]*z + p[i+3] + r < 0) //plane is ax+by+cz+d = 0; 
 				return false;
 		}
 		return true;
@@ -855,6 +854,7 @@ Instance.prototype = {
 
 		var rendered = 0;
 		var last_texture = -1;
+
 		t.realError = 0.0;
 		for(var n = 0; n < m.n_nodes; n++) {
 			if(!t.selected[n]) continue;
@@ -870,7 +870,6 @@ Instance.prototype = {
 				}
 				if(skip) continue;
 			}
-
 
 			var sp = m.nspheres;
 			var off = n*5;
@@ -908,21 +907,23 @@ Instance.prototype = {
 				gl.disableVertexAttribArray(3);
 
 				var error = t.nodeError(n, true);
-				var palette = {
-					1:    [1, 1, 1, 1], //white
-					2:    [1, 0, 1, 1], //magenta
-					4:    [0, 1, 1, 1], //cyan
-					8:    [1, 1, 0, 1], //yellow
-					16:   [0, 0, 1, 1], //blue
-					32:   [0, 1, 0, 1], //green
-					64:   [1, 0, 0, 1]  //red
-				};
-
-				for(i in palette)
-					if(i > error) {
-						gl.vertexAttrib4fv(attr.color, palette[i]);
-						break;
-					}
+				var palette = [
+					[1, 1, 1, 1], //white
+					[1, 1, 1, 1], //white
+					[1, 0, 1, 1], //magenta
+					[0, 1, 1, 1], //cyan
+					[1, 1, 0, 1], //yellow
+					[0, 0, 1, 1], //blue
+					[0, 1, 0, 1], //green
+					[1, 0, 0, 1]  //red
+				];
+				let w = Math.min(6.99, Math.max(0, Math.log2(error)));
+				let low = Math.floor(w);
+				w -= low;
+				let color = [];
+				for( let k = 0; k < 4; k++)
+					color[k] = palette[low][k]*(1-w) + palette[low+1][k]*w;
+				gl.vertexAttrib4fv(attr.color, color);
 //				gl.vertexAttrib4fv(2, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
 			}
 
@@ -1017,8 +1018,7 @@ Instance.prototype = {
 	}
 };
 
-
-//keep track of meshes and which GL they belong to. (no sharing between contexts)
+//keep track of meshes and which GL they belong to (no sharing between contexts)
 var contexts = [];
 
 function getContext(gl) {
@@ -1036,8 +1036,6 @@ function getContext(gl) {
 	contexts.push(c);
 	return c;
 }
-
-
 
 function beginFrame(gl, fps) { //each context has a separate frame count.
 	var c = getContext(gl);
@@ -1281,7 +1279,6 @@ function loadNodeTexture(request, context, node, groupid) {
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-
 			}
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
 
@@ -1451,7 +1448,6 @@ function updateCache(gl) {
 //nodes are loaded asincronously, just update mesh content (VBO) cache size is kept globally.
 //but this could be messy.
 
-
 function getTargetError(gl)  { return getContext(gl).targetError; }
 function getMinFps(gl)       { return getContext(gl).minFps; }
 function getMaxCacheSize(gl) { return getContext(gl).maxCacheSize; }
@@ -1460,9 +1456,8 @@ function setTargetError(gl, error) { getContext(gl).targetError = error; }
 function setMinFps(gl, fps)        { getContext(gl).minFps = fps; }
 function setMaxCacheSize(gl, size) { getContext(gl).maxCacheSize = size; }
 
-
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
-	setTargetError:setTargetError, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize };
+	setTargetError:setTargetError, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize, getTargetError:getTargetError, getMinFps: getMinFps, getMaxCacheSize:getMaxCacheSize };
 
 }();
