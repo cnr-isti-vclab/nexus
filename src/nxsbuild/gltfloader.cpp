@@ -380,6 +380,8 @@ void GltfLoader::cacheVertices() {
 
 				uint8_t *pos = buffer.data.data() + color_accessor.byteOffset+ view.byteOffset;
 				for(uint32_t i = 0; i < color_accessor.count; i++) {
+					if(i >= vertices.size())
+						break;
 					Vertex &v = vertices[start_vertex + i];
 					v.c[3] = 255;
 					switch(color_accessor.componentType) {
