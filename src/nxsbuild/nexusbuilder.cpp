@@ -667,7 +667,6 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 			} else {
 
 				if(useNodeTex) {
-					//static int counter = 0;
 					QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
 					area += nodetex.width()*nodetex.height();
 					output_pixels += nodetex.width()*nodetex.height();
@@ -683,11 +682,20 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 #endif
 					writer.write(nodetex);
 					
-/*					QString texname = QString::number(counter) + ".jpg";
-					nodetex.save(texname);
+
+//#define DEBUG_TEXTURES
+#ifdef DEBUG_TEXTURES
+					static int counter = 0;
+
+					QString texname = QString::number(counter) + ".jpg";
+					QImageWriter rewriter(texname, "jpg");
+					rewriter.setQuality(tex_quality);
+					rewriter.write(nodetex);
+
 					tmp.textures.push_back(texname.toStdString());
 					tmp.savePlyTex(QString::number(counter) + ".ply", texname);
-					counter++; */
+					counter++;
+#endif
 					
 					quint64 size = pad(nodeTex.size());
 					nodeTex.resize(size);
@@ -967,9 +975,10 @@ void NexusBuilder::save(QString filename) {
 	file.close();
 }
 
-quint32 NexusBuilder::pad(quint32 s) {
-	const quint32 padding = NEXUS_PADDING;
-	quint64 m = (s-1) & ~(padding -1);
+/* TODO move to 64bits! */
+qint64 NexusBuilder::pad(qint64 s) {
+	const qint64 padding = NEXUS_PADDING;
+	qint64 m = (s-1) & ~(padding -1);
 	return m + padding;
 }
 

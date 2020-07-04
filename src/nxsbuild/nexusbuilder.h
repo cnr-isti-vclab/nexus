@@ -143,7 +143,7 @@ public:
 	void optimizeNode(quint32 node, uchar *chunk);
 	void uniformNormals();
 	void appendBorderVertices(uint32_t origin, uint32_t destination, std::vector<NVertex> &vertices);
-	quint32 pad(quint32 s);
+	qint64 pad(qint64 s);
 
 	void testSaturation();
 };
