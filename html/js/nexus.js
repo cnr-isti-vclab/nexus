@@ -1,7 +1,7 @@
 /*
-The MIT License
-
-Copyright (c) 2012-2019, Visual Computing Lab, ISTI - CNR, Nexus.
+Nexus
+Copyright (c) 2012-2020, Visual Computing Lab, ISTI - CNR
+All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -95,7 +95,6 @@ function loadCorto() {
 		readyNode(node);
 	};
 }
-
 
 /* UTILITIES */
 
@@ -268,12 +267,13 @@ PriorityQueue.prototype = {
 
 var padding = 256;
 var Debug = {
+	verbose : false,  //debug messages
 	nodes   : false,  //color each node
-//	culling : false,  //visibility culling disabled
 	draw    : false,  //final rendering call disabled
-	extract : false,  //no extraction
-//	request : false,  //no network requests
-//	worker  : false   //no web workers
+	extract : false,  //extraction disabled
+//	culling : false,  //visibility culling disabled
+//	request : false,  //network requests disabled
+//	worker  : false   //web workers disabled
 };
 
 
@@ -281,8 +281,9 @@ var glP = WebGLRenderingContext.prototype;
 var attrGlMap = [glP.NONE, glP.BYTE, glP.UNSIGNED_BYTE, glP.SHORT, glP.UNSIGNED_SHORT, glP.INT, glP.UNSIGNED_INT, glP.FLOAT, glP.DOUBLE];
 var attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
 
-var targetError   = 2.0;
-var targetFps     = 15;
+var targetError   = 2.0;    //error won't go lower than this if we reach it
+var maxError      = 15;     //error won't go over this even if fps is low
+var minFps        = 15;
 var maxPending    = 3;
 var maxBlocked    = 3;
 var maxReqAttempt = 2;
@@ -306,15 +307,15 @@ Mesh.prototype = {
 			0,
 			88,
 			function() {
-//				console.log("Loading header for " + mesh.url);
+				if(Debug.verbose) console.log("Loading header for " + mesh.url);
 				var view = new DataView(this.response);
 				view.offset = 0;
 				mesh.reqAttempt++;
 				var header = mesh.importHeader(view);
 				if(!header) {
-					console.log("Empty header!");
+					if(Debug.verbose) console.log("Empty header!");
 					if(mesh.reqAttempt < maxReqAttempt) mesh.open(mesh.url + '?' + Math.random()); // BLINK ENGINE CACHE BUG PATCH
-					return null;
+					return;
 				}
 				mesh.reqAttempt = 0;
 				for(i in header)
@@ -347,7 +348,7 @@ Mesh.prototype = {
 					load.bind(this)();
 					break;
 				case 200:
-					console.log("200 response: server does not support byte range requests.");
+//					console.log("200 response: server does not support byte range requests.");
 			}
 		};
 		r.onerror = error;
@@ -362,7 +363,7 @@ Mesh.prototype = {
 		mesh.httpRequest(
 			88,
 			end,
-			function() { mesh.handleIndex(this.response); },
+			function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
 			function() { console.log("Index request error!");},
 			function() { console.log("Index request abort!");}
 		);
@@ -582,18 +583,20 @@ Instance.prototype = {
 		var mi = t.modelViewProjInv;
 		var p = t.planes;
 
-		//left, right, bottom, top as Ax + By + Cz + D = 0;
-		p[0]  =  m[0] + m[3]; p[1]  =  m[4] + m[7]; p[2]  =  m[8] + m[11]; p[3]  =  m[12] + m[15];
-		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11]; p[7]  = -m[12] + m[15];
-		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11]; p[11] =  m[13] + m[15];
-		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11]; p[15] = -m[13] + m[15];
-		p[16] = -m[2] + m[3]; p[17] = -m[6] + m[7]; p[18] = -m[10] + m[11]; p[19] = -m[14] + m[15];
-		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15];
+		//frustum planes Ax + By + Cz + D = 0;
+		p[0]  =  m[0] + m[3]; p[1]  =  m[4] + m[7]; p[2]  =  m[8] + m[11];  p[3]  =  m[12] + m[15]; //left
+		p[4]  = -m[0] + m[3]; p[5]  = -m[4] + m[7]; p[6]  = -m[8] + m[11];  p[7]  = -m[12] + m[15]; //right
+		p[8]  =  m[1] + m[3]; p[9]  =  m[5] + m[7]; p[10] =  m[9] + m[11];  p[11] =  m[13] + m[15]; //bottom
+		p[12] = -m[1] + m[3]; p[13] = -m[5] + m[7]; p[14] = -m[9] + m[11];  p[15] = -m[13] + m[15]; //top
+		p[16] = -m[2] + m[3]; p[17] = -m[6] + m[7]; p[18] = -m[10] + m[11]; p[19] = -m[14] + m[15]; //near
+		p[20] = -m[2] + m[3]; p[21] = -m[6] + m[7]; p[22] = -m[10] + m[11]; p[23] = -m[14] + m[15]; //far
 
-		for(var i = 0; i < 16; i+= 4) {
+		//normalize planes to get also correct distances
+		for(var i = 0; i < 24; i+= 4) {
 			var l = Math.sqrt(p[i]*p[i] + p[i+1]*p[i+1] + p[i+2]*p[i+2]);
 			p[i] /= l; p[i+1] /= l; p[i+2] /= l; p[i+3] /= l;
 		}
+		
 		//side is M'(1,0,0,1) - M'(-1,0,0,1) and they lie on the planes
 		var r3 = mi[3] + mi[15];
 		var r0 = (mi[0]  + mi[12 ])/r3;
@@ -638,8 +641,7 @@ Instance.prototype = {
 		for(var i = 0; i < t.mesh.nroots; i++)
 			t.insertNode(i);
 
-		t.targetError = t.context.currentError;
-		t.currentError = 1e20;
+		t.currentError = t.context.currentError;
 		t.drawSize = 0;
 		t.nblocked = 0;
 
@@ -657,7 +659,6 @@ Instance.prototype = {
 				t.nblocked++;
 			else {
 				t.selected[node] = 1;
-				t.currentError = error;
 			}
 			t.insertChildren(node, blocked);
 		}
@@ -668,7 +669,7 @@ Instance.prototype = {
 		t.visited[node] = 1;
 
 		var error = t.nodeError(node);
-		if(node > 0 && error < t.targetError) return;  //2% speed TODO check if needed
+		if(node > 0 && error < t.currentError) return;  //2% speed TODO check if needed
 
 		var errors = t.mesh.errors;
 		var frames = t.mesh.frames;
@@ -692,8 +693,8 @@ Instance.prototype = {
 
 	expandNode : function (node, error) {
 		var t = this;
-		if(node > 0 && error < t.targetError) {
-//			console.log("Reached error", error, t.targetError);
+		if(node > 0 && error < t.currentError) {
+//			console.log("Reached error", error, t.currentError);
 			return false;
 		}
 
@@ -745,7 +746,7 @@ Instance.prototype = {
 	isVisible : function (x, y, z, r) {
 		var p = this.planes;
 		for (i = 0; i < 24; i +=4) {
-			if(p[i]*x + p[i+1]*y + p[i+2]*z +p[i+3] + r < 0) //ax+by+cz+w = 0;
+			if(p[i]*x + p[i+1]*y + p[i+2]*z + p[i+3] + r < 0) //plane is ax+by+cz+d = 0; 
 				return false;
 		}
 		return true;
@@ -764,6 +765,8 @@ Instance.prototype = {
 
 		var rendered = 0;
 		var last_texture = -1;
+
+		t.realError = 0.0;
 		for(var n = 0; n < m.nodesCount; n++) {
 			if(!t.selected[n]) continue;
 
@@ -779,11 +782,13 @@ Instance.prototype = {
 				if(skip) continue;
 			}
 
-
 			var sp = m.nspheres;
 			var off = n*5;
 			if(!t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+4])) //tight radius
 				continue;
+
+			let err = t.nodeError(n, true);
+			t.realError = Math.max(err, t.realError);
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, m.vbo[n]);
 			if(t.mode != "POINT")
@@ -813,21 +818,23 @@ Instance.prototype = {
 				gl.disableVertexAttribArray(3);
 
 				var error = t.nodeError(n, true);
-				var palette = {
-					1:    [1, 1, 1, 1], //white
-					2:    [1, 0, 1, 1], //magenta
-					4:    [0, 1, 1, 1], //cyan
-					8:    [1, 1, 0, 1], //yellow
-					16:   [0, 0, 1, 1], //blue
-					32:   [0, 1, 0, 1], //green
-					64:   [1, 0, 0, 1]  //red
-				};
-
-				for(i in palette)
-					if(i > error) {
-						gl.vertexAttrib4fv(attr.color, palette[i]);
-						break;
-					}
+				var palette = [
+					[1, 1, 1, 1], //white
+					[1, 1, 1, 1], //white
+					[1, 0, 1, 1], //magenta
+					[0, 1, 1, 1], //cyan
+					[1, 1, 0, 1], //yellow
+					[0, 0, 1, 1], //blue
+					[0, 1, 0, 1], //green
+					[1, 0, 0, 1]  //red
+				];
+				let w = Math.min(6.99, Math.max(0, Math.log2(error)));
+				let low = Math.floor(w);
+				w -= low;
+				let color = [];
+				for( let k = 0; k < 4; k++)
+					color[k] = palette[low][k]*(1-w) + palette[low+1][k]*w;
+				gl.vertexAttrib4fv(attr.color, color);
 //				gl.vertexAttrib4fv(2, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
 			}
 
@@ -845,7 +852,7 @@ Instance.prototype = {
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
-//				var fraction = (error/t.currentError - 1);
+//				var fraction = (error/t.realError - 1);
 //				if(fraction > 1) fraction = 1;
 
 				var count = nv;
@@ -894,6 +901,7 @@ Instance.prototype = {
 		}
 
 		t.context.rendered += rendered;
+		t.context.realError = Math.max(t.context.realError, t.realError);
 
 		if(!vertexEnabled) gl.disableVertexAttribArray(attr.position);
 		if(!normalEnabled && attr.normal >= 0) gl.disableVertexAttribArray(attr.normal);
@@ -911,8 +919,7 @@ Instance.prototype = {
 	}
 };
 
-
-//keep track of meshes and which GL they belong to. (no sharing between contexts)
+//keep track of meshes and which GL they belong to (no sharing between contexts)
 var contexts = [];
 
 function getContext(gl) {
@@ -922,33 +929,32 @@ function getContext(gl) {
 		if(g.gl == gl) c = g;
 	});
 	if(c) return c;
-	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0,
-		targetFps: targetFps, targetError: targetError, currentError: targetError };
+	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0, maxCacheSize: maxCacheSize,
+		minFps: minFps, targetError: targetError, currentError: targetError, maxError: maxError, realError: 0 };
 	contexts.push(c);
 	return c;
 }
-
-
 
 function beginFrame(gl, fps) { //each context has a separate frame count.
 	var c = getContext(gl);
 
 	c.frame++;
 	c.candidates = [];
-	if(fps && c.targetFps) {
-		var r = c.targetFps/fps;
+	if(fps && c.minFps) {
+		c.currentFps = fps;
+		var r = c.minFps/fps;
 		if(r > 1.1)
 			c.currentError *= 1.05;
 		if(r < 0.9)
 			c.currentError *= 0.95;
 
-		if(c.currentError < c.targetError)
-			c.currentError = c.targetError;
-		if(c.currentError > 10) c.currentError = 10;
+		c.currentError = Math.max(c.targetError, Math.min(c.maxError, c.currentError));
+
 	} else
 		c.currentError = c.targetError;
-//	console.log("current", c.currentError, "fps", fps, "targetFps", c.targetFps, "rendered", c.rendered);
+
 	c.rendered = 0;
+	c.realError = 0;
 }
 
 function endFrame(gl) {
@@ -960,10 +966,13 @@ function removeNode(context, node) {
 	var m = node.mesh;
 	if(m.status[n] == 0) return;
 
-//	console.log("Removing " + m.url + " node: " + n);
+	if(Debug.verbose) console.log("Removing " + m.url + " node: " + n);
 	m.status[n] = 0;
 
-	if (m.georeq.readyState != 4) m.georeq.abort();
+	if (m.georeq.readyState != 4) {
+		m.georeq.abort();
+		context.pending--;
+	}
 
 	context.cacheSize -= m.nsize[n];
 	context.gl.deleteBuffer(m.vbo[n]);
@@ -1010,11 +1019,11 @@ function requestNodeGeometry(context, node) {
 		m.noffsets[n+1],
 		function() { loadNodeGeometry(this, context, node); },
 		function() {
-//			console.log("Geometry request error!");
+			if(Debug.verbose) console.log("Geometry request error!");
 			recoverNode(context, node, 0);
 		},
 		function() {
-//			console.log("Geometry request abort!");
+			if(Debug.verbose) console.log("Geometry request abort!");
 			removeNode(context, node);
 		},
 		'arraybuffer'
@@ -1033,16 +1042,17 @@ function requestNodeTexture(context, node) {
 		return;
 
 	m.status[n]++; //pending
+
 	m.texreq = m.httpRequest(
 		m.textures[tex],
 		m.textures[tex+1],
 		function() { loadNodeTexture(this, context, node, tex); },
 		function() {
-//			console.log("Texture request error!");
+			if(Debug.verbose) console.log("Texture request error!");
 			recoverNode(context, node, 1);
 		},
 		function() {
-//			console.log("Texture request abort!");
+			if(Debug.verbose) console.log("Texture request abort!");
 			removeNode(context, node);
 		},
 		'blob'
@@ -1057,7 +1067,7 @@ function recoverNode(context, node, id) {
 	m.status[n]--;
 
 	if(node.reqAttempt > maxReqAttempt) {
-//		console.log("Max request limit for " + m.url + " node: " + n);
+		if(Debug.verbose) console.log("Max request limit for " + m.url + " node: " + n);
 		removeNode(context, node);
 		return;
 	}
@@ -1067,11 +1077,11 @@ function recoverNode(context, node, id) {
 	switch (id){
 		case 0:
 			requestNodeGeometry(context, node);
-			console.log("Recovering geometry for " + m.url + " node: " + n);
+			if(Debug.verbose) console.log("Recovering geometry for " + m.url + " node: " + n);
 			break;
 		case 1:
 			requestNodeTexture(context, node);
-			console.log("Recovering texture for " + m.url + " node: " + n);
+			if(Debug.verbose) console.log("Recovering texture for " + m.url + " node: " + n);
 			break;
 	}
 }
@@ -1098,6 +1108,10 @@ function loadNodeGeometry(request, context, node) {
 	}
 }
 
+function powerOf2(n) {
+	return n && (n & (n - 1)) === 0;
+}
+
 function loadNodeTexture(request, context, node, texid) {
 	var n = node.id;
 	var m = node.mesh;
@@ -1118,12 +1132,20 @@ function loadNodeTexture(request, context, node, texid) {
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 		var tex = m.texids[texid] = gl.createTexture();
 		gl.bindTexture(gl.TEXTURE_2D, tex);
+
+//TODO some textures might be alpha only! save space
 		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.generateMipmap(gl.TEXTURE_2D);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+		if(gl instanceof WebGL2RenderingContext || (powerOf2(img.width) && powerOf2(img.height))) {
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+			gl.generateMipmap(gl.TEXTURE_2D);
+		} else {
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		}
+
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
 
 		m.status[n]--;
@@ -1263,45 +1285,39 @@ function updateCache(gl) {
 	context.candidates = [];
 	if(!best) return;
 
-	while(context.cacheSize > maxCacheSize) {
+	while(context.cacheSize > context.maxCacheSize) {
 		var worst = null;
-		//find worst in cache
+		//find node with smallest error in cache
 		context.meshes.forEach(function(m) {
 			var n = m.nodesCount;
 			for(i = 0; i < n; i++)
-				if(!worst || (m.status[i] == 1 && m.errors[i] < worst.error))
+				if(m.status[i] == 1 && (!worst ||  m.errors[i] < worst.error))
 					worst = {error: m.errors[i], frame: m.frames[i], mesh:m, id:i};
 		});
-
 		if(!worst || (worst.error >= best.error && worst.frame == best.frame))
 			return;
 		removeNode(context, worst);
 	}
 
-	requestNode(context, best);
-
-	if(context.pending < maxPending)
+	if(context.pending < maxPending) {
+		requestNode(context, best);
 		updateCache(gl);
+	}
 }
 
 //nodes are loaded asincronously, just update mesh content (VBO) cache size is kept globally.
 //but this could be messy.
 
-function setTargetError(gl, error) {
-	var context = getContext(gl);
-	context.targetError = error;
-}
-function setTargetFps(gl, fps) {
-	var context = getContext(gl);
-	context.targetFps = fps;
-}
-function setMaxCacheSize(gl, size) {
-	var context = getContext(gl);
-	context.maxCacheSize = size;
-}
+function getTargetError(gl)  { return getContext(gl).targetError; }
+function getMinFps(gl)       { return getContext(gl).minFps; }
+function getMaxCacheSize(gl) { return getContext(gl).maxCacheSize; }
+
+function setTargetError(gl, error) { getContext(gl).targetError = error; }
+function setMinFps(gl, fps)        { getContext(gl).minFps = fps; }
+function setMaxCacheSize(gl, size) { getContext(gl).maxCacheSize = size; }
 
 return { Mesh: Mesh, Renderer: Instance, Renderable: Instance, Instance:Instance,
 	Debug: Debug, contexts: contexts, beginFrame:beginFrame, endFrame:endFrame, updateCache: updateCache, flush: flush,
-	setTargetError:setTargetError, setTargetFps:setTargetFps, setMaxCacheSize:setMaxCacheSize };
+	setTargetError:setTargetError, setMinFps: setMinFps, setMaxCacheSize:setMaxCacheSize, getTargetError:getTargetError, getMinFps: getMinFps, getMaxCacheSize:getMaxCacheSize };
 
 }();

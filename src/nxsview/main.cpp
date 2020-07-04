@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 	QApplication::setAttribute(Qt::AA_X11InitThreads);
 	QApplication app(argc, argv);
 	QMyWindow *window = new QMyWindow(NULL);
- 
+
 	QVariant draw(3.0), error(3.0f), ram(500.0f), gpu(250.0f), cache(100000),
 			fov(30), width(800), height(600), fps(0.0f), instances(1), prefetch(100);
 
