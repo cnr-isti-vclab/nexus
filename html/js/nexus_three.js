@@ -69,6 +69,7 @@ function() {
 			var normals = new Float32Array(3);
 			geometry.setAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
 		}
+		let materialType = this.mesh.vertex.normal? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
 
 		if(this.mesh.vertex.color && this.mesh.vertex.texCoord) {
 			var uv = new Float32Array(2);
@@ -78,14 +79,14 @@ function() {
 			if(mesh.autoMaterial) {
 				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
 				texture.needsUpdate = true;
-				mesh.material = new THREE.MeshLambertMaterial( { vertexColors: THREE.VertexColors, map: texture } );
+				mesh.material = new materialType( { vertexColors: THREE.VertexColors, map: texture } );
 			}
 		}
 		else if(this.mesh.vertex.color) {
 			var colors = new Float32Array(4);
 			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
 			if(mesh.autoMaterial)
-				mesh.material = new THREE.MeshLambertMaterial({ vertexColors: THREE.VertexColors });
+				mesh.material = new materialType({ vertexColors: THREE.VertexColors });
 		}
 		else if(this.mesh.vertex.texCoord) {
 			var uv = new Float32Array(2);
@@ -93,7 +94,7 @@ function() {
 			if(mesh.autoMaterial) {
 				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
 				texture.needsUpdate = true;
-				mesh.material = new THREE.MeshLambertMaterial( { map: texture } );
+				mesh.material = new materialType( { color: 0xffffff, map: texture } );
 			}
 		}
 
