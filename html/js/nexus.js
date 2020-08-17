@@ -1139,7 +1139,7 @@ function loadNodeTexture(request, context, node, texid) {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-		if(gl instanceof WebGL2RenderingContext || (powerOf2(img.width) && powerOf2(img.height))) {
+		if(!(gl instanceof WebGLRenderingContext) || (powerOf2(img.width) && powerOf2(img.height))) {
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 			gl.generateMipmap(gl.TEXTURE_2D);
 		} else {
