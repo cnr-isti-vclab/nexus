@@ -79,14 +79,15 @@ function loadMeco() {
 var corto = null;
 function loadCorto() {
 
-	function getWorkerURL( url ) {
-		const content = `importScripts( "${ url }" );`;
-		return URL.createObjectURL( new Blob( [ content ], { type: "text/javascript" } ) );
-	}
+//	function getWorkerURL( url ) {
+//		const content = `importScripts( "${ url }" );`;
+//		return URL.createObjectURL( new Blob( [ content ], { type: "text/javascript" } ) );
+//	}
 
-	let corto_url = "http://vcg.isti.cnr.it/3dhop/distribution/js/" + path.replace('nexus.js', 'corto.em.js');
+//	let corto_url = path.replace('nexus.js', 'corto.em.js');
 
-	corto = new Worker(getWorkerURL(corto_url));
+//	corto = new Worker(getWorkerURL(corto_url));
+	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
