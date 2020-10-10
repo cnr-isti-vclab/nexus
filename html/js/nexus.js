@@ -522,7 +522,7 @@ Instance = function(gl) {
 	this.onLoad = function() {};
 	this.onUpdate = null;
 	this.drawBudget = drawBudget;
-	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3, 'size':4 };
+	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3, 'size':4, 'map':0 };
 }
 
 Instance.prototype = {
@@ -869,7 +869,7 @@ Instance.prototype = {
 						var texid = m.patches[m.nfirstpatch[n]*3+2];
 						if(texid != -1 && texid != last_texture) { //bind texture
 							var tex = m.texids[texid];
-							gl.activeTexture(gl.TEXTURE0);
+							gl.activeTexture(gl.TEXTURE0 + attr.map);
 							gl.bindTexture(gl.TEXTURE_2D, tex);
 						}
 					}
@@ -896,7 +896,7 @@ Instance.prototype = {
 						var texid = m.patches[p*3+2];
 						if(texid != -1 && texid != last_texture) { //bind texture
 							var tex = m.texids[texid];
-							gl.activeTexture(gl.TEXTURE0);
+							gl.activeTexture(gl.TEXTURE0 + attr.map);
 							gl.bindTexture(gl.TEXTURE_2D, tex);
 							last_texture = texid;
 						}

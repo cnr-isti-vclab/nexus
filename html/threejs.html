@@ -76,9 +76,27 @@ function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
-var model = getURLParameter('model') || "models/gargo.nxz";
+var model = getURLParameter('model') || "models/monreale.nxz";
 
-var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
+
+/* HOW TO ADD A SKY BOX */
+/*
+var materialColor = new THREE.Color();
+materialColor.setRGB( 1.0, 1.0, 1.0 );
+var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+texture.needsUpdate = true;
+
+var path = "skybox/";
+var urls = [
+path + "px.jpg", path + "nx.jpg",
+path + "py.jpg", path + "ny.jpg",
+path + "pz.jpg", path + "nz.jpg"
+];
+var textureCube = new THREE.CubeTextureLoader().load( urls );
+scene.background = textureCube;
+var material = new THREE.MeshPhongMaterial( { color: materialColor, map: texture, envMap: textureCube, reflectivity: 0.1,shininess: 50, side: THREE.DoubleSide } ); */
+
+var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, material);
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );
@@ -107,6 +125,8 @@ function animate() {
 }
 
 animate();
+
+
 
 </script>
 

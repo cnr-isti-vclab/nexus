@@ -122,14 +122,18 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	camera.projectionMatrix.elements, 
 	this.modelViewMatrix.elements);
 
-	var program = renderer.getContext().getParameter(gl.CURRENT_PROGRAM);
+	var program = gl.getParameter(gl.CURRENT_PROGRAM);
+
+
 	var attr = instance.attributes;
-	attr.position = renderer.getContext().getAttribLocation(program, "position");
-	attr.normal   = renderer.getContext().getAttribLocation(program, "normal");
-	attr.color    = renderer.getContext().getAttribLocation(program, "color");
-	attr.uv       = renderer.getContext().getAttribLocation(program, "uv");
-	attr.size     = renderer.getContext().getUniformLocation(program, "size");
-	attr.scale    = renderer.getContext().getUniformLocation(program, "scale");
+	attr.position = gl.getAttribLocation(program, "position");
+	attr.normal   = gl.getAttribLocation(program, "normal");
+	attr.color    = gl.getAttribLocation(program, "color");
+	attr.uv       = gl.getAttribLocation(program, "uv");
+	attr.size     = gl.getUniformLocation(program, "size");
+	attr.scale    = gl.getUniformLocation(program, "scale");
+	attr.map      = gl.getUniform(program, gl.getUniformLocation(program, "map"));
+
 
 	//hack to detect if threejs using point or triangle shaders
 	instance.mode = attr.size ? "POINT" : "FILL";
@@ -141,7 +145,7 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 		instance.pointscale = 2.0;
 
 	instance.render();
-	Nexus.updateCache(renderer.getContext());
+	Nexus.updateCache(gl);
 }
 
 
