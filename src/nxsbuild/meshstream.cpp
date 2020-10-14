@@ -117,8 +117,11 @@ void Stream::load(QStringList paths, QString material) {
 
 		for(auto m: loader->materials) {
 			//convert path to absolute paths!
-			for(auto &tex: m.textures)
+			for(auto &tex: m.textures) {
+				//windows paths .\ sometimes used in mtl,
+				std::replace( tex.begin(), tex.end(), QChar('\\'), QChar('/') );
 				tex = path + "/" + tex;
+			}
 			materials.push_back(m);
 		}
 
