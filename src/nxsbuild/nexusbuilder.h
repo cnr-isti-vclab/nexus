@@ -23,6 +23,7 @@ for more details.
 #include <QString>
 #include <QFile>
 #include <QMutex>
+#include <QElapsedTimer>
 
 #include <vcg/space/box3.h>
 
@@ -143,6 +144,7 @@ public:
 	
 	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
 	int skipSimplifyLevels = 0;
+
 
 	QImage extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge);
 	void invertNodes(); //

@@ -742,7 +742,7 @@ Instance.prototype = {
 		t.nblocked = 0;
 
 		var requested = 0;
-		while(t.visitQueue.size && t.nblocked < maxBlocked) {
+        while(t.visitQueue.size && t.nblocked < maxBlocked) {
 			var error = t.visitQueue.error[0];
 			var node = t.visitQueue.pop();
 			if ((requested < maxPending) && (t.mesh.status[node] == 0)) {
@@ -910,8 +910,8 @@ Instance.prototype = {
 			}
 
 			if(Debug.nodes) {
-				gl.disableVertexAttribArray(2);
-				gl.disableVertexAttribArray(3);
+				gl.disableVertexAttribArray(attr.color);
+				gl.disableVertexAttribArray(attr.uv);
 
 				var error = t.nodeError(n, true);
 				var palette = [
@@ -931,7 +931,7 @@ Instance.prototype = {
 				for( let k = 0; k < 4; k++)
 					color[k] = palette[low][k]*(1-w) + palette[low+1][k]*w;
 				gl.vertexAttrib4fv(attr.color, color);
-//				gl.vertexAttrib4fv(2, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
+//				gl.vertexAttrib4fv(attr.color, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
 			}
 
 			if (Debug.draw) continue;

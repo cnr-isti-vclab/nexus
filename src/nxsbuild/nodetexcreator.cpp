@@ -158,8 +158,10 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
 		auto &t = mesh.vert[i].T().P();
-		t[0] = fmod(t[0], 1.0f);
-		t[1] = fmod(t[1], 1.0f);
+		t[0] = std::min(1.0f, std::max(0.0f, t[0]));
+		t[1] = std::min(1.0f, std::max(0.0f, t[1]));
+		//t[0] = fmod(t[0], 1.0f);
+		//t[1] = fmod(t[1], 1.0f);
 		//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
 		//				cout << "T: " << t[0] << " " << t[1] << endl;
 		if(t[0] != 0.0f || t[1] != 0.0f)
@@ -224,7 +226,7 @@ TextureGroupBuild NodeTexCreator::process(TMesh &mesh, int level) {
 	//Here we should slit the boxes by material, then pack!
 	//Pack boxes
 	std::vector<vcg::Point2i> mapping;
-	vcg::Point2i maxSize(1096, 1096);
+	vcg::Point2i maxSize(4096, 4096);
 	vcg::Point2i packedSize;
 	bool success = false;
 	for(int i = 0; i < 5; i++, maxSize[0]*= 2, maxSize[1]*= 2) {

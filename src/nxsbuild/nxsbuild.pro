@@ -70,7 +70,8 @@ HEADERS += \
     ../common/material.h \
     nodetexcreator.h \
     ../common/json.hpp \
-    gltfloader.h
+    gltfloader.h \
+    ../common/gltf.h
 
 DESTDIR = "../../bin"
 

@@ -20,6 +20,7 @@ for more details.
 
 #include <QtGui>
 #include <QVariant>
+#include <QElapsedTimer>
 
 #include <wrap/system/qgetopt.h>
 
@@ -163,6 +164,9 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	QElapsedTimer timer;
+	timer.start();
+
 	Stream *stream = 0;
 	KDTree *tree = 0;
 	int returncode = 0;
@@ -212,6 +216,7 @@ int main(int argc, char *argv[]) {
 		//TODO: actually the stream will store textures or normals or colors even if not needed
 		stream->load(inputs, mtl);
 
+		cout << "Loading streams: " << timer.restart()/1000.0f << "s" << endl;
 
 		bool has_colors = stream->hasColors();
 		bool has_normals = stream->hasNormals();
@@ -275,7 +280,12 @@ int main(int argc, char *argv[]) {
 			treecloud->setTrianglesPerBlock(node_size);
 
 		builder.create(tree, stream,  top_node_size);
+
+		cout << "Building dataset: " << timer.restart()/1000.0f << "s" << endl;
+
 		builder.save(output);
+
+		cout << "Saving dataset: " << timer.restart()/1000.0f << "s" << endl;
 
 	} catch(QString error) {
 		cerr << "Fatal error: " << qPrintable(error) << endl;

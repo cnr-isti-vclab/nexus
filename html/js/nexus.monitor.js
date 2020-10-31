@@ -87,7 +87,8 @@ document.addEventListener('DOMContentLoaded', function(){
 	let editError      = nexusMonitor.querySelector('#nexusMonitorEditError');
 
 	nodesCheckbox.addEventListener('click', function() { 
-		Nexus.Debug.nodes = this.checked; });
+		Nexus.Debug.nodes = this.checked; 
+	});
 
 	editError.addEventListener('change', function() { 
 		if((typeof(Nexus) === 'undefined') || Nexus.contexts.length == 0) return;

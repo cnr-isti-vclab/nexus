@@ -276,6 +276,17 @@ void TMesh::savePlyTex(QString filename, QString tex) {
 	vcg::tri::io::ExporterPLY<TMesh>::Save(*this, filename.toStdString().c_str(), savemask, false);
 }
 
+void TMesh::saveObj(QString filename) {
+	int savemask = vcg::tri::io::Mask::IOM_VERTCOORD | vcg::tri::io::Mask::IOM_VERTNORMAL | vcg::tri::io::Mask::IOM_FACEINDEX;
+	vcg::tri::io::ExporterOBJ<TMesh>::Save(*this, filename.toStdString().c_str(), savemask, false);
+}
+
+void TMesh::saveObjTex(QString filename, QString tex) {
+	int savemask = vcg::tri::io::Mask::IOM_VERTCOORD | vcg::tri::io::Mask::IOM_VERTNORMAL | vcg::tri::io::Mask::IOM_FACEINDEX | vcg::tri::io::Mask::IOM_VERTTEXCOORD;
+	vcg::tri::io::ExporterOBJ<TMesh>::Save(*this, filename.toStdString().c_str(), savemask, false);
+}
+
+
 nx::Node TMesh::getNode()
 {
 	nx::Node node;

@@ -128,6 +128,9 @@ public:
 	void loadPly(const QString& filename);
 	void savePly(QString filename);
 	void savePlyTex(QString filename, QString tex);
+	void saveObj(QString filename);
+	void saveObjTex(QString filename, QString tex);
+
 	
 	nx::Node getNode();
 	quint32 serializedSize(nx::Signature &sig);

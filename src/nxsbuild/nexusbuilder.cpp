@@ -127,6 +127,8 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 
 	int level = 0;
 	int last_top_level_size = 0;
+	QElapsedTimer timer;
+	timer.start();
 	do {
 		cout << "Creating level " << level << endl;
 		tree->clear();
@@ -134,9 +136,12 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 		else tree->setAxesOrthogonal();
 
 		tree->load(stream);
+		cout << "Streaming " << timer.restart()/1000.0f << endl;
 		stream->clear();
 
 		createLevel(tree, stream, level);
+		cout << "Simplifying " << timer.restart()/1000.0f << endl;
+
 		level++;
 		if(skipSimplifyLevels <= 0 && last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
 			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
@@ -153,7 +158,7 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 
 /*
   Commented because the gain is negligible ( and the code is not correct either, there is
-  some problem in saving the trianglws...
+  some problem in saving the triangles... */
 
 
 class Worker: public QThread {
@@ -227,7 +232,7 @@ protected:
 		}
 
 	}
-}; */
+};
 
 
 
@@ -293,6 +298,13 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 		//QList<Worker *> workers;
 
 		double area = 0.0;
+
+		QElapsedTimer timer;
+		timer.start();
+
+		int64_t io_time = 0;
+		int64_t packing_time = 0;
+		int64_t simplify_time = 0;
 
 		for(uint block = 0; block < input->nBlocks(); block++) {
 
@@ -370,7 +382,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				mesh1.serialize(buffer, header.signature, node_patches);
 
 			} else {
-
+				io_time += timer.restart();
 				TextureGroupBuild group = nodeTexCreator.process(tmp, level);
 				error = group.error;
 
@@ -400,7 +412,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 					QString texname = QString::number(counter) + ".jpg";
 					nodetex.save(texname);
 					tmp.textures.push_back(texname.toStdString());
-					tmp.savePlyTex(QString::number(counter) + ".ply", texname);
+					tmp.saveObjTex(QString::number(counter) + ".obj", texname);
 					counter++;
 #endif
 					//No padding needed!
@@ -419,6 +431,8 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 
 				texture.size = uint32_t(nodeTex.size() - texture.offset * NEXUS_PADDING);
 				textures.push_back(texture);
+
+				packing_time += timer.restart();
 
 				tmp.serialize(buffer, header.signature, node_patches);
 				for(Patch &patch: node_patches) {
@@ -442,13 +456,15 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 			else
 				node = tmp.getNode();
 
+			io_time += timer.restart();
+
 			int nface;
 			if(!hasTextures()) {
 				error = mesh1.simplify(soup.size()*scaling, Mesh::QUADRICS);
 				nface = mesh1.fn;
 			} else {
 				
-cout << "e do not need skiplevel: qwe need to group and do not simplify increasing the number of triangles per mesh! with a max of texel per patch instead." << endl;
+//cout << "e do not need skiplevel: qwe need to group and do not simplify increasing the number of triangles per mesh! with a max of texel per patch instead." << endl;
 				int target_faces = soup.size()*scaling;
 				//if(pixelXedge > 10) {
 				//When textures are too big for the amount of geometry we skip some level of geometry simplification.
@@ -457,10 +473,13 @@ cout << "e do not need skiplevel: qwe need to group and do not simplify increasi
 					//cout << "Too much texture! Skipping vertex simplification" << endl;
 					target_faces = soup.size();
 				} 
-				
+				//mesh.savePly("test.ply");
+				//exit(0);
 				mesh.simplify(target_faces, TMesh::QUADRICS);
 				nface = mesh.fn;
 			}
+			simplify_time += timer.restart();
+
 
 			quint32 current_node = nodes.size();
 
@@ -485,7 +504,16 @@ cout << "e do not need skiplevel: qwe need to group and do not simplify increasi
 			}
 
 			delete []triangles;
+
+			io_time += timer.restart();
+
 		}
+		double n = input->nBlocks();
+		double io = double(io_time)/n;
+		double packing = double(packing_time)/n;
+		double simplify = double(simplify_time)/n;
+
+		cout << "Per node: packing: " << packing << "ms " << " Simplification: " << simplify << "ms " << " IO: " << io << "ms" << endl;
 
 		//std::cout << "Level texture area: " << area << endl;
 		/*while(workers.size()) {

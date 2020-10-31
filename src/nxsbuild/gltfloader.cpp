@@ -88,8 +88,8 @@ GltfLoader::GltfLoader(QString filename): vertices("cache_gltfvertex") {
 	//NO QUOTAS!
 	gltf::ReadQuotas readQuotas{};
 	readQuotas.MaxBufferCount = 1<<20;
-	readQuotas.MaxBufferByteLength = 1<<30;
-	readQuotas.MaxFileSize = 1<<30;
+	readQuotas.MaxBufferByteLength = 0xffffffff;
+	readQuotas.MaxFileSize = 0xffffffff;
 
 	try {
 		doc = new gltf::Document;
@@ -517,7 +517,6 @@ quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
 	m.transposeInPlace();
 
 	for(uint32_t i = 0; i < toread; i++) {
-		current_triangle++;
 
 		Triangle &triangle = buffer[count];
 		triangle.tex = primitive.material;
@@ -527,9 +526,9 @@ quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
 		for(int k = 0; k < 3; k++) {
 			uint32_t v = 0;
 			if(accessor.componentType == gltf::Accessor::ComponentType::UnsignedShort)
-				v = spos[i*3 + k];
+				v = spos[current_triangle*3 + k];
 			else if(accessor.componentType == gltf::Accessor::ComponentType::UnsignedInt)
-				v = ipos[i*3 + k];
+				v = ipos[current_triangle*3 + k];
 			else
 				throw QString("Unsupported type for indexes (only short and int)");
 
@@ -543,6 +542,7 @@ quint32 GltfLoader::getTriangles(quint32 size, Triangle *buffer) {
 			vertex.v[2] = p[2];
 			triangle.vertices[k] = vertex;
 		}
+		current_triangle++;
 
 		if(triangle.isDegenerate())
 			continue;

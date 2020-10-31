@@ -100,21 +100,16 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	//TODO: this should be one once per material!
 
 	let program = gl.getParameter(gl.CURRENT_PROGRAM);
-	let attr = instance.attributes = [];
+	let attr = instance.attributes = {};
 
-	["position", "normal", "color", "uv"].forEach(a => {
- 		attr[a] = gl.getAttribLocation(program, a);
-	});
-
-	["size", "scale"].forEach(a => {
-	    attr[a] = gl.getUniformLocation(program, a);
-	});
+	["position", "normal", "color", "uv"].forEach(a => { attr[a] = gl.getAttribLocation (program, a); });
+	["size", "scale"]                    .forEach(a => { attr[a] = gl.getUniformLocation(program, a); });
 
 //	each material has a few maps, we need to test more than one material
 //  	problem! we are only using a material (is there a way to change material?)
 //  	should we gltf brutally?
 
-	let samplers = instance.samplers;
+	let samplers = instance.samplers = {};
 
 	["map", "bumpMap", "roughnessMap", "normalMap", "specularMap"].forEach((map) => {
 		let location = gl.getUniformLocation(program, map); 
