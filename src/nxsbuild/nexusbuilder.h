@@ -84,7 +84,7 @@ public:
 
 	bool hasNormals() { return header.signature.vertex.hasNormals(); }
 	bool hasColors() { return header.signature.vertex.hasColors(); }
-	bool hasTextures() { return header.signature.vertex.hasTextures(); }
+	bool hasTextures() const { return header.signature.vertex.hasTextures(); }
 
 	bool initAtlas(std::vector<QString> &textures);
 	void create(KDTree *input, Stream *output, uint top_node_size);
@@ -105,12 +105,16 @@ public:
 	void reverseDag();
 	void save(QString filename);
 
-	//void addNode(mesh)
-	//    void process(Nexus &input, std::vector<bool> &selection);
-	QMutex m_input;
-	QMutex m_output;
-	QMutex m_builder;
-	QMutex m_chunks;
+	QMutex m_input;     //locks input stream when building nodes multithread
+	QMutex m_output;    //locks output stream stream when building nodes multithread
+	QMutex m_builder;   //locks builders data (patches, etc.)
+	QMutex m_chunks;    //locks builder chunks (the cache)
+	QMutex m_atlas;     //locks atlas (the cache)
+	QMutex m_texsimply;     //locks the temporary data simplification structure for texture. (UGH)
+
+
+	QMutex m_textures;  //locks  texture temporary file
+
 
 	QFile file;
 
@@ -127,6 +131,7 @@ public:
 	nx::TexAtlas atlas;
 	QTemporaryFile nodeTex; //texure images for each node stored here.
 	quint64 max_memory;
+	int n_threads = 4;
 
 	float scaling;
 	bool useNodeTex; //use node textures
@@ -136,6 +141,7 @@ public:
 	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
 	int skipSimplifyLevels = 0;
 
+	void processBlock(KDTreeSoup *input, StreamSoup *output, uint block, int level);
 
 	QImage extractNodeTex(TMesh &mesh, int level, float &error, float &pixelXedge);
 	void invertNodes(); //
@@ -143,7 +149,6 @@ public:
 	void optimizeNode(quint32 node, uchar *chunk);
 	void uniformNormals();
 	void appendBorderVertices(uint32_t origin, uint32_t destination, std::vector<NVertex> &vertices);
-	qint64 pad(qint64 s);
 
 	void testSaturation();
 };

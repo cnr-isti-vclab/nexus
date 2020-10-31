@@ -42,11 +42,11 @@ public:
 	Attribute(): type(0), number(0) {}
 
 	Attribute(Type t, unsigned char n): type(t), number(n) {}
-	int size() {
+	int size() const {
 		static unsigned char typesize[] = { 0, 1, 1, 2, 2, 4, 4, 4, 8 };
 		return number*typesize[type];
 	}
-	bool isNull() { return type == 0; }
+	bool isNull() const { return type == 0; }
 };
 
 class Element {
@@ -56,7 +56,7 @@ public:
 		assert(c < 8);
 		attributes[c] = attr;
 	}
-	int size() {
+	int size() const {
 		int s = 0;
 		for(unsigned int i = 0; i < 8; i++)
 			s += attributes[i].size();
@@ -70,7 +70,7 @@ public:
 
 	bool hasNormals() { return !attributes[NORM].isNull(); }
 	bool hasColors() { return !attributes[COLOR].isNull(); }
-	bool hasTextures() { return !attributes[TEX].isNull(); }
+	bool hasTextures() const { return !attributes[TEX].isNull(); }
 	bool hasData(int i) { return !attributes[DATA0 + i].isNull(); }
 };
 

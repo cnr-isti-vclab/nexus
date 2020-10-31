@@ -268,7 +268,7 @@ nx::Node Mesh::getNode()
 	return node;
 }
 
-quint32 Mesh::serializedSize(nx::Signature &sig) {
+quint32 Mesh::serializedSize(const nx::Signature &sig) {
 	assert(vn == (int)vert.size());
 	assert(fn == (int)face.size());
 	quint16 nvert = vn;

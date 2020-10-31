@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
 	int tex_quality(92);                //default jpg texture quality
 	QString decimation("quadric");      //simplification method
 	int ram_buffer(2000);               //Mb of ram to use
+	int n_threads = 4;
 	float scaling(0.5);                 //simplification ratio
 	int skiplevels = 0;
 	QString output("");                 //output file
@@ -102,6 +103,7 @@ int main(int argc, char *argv[]) {
 
 	//other options
 	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
+	opt.addOption('w', "workers", "number of workers: default = 4", &n_threads);
 	opt.addOption('T', "origin", "new origin for the model X:Y:Z", &translate);
 	opt.addSwitch('G', "center", "set origin in the bounding box center", &center);
 	opt.parse();
@@ -244,6 +246,7 @@ int main(int argc, char *argv[]) {
 		NexusBuilder builder(components);
 		builder.skipSimplifyLevels = skiplevels;
 		builder.setMaxMemory(max_memory);
+		builder.n_threads = n_threads;
 		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;
 		builder.createPowTwoTex = create_pow_two_tex;

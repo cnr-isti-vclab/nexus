@@ -119,7 +119,7 @@ public:
 
 	void savePly(QString filename);
 	nx::Node getNode();
-	quint32 serializedSize(nx::Signature &sig);
+	quint32 serializedSize(const nx::Signature &sig);
 	//appends nodes found in the mesh
 	void serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches);
 
