@@ -685,31 +685,6 @@ void NexusBuilder::processBlock(KDTreeSoup *input, StreamSoup *output, uint bloc
 	else
 		node = tmp.getNode();
 
-	quint32 current_node;
-	{
-		QMutexLocker locker(&m_builder);
-
-		//patches will be reverted later, but the local order is important because of triangle_offset
-		std::reverse(node_patches.begin(), node_patches.end());
-		patches.insert(patches.end(), node_patches.begin(), node_patches.end());
-
-		current_node = nodes.size();
-		node.offset = chunk; //temporarily remember which chunk belongs to which node
-		node.error = error;
-
-		quint32 patch_offset = patches.size();
-		node.first_patch = patch_offset;
-
-		nodes.push_back(node);
-		boxes.push_back(NodeBox(input, block));
-	}
-
-
-
-
-	//Simplify and stream the meshes.
-
-
 
 	int nface;
 	{
@@ -731,6 +706,32 @@ void NexusBuilder::processBlock(KDTreeSoup *input, StreamSoup *output, uint bloc
 			nface = mesh.fn;
 		}
 	}
+
+
+	quint32 current_node;
+	{
+		QMutexLocker locker(&m_builder);
+
+		//patches will be reverted later, but the local order is important because of triangle_offset
+		quint32 patch_offset = patches.size();
+		std::reverse(node_patches.begin(), node_patches.end());
+		patches.insert(patches.end(), node_patches.begin(), node_patches.end());
+
+		current_node = nodes.size();
+		node.offset = chunk;          //temporarily remember which chunk belongs to which node
+		node.error = error;
+
+
+		node.first_patch = patch_offset;
+
+		nodes.push_back(node);
+		boxes.push_back(NodeBox(input, block));
+	}
+
+
+	//Simplify and stream the meshes
+
+
 
 
 
