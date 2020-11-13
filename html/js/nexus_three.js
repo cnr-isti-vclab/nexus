@@ -48,6 +48,7 @@ function() {
 	if(!material)
 		this.autoMaterial = true;
 
+	console.log(material);
 	THREE.Mesh.call( this, geometry, material);
 	this.frustumCulled = false;
 
@@ -132,7 +133,8 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	attr.uv       = gl.getAttribLocation(program, "uv");
 	attr.size     = gl.getUniformLocation(program, "size");
 	attr.scale    = gl.getUniformLocation(program, "scale");
-	attr.map      = gl.getUniform(program, gl.getUniformLocation(program, "map"));
+	let map_location = gl.getUniformLocation(program, "map")
+	attr.map      = map_location ? gl.getUniform(program, map_location) : null;
 
 
 	//hack to detect if threejs using point or triangle shaders

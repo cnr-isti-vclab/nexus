@@ -22,7 +22,7 @@ camera.position.z = 4.0;
 
 var controls = new THREE.TrackballControls( camera );
 controls.target.set( 0, 0, 0 );
-controls.rotateSpeed = 10.0;
+controls.rotateSpeed = 50.0;
 controls.zoomSpeed = 1.5;
 controls.panSpeed = 0.8;
 controls.noZoom = false;
@@ -53,12 +53,6 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 var container = document.getElementById( 'container');
 container.appendChild( renderer.domElement );
 
-/* An appropriate material can be used as a fourth arg for the NexusObject constructor
-
-var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-texture.needsUpdate = true;
-var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
-*/
 
 function onNexusLoad() {
 	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
@@ -68,33 +62,22 @@ function onNexusLoad() {
 	nexus_obj.position.set(p.x*s, p.y*s, p.z*s);
 	nexus_obj.scale.set(s, s, s); 
 	redraw = true;
-
-//	nexus_obj.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
 }
+
+
+var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, point_material);
+scene.add(nexus_obj);
+
 
 function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
 }
 
-var model = getURLParameter('model') || "models/monreale.nxz";
+var model = getURLParameter('model') || "models/gargo.nxz";
 
-
-/* HOW TO ADD A SKY BOX */
-/*
-var materialColor = new THREE.Color();
-materialColor.setRGB( 1.0, 1.0, 1.0 );
-var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-texture.needsUpdate = true;
-
-var path = "skybox/";
-var urls = [
-path + "px.jpg", path + "nx.jpg",
-path + "py.jpg", path + "ny.jpg",
-path + "pz.jpg", path + "nz.jpg"
-];
-var textureCube = new THREE.CubeTextureLoader().load( urls );
-scene.background = textureCube;
-var material = new THREE.MeshPhongMaterial( { color: materialColor, map: texture, envMap: textureCube, reflectivity: 0.1,shininess: 50, side: THREE.DoubleSide } ); */
+let material = false;
+/* Material customizations examples: */
+//let material =  new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, material);
 scene.add(nexus_obj);
