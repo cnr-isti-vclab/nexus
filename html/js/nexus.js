@@ -808,13 +808,19 @@ Instance.prototype = {
 			var nv = m.nvertices[n];
 			var offset = nv*12;
 
-			if(m.vertex.texCoord && attr.uv >= 0){
-				gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset), offset += nv*8;
-				gl.enableVertexAttribArray(attr.uv);
+			if(m.vertex.texCoord) {
+				if(attr.uv >= 0) {
+					gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset);
+					gl.enableVertexAttribArray(attr.uv);
+				}
+				offset += nv*8;
 			}
-			if(m.vertex.color && attr.color >= 0){
-				gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset), offset += nv*4;
-				gl.enableVertexAttribArray(attr.color);
+			if(m.vertex.color) {
+				if(attr.color >= 0) {
+					gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
+					gl.enableVertexAttribArray(attr.color);
+				}
+				offset += nv*4;
 			}
 			if(m.vertex.normal && attr.normal >= 0){
 				gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset);

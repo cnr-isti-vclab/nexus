@@ -48,7 +48,6 @@ function() {
 	if(!material)
 		this.autoMaterial = true;
 
-	console.log(material);
 	THREE.Mesh.call( this, geometry, material);
 	this.frustumCulled = false;
 

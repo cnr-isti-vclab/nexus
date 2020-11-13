@@ -16,7 +16,6 @@
 </body>
 
 <script>
-
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
 camera.position.z = 4.0;
 
@@ -75,6 +74,9 @@ var model = getURLParameter('model') || "models/gargo.nxz";
 let material = false;
 /* Material customizations examples: */
 //let material =  new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+//let material = new THREE.MeshLambertMaterial( { color: 0xffffff }); //, vertexColors1: THREE.VertexColors } );
+//let material = new THREE.MeshNormalMaterial({});
+
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, material);
 scene.add(nexus_obj);
