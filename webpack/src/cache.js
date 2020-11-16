@@ -14,7 +14,7 @@ function loadCorto() {
         var node = this.requests[request];
         delete this.requests[request];
         node.model = e.data.model;
-        node.cache.readyNode(node.mesh, node.id, node.model);
+        node.cache.readyGeometryNode(node.mesh, node.id, node.model);
     };
 }
 
@@ -178,7 +178,7 @@ Cache.prototype = {
 	    if(mesh.status[id] == 0) return;
         
 	    if(!mesh.compressed)
-		    this.readyNode(mesh, id, request.response);
+		    this.readyGeometryNode(mesh, id, request.response);
 	    else {
             if(!corto) loadCorto();
 		    corto.postRequest( { mesh:mesh, id:id, buffer: request.response, cache: this });
@@ -191,23 +191,29 @@ Cache.prototype = {
             return;
 
 	    let blob = request.response;
-
-        
-        //The image deconding is done here! not in a thread.
-        createImageBitmap(blob, { imageOrientation: 'flipY' }).then((img) => {
+        let callback = (img) => {
             mesh.createTexture(texid, img);
 
 		    mesh.status[id]--;
 
-		    if(mesh.status[id] == 2) {
-			    mesh.status[id]--; //ready
-			    mesh.reqAttempt[id] = 0;
-                this.pending--;
-                mesh.createNode(id);
-			    mesh.onUpdate();
-			    this.update();
+            if(mesh.status[id] == 2)
+                this.readyNode(mesh, id);
 		    }
-        });
+
+        if(typeof createImageBitmap != 'undefined') {
+            createImageBitmap(blob, { imageOrientation: 'flipY' }).then(callback);
+
+        } else { //fallback for IOS
+            var urlCreator = window.URL || window.webkitURL;
+            var img = document.createElement('img');
+            img.onerror = function(e) { console.log("Texture loading error!"); };
+            img.src = urlCreator.createObjectURL(blob);
+    
+            img.onload = function() {
+                urlCreator.revokeObjectURL(img.src);
+                callback(img);
+            }
+        }
     },
 
     removeNode: function(mesh, id) {
@@ -234,7 +240,7 @@ Cache.prototype = {
         this.nodes.set(mesh, this.nodes.get(mesh).filter(i => i == id));
     },
 
-    readyNode: function(mesh, id, buffer) {
+    readyGeometryNode: function(mesh, id, buffer) {
         const nv = mesh.nvertices[id];
         const nf = mesh.nfaces[id];
 	    let geometry = {};
@@ -268,20 +274,26 @@ Cache.prototype = {
     	//	scramble(nv, v, no, co);
 
         mesh.createNodeGeometry(id, geometry);
+	    mesh.status[id]--;
+
+	    if(mesh.status[id] == 2) {
+            this.readyNode(mesh, id);
+	    }
+    },
+
+    //the node is finished, add to cache, and update counters
+    readyNode: function(mesh, id) {
         if(!this.nodes.has(mesh))
             this.nodes.set(mesh, []);
         this.nodes.get(mesh).push(id);
 
 	    mesh.status[id]--;
-
-	    if(mesh.status[id] == 2) {
-		    mesh.status[id]--; //ready
+        if(mesh.status[id] != 1) throw "A ready node should have status ==1"
 		    mesh.reqAttempt[id] = 0;
             this.pending--;
             mesh.createNode(id);
 		    mesh.onUpdate();
             this.update();
-	    }
     },
 
     flush: function(mesh) {

@@ -228,6 +228,8 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     },
 
     deleteTexture: function(id) {
+        if(!this.textures[id])
+            throw "Deleting missing texture!"
         this.textures[id].dispose();
         delete this.textures[id];
     },
