@@ -32,7 +32,6 @@ camera.position.set(0, 0, 10);
 
 
 let controls_options = {
-//    target: new Vector3( 0, 0, 0 ),
     rotateSpeed: 0.5,
     zoomSpeed: 4,
     panSpeed: 0.8,
@@ -63,20 +62,12 @@ var light2 = new DirectionalLight( 0xffffff, 1.0 );
 light2.position.set( -1, -1, 1 );
 scene.add( light2 ); 
 
-/*const geometry = new BoxBufferGeometry(0.2, 0.2, 0.2);
-const material = new MeshBasicMaterial();
-const cube = new Mesh(geometry, material);
-scene.add(cube); */
-
-
 var renderer = new WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.setSize( container.clientWidth, container.clientHeight );
 
 container.append(renderer.domElement);
-
-
 
 
 function onNexusLoad(model) {
@@ -88,13 +79,8 @@ function onNexusLoad(model) {
 	redraw = true;
 }
 
-//var url = "models/laurana.nxs";
-//var url = "models/gargoyle-v2.nxs";
-//var url = "models/david_8M.nxz"; 
-var url = "models/tegole.nxz"; 
-//var url = "models/monreale.nxz" //unreachable!
+var url = "models/gargo.nxz"; 
 
-//var nexus = new NexusObject(url, onNexusLoad, function() { redraw = true; }, renderer);
 let nexus = new NXS(url, onNexusLoad, () => { redraw = true; });
 scene.add(nexus);
 
@@ -106,7 +92,6 @@ function onWindowResize() {
 
 	renderer.setSize( container.clientWidth, container.clientHeight );
 
-	//controls.handleResize();
 	controls.update();
 	redraw = true;
 }
@@ -127,18 +112,4 @@ renderer.setAnimationLoop(()=> {
     }
 })
 
-
-/*function animate() {
-	requestAnimationFrame(animate);
-
-	controls.update();
-
-	if(redraw) {
-        console.log(redraw);
-		renderer.render( scene, camera );
-		redraw = false;
-	}
-}
-
-animate(); */
 onWindowResize();
