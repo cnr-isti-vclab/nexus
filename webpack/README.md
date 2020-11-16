@@ -30,20 +30,16 @@ and run the server:
 npm run start:dev
 ```
 
+## Docs
 
+# Material
 
-
+NXS material is actually a template material that is used for each patch of the nexus, you cannot set the map properties, 
+which will be overwritten by the patches own textures.
+You can change the material of the NXS either by replacing the material or by changing a value (the color for exmple)
+and set material.needsUpdate = true. 
 
 ## Roadmap
-
-Material: due to the group mechanic in threejs groups, the materia internally is an array.
-Can be shared among nodes only if no maps are set, otherwise the material is cloned.
-If the 'template' material is changed in case of textures we need to upcate all the node materials.
-Material template without texture used on models with textures: map = false instead of null?
-
-Debug: it's nice to render each patch with a different color, a sort of debug mode, either by original error, 
-render error, level (complicated), or just random. We need to store the previous material template and restore it when
-enabling/disabling node debug mode.
 
 Cache: at the moment NXS creates a cache per model, we shuold have a global one per context (as it was), but the options to have .
 Nexus global object with cache management.
@@ -55,6 +51,8 @@ Instances:
 GPU resource transfer metering: better control of the amount of geometry and texture sent to the GPU per frame.
 
 Fps: cache should keep track of timing and fps.
+
+Prefetch: control prefetch amouont in MB (unlimited in case) and add onProgress event.
 
 Library: make the code an npm library
 https://webpack.js.org/guides/author-libraries/

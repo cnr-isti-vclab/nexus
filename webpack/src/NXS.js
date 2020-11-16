@@ -14,6 +14,7 @@ function NXS(url, onLoad, onUpdate, material) {
     this.url = url;
     this.onLoadCallback = onLoad;
     this.onUpdate = onUpdate || function() {};
+    this.debug = false;
 
     if(this.url)
         this.open(this.url)
@@ -50,7 +51,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.cache = new Cache();
         this.materials = [];
         this.textures = {};
-        this.nodes = {} //can't use getObjectById, it's slow
+        this.nodes = {} //can't use getObjectById, it's slow //TODO use Map!
 
         this.toDelete = [];
 
@@ -65,6 +66,16 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             t.onAfterRender(renderer, scene, camera, geometry, material, group) }
         this.add(cube); 
 
+    },
+
+    set material(material) {
+        this.material = material;
+        this.material.needsUpdate = true;
+    },
+
+    set debug(debug) {
+        this.debug = debug;
+        this.material.needsUpdate = true;
     },
     
     onLoad: function() {
@@ -96,11 +107,6 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.cache.update();
     },
 
-    set material(material) {
-        this.material = material;
-        this.material.needsUpdate = true;
-    },
-
     setVisibility: function() {
         if(this.material && this.material.needsUpdate)
             this.updateMaterials();
@@ -115,23 +121,21 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         t.realError = 0.0;
 
 
-        for(let n = 0; n < m.nodesCount; n++) {
-            if(!(n in this.nodes))
+        for(let id = 0; id < m.nodesCount; id++) {
+            if(!(id in this.nodes))
                 continue;
 
-            let node = this.nodes[n];
+            let node = this.nodes[id];
             //let err = m.errors[n]; //careful this is wrong if multiple instances
-            let err = m.nerrors[n];
-            //node.material[0].color = new THREE.Color();
-            //node.material[0].color.setHSL(err/50, 0.5, 0.7);
+            let err = m.nerrors[id];
 
             node.visible = false;
 
 
-            if(!t.selected[n]) continue;
+            if(!t.selected[id]) continue;
 
             var sp = m.nspheres;
-            var off = n*5;
+            var off = id*5;
             if(!t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+4])) //tight radius
                 continue;
     
@@ -143,8 +147,8 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
             var offset = 0;
             var end = 0;
-            var last = m.nfirstpatch[n+1]-1;
-            for (var p = m.nfirstpatch[n]; p < m.nfirstpatch[n+1]; ++p) {
+            var last = m.nfirstpatch[id+1]-1;
+            for (var p = m.nfirstpatch[id]; p < m.nfirstpatch[id+1]; ++p) {
                 var child = m.patches[p*3];
     
                 if(!t.selected[child]) {
@@ -155,6 +159,15 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
                 if(end > offset) {
                     node.visible = true;
+                    if(this.debug) {
+                        node.material[0].color = new THREE.Color();
+                        //node.material[0].color.setHSL(err/50, 0.5, 0.7);
+                        let h = id*89.0/244.0;
+                        h -= Math.floor(h);
+                        console.log(h - Math.floor(h))
+                        node.material[0].color.setHSL(h, 0.6, 0.7);
+                    }
+        
                     node.geometry.addGroup(offset*3, (end-offset)*3)
                     rendered += end - offset;
                 }
@@ -187,9 +200,9 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
     updateMaterial: function(id) {
         let node = this.nodes[id];
-        let debug = false; //TODO replace with global Debug variable when done.
         const m = this.mesh;        
-        if(!m.vertex.texCoord && !debug) {
+        //debug has each node with a different color, so we need to clone materials       
+        if(!m.vertex.texCoord && !this.debug) {
             this.nodes[id].material = [this.material];
             return;
         }
