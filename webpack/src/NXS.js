@@ -39,7 +39,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         let t = this;
         this.mesh = new Mesh(url); 
         this.mesh.createMaterials    = (materials)    => { t.createMaterials(materials) };
-        this.mesh.createNode         = (id)           => { t.createNode(id) };
+        this.mesh.createNode         = (id)           => { t.updateMaterial(id) };
         this.mesh.createNodeGeometry = (id, geometry) => { t.createNodeGeometry(id, geometry); };
         this.mesh.createTexture      = (id, image)    => { t.createTexture(id, image); };
         this.mesh.deleteNodeGeometry = (id)           => { t.deleteNodeGeometry(id); };
@@ -96,7 +96,15 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.cache.update();
     },
 
+    set material(material) {
+        this.material = material;
+        this.material.needsUpdate = true;
+    },
+
     setVisibility: function() {
+        if(this.material && this.material.needsUpdate)
+            this.updateMaterials();
+
         //set visibile what is visible!
         let t = this.traversal;
         let m = this.mesh;
@@ -167,29 +175,33 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         if(this.mesh.vertex.color)
            options.vertexColors = THREE.VertexColors;   
         //options.wireframe = true;
-        this.material = [new THREE.MeshStandardMaterial(options)];
+        this.material = new THREE.MeshStandardMaterial(options);
         //this.material = [new THREE.MeshPhongMaterial(options)];
         //this.material[0] = new THREE.MeshPhongMaterial( { color: 0xff0000 } );
     },
-    //assemble node and geometry
-    createNode: function(id) {
-        const m = this.mesh;        
-        //need to clone material and replace map.
-        if(m.vertex.texCoord) {
-            let material = this.material[0].clone();
 
+    updateMaterials: function() {
+        for(let node of this.children)
+            this.updateMaterial(node);
+    },
+
+    updateMaterial: function(id) {
+        let node = this.nodes[id];
+        let debug = false; //TODO replace with global Debug variable when done.
+        const m = this.mesh;        
+        if(!m.vertex.texCoord && !debug) {
+            this.nodes[id].material = [this.material];
+            return;
+        }
+
+        let material = this.material.clone();
+        if(m.vertex.texCoord) {            
             var texid = m.patches[m.nfirstpatch[id]*3+2];
             if(texid != -1)
-                material.map = this.textures[texid];
-            
-            this.nodes[id].material = [material];
-
-        } else {
-            //for debug purpouses!
-            this.nodes[id].material = this.material;
-            //this.nodes[id].material = [this.material[0].clone()];
+                material.map = this.textures[texid];            
         }
-            
+
+        this.nodes[id].material = [material];
     },
 
     createNodeGeometry: function(id, data) {
