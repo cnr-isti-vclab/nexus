@@ -72,11 +72,13 @@ public:
 
 	const int side = 4096;
 	std::vector<TexPyramid> pyramids;
-	std::map<QString, int> texture_map;
-	float scale;
-	int quality;
+	float scale = 0.70710678;
+	int quality = 92;
+	uint64_t cache_max = 2000000000;
+	uint64_t cache_size = 0;
+	uint64_t access = 1;
 
-	TexAtlas(): scale(M_SQRT1_2), quality(92), cache_max(2000000000), cache_size(0), access(1) {}
+	TexAtlas() {}
 
 	int32_t addTexture(QString &filename, bool flipY = true);
 	bool addTextures(std::vector<QString> &filenames, bool flipY = true);
