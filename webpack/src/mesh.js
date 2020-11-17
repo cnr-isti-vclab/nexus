@@ -19,6 +19,8 @@ let Mesh = function(url) {
     t.onLoad = () => {};
     t.onUpdate = () => {};
     t.reqAttempt = 0;
+    t.georeq = {}; //keeps track of existing httprequests
+    t.texreq = {};
     if(url)
         t.open(url);
 }

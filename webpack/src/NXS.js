@@ -160,12 +160,14 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
                 if(end > offset) {
                     node.visible = true;
                     if(this.debug) {
-                        node.material[0].color = new THREE.Color();
+                        node.material[0].color = new THREE.Color(0, 1, 0);
+                        if(child == m.sink) {
+                        } else {
                         //node.material[0].color.setHSL(err/50, 0.5, 0.7);
                         let h = id*89.0/244.0;
                         h -= Math.floor(h);
-                        console.log(h - Math.floor(h))
                         node.material[0].color.setHSL(h, 0.6, 0.7);
+                        }
                     }
         
                     node.geometry.addGroup(offset*3, (end-offset)*3)

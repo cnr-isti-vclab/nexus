@@ -22,6 +22,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { NXS} from './NXS.js'
+import { Monitor } from './monitor.js'
 
 
 let container = document.getElementById( 'scene');
@@ -82,6 +83,8 @@ function onNexusLoad(model) {
 var url = "models/gargo.nxz"; 
 
 let nexus = new NXS(url, onNexusLoad, () => { redraw = true; });
+//nexus.debug = true;
+let monitor = new Monitor(nexus.cache);
 scene.add(nexus);
 
 new ResizeObserver(onWindowResize).observe(container);

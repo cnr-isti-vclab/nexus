@@ -101,17 +101,20 @@ Cache.prototype = {
         let t = this;
 
 	    mesh.status[id]++; //pending
-	    mesh.georeq = mesh.httpRequest(
+	    mesh.georeq[id] = mesh.httpRequest(
 		    mesh.noffsets[id],
 		    mesh.noffsets[id+1],
 		    function() {
+                            delete mesh.texreq[id];
                 t.loadNodeGeometry(this, mesh, id);
             },
 		    function() {
+                            delete mesh.texreq[id];
 			    if(Debug.verbose) console.log("Geometry request error!");
 			    t.recoverNode(mesh, id, 0);
 		    },
 		    function() {
+                            delete mesh.texreq[id];
 			    if(Debug.verbose) console.log("Geometry request abort!");
 			    t.removeNode(mesh, id);
 		    },
@@ -126,22 +129,23 @@ Cache.prototype = {
 
 	    let tex = mesh.patches[mesh.nfirstpatch[id]*3+2];
 	    mesh.texref[tex]++;
-	    //if(m.texids[tex])
-		//    return;
 
 	    mesh.status[id]++; //pending
 
-	    mesh.texreq = mesh.httpRequest(
+	    mesh.texreq[tex] = mesh.httpRequest(
 		    mesh.textures[tex],
 		    mesh.textures[tex+1],
 		    function() { 
+                        delete mesh.texreq[tex];
                 t.loadNodeTexture(this, mesh, id, tex); 
             },
 		    function() {
+                        delete mesh.texreq[tex];
 		    	if(Debug.verbose) console.log("Texture request error!");
 			    t.recoverNode(mesh, id, 1);
 		    },
 		    function() {
+                        delete mesh.texreq[tex];
 		    	if(Debug.verbose) console.log("Texture request abort!");
 		    	t.removeNode(mesh, id);
 		    },
@@ -187,12 +191,16 @@ Cache.prototype = {
 
 
     loadNodeTexture: function(request, mesh, id, texid) {
-        if(mesh.status[id] == 0) 
-            return;
+        if(mesh.status[id] == 0) {
+            throw "Should not load texture twice";
+        }
 
 	    let blob = request.response;
         let callback = (img) => {
+            if(mesh.status[id] == 0) //call was aborted.
+                return;
             mesh.createTexture(texid, img);
+            console.log("Size: ", img.width* img.height*4, " estimated ", mesh.nsize[id] - ( mesh.vsize*mesh.nvertices[id] + mesh.fsize*mesh.nfaces[id]) );
 
 		    mesh.status[id]--;
 
@@ -221,8 +229,9 @@ Cache.prototype = {
 
 	    mesh.status[id] = 0;
 
-	    if (mesh.georeq.readyState != 4) {
-		    mesh.georeq.abort();
+	if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
+            mesh.georeq[id].abort();
+            delete mesh.georeq[id];
 		    this.pending--;
 	    }
 
@@ -230,17 +239,24 @@ Cache.prototype = {
         mesh.deleteNodeGeometry(id);
 
 	    if(!mesh.vertex.texCoord) return;
-	    if (mesh.texreq && mesh.texreq.readyState != 4) mesh.texreq.abort();
-	    const tex = mesh.patches[mesh.nfirstpatch[id]*3+2]; //TODO assuming one texture per node
-	    mesh.texref[tex]--;
 
+	    const tex = mesh.patches[mesh.nfirstpatch[id]*3+2]; //TODO assuming one texture per node
+
+	if (tex in mesh.texreq && mesh.texreq[tex].readyState != 4) {
+            mesh.texreq[tex].abort();
+            delete mesh.texreq[tex];
+        }
+
+	    mesh.texref[tex]--;
     	if(mesh.texref[tex] == 0) {
             mesh.deleteTexture(tex);
         }
-        this.nodes.set(mesh, this.nodes.get(mesh).filter(i => i == id));
+        this.nodes.set(mesh, this.nodes.get(mesh).filter(i => i != id));
     },
 
     readyGeometryNode: function(mesh, id, buffer) {
+        if(mesh.status[id] == 0) //call was aborted
+            return;
         const nv = mesh.nvertices[id];
         const nf = mesh.nfaces[id];
 	    let geometry = {};
