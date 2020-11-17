@@ -72,10 +72,13 @@ public:
 
 	const int side = 4096;
 	std::vector<TexPyramid> pyramids;
-	float scale;
-	int quality;
+	float scale = 0.70710678;
+	int quality = 92;
+	uint64_t cache_max = 2000000000;
+	uint64_t cache_size = 0;
+	uint64_t access = 1;
 
-	TexAtlas(): scale(M_SQRT1_2), quality(92), cache_max(2000000000), cache_size(0), access(1) {}
+	TexAtlas() {}
 
 	bool addTextures(std::vector<QString> &filenames);
 	QImage read(int tex, int level, QRect region);
@@ -90,9 +93,7 @@ public:
 
 	std::map<Index, RamData> ram;
 	std::map<Index, DiskData> disk;
-	uint64_t cache_max;
-	uint64_t cache_size;
-	uint64_t access;
+
 	QTemporaryFile storage;
 };
 
