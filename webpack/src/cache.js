@@ -228,7 +228,14 @@ Cache.prototype = {
 		    }
 
         if(typeof createImageBitmap != 'undefined') {
+            var isFirefox = typeof InstallTrigger !== 'undefined';
+            //firefox does not support options for this call, BUT the image is automatically flipped.
+            if(isFirefox) {
+                createImageBitmap(blob).then(callback);
+            } else {
             createImageBitmap(blob, { imageOrientation: 'flipY' }).then(callback);
+            }
+            
 
         } else { //fallback for IOS
             var urlCreator = window.URL || window.webkitURL;

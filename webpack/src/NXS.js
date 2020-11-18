@@ -118,6 +118,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             if(this.material.version > 0) {
             this.updateMaterials();
                 this.material.version = 0;
+                this.onUpdate();
             }
         }
 

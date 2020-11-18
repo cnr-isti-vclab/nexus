@@ -66,7 +66,6 @@ scene.add( light2 );
 var renderer = new WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
 renderer.setPixelRatio( window.devicePixelRatio );
-renderer.setSize( container.clientWidth, container.clientHeight );
 
 container.append(renderer.domElement);
 
@@ -83,7 +82,7 @@ function onNexusLoad(model) {
 var url = "models/gargo.nxz"; 
 
 let nexus = new NXS(url, onNexusLoad, () => { redraw = true; });
-//nexus.debug = true;
+//nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
 let monitor = new Monitor(nexus.cache);
 scene.add(nexus);
 

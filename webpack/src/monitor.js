@@ -25,20 +25,22 @@ THE SOFTWARE.
 let css = `
 #nexusMonitor {
 	position:absolute; 
-	top:5px; right:5px; 
+	top:10px; left:10px; 
 	opacity:0.7; 
 	background-color:black; 
 	color:white;
 	padding:10px 20px;
 	width:300px; 
+    font-family:Arial;
+    font-size: 12px;
 }
-#nexusMonitor table, #monitor tr { color:white; width:100% }
+#nexusMonitor table, #monitor tr { color:white; }
 #nexusMonitor p { margin:0px 10px; padding:5px 0px; }
 
 .progress {
 	color:black;
 	height: 1.5em;
-	width: 100%;
+	width: 240px;
 	background-color: #c9c9c9;
 	position: relative;
 }
@@ -136,6 +138,10 @@ function Monitor(cache) {
         let cache = this.cache;
 	    e.nodesCheckbox.addEventListener('click', function() { 
             cache.debug.nodes = this.checked; 
+            for( let [mesh, ids] of cache.nodes) {
+                mesh.onUpdate();
+                break;
+            }
         });
 
 	    e.editError.addEventListener('change', function() { 

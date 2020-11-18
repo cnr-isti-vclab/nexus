@@ -39,6 +39,11 @@ which will be overwritten by the patches own textures.
 You can change the material of the NXS either by replacing the material or by changing a value (the color for exmple)
 and set material.needsUpdate = true. 
 
+# FPS:
+The Cache class can throttle the amount of geometry rendered trying to mantain the fps above a certain target (minFps), 
+reducing the targetError. You can set this property through the NXS.cache.minFps property. (default 30).
+
+
 ## Roadmap
 
 Cache: at the moment NXS creates a cache per model, we shuold have a global one per context (as it was), but the options to have .
@@ -50,7 +55,7 @@ Instances:
 
 GPU resource transfer metering: better control of the amount of geometry and texture sent to the GPU per frame.
 
-Fps: cache should keep track of timing and fps.
+TODO: check minFps actually works.
 
 Prefetch: control prefetch amouont in MB (unlimited in case) and add onProgress event.
 
