@@ -119,6 +119,7 @@ Traversal.prototype = {
                 t.nblocked++;
             else {
                 t.selected[id] = 1;
+                cache.realError = Math.min(error, cache.realError);
             }
             t.insertChildren(id, blocked);
         }
@@ -210,9 +211,29 @@ Traversal.prototype = {
         //resolution is how long is a pixel at distance 1.
         let error = t.mesh.nerrors[n]/(t.currentResolution*dist); //in pixels
 
-        if (!t.isVisible(cx, cy, cz, spheres[off+4]))
-            error /= 1000.0;
+        //causes flickering due to things popping in and out of visibility, causes a huge resorting.
+        /*if (!t.isVisible(cx, cy, cz, spheres[off+4]))
+            error /= 100.0; */
+
+        //more stable, at least it's continuous.
+        let d = t.distance(cx, cy, cz, spheres[off+4]);
+        if(d < -r) {
+            error /= 101.0;
+        } else if(d < 0) {
+            error /= 1 -( d/r)*100.0
+        } 
         return error;
+    },
+
+    distance: function(x, y, z, r) {
+        const p = this.planes;
+        let min_distance = 1e20;
+        for (let i = 0; i < 24; i +=4) {
+            let d = p[i]*x + p[i+1]*y + p[i+2]*z + p[i+3] + r;
+            if(d < min_distance)
+                min_distance = d;
+        }
+        return min_distance;
     },
 
     isVisible : function (x, y, z, r) {

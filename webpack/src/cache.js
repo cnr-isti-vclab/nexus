@@ -39,6 +39,7 @@ function Cache() {
     
     t.maxCacheSize = maxCacheSize;
     t.minFps = minFps;
+    t.currentFps = 0;
     t.targetError = targetError;
     t.currentError = targetError;
     t.maxError = maxError;
@@ -49,6 +50,17 @@ function Cache() {
     t.cacheSize = 0;
     t.candidates = [];   //list of nodes to be loaded
     t.nodes = new Map();        //for each mesh a list of node ids.
+    
+    t.last_frametime = 0;
+    t.frametime = 0;
+    t.end_frametime = 0;
+
+    t.debug = { 
+        verbose : false,  //debug messages
+        nodes   : false,  //color each node
+        draw    : false,  //final rendering call disabled
+        extract : false,  //extraction disabled}
+    }
 }
 
 Cache.prototype = {
@@ -61,6 +73,14 @@ Cache.prototype = {
     
     beginFrame: function(fps) { //each context has a separate frame count.
         let c = this;
+        c.frametime = performance.now();
+        let elapsed =  c.frametime - c.last_frametime;
+        c.last_frametime = c.frametime;
+        if(elapsed < 500)
+            c.currentFps = 0.9*c.currentFps + 0.1*(1000/elapsed);
+
+        fps = c.currentFps;
+
 	    c.frame++;
 	    c.candidates = [];
 	    if(fps && c.minFps) {
@@ -77,7 +97,7 @@ Cache.prototype = {
 		    c.currentError = c.targetError;
 
 	    c.rendered = 0;
-	    c.realError = 0;
+	    c.realError = 1e20;
     },
 
     endFrame: function() {
@@ -200,7 +220,6 @@ Cache.prototype = {
             if(mesh.status[id] == 0) //call was aborted.
                 return;
             mesh.createTexture(texid, img);
-            console.log("Size: ", img.width* img.height*4, " estimated ", mesh.nsize[id] - ( mesh.vsize*mesh.nvertices[id] + mesh.fsize*mesh.nfaces[id]) );
 
 		    mesh.status[id]--;
 
@@ -228,7 +247,6 @@ Cache.prototype = {
 	    if(mesh.status[id] == 0) return;
 
 	    mesh.status[id] = 0;
-
 	if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
             mesh.georeq[id].abort();
             delete mesh.georeq[id];
@@ -251,7 +269,7 @@ Cache.prototype = {
     	if(mesh.texref[tex] == 0) {
             mesh.deleteTexture(tex);
         }
-        this.nodes.set(mesh, this.nodes.get(mesh).filter(i => i != id));
+        this.nodes.get(mesh).delete(id);
     },
 
     readyGeometryNode: function(mesh, id, buffer) {
@@ -300,8 +318,8 @@ Cache.prototype = {
     //the node is finished, add to cache, and update counters
     readyNode: function(mesh, id) {
         if(!this.nodes.has(mesh))
-            this.nodes.set(mesh, []);
-        this.nodes.get(mesh).push(id);
+            this.nodes.set(mesh, new Set());
+        this.nodes.get(mesh).add(id);
 
 	    mesh.status[id]--;
         if(mesh.status[id] != 1) throw "A ready node should have status ==1"
@@ -314,7 +332,7 @@ Cache.prototype = {
 
     flush: function(mesh) {
         for(let id of this.nodes.get(mesh))
-            mesh.remove(id)
+            this.removeNode(mesh, id);
         this.nodes.delete(mesh);
     }, 
 
@@ -337,13 +355,12 @@ Cache.prototype = {
             
             //find node with smallest error in cache and remove it if worse than the best candidate.
             for(let [mesh, ids] of this.nodes) {
-                for(let i = 0; i < ids.length; i++) {
-                    let id = ids[i];
+                for(let id of ids) {
                 //we need to recompute the errors for the cache, as if not traversed doesn't get updated.
                     let error = mesh.errors[id];
                     let frame = mesh.frames[id];
-                    if( !worst || frame < worst.frame || error < worst.error) {
-                        worst = { id: id, index: i, frame: frame, error: error, mesh: mesh }
+                    if( !worst || error < worst.error) {
+                        worst = { id: id, frame: frame, error: error, mesh: mesh }
                     }
                 }
             }
@@ -352,8 +369,8 @@ Cache.prototype = {
                 return;
             //we have added some histeresys: we swap only if the best is a bit better.
 
-            this.nodes.get(worst.mesh).splice(worst.index, 1);
 		    this.removeNode(worst.mesh, worst.id);
+//            console.log("Total: ", this.nodes.length,"Replacing: ", worst, best);
 	    }
         this.candidates = this.candidates.filter(e => e.mesh == best.mesh && e.id == best.id);
     	this.requestNode(best.mesh, best.id);

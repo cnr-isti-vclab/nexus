@@ -74,8 +74,10 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     },
 
     set debug(debug) {
+        if(this.debug != debug) {
         this.debug = debug;
         this.material.needsUpdate = true;
+        }
     },
     
     onLoad: function() {
@@ -86,7 +88,6 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.boundingSphere = new THREE.Sphere(center, radius);
         if(this.material == null || this.material == false)
             this.createMaterial();
-        //this.boundingBox = shit.computeBoundingBox();
         this.onLoadCallback(this);
     },
 
@@ -108,18 +109,25 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     },
 
     setVisibility: function() {
-        if(this.material && this.material.needsUpdate)
+        if(this.material) {
+            if(this.debug != this.cache.debug.nodes) {
+                this.debug = this.cache.debug.nodes;
+                this.material.needsUpdate = true;
+            }
+            //threejs increments version when setting neeedsUpdate
+            if(this.material.version > 0) {
             this.updateMaterials();
+                this.material.version = 0;
+            }
+        }
 
         //set visibile what is visible!
         let t = this.traversal;
         let m = this.mesh;
-        let rendered = 0;
-    
+  
         if(!m.isReady)
             return;
-        t.realError = 0.0;
-
+        let rendered = 0;
 
         for(let id = 0; id < m.nodesCount; id++) {
             if(!(id in this.nodes))
@@ -138,10 +146,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             var off = id*5;
             if(!t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+4])) //tight radius
                 continue;
-    
-            //let err = t.nodeError(n, true);
-            //t.realError = Math.max(err, t.realError);
-
+ 
             //There is no way to control group visibility, so we remove and recreate them.
             node.geometry.clearGroups();
 
@@ -159,7 +164,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
                 if(end > offset) {
                     node.visible = true;
-                    if(this.debug) {
+                    if(this.cache.debug.nodes) {
                         node.material[0].color = new THREE.Color(0, 1, 0);
                         if(child == m.sink) {
                         } else {
@@ -176,6 +181,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
                 offset = m.patches[p*3+1];
             }
         }
+        this.cache.rendered += rendered;
     },
 
     //we need to hijack the material when nxs has textures: when we change the material it might have a map or not 
@@ -196,15 +202,15 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     },
 
     updateMaterials: function() {
-        for(let node of this.children)
-            this.updateMaterial(node);
+        for(let id in this.nodes)
+            this.updateMaterial(id);
     },
 
     updateMaterial: function(id) {
         let node = this.nodes[id];
         const m = this.mesh;        
         //debug has each node with a different color, so we need to clone materials       
-        if(!m.vertex.texCoord && !this.debug) {
+        if(!m.vertex.texCoord && !this.cache.debug.nodes) {
             this.nodes[id].material = [this.material];
             return;
         }

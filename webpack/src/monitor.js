@@ -133,12 +133,13 @@ function Monitor(cache) {
             editError     : this.div.querySelector('#nexusMonitorEditError')
         }
 
+        let cache = this.cache;
 	    e.nodesCheckbox.addEventListener('click', function() { 
-		    Nexus.Debug.nodes = this.checked; });
+            cache.debug.nodes = this.checked; 
+        });
 
 	    e.editError.addEventListener('change', function() { 
-		    if((typeof(Nexus) === 'undefined') || Nexus.contexts.length == 0) return;
-		    Nexus.contexts[0].targetError = this.value;
+            cache.targetError = this.value;
 	    });
 
         document.body.appendChild(this.div);
@@ -172,7 +173,7 @@ Monitor.prototype = {
 		e.cacheStyle.style.background_color = greenToRed(cacheFraction);
 		e.cacheStyle.style.width = cacheFraction;
 
-		e.errorLabel.setAttribute('data-label', `Real: ${realError.toFixed(1)} px  Current: ${currentError.toFixed(1)} px`);
+		e.errorLabel.setAttribute('data-label', `Real: ${realError.toFixed(1)} px  Target: ${currentError.toFixed(1)} px`);
 		e.errorStyle.style.background_color = greenToRed(errorFraction);
 		e.errorStyle.style.width = errorFraction;
 
