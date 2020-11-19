@@ -1,7 +1,6 @@
 #include "qtnexusfile.h"
 
 namespace nx {
-	NexusFile* NexusFile::create() { return new QTNexusFile(); }
 	void nx::QTNexusFile::setFileName(const char* uri)
 	{
 		file.setFileName(uri);

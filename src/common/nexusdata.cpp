@@ -48,7 +48,6 @@ NexusData::~NexusData() {
 }
 
 bool NexusData::open(const char *_uri) {
-	file = NexusFile::create();
 	file->setFileName(_uri);
 	if(!file->open(NexusFile::Read))
 		//file = fopen(_uri, "rb+");

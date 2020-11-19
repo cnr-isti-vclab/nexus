@@ -20,6 +20,7 @@ for more details.
 #include "nexus.h"
 #include "controller.h"
 #include "globalgl.h"
+#include "qtnexusfile.h"
 
 #include <QGLWidget>
 
@@ -50,6 +51,7 @@ void _glCheckError(const char *file, int line) {
 
 
 Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stream(false) {
+	file = new QTNexusFile();
 }
 
 Nexus::~Nexus() {
