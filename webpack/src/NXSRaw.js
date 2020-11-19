@@ -12,22 +12,38 @@ function NXSRaw(url, onLoad, onUpdate, renderer, material) {
     this.gl = renderer.getContext();
     this.material = material;
 
-    this.autoUpdate = true;
-    this.mesh = null;
     this.url = url;
-    this.onLoadCallback = onLoad;
-    this.onUpdate = onUpdate || function() {};
+    this.onLoad = [onLoad];
+    this.onUpdate = [];
+    if(onUpdate) this.onUpdate.push(onUpdate);
+
+    this.autoUpdate = true;
+    this.mesh = new Mesh(); 
+    
     this.vbo = [];
     this.ibo = [];
     this.textures = [];
+    this.attributes = {};  //here we store the uniform attributes of the shader.
 
     //this is needed for a onbeforerender callback!
-    const geometry = new THREE.BoxBufferGeometry(0.0, 0.0, 0.0);
     if(!this.material) 
         this.material = new THREE.MeshStandardMaterial();
 
-    if(this.url)
-        this.open(this.url)
+    if(this.url) {
+        if(typeof url == 'object') {
+            this.nxs = this.url;
+            this.nxs.onLoad.push((m) => { 
+                this.mesh = this.nxs.mesh;
+                this.traversal = this.nxs.traversal;
+                this.cache = this.nxs.cache;
+                this.vbo = this.nxs.vbo;
+                this.ibo = this.nxs.ibo;
+                this.textures = this.nxs.textures;
+                this.onLoadCallback(this); 
+            });
+        } else
+            this.open(this.url);
+    }
 
 }
 
@@ -48,22 +64,18 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     
     open: function(url) {
         let t = this;
-        this.mesh = new Mesh(url); 
+        this.mesh.open(url);
         this.mesh.createNode         = (id)           => { };
         this.mesh.createNodeGeometry = (id, geometry) => { t.createNodeGeometry(id, geometry); };
         this.mesh.createTexture      = (id, image)    => { t.createTexture(id, image); };
         this.mesh.deleteNodeGeometry = (id)           => { t.deleteNodeGeometry(id); };
         this.mesh.deleteTexture      = (id)           => { t.deleteTexture(id); };
-        this.mesh.onLoad = () => { t.onLoad(); }
-        this.mesh.onUpdate = () => { t.onUpdate(t.mesh); }
+        this.mesh.onLoad.push(() => { t.onLoadCallback(); });
+        this.mesh.onUpdate.push(() => { for(let callback of t.onUpdate) callback(this); });
+
         this.traversal = new Traversal();
         this.cache = new Cache();
         this.textures = {};
-        this.nodes = {} //can't use getObjectById, it's slow //TODO use Map!
-
-        this.attributes = {};  //here we store the uniform attributes of the shader.
-
-
     },
 
     set material(material) {
@@ -85,7 +97,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             this.material.vertexColors = THREE.VertexColors; 
     },
 
-    onLoad: function() {
+    onLoadCallback: function() {
         const c = this.mesh.sphere.center;
 		const center = new THREE.Vector3(c[0], c[1], c[2]);
         const radius = this.mesh.sphere.radius;
@@ -114,8 +126,8 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
         this.add(cube); 
 
-            
-        this.onLoadCallback(this);
+        for(let callback of this.onLoad)
+            callback(this);
     },
 
     onBeforeRender: function(renderer, scene, camera, geometry, material, group) {  
@@ -127,7 +139,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
        	//object modelview is multiplied by camera during rendering, we need to do it here for visibility computations
         this.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, this.matrixWorld );
         this.traversal.updateView([0, 0, s.width, s.height], camera.projectionMatrix.elements, this.modelViewMatrix.elements);
-        this.traversal.traverse(this.mesh, this.cache);
+        this.instance_errors = this.traversal.traverse(this.mesh, this.cache);
 
         let gl = this.gl;
         var program = gl.getParameter(gl.CURRENT_PROGRAM);
@@ -154,7 +166,6 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         //    instance.pointscale = 2.0;
 
         this.setVisibility();
-        this.cache.update();
     },
 
     setVisibility: function() {
@@ -162,7 +173,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         if(this.material.version > 0) {
             this.updateMaterials();
             this.material.version = 0;
-            this.onUpdate();
+            for(let callback of t.onUpdate) callback(this); 
         }
 
         //set visibile what is visible!
@@ -238,7 +249,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             if(this.cache.debug.nodes) {
 				gl.disableVertexAttribArray(attr.color);
 
-                var error = this.mesh.errors[id];
+                var error = this.instance_errors[id]; //this.mesh.errors[id];
 				var palette = [
 					[1, 1, 1, 1], //white
                     [1, 1, 1, 1], //white
@@ -248,7 +259,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
                     [1, 0, 1, 1], //magenta
 					[1, 0, 0, 1]  //red
 				];
-				let w = Math.min(5.99, Math.max(0, Math.log2(error)));
+				let w = Math.min(5.99, Math.max(0, Math.log2(error)/2));
 				let low = Math.floor(w);
 				w -= low;
 				let color = [];
@@ -257,6 +268,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
                     
 				gl.vertexAttrib4fv(attr.color, color);
             }
+            this.cache.realError = Math.min(this.mesh.errors[id], this.cache.realError);
             
              offset = 0;
             let end = 0;

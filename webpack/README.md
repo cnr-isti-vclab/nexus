@@ -36,12 +36,17 @@ npm run start:dev
 
 NXS material is actually a template material that is used for each patch of the nexus, you cannot set the map properties, 
 which will be overwritten by the patches own textures.
-You can change the material of the NXS either by replacing the material or by changing a value (the color for exmple)
+You can change the material of the NXS either by replacing the material or by changing a value
+(the color for exmple). If you want to disable texture rendering set the parameter 'map' to false,
 and set material.needsUpdate = true. 
 
 # FPS:
 The Cache class can throttle the amount of geometry rendered trying to mantain the fps above a certain target (minFps), 
 reducing the targetError. You can set this property through the NXS.cache.minFps property. (default 30).
+
+# Instances:
+You can render multiple instances of the same mesh, just using the reference to an existing NXS
+instead of the url in the constructor. Cache will be shared, balancing the quality among all the instances.
 
 
 ## Roadmap
@@ -49,15 +54,12 @@ reducing the targetError. You can set this property through the NXS.cache.minFps
 Cache: at the moment NXS creates a cache per model, we shuold have a global one per context (as it was), but the options to have .
 Nexus global object with cache management.
 
-Instances: 
-1) highest error should be used in cache (now we refer to mesh)
-2) double requests for the same node (be sure to check if it's already requested)
-
-GPU resource transfer metering: better control of the amount of geometry and texture sent to the GPU per frame.
-
 TODO: check minFps actually works.
 
+GPU resource transfer metering: better control of the amount of geometry and texture sent to the GPU per frame.
 Prefetch: control prefetch amouont in MB (unlimited in case) and add onProgress event.
+use blocked for prefetch based on size, number of nodes.
+onProgress when some node is added or removed.
 
 Library: make the code an npm library
 https://webpack.js.org/guides/author-libraries/

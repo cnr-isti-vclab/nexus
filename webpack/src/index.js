@@ -72,10 +72,11 @@ renderer.setPixelRatio( window.devicePixelRatio );
 container.append(renderer.domElement);
 
 
-function onNexusLoad(model) {
-    const p = model.boundingSphere.center.negate();
-    const s   = 1/model.boundingSphere.radius;
+function onNexusLoad(nexus) {
+    const p = nexus.boundingSphere.center.negate();
+    const s   = 1/nexus.boundingSphere.radius;
 
+    //nexus.rotateX(-3.1415/2);
 	nexus.position.set(p.x*s, p.y*s, p.z*s);
 	nexus.scale.set(s, s, s); 
 	redraw = true;
@@ -83,10 +84,19 @@ function onNexusLoad(model) {
 
 var url = "models/gargo.nxz"; 
 
+//onUpdate parameter here is used to trigger a redraw
 let nexus = new NXSRaw(url, onNexusLoad, () => { redraw = true; }, renderer);
+
+//create a second instance and position it.
+let nexus1 = new NXSRaw(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, () => { redraw = true; }, renderer);
+
+//material can be changed replacing the material or modifying it.
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
+//nexus.material.color = new Color(1, 0, 0);
+
 let monitor = new Monitor(nexus.cache);
 scene.add(nexus);
+scene.add(nexus1);
 
 new ResizeObserver(onWindowResize).observe(container);
 

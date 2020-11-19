@@ -18,7 +18,6 @@ function loadCorto() {
     };
 }
 
-var Debug = { verbose: false };
 function powerOf2(n) {
 	return n && (n & (n - 1)) === 0;
 }
@@ -134,12 +133,12 @@ Cache.prototype = {
             },
 		    function() {
                             delete mesh.texreq[id];
-			    if(Debug.verbose) console.log("Geometry request error!");
+			    if(this.debug.verbose) console.log("Geometry request error!");
 			    t.recoverNode(mesh, id, 0);
 		    },
 		    function() {
                             delete mesh.texreq[id];
-			    if(Debug.verbose) console.log("Geometry request abort!");
+			    if(this.debug.verbose) console.log("Geometry request abort!");
 			    t.removeNode(mesh, id);
 		    },
 		    'arraybuffer'
@@ -165,12 +164,12 @@ Cache.prototype = {
             },
 		    function() {
                         delete mesh.texreq[tex];
-		    	if(Debug.verbose) console.log("Texture request error!");
+		    	if(this.debug.verbose) console.log("Texture request error!");
 			    t.recoverNode(mesh, id, 1);
 		    },
 		    function() {
                         delete mesh.texreq[tex];
-		    	if(Debug.verbose) console.log("Texture request abort!");
+		    	if(this.debug.verbose) console.log("Texture request abort!");
 		    	t.removeNode(mesh, id);
 		    },
 		    'blob'
@@ -185,7 +184,7 @@ Cache.prototype = {
         let t = this;
 
 	    if(mesh.reqAttempt[id] > maxReqAttempt) {
-		    if(Debug.verbose) console.log("Max request limit for " + m.url + " node: " + n);
+		    if(this.debug.verbose) console.log("Max request limit for " + m.url + " node: " + n);
 		    t.removeNode(mesh, id);
 		    return;
 	    }
@@ -195,11 +194,11 @@ Cache.prototype = {
 	    switch (mode){
 		case 0:
 		    t.requestNodeGeometry(mesh, id);
-		    if(Debug.verbose) console.log("Recovering geometry for " + m.url + " node: " + n);
+		    if(this.debug.verbose) console.log("Recovering geometry for " + m.url + " node: " + n);
 		    break;
 		case 1:
 			t.requestNodeTexture(mesh, id);
-			if(Debug.verbose) console.log("Recovering texture for " + m.url + " node: " + n);
+			if(this.debug.verbose) console.log("Recovering texture for " + m.url + " node: " + n);
 			break;
 	    }
     },
@@ -341,7 +340,8 @@ Cache.prototype = {
 		    mesh.reqAttempt[id] = 0;
             this.pending--;
             mesh.createNode(id);
-		    mesh.onUpdate();
+        for(let callback of mesh.onUpdate)
+            callback();
             this.update();
     },
 
@@ -352,7 +352,6 @@ Cache.prototype = {
     }, 
 
     update: function() {
-
         if(this.pending >= maxPending)
             return;
 
@@ -368,6 +367,7 @@ Cache.prototype = {
         let now = performance.now();
         if(Math.floor(now/1000) > Math.floor(this.lastupdate/1000)) { //new second
             this.swaprate = (this.totswapped/1000)/(now - this.lastupdate); //transfer in mb/s
+            if(this.debug.verbose)
             console.log("Memory loaded in GPU: ", this.swaprate);
             this.totswapped = 0;
             this.lastupdate =  now;

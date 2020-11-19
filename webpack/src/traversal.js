@@ -94,6 +94,13 @@ Traversal.prototype = {
 
         t.frame = cache.frame;
 
+        t.instance_errors = new Float32Array(n);
+
+        if(t.frame > mesh.frame) { //clean the errors.
+            mesh.errors = new Float32Array(n); 
+            mesh.frame = t.frame;
+        }
+
         t.visitQueue = new PriorityQueue(n);
         for(var i = 0; i < mesh.nroots; i++)
             t.insertNode(i);
@@ -106,31 +113,38 @@ Traversal.prototype = {
         while(t.visitQueue.size && t.nblocked < t.maxBlocked) {
             var error = t.visitQueue.error[0];
             var id = t.visitQueue.pop();
-            //if not loaded and the queue is not full
+
+            //if not loaded and the queue is not full add to the candidates.
             if (mesh.status[id] == 0 && requested < cache.maxPending) {
                 cache.candidates.push({id: id, mesh:mesh, frame:t.frame, error:error});
                 requested++;
             }
-            //we don't want to stop as soon as a node is not availabe, because the nodes are sorted by error, 
-            //this could cause a large drop in quality elsewere.
-            //we need though to mark all children as blocked, to prevent including them in the cut of the dag.
+            /* we don't want to stop as soon as a node is not availabe, because the nodes are sorted by error, 
+               this could cause a large drop in quality elsewere.
+               we still need to mark all children as blocked, to prevent including them in the cut of the dag. */
             var blocked = t.blocked[id] || !t.expandNode(id, error);
             if (blocked)
                 t.nblocked++;
             else {
                 t.selected[id] = 1;
-                cache.realError = Math.min(error, cache.realError);
+                //cache.realError = Math.min(error, cache.realError);
             }
             t.insertChildren(id, blocked);
         }
 
-        //update errors in the cache
-        if(cache.nodes.has(mesh))
-            for(let id of cache.nodes.get(mesh))
-                if(mesh.frames[id] != t.frame)
-                    mesh.errors[id] = t.nodeError(id);
+        //update remaining errors in the cache
+        if(cache.nodes.has(mesh)) {
+            for(let id of cache.nodes.get(mesh)) {
+                let error = t.nodeError(id);
+                if(t.instance_errors[id] == 0) {
+                    t.instance_errors[i] = error;
+                    mesh.errors[id] = Math.max(mesh.errors[id], error);
+                }
+            }
+        }
 
         t.mesh = null;
+        return t.instance_errors;
     },
 
     insertNode: function (node) {
@@ -138,17 +152,12 @@ Traversal.prototype = {
         t.visited[node] = 1;
 
         const error = t.nodeError(node);
-        let errors = t.mesh.errors;
-        let frames = t.mesh.frames;
-        //TODO INstances will fight to set the error!
-        //maybe we need to store the error in the cache, but we need a Map [id] => error instead of an array.
-        //if(frames[node] != t.frame || errors[node] < error) {
-            errors[node] = error;
-            frames[node] = t.frame;
-        //}
 
-        if(node > 0 && error < t.currentError) return;  //2% speed TODO check if needed
+        t.instance_errors[node] = error;
+        t.mesh.errors[node] = Math.max(error, t.mesh.errors[node]);
+        t.mesh.frames[node] = t.frame;
 
+//        if(node > 0 && error < t.currentError) return;  //2% speed TODO check if needed
 
         t.visitQueue.push(node, error);
     },

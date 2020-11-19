@@ -16,11 +16,12 @@ var padding = 256;
 let Mesh = function(url) {
     var t = this;
     t.isReady = false;
-    t.onLoad = () => {};
-    t.onUpdate = () => {};
+    t.onLoad = [];
+    t.onUpdate = [];
     t.reqAttempt = 0;
     t.georeq = {}; //keeps track of existing httprequests
     t.texreq = {};
+    t.frame = 0; //last time this mesh was traversed in rendering.
     if(url)
         t.open(url);
 }
@@ -164,8 +165,8 @@ Mesh.prototype = {
         t.reqAttempt = new Uint8Array(n);
         
         t.isReady = true;
-        if(t.onLoad) 
-            t.onLoad();
+        for(let callback of t.onLoad)
+            callback(this);
     },
 
     importAttribute: function(view) {

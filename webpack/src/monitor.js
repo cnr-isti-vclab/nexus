@@ -139,16 +139,16 @@ function Monitor(cache) {
 	    e.nodesCheckbox.addEventListener('click', function() { 
             cache.debug.nodes = this.checked; 
             for( let [mesh, ids] of cache.nodes) {
-                mesh.onUpdate();
-                break;
+                for(let  callback of mesh.onUpdate)
+                    callback(mesh);
             }
         });
 
 	    e.editError.addEventListener('change', function() { 
             cache.targetError = this.value;
             for( let [mesh, ids] of cache.nodes) {
-                mesh.onUpdate();
-                break;
+                for(let  callback of mesh.onUpdate)
+                    callback(mesh);
             }
 	    });
 
