@@ -56,6 +56,7 @@ Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stre
 
 Nexus::~Nexus() {
 	close();
+	delete file;
 }
 
 bool Nexus::open(const char *_uri) {
