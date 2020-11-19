@@ -74,7 +74,7 @@ protected:
 	int32_t non_blocked;
 	int32_t prefetch;
 
-	bool skipNode(quint32 node);
+	bool skipNode(uint32_t node);
 
 private:
 	bool add(uint32_t node);                //returns true if added

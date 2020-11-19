@@ -71,8 +71,8 @@ bool Nexus::open(const char *_uri) {
 		url = url.substr(7, url.size());
 
 	if(!isStreaming()) {
-		file.setFileName(url.c_str());
-		if(!file.open(QIODevice::ReadWrite))
+		file->setFileName(url.c_str());
+		if(!file->open(NexusFile::ReadWrite))
 			//file = fopen(_uri, "rb+");
 			//if(!file)
 			return false;
@@ -110,6 +110,38 @@ void Nexus::loadIndex(char *buffer) {
 	NexusData::loadIndex(buffer);
 
 	loaded = true;
+}
+void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
+{
+	Texture& texture = textures[t];
+	data.memory = (char*)file->map(texture.getBeginOffset(), texture.getSize());
+	if (!data.memory) {
+		cerr << "Failed mapping texture data" << endl;
+		exit(0);
+	}
+	QImage img;
+	bool success = img.loadFromData((uchar*)data.memory, texture.getSize());
+	file->unmap((uchar*)data.memory);
+
+	if (!success) {
+		cerr << "Failed loading texture" << endl;
+		exit(0);
+	}
+
+	img = img.convertToFormat(QImage::Format_RGBA8888);
+	data.width = img.width();
+	data.height = img.height();
+
+	int imgsize = data.width * data.height * 4;
+	data.memory = new char[imgsize];
+
+	//flip memory for texture
+	int linesize = img.width() * 4;
+	char* mem = data.memory + linesize * (img.height() - 1);
+	for (int i = 0; i < img.height(); i++) {
+		memcpy(mem, img.scanLine(i), linesize);
+		mem -= linesize;
+	}
 }
 void Nexus::loadIndex() {
 	NexusData::loadIndex();
