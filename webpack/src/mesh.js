@@ -233,7 +233,6 @@ Mesh.prototype = {
         return h;
     },
     //OVERRIDE THESE METHOS
-    createMaterial: function() {},
 
     //assemble node and geometry
     createNode: function(id) {},

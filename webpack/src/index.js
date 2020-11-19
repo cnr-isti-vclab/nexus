@@ -2,6 +2,7 @@
 
 import {
     Vector3,
+    Euler,
     Color,
     Fog,
     AmbientLight,
@@ -22,6 +23,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { NXS} from './NXS.js'
+import { NXSRaw} from './NXSRaw.js'
 import { Monitor } from './monitor.js'
 
 
@@ -81,7 +83,7 @@ function onNexusLoad(model) {
 
 var url = "models/gargo.nxz"; 
 
-let nexus = new NXS(url, onNexusLoad, () => { redraw = true; });
+let nexus = new NXSRaw(url, onNexusLoad, () => { redraw = true; }, renderer);
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
 let monitor = new Monitor(nexus.cache);
 scene.add(nexus);
@@ -94,7 +96,6 @@ function onWindowResize() {
 
 	renderer.setSize( container.clientWidth, container.clientHeight );
 
-	controls.update();
 	redraw = true;
 }
 
@@ -102,14 +103,15 @@ const clock = new Clock();
 var redraw = true;
 
 renderer.setAnimationLoop(()=> {
-    controls.update();
-
     const delta = clock.getDelta()
+    controls.update(delta);
     
 	if(redraw) {
+	//during rendering it might be apparent we need another render pass, set it to false BEFORE render
+        redraw = false; 
+
         nexus.cache.beginFrame(30);
 		renderer.render( scene, camera );
-        redraw = false;
         nexus.cache.endFrame();
     }
 })

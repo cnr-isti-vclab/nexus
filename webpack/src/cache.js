@@ -61,6 +61,10 @@ function Cache() {
         draw    : false,  //final rendering call disabled
         extract : false,  //extraction disabled}
     }
+
+    t.totswapped = 0; //in the last second.
+    t.swaprate = 0;
+    t.lastupdate = performance.now();
 }
 
 Cache.prototype = {
@@ -178,6 +182,8 @@ Cache.prototype = {
 
 	    mesh.status[id]--;
 
+        let t = this;
+
 	    if(mesh.reqAttempt[id] > maxReqAttempt) {
 		    if(Debug.verbose) console.log("Max request limit for " + m.url + " node: " + n);
 		    t.removeNode(mesh, id);
@@ -251,7 +257,10 @@ Cache.prototype = {
     },
 
     removeNode: function(mesh, id) {
-	    if(mesh.status[id] == 0) return;
+        this.nodes.get(mesh).delete(id);
+
+        if(mesh.status[id] == 0)
+            throw "Was already removed!";
 
 	    mesh.status[id] = 0;
 	if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
@@ -276,7 +285,6 @@ Cache.prototype = {
     	if(mesh.texref[tex] == 0) {
             mesh.deleteTexture(tex);
         }
-        this.nodes.get(mesh).delete(id);
     },
 
     readyGeometryNode: function(mesh, id, buffer) {
@@ -356,7 +364,18 @@ Cache.prototype = {
 	    }
         if(!best) return;
 
+	// record amount of data transfer per second.
+        let now = performance.now();
+        if(Math.floor(now/1000) > Math.floor(this.lastupdate/1000)) { //new second
+            this.swaprate = (this.totswapped/1000)/(now - this.lastupdate); //transfer in mb/s
+            console.log("Memory loaded in GPU: ", this.swaprate);
+            this.totswapped = 0;
+            this.lastupdate =  now;
+        }
+        
+            
         //make room for new nodes!
+        
 	    while(this.cacheSize > this.maxCacheSize) {
             let worst = null;
             
@@ -371,14 +390,13 @@ Cache.prototype = {
                     }
                 }
             }
-            if(!worst || worst.error >= best.error*0.9)
+            if(!worst || worst.error >= best.error*0.9) {
                 //(worst.frame + 30 >= best.frame && )) //dont' remove if  the best candidate is not good enogh
                 return;
-            //we have added some histeresys: we swap only if the best is a bit better.
-
+            }
 		    this.removeNode(worst.mesh, worst.id);
-//            console.log("Total: ", this.nodes.length,"Replacing: ", worst, best);
 	    }
+        this.totswapped += best.mesh.nsize[best.id];
         this.candidates = this.candidates.filter(e => e.mesh == best.mesh && e.id == best.id);
     	this.requestNode(best.mesh, best.id);
 	    this.update();  //try again.

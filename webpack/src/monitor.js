@@ -146,6 +146,10 @@ function Monitor(cache) {
 
 	    e.editError.addEventListener('change', function() { 
             cache.targetError = this.value;
+            for( let [mesh, ids] of cache.nodes) {
+                mesh.onUpdate();
+                break;
+            }
 	    });
 
         document.body.appendChild(this.div);
@@ -163,7 +167,7 @@ Monitor.prototype = {
 		let cacheFraction = parseInt(100*cacheSize/maxCacheSize);
 
 		let targetError = context.targetError;
-		let realError = context.realError;
+		let realError = Math.min(1000, context.realError);
 		let currentError = context.currentError;
 		let errorFraction = 100*Math.min(5, Math.log2(currentError/targetError))/5;
 
