@@ -1,6 +1,5 @@
- /* PRIORITY QUEUE */
     
- PriorityQueue = function(max_length) {
+ function PriorityQueue(max_length) {
     this.error = new Float32Array(max_length);
     this.data = new Int32Array(max_length);
     this.size = 0;
@@ -73,12 +72,5 @@ PriorityQueue.prototype = {
 };
 
 
-if (typeof exports === 'object' && typeof module === 'object')
-	module.exports = { PriorityQueue: PriorityQueue };
-        
-else if (typeof define === 'function' && define['amd'])
-	define([], function() {
-		return { PriorityQueue: PriorityQueue };
-	});
-else if (typeof exports === 'object')
-	exports = { PriorityQueue: PriorityQueue };
+export { PriorityQueue }
+

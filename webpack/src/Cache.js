@@ -1,23 +1,4 @@
 
-var corto;
-function loadCorto() {
-    corto = new Worker('corto.em.js');
-    corto.requests = {};
-    corto.count = 0;
-    corto.postRequest = function(node) {
-        corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_index: true, short_normals: true});
-        node.buffer = null;
-        this.requests[this.count++] = node;
-    }
-    corto.onmessage = function(e) {
-        var request = e.data.request;
-        var node = this.requests[request];
-        delete this.requests[request];
-        node.model = e.data.model;
-        node.cache.readyGeometryNode(node.mesh, node.id, node.model);
-    };
-}
-
 function powerOf2(n) {
 	return n && (n & (n - 1)) === 0;
 }
@@ -33,9 +14,9 @@ var drawBudget    = 5*(1<<20);
 
 function Cache() {
     let t = this;
+
     t.frame = 0;         //keep track of the time
 
-    
     t.maxCacheSize = maxCacheSize;
     t.minFps = minFps;
     t.currentFps = 0;
@@ -73,6 +54,26 @@ Cache.prototype = {
     getMaxCacheSize: function()      { return this.maxCacheSize; },
     setMaxCacheSize: function(size)  { this.maxCacheSize = size; },
     setTargetError:  function(error) { this.targetError = error; },
+    
+    loadCorto: function() {
+        let corto = new Worker(this.cortopath + '/corto.em.js');
+        corto.requests = {};
+        corto.count = 0;
+        corto.postRequest = function(node) {
+            corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_index: true, short_normals: true});
+            node.buffer = null;
+            this.requests[this.count++] = node;
+        }
+        corto.onmessage = function(e) {
+            var request = e.data.request;
+            var node = this.requests[request];
+            delete this.requests[request];
+            node.model = e.data.model;
+            node.cache.readyGeometryNode(node.mesh, node.id, node.model);
+        };
+        this.corto = corto;
+    },
+
     
     beginFrame: function(fps) { //each context has a separate frame count.
         let c = this;
@@ -209,8 +210,8 @@ Cache.prototype = {
 	    if(!mesh.compressed)
 		    this.readyGeometryNode(mesh, id, request.response);
 	    else {
-            if(!corto) loadCorto();
-		    corto.postRequest( { mesh:mesh, id:id, buffer: request.response, cache: this });
+            if(!this.corto) this.loadCorto();
+		    this.corto.postRequest( { mesh:mesh, id:id, buffer: request.response, cache: this });
         }
     },
 

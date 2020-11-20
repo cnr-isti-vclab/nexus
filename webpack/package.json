@@ -1,8 +1,9 @@
 {
-  "name": "webpack-demo",
+  "name": "Nexus",
   "version": "1.0.0",
-  "description": "",
+  "description": "Streaming 3D in threejs",
   "private": true,
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start:dev": "webpack-dev-server"

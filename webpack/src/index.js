@@ -22,9 +22,8 @@ import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-import { NXS} from './NXS.js'
-import { NXSRaw} from './NXSRaw.js'
-import { Monitor } from './monitor.js'
+import { Nexus3D} from './Nexus3D.js'
+import { Monitor } from './Monitor.js'
 
 
 let container = document.getElementById( 'scene');
@@ -85,10 +84,10 @@ function onNexusLoad(nexus) {
 var url = "models/gargo.nxz"; 
 
 //onUpdate parameter here is used to trigger a redraw
-let nexus = new NXSRaw(url, onNexusLoad, () => { redraw = true; }, renderer);
+let nexus = new Nexus3D(url, onNexusLoad, () => { redraw = true; }, renderer);
 
 //create a second instance and position it.
-let nexus1 = new NXSRaw(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, () => { redraw = true; }, renderer);
+let nexus1 = new Nexus3D(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, () => { redraw = true; }, renderer);
 
 //material can be changed replacing the material or modifying it.
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );

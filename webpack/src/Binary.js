@@ -100,12 +100,5 @@ let binary = {
     matInv: matInv
 }
 
-if (typeof exports === 'object' && typeof module === 'object')
-	module.exports = binary;
-        
-else if (typeof define === 'function' && define['amd'])
-	define([], function() {
-		return binary;
-	});
-else if (typeof exports === 'object')
-	exports = binary;
+export { getUint64, getUint32, getUint16, getFloat32, vecMul, matMul, matInv }
+

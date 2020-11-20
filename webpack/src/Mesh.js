@@ -1,5 +1,4 @@
-import { getUint64, getUint32, getUint16, getFloat32 } from './binary.js'
-import { PriorityQueue } from './priorityqueue.js'
+import { getUint64, getUint32, getUint16, getFloat32 } from './Binary.js'
 
 /* MESH DEFINITION */
 let Debug = { verbose: true };

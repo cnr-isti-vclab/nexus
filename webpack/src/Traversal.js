@@ -1,4 +1,5 @@
-import { vecMul, matMul, matInv } from './binary.js'
+import { vecMul, matMul, matInv } from './Binary.js'
+import { PriorityQueue } from "./PriorityQueue.js"
 
 function Traversal() {
     let t = this;

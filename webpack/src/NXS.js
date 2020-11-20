@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import { Traversal } from './traversal.js'
-import { Mesh } from './mesh.js'
-import { Cache } from './cache.js'
+import { Traversal } from './Traversal.js'
+import { Mesh } from './Mesh.js'
+import { Cache } from './Cache.js'
 
 function NXS(url, onLoad, onUpdate, material) {
 
