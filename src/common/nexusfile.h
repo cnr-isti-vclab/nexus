@@ -12,6 +12,8 @@ namespace nx {
 		virtual void setFileName(const char* uri) = 0;
 		virtual bool open(OpenMode mode) = 0;
 		virtual int read(char* where, unsigned int length) = 0;
+		virtual int write(char* from, unsigned int length) = 0;
+		virtual int size() = 0;
 		virtual void* map(unsigned int from, unsigned int size) = 0;
 		virtual bool unmap(void* mapped) = 0;
 		virtual bool seek(unsigned int to) = 0;

@@ -111,7 +111,7 @@ public:
 	virtual void loadIndex();
 	virtual void loadIndex(char *buffer);
 
-	virtual void loadImageFromData(TextureData& data, int textureIndex) = 0;
+	virtual void loadImageFromData(TextureData& data, int textureIndex) { };
 
 	//FILE *file;
 

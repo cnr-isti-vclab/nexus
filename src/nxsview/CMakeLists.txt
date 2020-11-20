@@ -28,6 +28,8 @@ SET(HEADERS
 	../common/dag.h
 	../common/controller.h
 	../common/nexusdata.h
+	../common/nexusfile.h
+	../common/qtnexusfile.h
 	../nxszip/bitstream.h
 	../nxszip/tunstall.h
 	../nxszip/meshcoder.h
@@ -50,6 +52,7 @@ SET(SOURCES
 	../common/ram_cache.cpp
 	../common/frustum.cpp
 	../common/nexusdata.cpp
+	../common/qtnexusfile.cpp
 	../nxszip/abitstream.cpp
 	../nxszip/atunstall.cpp
 	../nxszip/meshdecoder.cpp
@@ -71,6 +74,9 @@ find_package(Qt5OpenGL)
 #find_package(glew)
 
 add_executable(nxsview ${SOURCES} ${HEADERS})
-
-target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
+if (WIN32)
+	target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW glu32 OpenGL32 curl)
+else()
+	target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
+endif()
 

@@ -21,6 +21,17 @@ namespace nx {
 		return file.read(where, length);
 	}
 
+
+	int nx::QTNexusFile::write(char* from, unsigned int length)
+	{
+		return file.write(from, length);
+	}
+
+	int QTNexusFile::size()
+	{
+		return file.size();
+	}
+
 	void* nx::QTNexusFile::map(unsigned int from, unsigned int size)
 	{
 		return file.map(from, size);
