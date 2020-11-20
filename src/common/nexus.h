@@ -20,8 +20,6 @@ for more details.
 
 #include "nexusdata.h"
 
-#include <QString>
-
 typedef void CURL;
 
 namespace nx {
@@ -48,8 +46,6 @@ public:
 	void initIndex();
 	void loadIndex();
 	void loadIndex(char *buffer);
-
-	void loadImageFromData(nx::TextureData& data, int textureIndex) override;
 
 	bool loaded;
 	bool http_stream;

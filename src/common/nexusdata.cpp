@@ -17,6 +17,8 @@ for more details.
 */
 #define _FILE_OFFSET_BITS 64
 
+#include <QTime>
+#include <QImage>
 #include "nexusdata.h"
 
 #include <vcg/space/line3.h>
@@ -40,7 +42,6 @@ uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
 
 
 NexusData::NexusData(): nodes(0), patches(0), textures(0), nodedata(0), texturedata(0), nroots(0) {
-
 }
 
 NexusData::~NexusData() {
@@ -48,8 +49,9 @@ NexusData::~NexusData() {
 }
 
 bool NexusData::open(const char *_uri) {
-	file->setFileName(_uri);
-	if(!file->open(NexusFile::Read))
+
+	file.setFileName(_uri);
+	if(!file.open(QIODevice::ReadOnly))
 		//file = fopen(_uri, "rb+");
 		//if(!file)
 		return false;
@@ -64,7 +66,7 @@ void NexusData::close() {
 
 void NexusData::flush() {
 	//flush
-	for(unsigned int i = 0; i < header.n_nodes; i++)
+	for(uint i = 0; i < header.n_nodes; i++)
 		delete nodedata[i].memory;
 
 	delete []nodes;
@@ -76,17 +78,17 @@ void NexusData::flush() {
 
 void NexusData::loadHeader() {
 	//fread(&header, sizeof(Header), 1, file);
-	int readed = file->read((char *)&header, sizeof(Header));
-	if (readed != sizeof(Header))
-		throw std::string ("could not read header, file too short");
+	int readed = file.read((char *)&header, sizeof(Header));
+	if(readed != sizeof(Header))
+		throw QString("could not read header, file too short");
 	if(header.magic != 0x4E787320)
-		throw std::string("could not read header, probably not a nexus file");
+		throw QString("could not read header, probably not a nexus file");
 }
 
 void NexusData::loadHeader(char *buffer) {
 	header = *(Header *)buffer;
 	if(header.magic != 0x4E787320)
-		throw std::string("could not read header, probably not a nexus file");
+		throw QString("could not read header, probably not a nexus file");
 }
 
 void NexusData::countRoots() {
@@ -120,9 +122,9 @@ void NexusData::loadIndex() {
 	//fread(nodes, sizeof(Node), header.n_nodes, file);
 	//fread(patches, sizeof(Patch), header.n_patches, file);
 	//fread(textures, sizeof(Texture), header.n_textures, file);
-	file->read((char *)nodes, sizeof(Node)*header.n_nodes);
-	file->read((char *)patches, sizeof(Patch)*header.n_patches);
-	file->read((char *)textures, sizeof(Texture)*header.n_textures);
+	file.read((char *)nodes, sizeof(Node)*header.n_nodes);
+	file.read((char *)patches, sizeof(Patch)*header.n_patches);
+	file.read((char *)textures, sizeof(Texture)*header.n_textures);
 	countRoots();
 }
 
@@ -151,27 +153,29 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 	Signature &sign = header.signature;
 	Node &node = nodes[n];
-	uint64_t offset = node.getBeginOffset();
+	quint64 offset = node.getBeginOffset();
 
 	NodeData &d = nodedata[n];
-	uint64_t compressed_size = node.getEndOffset() - offset;
+	quint64 compressed_size = node.getEndOffset() - offset;
 
-	uint64_t size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
+	quint64 size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
 
 	if(!sign.isCompressed()) {
 
-		d.memory = (char *)file->map(offset, size);
+		d.memory = (char *)file.map(offset, size);
 
 	} else {
 
 		char *buffer = new char[compressed_size];
-		file->seek(offset);
-		int64_t r = file->read(buffer, compressed_size);
-		assert(r == (int64_t)compressed_size);
+		file.seek(offset);
+		qint64 r = file.read(buffer, compressed_size);
+		assert(r == (qint64)compressed_size);
 
 		d.memory = new char[size];
 
 		int iterations = 1;
+		QTime time;
+		time.start();
 
 		if(sign.flags & Signature::MECO) {
 			meco::MeshDecoder coder(node, d, patches, sign);
@@ -238,18 +242,15 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				continue;
 
 			Texture &texture = textures[t];
-			data.memory = (char *)file->map(texture.getBeginOffset(), texture.getSize());
+			data.memory = (char *)file.map(texture.getBeginOffset(), texture.getSize());
 			if(!data.memory) {
 				cerr << "Failed mapping texture data" << endl;
 				exit(0);
 			}
 
-			loadImageFromData(data, t);
-
-			/*
 			QImage img;
 			bool success = img.loadFromData((uchar *)data.memory, texture.getSize());
-			file->unmap((uchar *)data.memory);
+			file.unmap((uchar *)data.memory);
 
 			if(!success) {
 				cerr << "Failed loading texture" << endl;
@@ -270,8 +271,6 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				memcpy(mem, img.scanLine(i), linesize);
 				mem -= linesize;
 			}
-			*/
-			int imgsize = data.width * data.height * 4;
 			size += imgsize;
 		}
 	}
@@ -287,7 +286,7 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(data.memory);
 
 	if(!header.signature.isCompressed()) //not compressed.
-		file->unmap((unsigned char *)data.memory);
+		file.unmap((uchar *)data.memory);
 	else
 		delete []data.memory;
 

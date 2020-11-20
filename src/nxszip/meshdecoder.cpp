@@ -71,7 +71,7 @@ void MeshDecoder::decodeFaces() {
 	int start = 0;
 	for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 		Patch &patch = patches[p];
-		uint32_t end = patch.triangle_offset;
+		uint end = patch.triangle_offset;
 		decodeFaces(end - start, faces + start*3);
 		start = end;
 	}
