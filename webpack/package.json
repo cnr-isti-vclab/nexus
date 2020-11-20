@@ -6,14 +6,16 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:dev": "webpack-dev-server"
+    "start:dev": "webpack-dev-server",
+    "build": "webpack --mode development",
+    "buildlib": "webpack -c webpacklib.config.js --mode development"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "webpack": "^4.20.2",
-    "webpack-cli": "^3.1.2",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.12",
     "webpack-dev-server": "^3.11.0"
   },
   "dependencies": {

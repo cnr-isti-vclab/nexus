@@ -3,12 +3,14 @@ var webpack = require('webpack')
 module.exports = {
 
   entry: {
-    main: './src/index.js',
+    Nexus3D: './Nexus3D.js',
   },
 
   output: {
-    path: __dirname + '/build',
-    filename: 'main.js',
+    path: __dirname + '/dist',
+    filename: '[name].js',
+    libraryTarget: 'var',
+    library: '[name]'
   },
 
   optimization: {
