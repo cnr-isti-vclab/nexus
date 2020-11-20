@@ -537,7 +537,7 @@ void checks(NexusData &nexus) {
 			cout << "Node " << i << " of " << n_nodes << " First patch " << node.first_patch << " of " << n_patches << endl;
 			exit(-1);
 		}
-		assert(node.offset * (quint64)NEXUS_PADDING < nexus.file.size());
+		assert(node.offset * (quint64)NEXUS_PADDING < nexus.file->size());
 	}
 	assert(nexus.nodes[n_nodes-1].first_patch = n_patches);
 
