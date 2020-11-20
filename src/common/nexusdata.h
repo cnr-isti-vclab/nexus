@@ -25,7 +25,7 @@ for more details.
 #include "dag.h"
 
 #include <vcg/space/color4.h>
-#include <QFile>
+#include "nexusfile.h"
 
 namespace nx {
 
@@ -111,9 +111,11 @@ public:
 	virtual void loadIndex();
 	virtual void loadIndex(char *buffer);
 
+	virtual void loadImageFromData(TextureData& data, int textureIndex) { };
+
 	//FILE *file;
 
-	QFile file;
+	NexusFile* file;
 };
 
 } //namespace

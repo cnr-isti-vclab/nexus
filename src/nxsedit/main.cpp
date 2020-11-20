@@ -520,8 +520,8 @@ void recomputeError(NexusData &nexus, QString error_method) {
 
 	nexus.nodes[nexus.header.n_nodes - 1].error = min_error;
 
-	nexus.file.seek(sizeof(Header));
-	nexus.file.write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
+	nexus.file->seek(sizeof(Header));
+	nexus.file->write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
 	//fseek(nexus.file, sizeof(Header), SEEK_SET);
 	//fwrite(nexus.nodes, sizeof(nx::Node), nexus.header.n_nodes, nexus.file);
 }
@@ -537,7 +537,7 @@ void checks(NexusData &nexus) {
 			cout << "Node " << i << " of " << n_nodes << " First patch " << node.first_patch << " of " << n_patches << endl;
 			exit(-1);
 		}
-		assert(node.offset * (quint64)NEXUS_PADDING < nexus.file.size());
+		assert(node.offset * (quint64)NEXUS_PADDING < nexus.file->size());
 	}
 	assert(nexus.nodes[n_nodes-1].first_patch = n_patches);
 
@@ -555,13 +555,13 @@ void checks(NexusData &nexus) {
 
 	for(uint i = 0; i < n_textures-1; i++) {
 		Texture &texture = nexus.textures[i];
-		if(texture.offset * (quint64)NEXUS_PADDING >= nexus.file.size()) {
-			cout << "Texture " << i << " offset " << texture.offset*NEXUS_PADDING << " file size " << nexus.file.size() << endl;
+		if(texture.offset * (quint64)NEXUS_PADDING >= nexus.file->size()) {
+			cout << "Texture " << i << " offset " << texture.offset*NEXUS_PADDING << " file size " << nexus.file->size() << endl;
 		}
 	}
-	if(nexus.textures[n_textures-1].offset*NEXUS_PADDING != nexus.file.size()) {
+	if(nexus.textures[n_textures-1].offset*NEXUS_PADDING != nexus.file->size()) {
 		cout << "Last texture " << nexus.textures[n_textures-1].offset*NEXUS_PADDING <<
-				"File size " << nexus.file.size() << endl;
+				"File size " << nexus.file->size() << endl;
 	}
 	return;
 }
@@ -595,8 +595,8 @@ void checkSpheres(NexusData &nexus) {
 	}
 
 	//write back nodes.
-	nexus.file.seek(sizeof(Header));
-	nexus.file.write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
+	nexus.file->seek(sizeof(Header));
+	nexus.file->write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
 	//fseek(nexus.file, sizeof(Header), SEEK_SET);
 	//fwrite(nexus.nodes, sizeof(Node), n_nodes, nexus.file);
 }

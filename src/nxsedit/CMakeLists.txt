@@ -71,6 +71,8 @@ SET(HEADERS
     ../../../vcglib/wrap/system/qgetopt.h
     ../common/virtualarray.h
     ../common/nexusdata.h
+    ../common/nexusfile.h
+    ../common/qtnexusfile.h
     ../common/traversal.h
     ../common/signature.h
     ../nxszip/zpoint.h
@@ -95,6 +97,7 @@ SET(SOURCES
     ../common/nexusdata.cpp
     ../common/traversal.cpp
     ../common/cone.cpp
+	../common/qtnexusfile.cpp
     ../nxszip/meshcoder.cpp
     ../nxszip/meshdecoder.cpp
     ../nxszip/abitstream.cpp

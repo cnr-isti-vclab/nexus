@@ -13,6 +13,8 @@ SET(HEADERS
 	../common/signature.h
 	../common/cone.h
 	../common/virtualarray.h
+    ../common/nexusfile.h
+    ../common/qtnexusfile.h
 	meshstream.h
 	meshloader.h
 	plyloader.h
@@ -34,6 +36,7 @@ SET(SOURCES
 	../../../vcglib/wrap/ply/plylib.cpp
 	../common/virtualarray.cpp
 	../common/cone.cpp
+	../common/qtnexusfile.cpp
 	main.cpp
 	meshstream.cpp
 	meshloader.cpp
