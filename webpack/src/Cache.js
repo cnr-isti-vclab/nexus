@@ -14,6 +14,7 @@ var drawBudget    = 5*(1<<20);
 
 function Cache() {
     let t = this;
+    this.cortopath = '.';
 
     t.frame = 0;         //keep track of the time
 
@@ -42,7 +43,7 @@ function Cache() {
         extract : false,  //extraction disabled}
     }
 
-    t.totswapped = 0; //in the last second.
+    t.totswapped = 0; //in the last frame.
     t.swaprate = 0;
     t.lastupdate = performance.now();
 }
@@ -102,6 +103,7 @@ Cache.prototype = {
 
 	    c.rendered = 0;
 	    c.realError = 1e20;
+        c.totswapped = 0;
     },
 
     endFrame: function() {
@@ -365,6 +367,7 @@ Cache.prototype = {
         if(!best) return;
 
 	// record amount of data transfer per second.
+    /*
         let now = performance.now();
         if(Math.floor(now/1000) > Math.floor(this.lastupdate/1000)) { //new second
             this.swaprate = (this.totswapped/1000)/(now - this.lastupdate); //transfer in mb/s
@@ -373,6 +376,7 @@ Cache.prototype = {
             this.totswapped = 0;
             this.lastupdate =  now;
         }
+    */
         
             
         //make room for new nodes!

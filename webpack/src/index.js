@@ -1,13 +1,14 @@
 //npx webpack
 
 import {
-    Vector3,
+    Vector2,
     Euler,
     Color,
     Fog,
     AmbientLight,
     DirectionalLight,
     PerspectiveCamera,
+    Raycaster,
     WebGLRenderer,
     Scene,
     Clock,
@@ -27,7 +28,6 @@ import { Monitor } from './Monitor.js'
 
 
 let container = document.getElementById( 'scene');
-console.log("canvas", container);
 
 let camera = new PerspectiveCamera( 30, container.innerWidth / container.innerHeight, 0.1, 100 );
 camera.position.set(0, 0, 10);
@@ -87,7 +87,7 @@ var url = "models/gargo.nxz";
 let nexus = new Nexus3D(url, onNexusLoad, () => { redraw = true; }, renderer);
 
 //create a second instance and position it.
-let nexus1 = new Nexus3D(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, () => { redraw = true; }, renderer);
+//let nexus1 = new Nexus3D(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, () => { redraw = true; }, renderer);
 
 //material can be changed replacing the material or modifying it.
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
@@ -95,7 +95,20 @@ let nexus1 = new Nexus3D(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, ()
 
 let monitor = new Monitor(nexus.cache);
 scene.add(nexus);
-scene.add(nexus1);
+//scene.add(nexus1);
+
+
+var mouse = new Vector2();
+
+function onMouseMove( event ) {
+    event.preventDefault();
+	mouse.x = ( event.clientX / container.offsetWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / container.offsetHeight ) * 2 + 1;
+}
+
+document.addEventListener( 'mousemove', onMouseMove, false );
+
+
 
 new ResizeObserver(onWindowResize).observe(container);
 
@@ -118,6 +131,19 @@ renderer.setAnimationLoop(()=> {
 	if(redraw) {
 	//during rendering it might be apparent we need another render pass, set it to false BEFORE render
         redraw = false; 
+
+
+        var raycaster = new Raycaster();
+	    raycaster.setFromCamera( mouse, camera );
+
+	    var intersections = raycaster.intersectObjects( [nexus], true );
+	    if(intersections.length) {
+		    nexus.material.color =  new Color(1, 0, 0);
+        } else {
+            nexus.material.color =  new Color(1, 1, 1);
+        }
+ 	    nexus.material.needsUpdate = true;
+        redraw = true;
 
         nexus.cache.beginFrame(30);
 		renderer.render( scene, camera );

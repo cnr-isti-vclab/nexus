@@ -25,6 +25,8 @@ function Nexus3D(url, onLoad, onUpdate, renderer, material) {
     this.textures = [];
     this.attributes = {};  //here we store the uniform attributes of the shader.
 
+    this.basemesh = null;  //highest level of the nexus, for picking
+
     //this is needed for a onbeforerender callback!
     if(!this.material) 
         this.material = new THREE.MeshStandardMaterial();
@@ -95,6 +97,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
         if(this.mesh.vertex.color)
             this.material.vertexColors = THREE.VertexColors; 
+        this.material.needsUpdate = true; 
     },
 
     onLoadCallback: function() {
@@ -105,6 +108,8 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
         var geometry = new THREE.BufferGeometry();
 
+        geometry.setAttribute( 'position', new THREE.BufferAttribute(new Float32Array(3), 3));
+        
         if(this.mesh.vertex.normal)
             geometry.setAttribute( 'normal', new THREE.BufferAttribute(new Float32Array(3), 3));
         if(this.mesh.vertex.color)
@@ -141,9 +146,16 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.traversal.updateView([0, 0, s.width, s.height], camera.projectionMatrix.elements, this.modelViewMatrix.elements);
         this.instance_errors = this.traversal.traverse(this.mesh, this.cache);
 
+
+
+        //threejs increments version when setting neeedsUpdate
+        if(this.material.version > 0) {
+            this.updateMaterials();
+            this.material.version = 0;
+            for(let callback of this.onUpdate) callback(this); 
+
         let gl = this.gl;
         var program = gl.getParameter(gl.CURRENT_PROGRAM);
-
 
         var attr = this.attributes;
         attr.position = gl.getAttribLocation(program, "position");
@@ -154,6 +166,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         attr.scale    = gl.getUniformLocation(program, "scale");
         let map_location = gl.getUniformLocation(program, "map"); 
         attr.map      = map_location ? gl.getUniform(program, map_location) : null;
+        }
     
     
         //hack to detect if threejs using point or triangle shaders
@@ -169,13 +182,6 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     },
 
     setVisibility: function() {
-            //threejs increments version when setting neeedsUpdate
-        if(this.material.version > 0) {
-            this.updateMaterials();
-            this.material.version = 0;
-            for(let callback of t.onUpdate) callback(this); 
-        }
-
         //set visibile what is visible!
         let t = this.traversal;
         let m = this.mesh;
@@ -214,7 +220,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             let attr = this.attributes;
             let mesh = this.mesh;
             let gl = this.gl;
-            gl.bindVertexArray(null);
+            //gl.bindVertexArray(null);
             gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
             //if(t.mode != "POINT")
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
@@ -327,6 +333,18 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             off += nv*6;
 		}
         
+        //needed for approximate picking.
+        if(id < this.mesh.nroots) {
+            let basegeometry = new THREE.BufferGeometry();
+            basegeometry.setAttribute( 'position', new THREE.BufferAttribute(data.position, 3 ) );
+            basegeometry.setAttribute( 'normal', new THREE.BufferAttribute(data.normal, 3 ) );
+            basegeometry.setIndex(new THREE.BufferAttribute( data.index, 1 ) );
+
+            this.basemesh = new THREE.Mesh(basegeometry, this.material);
+            this.basemesh.visible = false;
+            this.add(this.basemesh);
+        }
+        
         var gl = this.gl
         var vbo = this.vbo[id] = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
@@ -344,7 +362,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 		gl.bindTexture(gl.TEXTURE_2D, tex);
 
         //TODO some textures might be alpha only! save space
-		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -380,22 +398,6 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         throw "Can't"
 	},
 
-    raycast: function ( raycaster, intersects ) {
-
-		const levels = this.levels;
-
-		if ( levels.length > 0 ) {
-
-			_v1.setFromMatrixPosition( this.matrixWorld );
-
-			const distance = raycaster.ray.origin.distanceTo( _v1 );
-
-			this.getObjectForDistance( distance ).raycast( raycaster, intersects );
-
-		}
-
-    },
-    
 } );
 
 
