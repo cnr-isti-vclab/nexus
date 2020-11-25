@@ -14,9 +14,8 @@ var drawBudget    = 5*(1<<20);
 
 function Cache() {
     let t = this;
-    this.cortopath = '.';
-
-    t.frame = 0;         //keep track of the time
+    t.cortopath = '.';
+	t.frame = 0;         //keep track of the time
 
     t.maxCacheSize = maxCacheSize;
     t.minFps = minFps;
