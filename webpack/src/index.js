@@ -84,10 +84,10 @@ function onNexusLoad(nexus) {
 var url = "models/gargo.nxz"; 
 
 //onUpdate parameter here is used to trigger a redraw
-let nexus = new Nexus3D(url, onNexusLoad, () => { redraw = true; }, renderer);
+let nexus = new Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 
 //create a second instance and position it.
-//let nexus1 = new Nexus3D(nexus, (m) => { onNexusLoad(m); m.position.x += 2 }, () => { redraw = true; }, renderer);
+//let nexus1 = new Nexus3D(nexus, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }});
 
 //material can be changed replacing the material or modifying it.
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );

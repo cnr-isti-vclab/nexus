@@ -3,19 +3,30 @@ import { Traversal } from './Traversal.js'
 import { Mesh } from './Mesh.js'
 import { Cache } from './Cache.js'
 
-function Nexus3D(url, onLoad, onUpdate, renderer, material) {
+function Nexus3D(url, renderer, options) {
+
+    if(typeof renderer == 'function') 
+        throw "Nexus3D constructor has changed: Nexus3D(url, renderer, options) where options include: onLoad, onUpdate, onProgress and material"
 
 	THREE.Object3D.call( this );
 
 	this.type = 'NXS';
 
-    this.gl = renderer.getContext();
-    this.material = material;
-
     this.url = url;
-    this.onLoad = [onLoad];
-    this.onUpdate = [];
-    if(onUpdate) this.onUpdate.push(onUpdate);
+    this.gl = renderer.getContext();
+
+    this.material = null;
+    if('material' in options)
+        this.material = options.material;
+    if(!this.material) 
+        this.material = new THREE.MeshStandardMaterial();
+        
+    for(let call of ['onLoad', 'onUpdate', 'onProgress']) {
+        this[call] = [];
+        if(call in options)
+            this[call].push(options[call])
+    }
+
 
     this.autoUpdate = true;
     this.mesh = new Mesh(); 
@@ -27,9 +38,6 @@ function Nexus3D(url, onLoad, onUpdate, renderer, material) {
 
     this.basemesh = null;  //highest level of the nexus, for picking
 
-    //this is needed for a onbeforerender callback!
-    if(!this.material) 
-        this.material = new THREE.MeshStandardMaterial();
 
     if(this.url) {
         if(typeof url == 'object') {
@@ -78,6 +86,18 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.traversal = new Traversal();
         this.cache = new Cache();
         this.textures = {};        
+    },
+
+    set onLoad(callback) {
+        this.onLoad.push(callback);
+    },
+
+    set onUpdate(callback) {
+        this.onLoad.push(callback);
+    },
+
+    set onProgress(callback) {
+        this.onProgress.push(callback);
     },
 
     set material(material) {

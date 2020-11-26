@@ -13,6 +13,10 @@ module.exports = {
     filename: 'main.js',
   },
 
+  devServer: {
+    contentBase: './dist'
+  },
+
   optimization: {
     minimize: false
   },
@@ -21,6 +25,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       title: 'Nexus3D',
       template: __dirname + '/dist/index.html',
+      inject: false
     }),
   ],
 }
