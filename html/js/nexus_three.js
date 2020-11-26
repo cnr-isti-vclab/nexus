@@ -231,11 +231,12 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 
 	var point = new THREE.Vector3(0, 0, 0);
 	var distance = -1.0;
-	var intersect = raycaster.ray.intersectSphere( sphere );
+	var intersect = raycaster.ray.intersectSphere( sphere, point );
 	if(!intersect)
 		return;
 
 	if(!nexus.sink || !nexus.basei) {
+		return;
 		//no mesh loaded, we can still use the sphere.
 		intersect.applyMatrix4(this.matrixWorld);
 		var d = intersect.distanceTo(raycaster.ray.origin);
@@ -247,20 +248,23 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 		var vert = nexus.basev;
 		var face = nexus.basei;
 
+		let A = new THREE.Vector3(0, 0, 0);
+		let B = new THREE.Vector3(0, 0, 0);
+		let C = new THREE.Vector3(0, 0, 0);
 		for(var j = 0; j < nexus.basei.length; j += 3) {
 			var a = face[j];
 			var b = face[j+1];
 			var c = face[j+2];
-			var A = new THREE.Vector3(vert[a*3], vert[a*3+1], vert[a*3+2]);
-			var B = new THREE.Vector3(vert[b*3], vert[b*3+1], vert[b*3+2]);
-			var C = new THREE.Vector3(vert[c*3], vert[c*3+1], vert[c*3+2]);
+			A.set(vert[a*3], vert[a*3+1], vert[a*3+2]);
+			B.set(vert[b*3], vert[b*3+1], vert[b*3+2]);
+			C.set(vert[c*3], vert[c*3+1], vert[c*3+2]);
 			//TODO use material to determine if using doubleface or not!
 			var hit  = ray.intersectTriangle( C, B, A, false, point ); 
 			if(!hit) continue;
 
 			//check distances in world space
-			intersect.applyMatrix4(this.matrixWorld);
-			var d = intersect.distanceTo(raycaster.ray.origin);
+			hit.applyMatrix4(this.matrixWorld);
+			var d = hit.distanceTo(raycaster.ray.origin);
 			if(d < raycaster.near || d > raycaster.far ) continue;
 			if(distance == -1.0 || d < distance) {
 				distance = d;

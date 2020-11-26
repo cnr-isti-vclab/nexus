@@ -49,26 +49,9 @@ var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster();
 
 function onDocumentMouseMove( event ) {
-	event.preventDefault();
-	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-	raycaster.setFromCamera( mouse, camera );
-
-	var intersections = raycaster.intersectObjects( [nexus_obj] );
-/*	if(nexus_obj.material.color) {
-		if(intersections.length)
-			nexus_obj.material.color =  0xff0000;
-		else
-			nexus_obj.material.color =  0xffffff;
-
-	} else */if(nexus_obj.material.vertexColors != null) {
-		if(intersections.length)
-			nexus_obj.material.vertexColors = THREE.NoColors;
-		else
-			nexus_obj.material.vertexColors = THREE.VertexColors; 
-	}
-	nexus_obj.material.needsUpdate = true;
-	redraw = true;
+            event.preventDefault()
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
 }
 
 var renderer = new THREE.WebGLRenderer( { antialias: false } );
@@ -129,8 +112,19 @@ function animate() {
 	controls.update();
 
 	if(redraw) {
-		renderer.render( scene, camera );
-		redraw = false;
+
+				raycaster.setFromCamera(mouse, camera)
+
+	            var intersections = raycaster.intersectObjects([nexus_obj])
+	  		    if (nexus_obj.material.vertexColors != null) {
+	                if (intersections.length)
+	                    nexus_obj.material.vertexColors = THREE.NoColors
+    	            else 
+						nexus_obj.material.vertexColors = THREE.VertexColors
+					nexus_obj.material.needsUpdate = true;
+	            } 
+                renderer.render(scene, camera)
+//                redraw = false //for mouse over we need to draw continuosly
 	}
 }
 

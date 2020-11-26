@@ -1235,6 +1235,12 @@ function readyNode(node) {
 				vertices.set(co, off);
 			}
 		}
+		if(n == 0) {
+			m.basev = new Float32Array(vertices.buffer, 0, nv*3);
+			m.basei = new Uint16Array(node.buffer, nv*m.vsize, nf*3); 
+		}
+
+
 	} else {
 		indices = node.model.index;
 		vertices = new ArrayBuffer(nv*m.vsize);
@@ -1255,15 +1261,17 @@ function readyNode(node) {
 			var no = new Int16Array(vertices, off, nv*3);
 			no.set(model.normal);
 		}
+
+		if(n == 0) {
+			m.basev = new Float32Array(vertices.buffer, 0, nv*3);
+			m.basei = indices;
+		}
+
 	}
 
 	if(nf == 0)
 		scramble(nv, v, no, co);
 
-	if(n == 1) {
-		m.basev = new Float32Array(vertices, 0, nv*3);
-		m.basei = new Uint16Array(indices, 0, nf*3);
-	}
 
 	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();
