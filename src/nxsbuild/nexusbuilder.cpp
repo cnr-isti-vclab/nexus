@@ -160,7 +160,7 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
   Commented because the gain is negligible ( and the code is not correct either, there is
   some problem in saving the triangles... */
 
-
+/*
 class Worker: public QThread {
 public:
 	uint block;
@@ -177,10 +177,10 @@ protected:
 		Soup soup;
 		{
 			QMutexLocker locker(&builder.m_input);
-			soup = input->getSoup(block, true);
+			soup = input.getSoup(block, true);
 		}
 		mesh.load(soup);
-		input->lock(mesh, bbufferlock);
+		input.lock(mesh, bbufferlock);
 
 		{
 			//QMutexLocker locker(&builder.m_input);
@@ -232,7 +232,7 @@ protected:
 		}
 
 	}
-};
+}; */
 
 
 

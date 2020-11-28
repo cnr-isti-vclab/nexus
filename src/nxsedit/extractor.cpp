@@ -193,7 +193,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 			
 			quint64 start = in.getBeginOffset();
 			quint64 size = in.getSize();
-			char *memory = (char *)nexus->file.map(start, size);
+			char *memory = (char *)nexus->file->map(start, size);
 			
 			out.offset = file.pos()/NEXUS_PADDING;
 			file.write(memory, size);

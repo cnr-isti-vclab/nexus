@@ -72,6 +72,7 @@ public:
 
 	const int side = 4096;
 	std::vector<TexPyramid> pyramids;
+	std::map<QString, int> texture_map;
 	float scale = 0.70710678;
 	int quality = 92;
 	uint64_t cache_max = 2000000000;
@@ -95,9 +96,6 @@ public:
 
 	std::map<Index, RamData> ram;
 	std::map<Index, DiskData> disk;
-	uint64_t cache_max;
-	uint64_t cache_size;
-	uint64_t access;
 	QTemporaryFile storage;
 };
 

@@ -3,9 +3,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
+include_directories(../../../vcglib ../../../vcglib/eigenlib ../../../draco/include)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 
 SET(HEADERS
 	../../../vcglib/wrap/system/qgetopt.h
@@ -34,6 +34,7 @@ SET(SOURCES
 	../../../vcglib/wrap/ply/plylib.cpp
 	../common/virtualarray.cpp
 	../common/cone.cpp
+    ../common/material.cpp 
 	main.cpp
 	meshstream.cpp
 	meshloader.cpp
@@ -41,6 +42,8 @@ SET(SOURCES
 	kdtree.cpp
 	mesh.cpp
 	tsploader.cpp
+	gltfloader.cpp
+    gltf.cpp
 	nexusbuilder.cpp
 	objloader.cpp
 	stlloader.cpp

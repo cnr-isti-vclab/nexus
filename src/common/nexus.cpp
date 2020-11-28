@@ -20,6 +20,7 @@ for more details.
 #include "nexus.h"
 #include "controller.h"
 #include "globalgl.h"
+#include "qtnexusfile.h"
 
 #include <QGLWidget>
 
@@ -50,10 +51,12 @@ void _glCheckError(const char *file, int line) {
 
 
 Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stream(false) {
+	file = new QTNexusFile();
 }
 
 Nexus::~Nexus() {
 	close();
+	delete file;
 }
 
 bool Nexus::open(const char *_uri) {
@@ -71,8 +74,8 @@ bool Nexus::open(const char *_uri) {
 		url = url.substr(7, url.size());
 
 	if(!isStreaming()) {
-		file.setFileName(url.c_str());
-		if(!file.open(QIODevice::ReadWrite))
+		file->setFileName(url.c_str());
+		if(!file->open(NexusFile::ReadWrite))
 			//file = fopen(_uri, "rb+");
 			//if(!file)
 			return false;
@@ -111,6 +114,51 @@ void Nexus::loadIndex(char *buffer) {
 
 	loaded = true;
 }
+
+uint32_t nx::Nexus::loadImageFromData(nx::TextureGroupData& groupdata, int t) {
+	uint32_t size = 0;
+
+	TextureGroup &group = textures[t];
+	uchar *tmp = (uchar *)file->map(group.getBeginOffset(), group.getSize());
+	if(!tmp) {
+		cerr << "Failed mapping texture data" << endl;
+		exit(0);
+	}
+	uchar *pos = tmp;
+	groupdata.ntex = *(int32_t *)pos; pos += 4;
+	groupdata.firstTextureData = texturedata.size();
+
+	for(int32_t i = 0; i < groupdata.ntex; i++) {
+		int32_t jpgsize = *(int32_t *)pos; pos += 4;
+		QImage img;
+		bool success = img.loadFromData(pos, jpgsize); pos += jpgsize;
+		if(!success) {
+			cerr << "Failed loading texture" << endl;
+			exit(0);
+		}
+
+		img = img.convertToFormat(QImage::Format_RGBA8888);
+		TextureData data;
+		data.width = img.width();
+		data.height = img.height();
+
+		int imgsize = data.width*data.height*4;
+		data.memory = new char[imgsize];
+
+		//flip memory for texture
+		int linesize = img.width()*4;
+		char *mem = data.memory + linesize*(img.height()-1);
+		for(int i = 0; i < img.height(); i++) {
+			memcpy(mem, img.scanLine(i), linesize);
+			mem -= linesize;
+		}
+		size += imgsize;
+		texturedata.push_back(data);
+	}
+	file->unmap(tmp);
+	return size;
+}
+
 void Nexus::loadIndex() {
 	NexusData::loadIndex();
 
@@ -178,7 +226,7 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 				TextureData &data = texturedata[group.firstTextureData + i];
 
 				if(data.tex) continue;
-			
+
 				glGenTextures(1, &data.tex);
 				glBindTexture(GL_TEXTURE_2D, data.tex);
 
@@ -189,7 +237,7 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 				} else
 					glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			
+
 
 				//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 				//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);

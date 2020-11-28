@@ -17,8 +17,6 @@ for more details.
 */
 #define _FILE_OFFSET_BITS 64
 
-#include <QTime>
-#include <QImage>
 #include "nexusdata.h"
 
 #include <vcg/space/line3.h>
@@ -49,9 +47,8 @@ NexusData::~NexusData() {
 }
 
 bool NexusData::open(const char *_uri) {
-
-	file.setFileName(_uri);
-	if(!file.open(QIODevice::ReadOnly))
+	file->setFileName(_uri);
+	if(!file->open(NexusFile::Read))
 		//file = fopen(_uri, "rb+");
 		//if(!file)
 		return false;
@@ -66,7 +63,7 @@ void NexusData::close() {
 
 void NexusData::flush() {
 	//flush
-	for(uint i = 0; i < header.n_nodes; i++)
+	for(unsigned int i = 0; i < header.n_nodes; i++)
 		delete nodedata[i].memory;
 
 	delete []nodes;
@@ -80,30 +77,30 @@ void NexusData::loadHeader() {
 	vector<char> buffer(hint_size);
 	
 	//fread(&header, sizeof(Header), 1, file);
-	int readed = file.read(buffer.data(), hint_size);
+	int readed = file->read(buffer.data(), hint_size);
 	if(readed != hint_size) {
-		cout << qPrintable(file.errorString()) << endl;
+		cout << file->errorString() << endl;
 
-		throw QString("could not read header, file too short");
+		throw std::string("could not read header, file too short");
 	}
 	int needed = header.read(buffer.data(), hint_size);
 	if(needed != 0) {
-		file.seek(0);
+		file->seek(0);
 		buffer.resize(needed);
-		int readed = file.read(buffer.data(), hint_size);
+		int readed = file->read(buffer.data(), hint_size);
 		if(readed != hint_size)
-			throw QString("could not read header, file too short");
+			throw std::string("could not read header, file too short");
 		needed = header.read(buffer.data(), hint_size);
 		assert(needed == 0);
 	}
-	file.seek(header.index_offset);
+	file->seek(header.index_offset);
 }
 
 void NexusData::loadHeader(char *buffer) {
 	throw "Unimplemented";
 	/*header = *(Header *)buffer;
 	if(header.magic != 0x4E787320)
-		throw QString("could not read header, probably not a nexus file"); */
+		throw std::string("could not read header, probably not a nexus file"); */
 }
 
 void NexusData::countRoots() {
@@ -137,9 +134,9 @@ void NexusData::loadIndex() {
 	//fread(nodes, sizeof(Node), header.n_nodes, file);
 	//fread(patches, sizeof(Patch), header.n_patches, file);
 	//fread(textures, sizeof(Texture), header.n_textures, file);
-	file.read((char *)nodes, sizeof(Node)*header.n_nodes);
-	file.read((char *)patches, sizeof(Patch)*header.n_patches);
-	file.read((char *)textures, sizeof(TextureGroup)*header.n_textures);
+	file->read((char *)nodes, sizeof(Node)*header.n_nodes);
+	file->read((char *)patches, sizeof(Patch)*header.n_patches);
+	file->read((char *)textures, sizeof(TextureGroup)*header.n_textures);
 	countRoots();
 }
 
@@ -168,29 +165,27 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 	Signature &sign = header.signature;
 	Node &node = nodes[n];
-	quint64 offset = node.getBeginOffset();
+	uint64_t offset = node.getBeginOffset();
 
 	NodeData &d = nodedata[n];
-	quint64 compressed_size = node.getEndOffset() - offset;
+	uint64_t compressed_size = node.getEndOffset() - offset;
 
-	quint64 size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
+	uint64_t size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
 
 	if(!sign.isCompressed()) {
 
-		d.memory = (char *)file.map(offset, size);
+		d.memory = (char *)file->map(offset, size);
 
 	} else {
 
 		char *buffer = new char[compressed_size];
-		file.seek(offset);
-		qint64 r = file.read(buffer, compressed_size);
-		assert(r == (qint64)compressed_size);
+		file->seek(offset);
+		int64_t r = file->read(buffer, compressed_size);
+		assert(r == (int64_t)compressed_size);
 
 		d.memory = new char[size];
 
 		int iterations = 1;
-		QTime time;
-		time.start();
 
 		if(sign.flags & Signature::MECO) {
 			meco::MeshDecoder coder(node, d, patches, sign);
@@ -250,15 +245,18 @@ uint64_t NexusData::loadRam(uint32_t n) {
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
 			uint32_t t = patches[p].texture;
 			if(t == 0xffffffff) continue;
-
+				
 
 			TextureGroupData &groupdata = texturegroupdata[t];
 			groupdata.count_ram++;
 			if(groupdata.count_ram > 1)
-
 				continue;
 
-			TextureGroup &group = textures[t];
+			//TODO this is not actually very clean: we need a function to load the data,  (be it map or fread)
+			//and another one to convert jpg to char *
+			size += loadImageFromData(groupdata, t);
+
+/*			TextureGroup &group = textures[t];
 			uchar *tmp = file.map(group.getBeginOffset(), group.getSize());
 			if(!tmp) {
 				cerr << "Failed mapping texture data" << endl;
@@ -270,6 +268,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 			for(int32_t i = 0; i < groupdata.ntex; i++) {
 				int32_t jpgsize = *(int32_t *)pos; pos += 4;
+				loadImageFromData(data);
 				QImage img;
 				bool success = img.loadFromData(pos, jpgsize); pos += jpgsize;
 				if(!success) {
@@ -295,7 +294,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				size += imgsize;
 				texturedata.push_back(data);
 			}
-			file.unmap(tmp);
+			file.unmap(tmp);*/
 		}
 	}
 	return size;
@@ -310,7 +309,7 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(data.memory);
 
 	if(!header.signature.isCompressed()) //not compressed.
-		file.unmap((uchar *)data.memory);
+		file->unmap((unsigned char *)data.memory);
 	else
 		delete []data.memory;
 

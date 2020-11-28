@@ -274,7 +274,7 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 	face.texNumber = 0;
 	for(quint32 i = 0; i < size && current_triangle < n_triangles; i++) {
 
-		pf.Read(&face);
+		pf.Read((void *) &face);
 		Triangle &current = buffer[count];
 
 		for(int k = 0; k < 3; k++) {
@@ -322,7 +322,7 @@ quint32 PlyLoader::getVertices(quint32 size, Splat *splats) {
 	quint32 count = 0;
 	for(quint32 i = 0; i < size && current_vertex < n_vertices; i++) {
 
-		pf.Read(&vertex);
+		pf.Read((void *)&vertex);
 
 		Splat &v = splats[count++];
 		current_vertex++;
