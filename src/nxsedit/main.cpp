@@ -21,6 +21,7 @@ for more details.
 #include <QStringList>
 #include <wrap/system/qgetopt.h>
 
+#include "../common/qtnexusfile.h"
 #include "../nxsbuild/nexusbuilder.h"
 #include "../common/traversal.h"
 #include "extractor.h"
@@ -133,6 +134,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	NexusData nexus;
+	nexus.file = new QTNexusFile();
 	bool read_only = true;
 	if(!recompute_error.isEmpty())
 		read_only = false;

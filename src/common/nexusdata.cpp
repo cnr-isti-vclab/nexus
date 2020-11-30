@@ -18,7 +18,6 @@ for more details.
 #define _FILE_OFFSET_BITS 64
 
 #include "nexusdata.h"
-
 #include <vcg/space/line3.h>
 #include <vcg/space/intersection3.h>
 
@@ -40,14 +39,15 @@ uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
 
 
 NexusData::NexusData(): nodes(0), patches(0), textures(0), nodedata(0), texturedata(0), nroots(0) {
-
 }
 
 NexusData::~NexusData() {
 	close();
+	delete file;
 }
 
 bool NexusData::open(const char *_uri) {
+
 	file->setFileName(_uri);
 	if(!file->open(NexusFile::Read))
 		//file = fopen(_uri, "rb+");

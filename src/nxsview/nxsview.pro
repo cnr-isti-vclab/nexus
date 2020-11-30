@@ -39,7 +39,8 @@ SOURCES += \
     ../nxszip/meshdecoder.cpp \
     main.cpp \
     gl_nxsview.cpp \
-    scene.cpp
+    scene.cpp \
+    ../common/qtnexusfile.cpp
 
 HEADERS  += \
     ../../../vcglib/wrap/gcache/token.h \
@@ -69,7 +70,8 @@ HEADERS  += \
     ../nxszip/zpoint.h \
     ../nxszip/meshdecoder.h \
     gl_nxsview.h \
-    scene.h
+    scene.h \
+    ../common/qtnexusfile.h
 
 FORMS    += \
     nxsview.ui
