@@ -40,6 +40,7 @@ SET(SOURCES
 	../nxszip/atunstall.cpp
 	../nxszip/meshcoder.cpp
 	../nxszip/meshdecoder.cpp
+	../common/qtnexusfile.cpp
 	main.cpp
 	extractor.cpp
 
