@@ -138,7 +138,7 @@ function onAfterRender(renderer, scene, camera, geometry, material, group) {
 
 	//hack to detect if threejs using point or triangle shaders
 	if(instance.mesh.face.index)
-		instance.mode = attr.size ? "POINT" : "FILL";
+		instance.mode = material.isPointsMaterial? "POINT" : "FILL";
 
 	if(attr.size != -1) 
 		instance.pointsize = material.size;
