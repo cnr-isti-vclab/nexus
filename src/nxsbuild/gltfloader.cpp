@@ -14,7 +14,7 @@ using namespace fx;
 //PROBLEM int8_t for b.color_map: if we have a lot of textures this would be a problem.
 //we could use a temporary array if int342_t with enum (seee materials)
 //TODO might want to use gltf materials directly!
-int8_t GltfLoader::addTexture(BuildMaterial &m, int8_t &i, std::map<int32_t, int8_t> &remap) {
+int8_t GltfLoader::addTexture(nx::BuildMaterial &m, int8_t &i, std::map<int32_t, int8_t> &remap) {
 	if(i < 0) return i;
 	assert(i < doc->textures.size());
 	gltf::Texture &texture = doc->textures[i];
@@ -45,8 +45,8 @@ int8_t GltfLoader::addTexture(BuildMaterial &m, int8_t &i, std::map<int32_t, int
 	return i;
 }
 
-BuildMaterial GltfLoader::convertMaterial(gltf::Material &m) {
-	BuildMaterial b;
+nx::BuildMaterial GltfLoader::convertMaterial(gltf::Material &m) {
+	nx::BuildMaterial b;
 	for(int i = 0; i < 4; i++)
 		b.color[i] =  m.pbrMetallicRoughness.baseColorFactor[i];
 	b.metallic = m.pbrMetallicRoughness.metallicFactor;

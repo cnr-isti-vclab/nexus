@@ -126,7 +126,7 @@ PlyLoader::PlyLoader(QString filename):
 
 			char buf2[255];
 			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2 );
-			BuildMaterial material;
+			nx::BuildMaterial material;
 			material.color_map = material.nmaps++;
 			material.textures.push_back(QString(buf2).trimmed());
 			materials.push_back(material);
@@ -136,7 +136,7 @@ PlyLoader::PlyLoader(QString filename):
 	if(materials.size() == 0) {
 
 		//create an empty material
-		materials.push_back(BuildMaterial());
+		materials.push_back(nx::BuildMaterial());
 		has_textures = false;
 	}
 }

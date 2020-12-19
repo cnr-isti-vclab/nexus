@@ -40,7 +40,7 @@ public:
 	bool has_colors;
 	bool has_normals;
 	bool has_textures;
-	BuildMaterials materials;
+	nx::BuildMaterials materials;
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 
 	Stream();

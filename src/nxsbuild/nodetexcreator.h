@@ -5,12 +5,13 @@
 #include <map>
 #include "tmesh.h"
 #include "texpyramid.h"
-#include "../common/material.h"
+#include "buildmaterial.h"
 
 #include <QImage>
 
 namespace nx {
 	class TexAtlas;
+
 }
 
 struct TextureGroupBuild: public std::vector<QImage> {
@@ -23,7 +24,7 @@ class NodeTexCreator {
 public:
 	bool createPowTwoTex = true;
 	nx::TexAtlas *atlas = nullptr;
-	BuildMaterials *materials = nullptr;
+	nx::BuildMaterials *materials = nullptr;
 
 	TextureGroupBuild process(TMesh &mesh, int level);
 };

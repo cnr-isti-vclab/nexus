@@ -319,7 +319,7 @@ void TMesh::splitSeams(nx::Signature &sig) {
 
 			while(true) {
 				assert(index < (int)new_vert.size());
-//				assert(index < (int)visited.size());
+				//				assert(index < (int)visited.size());
 				assert(index >= 0);
 				TVertex &nv = new_vert[index];
 				if(vert_to_tex[index] == -2) { //first time, just update T.
@@ -362,18 +362,20 @@ void TMesh::splitSeams(nx::Signature &sig) {
 	}
 }
 
-quint32 TMesh::serializedSize(nx::Signature &sig) {
+quint32 TMesh::serializedSize(nx::Signature &sig, bool interleaved) {
 	//This should take into account duplicated vertices due to texture seams.
 	//let's created the replicated vertices.
 	assert(vn == (int)vert.size());
 	assert(fn == (int)face.size());
-	quint16 nvert = vn;
-	quint16 nface = fn;
-	quint32 size = nvert*sig.vertex.size() + nface*sig.face.size();
-	return size;
+
+	if(interleaved) {
+		return vn*sig.vertex.stride() + fn*sig.face.size();
+	} else
+		return vn*sig.vertex.size() + fn*sig.face.size();
+
 }
 
-void TMesh::serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches) {
+void TMesh::serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches, bool interleaved) {
 	assert(vn == (int)vert.size());
 	assert(fn == (int)face.size());
 
@@ -428,44 +430,78 @@ void TMesh::serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> 
 		c[i] = vert[i].P();
 	buffer += vert.size()*sizeof(vcg::Point3f);
 
-	if(sig.vertex.hasTextures()) {
-		vcg::Point2f *tstart = (vcg::Point2f *)buffer;
-		for(int i = 0; i < vn; i++) {
-			//assert(vert[i].T().P()[0] >= 0.0 && vert[i].T().P()[0] <= 1.0);
-			tstart[i] = vert[i].T().P();
+	if(interleaved) {
+		uint32_t stride = sig.vertex.stride();
+		for(uint i = 0; i < vert.size(); i++)
+			*(vcg::Point3f *)(buffer + i*stride) = vert[i].P();
+
+		if(sig.vertex.hasNormals()) {
+			uint32_t offset = sig.vertex.attributes[nx::VertexElement::NORM].offset;
+			for(uint i = 0; i < vert.size(); i++)  {
+				vcg::Point3f nf = vert[i].N();
+				nf.Normalize();
+				vcg::Point3s &ns = *(vcg::Point3s *)(buffer + offset +i*stride);
+				for(int k = 0; k < 3; k++)
+					ns[k] = (short)(nf[k]*32766);
+			}
 		}
-		buffer += vert.size() * sizeof(vcg::Point2f);
-	}
 
-	if(sig.vertex.hasNormals()) {
-		vcg::Point3s *nstart = (vcg::Point3s *)buffer;
-		for(int i = 0; i < vn; i++) {
-			vcg::Point3f nf = vert[i].N();
-			nf.Normalize();
-			vcg::Point3s &ns = nstart[i];
-			for(int k = 0; k < 3; k++)
-				ns[k] = (short)(nf[k]*32766);
+		if(sig.vertex.hasColors()) {
+			uint32_t offset = sig.vertex.attributes[nx::VertexElement::COLOR].offset;
+
+			for(uint i = 0; i < vert.size(); i++)
+				*(vcg::Color4b *)(buffer + offset + i*stride) = vert[i].C();
 		}
-		buffer += vert.size() * sizeof(vcg::Point3s);
-	}
 
-	if(sig.vertex.hasColors()) {
-		vcg::Color4b *cstart = (vcg::Color4b *)buffer;
-		for(int i = 0; i < vn; i++)
-			cstart[i] = vert[i].C();
-		buffer += vert.size() * sizeof(vcg::Color4b);
-	}
+		if(sig.vertex.hasTextures()) {
+			uint32_t offset = sig.vertex.attributes[nx::VertexElement::UV].offset;
 
-	quint16 *faces = (quint16 *)buffer;
-	for(int i = 0; i < fn; i++) {
-		TFace &f = face[i];
-		for(int k = 0; k < 3; k++) {
-			TVertex *v = f.V(k);
-			faces[i*3 + k] = v - &*vert.begin();
+			for(uint i = 0; i < vert.size(); i++)
+				*(vcg::Point2f *)(buffer + offset + i*stride) = vert[i].T().P();
 		}
-		//cout << endl;
-	}
 
+
+
+	} else {
+
+		if(sig.vertex.hasTextures()) {
+			vcg::Point2f *tstart = (vcg::Point2f *)buffer;
+			for(int i = 0; i < vn; i++) {
+				//assert(vert[i].T().P()[0] >= 0.0 && vert[i].T().P()[0] <= 1.0);
+				tstart[i] = vert[i].T().P();
+			}
+			buffer += vert.size() * sizeof(vcg::Point2f);
+		}
+
+		if(sig.vertex.hasNormals()) {
+			vcg::Point3s *nstart = (vcg::Point3s *)buffer;
+			for(int i = 0; i < vn; i++) {
+				vcg::Point3f nf = vert[i].N();
+				nf.Normalize();
+				vcg::Point3s &ns = nstart[i];
+				for(int k = 0; k < 3; k++)
+					ns[k] = (short)(nf[k]*32766);
+			}
+			buffer += vert.size() * sizeof(vcg::Point3s);
+		}
+
+		if(sig.vertex.hasColors()) {
+			vcg::Color4b *cstart = (vcg::Color4b *)buffer;
+			for(int i = 0; i < vn; i++)
+				cstart[i] = vert[i].C();
+			buffer += vert.size() * sizeof(vcg::Color4b);
+		}
+
+		quint16 *faces = (quint16 *)buffer;
+		for(int i = 0; i < fn; i++) {
+			TFace &f = face[i];
+			for(int k = 0; k < 3; k++) {
+				TVertex *v = f.V(k);
+				faces[i*3 + k] = v - &*vert.begin();
+			}
+			//cout << endl;
+		}
+	}
 	/*
 	buffer += face.size() * 6;
 	if(sig.face.hasTextures()) {

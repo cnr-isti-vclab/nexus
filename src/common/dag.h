@@ -17,18 +17,8 @@ for more details.
 */
 #ifndef NX_DAG_H
 #define NX_DAG_H
-#ifdef _MSC_VER
 
-typedef __int16 int16_t;
-typedef unsigned __int16 uint16_t;
-typedef __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
-
-#else
-#include <stdint.h>
-#endif
+#include "config.h"
 
 #include <vcg/space/point2.h>
 #include <vcg/space/sphere3.h>
@@ -84,6 +74,7 @@ struct Header3 {
 	std::vector<char> write();
 };
 
+
 struct Node {
 	uint32_t offset = 0; //offset on disk (could be moved), granularity NEXUS_PADDING) //use the function
 	uint32_t size = 0;   //in bytes
@@ -106,7 +97,7 @@ struct Node {
 struct Patch {
 	uint32_t node = 0;             //destination node
 	uint32_t triangle_offset = 0;  //end of the triangles in the node triangle list. //begin from previous patch.
-	uint32_t texture = 0;          //index of the texture in the array of textures
+	uint32_t texture = 0;
 	uint32_t material = 0;         //index of the materials
 };
 

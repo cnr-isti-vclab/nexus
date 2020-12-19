@@ -18,17 +18,7 @@ for more details.
 #ifndef NX_SIGNATURE_H
 #define NX_SIGNATURE_H
 
-#ifdef _MSC_VER
-typedef __int16 int16_t;
-typedef unsigned __int16 uint16_t;
-typedef __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
-#else
-#include <stdint.h>
-#endif
-
+#include "config.h"
 #include <vector>
 #include <assert.h>
 namespace nx {
@@ -36,12 +26,12 @@ namespace nx {
 class Attribute {
 public:
 	enum Type { NONE = 0, BYTE, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT, DOUBLE };
-	unsigned char type;
-	unsigned char number;
+	unsigned char type   = 0;
+	unsigned char number = 0;
+	unsigned char offset = 0;
 
-	Attribute(): type(0), number(0) {}
-
-	Attribute(Type t, unsigned char n): type(t), number(n) {}
+	Attribute() {}
+	Attribute(Type t, unsigned char n): type(t), number(n), offset(0) {}
 	int size() {
 		static unsigned char typesize[] = { 0, 1, 1, 2, 2, 4, 4, 4, 8 };
 		return number*typesize[type];
@@ -62,10 +52,22 @@ public:
 			s += attributes[i].size();
 		return s;
 	}
+	//stride with 4bytes alignment.
+	int stride() {
+		int s = 0;
+		for(unsigned int i = 0; i < 8; i++) {
+			int k = attributes[i].size() + 3;
+			k -= k & 0x2;
+			attributes[i].offset = s; //TODO ugly hack to recompute offsets./
+			s += k;
+		}
+		return s;
+	}
 };
 
 class VertexElement: public Element {
 public:
+	//TODO remane all components to gltf names
 	enum Component { POSITION = 0, NORM =1, COLOR = 2, UV = 3, UV_1 = 4, TANGENT= 5, WEIGHTS= 6, JOINTS= 7 };
 	bool has(Component c) { return !attributes[c].isNull(); }
 	

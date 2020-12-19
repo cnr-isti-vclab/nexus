@@ -282,8 +282,8 @@ int main(int argc, char *argv[]) {
 		builder.create(tree, stream,  top_node_size);
 
 		cout << "Building dataset: " << timer.restart()/1000.0f << "s" << endl;
-
-		builder.save(output);
+		//true for gltf.
+		builder.save(output, false);
 
 		cout << "Saving dataset: " << timer.restart()/1000.0f << "s" << endl;
 

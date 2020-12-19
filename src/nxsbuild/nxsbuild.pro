@@ -42,9 +42,9 @@ SOURCES += \
     stlloader.cpp \
     ../common/signature.cpp \
     nodetexcreator.cpp \
-    ../common/material.cpp \
     gltfloader.cpp \
-    gltf.cpp
+    gltf.cpp \
+    buildmaterial.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -71,7 +71,10 @@ HEADERS += \
     nodetexcreator.h \
     ../common/json.hpp \
     gltfloader.h \
-    ../common/gltf.h
+    ../common/gltf.h \
+    ../common/nexus.h \
+    buildmaterial.h \
+    ../common/config.h
 
 DESTDIR = "../../bin"
 

@@ -29,14 +29,16 @@ for more details.
 #include "mesh.h"
 #include "tmesh.h"
 #include "../common/nexus.h"
+#include "../common/simplejson.hpp"
 
 #include <vcg/math/similarity2.h>
 #include <vcg/space/rect_packer.h>
 
 #include <iostream>
 using namespace std;
-
 using namespace nx;
+using namespace json;
+
 
 
 
@@ -193,13 +195,13 @@ protected:
 			QMutexLocker output(&builder.m_chunks);
 
 			//save node in nexus temporary structure
-			quint32 mesh_size = mesh.serializedSize(builder.header.signature);
+			quint32 mesh_size = mesh.serializedSize(builder.header.signature, interleaved);
 			mesh_size = builder.pad(mesh_size);
 			chunk = builder.chunks.addChunk(mesh_size);
 			uchar *buffer = builder.chunks.getChunk(chunk);
 			patch_offset = builder.patches.size();
 			std::vector<Patch> node_patches;
-			mesh.serialize(buffer, builder.header.signature, node_patches);
+			mesh.serialize(buffer, builder.header.signature, node_patches, interleaved);
 
 			//patches will be reverted later, but the local order is important because of triangle_offset
 			std::reverse(node_patches.begin(), node_patches.end());
@@ -250,14 +252,14 @@ void NexusBuilder::createCloudLevel(KDTreeCloud *input, StreamCloud *output, int
 			std::vector<AVertex> deleted = mesh.simplifyCloud(target_points);
 
 			//save node in nexus temporary structure
-			quint32 mesh_size = mesh.serializedSize(header.signature);
+			quint32 mesh_size = mesh.serializedSize(header.signature, interleaved);
 			mesh_size = pad(mesh_size);
 			quint32 chunk = chunks.addChunk(mesh_size);
 			uchar *buffer = chunks.getChunk(chunk);
 			quint32 patch_offset = patches.size();
 
 			std::vector<Patch> node_patches;
-			mesh.serialize(buffer, header.signature, node_patches);
+			mesh.serialize(buffer, header.signature, node_patches, interleaved);
 
 			//patches will be reverted later, but the local order is important because of triangle_offset
 			std::reverse(node_patches.begin(), node_patches.end());
@@ -347,7 +349,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				mesh1.load(soup);
 
 				input->lock(mesh1, block);
-				mesh_size = mesh1.serializedSize(header.signature);
+				mesh_size = mesh1.serializedSize(header.signature, interleaved);
 				
 			} else {
 				
@@ -369,7 +371,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 				}
 
 				//save node in nexus temporary structure
-				mesh_size = tmp.serializedSize(header.signature);
+				mesh_size = tmp.serializedSize(header.signature, interleaved);
 			}
 			mesh_size = pad(mesh_size);
 			quint32 chunk = chunks.addChunk(mesh_size);
@@ -379,7 +381,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 
 			float error;
 			if(!hasTextures()) {
-				mesh1.serialize(buffer, header.signature, node_patches);
+				mesh1.serialize(buffer, header.signature, node_patches, interleaved);
 
 			} else {
 				io_time += timer.restart();
@@ -434,7 +436,7 @@ void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int le
 
 				packing_time += timer.restart();
 
-				tmp.serialize(buffer, header.signature, node_patches);
+				tmp.serialize(buffer, header.signature, node_patches, interleaved);
 				for(Patch &patch: node_patches) {
 					patch.texture = textures.size()-1;
 					patch.material = group.material;
@@ -586,8 +588,225 @@ void NexusBuilder::reverseDag() {
 	}
 }
 
+//TODO if bigger than 4GB we need to use external .bin
 void NexusBuilder::saveGLTF(QFile &file) {
 
+	//Compute all the offset in the binary buffer(s)
+	uint64_t size = 0;
+
+	std::vector<uint32_t> node_chunk; //for each node the corresponding chunk
+	for(quint32 i = 0; i < nodes.size()-1; i++)
+		node_chunk.push_back(nodes[i].offset);
+
+	//compute offsets and store them in nodes
+	for(uint i = 0; i < nodes.size()-1; i++) {
+		nodes[i].offset = size;
+		quint32 chunk = node_chunk[i];
+		size += chunks.chunkSize(chunk);
+	}
+	nodes.back().offset = size/NEXUS_PADDING;
+
+	if(textures.size()) {
+		if(!useNodeTex) { //texture.offset keeps the size of each texture
+			for(uint i = 0; i < textures.size()-1; i++) {
+				quint32 s = textures[i].offset;
+				textures[i].offset = size/NEXUS_PADDING;
+				size += s;
+				size = pad(size);
+			}
+			textures.back().offset = size/NEXUS_PADDING;
+
+		} else { //texture.offset keeps the index in the nodeTex temporay file (already padded and in NEXUS_PADDING units
+			for(uint i = 0; i < textures.size()-1; i++)
+				textures[i].offset += size/NEXUS_PADDING;
+			size += nodeTex.size();
+			textures.back().offset = size/NEXUS_PADDING;
+		}
+	}
+
+
+	JSON jscenes = json::Array();
+	JSON jnodes = json::Array();
+	JSON jmeshes = json::Array();
+	JSON jbufferViews = json::Array();
+	JSON jaccessors = json::Array();
+
+	JSON jattribute_accessors = { "POSITION", {  "byteOffset", 0, "type", "VEC3", "componentType", 5126 } };
+
+	JSON jattributes = { "POSITION", 0 };
+	int stride = 12;
+	if(header.signature.vertex.hasTextures()) {
+		jattributes["TEXCOORD_0"] = 0;
+		jattribute_accessors["TEXCOORD_0"] =  { "byteOffset",  stride, "type", "VEC2", "componentType", 5126 };
+		stride += 8;
+	}
+
+	if(header.signature.vertex.hasColors()) {
+		jattributes["COLOR_0"] = 0;
+		jattribute_accessors["COLOR_0"] =  { "byteOffset",  stride, "type", "VEC4", "componentType", 5121 }; //unsigned byte
+		stride += 4;
+	}
+
+	if(header.signature.vertex.hasNormals()) {
+		jattributes["NORMAL"] = 0;
+		jattribute_accessors["NORMAL"] =  { "byteOffset",  stride, "type", "VEC3", "componentType", 5122 }; //short
+		stride += 8; //2 are wasted because of interleaved + 4 bytes align.
+	}
+
+
+	uint32_t current_accessor = 0;
+	uint32_t current_bufferview = 0;
+	cout << "Nodes: " << nodes.size() << endl;
+	cout << "Patches: " << patches.size() << endl;
+	for(uint32_t i = 0; i < nodes.size()-1; i++) {
+		Node &node = nodes[i];
+		jscenes.append(i);
+
+
+
+
+		JSON jmesh = { "primitives", json::Array() };
+		JSON jprimitive = {
+			"mode", 4,
+			"indices", 0,
+			"attributes", jattributes
+		};
+
+		for(auto &a : jprimitive["attributes"].ObjectRange() ) {
+			a.second = current_accessor++;
+			JSON jaccessorVertex = jattribute_accessors[a.first];
+			jaccessorVertex["bufferview"] =  current_bufferview;
+			jaccessorVertex["count"] = node.nvert;
+			jaccessors.append(jaccessorVertex);
+		}
+
+		JSON jbufferViewVertex {
+			"buffer", 0,
+			"byteOffset", node.getBeginOffset(),
+			"byteLength", node.getEndOffset() - node.getBeginOffset(),
+			"byteStride", stride,
+			"target", 34962 //element_array_buffer
+		};
+		jbufferViews.append(jbufferViewVertex);
+		current_bufferview++;
+
+		JSON jchildren = json::Array();
+		uint32_t start = 0;
+		for(uint32_t p =node.first_patch; p < node.last_patch(); p++) {
+			Patch &patch = patches[p];
+			jchildren.append(patch.node);
+			jprimitive["indices"] = current_accessor;
+			jmesh["jprimitives"].append(jprimitive);
+
+			//todo can we do without byteOffset if zero?
+			JSON jaccessorFace { "bufferview", current_bufferview, "byteOffset", start*6, "count", patch.triangle_offset - start, "type", "SCALAR", "componentType", 5123 };
+			jaccessors.append(jaccessorFace);
+			current_accessor++;
+			start = patch.triangle_offset;
+		}
+		jmeshes.append(jmesh);
+
+		JSON jbufferViewFace {
+			"buffer", 0,
+			"byteOffset", node.getBeginOffset(),
+			"byteLength", node.getEndOffset() - node.getBeginOffset(),
+			"target", 34963 //element_array_index
+		};
+
+		jbufferViews.append(jbufferViewFace);
+		current_bufferview++;
+
+		auto &center = node.sphere.Center();
+		auto &radius = node.sphere.Radius();
+		JSON jnode = {
+			"children", jchildren,
+			"error", node.error,
+			"sphere", json::Array(center[0], center[1], center[2], radius, node.tight_radius),
+			"mesh", i
+		};
+		jnodes.append(jnode);
+	}
+
+
+
+	JSON json = {
+		"scene", 0,
+		"scenes", jscenes,
+		"nodes", jnodes,
+		"meshes", jmeshes,
+		"accessors", jaccessors,
+		"bufferViews", jbufferViews,
+		"buffers", { "byteLength",  size*NEXUS_PADDING }
+	};
+
+
+
+
+ /*= header_dump.size()  +
+			nodes.size()*sizeof(Node) +
+			patches.size()*sizeof(Patch) +
+			textures.size()*sizeof(TextureGroup);
+	size = pad(size);
+	quint64 index_size = size; */
+
+	string header_dump = json.dump();
+
+	int64_t r = file.write(header_dump.c_str(), header_dump.size());
+	if(r == -1)
+		throw(file.errorString());
+	return;
+	assert(nodes.size());
+	file.write((char*)&(nodes[0]), sizeof(Node)*nodes.size());
+	if(patches.size())
+		file.write((char*)&(patches[0]), sizeof(Patch)*patches.size());
+	if(textures.size())
+		file.write((char*)&(textures[0]), sizeof(TextureGroup)*textures.size());
+	//file.seek(index_size);
+
+	//NODES
+	for(uint i = 0; i < node_chunk.size(); i++) {
+		quint32 chunk = node_chunk[i];
+		uchar *buffer = chunks.getChunk(chunk);
+		optimizeNode(i, buffer);
+		file.write((char*)buffer, chunks.chunkSize(chunk));
+	}
+
+	//TEXTURES
+	//	QString basename = filename.left(filename.length()-4);
+	//compute textures offsetse
+	if(hasTextures()) {
+		if(useNodeTex) {
+			//todo split into pieces.
+			nodeTex.seek(0);
+			bool success = file.write(nodeTex.readAll());
+			if(!success)
+				throw QString("failed writing texture");
+
+		} else {
+			throw "Preserving original textures not supported anymode";
+/*			for(int i = 0; i < textures.size()-1; i++) {
+				Texture &tex = textures[i];
+				assert(tex.offset == file.pos()/NEXUS_PADDING);
+				QFile image(images[i]);
+				if(!image.open(QFile::ReadOnly))
+					throw QString("could not load img %1").arg(images[i]);
+				bool success = file.write(image.readAll());
+				if(!success)
+					throw QString("failed writing texture %1").arg(images[i]);
+				//we should use texture.offset instead.
+				quint64 s = file.pos();
+				s = pad(s);
+				file.resize(s);
+				file.seek(s);
+			} */
+		}
+	}
+	if(textures.size())
+		for(int i = 0; i < textures.size()-1; i++) {
+			QFile::remove(QString("nexus_tmp_tex%1.png").arg(i));
+		}
+	//cout << "Saving to file " << qPrintable(filename) << endl;
+	file.close();
 }
 
 
@@ -804,6 +1023,8 @@ void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, s
 	uint32_t chunk = node.offset; //chunk index was stored here.
 
 
+	//this is interleaved!!! fuck.
+
 	//if origin != destination do not flush cache, it would invalidate pointers.
 	uchar *buffer = chunks.getChunk(chunk, origin != destination);
 
@@ -824,6 +1045,11 @@ void NexusBuilder::appendBorderVertices(uint32_t origin, uint32_t destination, s
 
 void NexusBuilder::uniformNormals() {
 	cout << "Unifying normals\n";
+
+	if(interleaved) {
+		cout << "Normal unification does not support interleaved still!" << endl;
+		return;
+	}
 	/* 
 	level 0: for each node in the lowest level:
 			load the neighboroughs

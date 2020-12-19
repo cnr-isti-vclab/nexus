@@ -28,9 +28,10 @@ for more details.
 #include <vcg/space/box3.h>
 
 #include "../common/signature.h"
+#include "../common/gltf.h"
 #include "../common/dag.h"
 #include "../common/virtualarray.h"
-#include "../common/material.h"
+#include "buildmaterial.h"
 #include "texpyramid.h"
 #include "nodetexcreator.h"
 
@@ -121,12 +122,13 @@ public:
 	std::vector<NodeBox> boxes; //a box for each node needed to speed up normal unification!
 
 	nx::Header3 header;
+//	std::vector<fx::gltf::Accessor> attributes;
 	std::vector<nx::Node> nodes;
 	std::vector<nx::Patch> patches;
 	std::vector<nx::TextureGroup> textures;
 	
 	//std::vector<QString> images;
-	BuildMaterials materials;
+	nx::BuildMaterials materials;
 
 //	std::vector<std::vector<int32_t>> nodes_to_textures;
 
@@ -137,6 +139,7 @@ public:
 	QTemporaryFile nodeTex; //texure images for each node stored here.
 	quint64 max_memory;
 
+	bool interleaved = false; //save interleaved vertex attributes
 	float scaling;
 	bool useNodeTex; //use node textures
 	int tex_quality;

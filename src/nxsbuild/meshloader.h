@@ -22,7 +22,8 @@ for more details.
 #include "trianglesoup.h"
 #include <vcg/space/point3.h>
 #include <vcg/space/box3.h>
-#include "../common/material.h"
+#include "buildmaterial.h"
+
 
 
 class MeshLoader {
@@ -42,7 +43,7 @@ public:
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 	vcg::Box3d box;
 	
-	std::vector<BuildMaterial> materials;
+	std::vector<nx::BuildMaterial> materials;
 	//when returning triangles add materialOffset to refer to the correct texture in stream.
 	int materialOffset = 0;
 

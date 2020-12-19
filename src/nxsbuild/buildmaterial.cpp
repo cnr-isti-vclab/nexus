@@ -3,6 +3,7 @@
 #include <math.h>
 
 using namespace std;
+using namespace nx;
 
 //same exact parameters.
 bool sameParameter(float a, float b) {
@@ -93,3 +94,5 @@ std::vector<int> BuildMaterials::compact(std::vector<Material> &materials) {
 	}
 	return final_map;
 }
+
+

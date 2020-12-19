@@ -105,7 +105,7 @@ void Traversal::blockChildren(uint32_t n) {
 	}
 }
 
-bool Traversal::skipNode(quint32 n) {
+bool Traversal::skipNode(uint32_t n) {
 	if(!selected[n]) return true;
 
 	Node &node = nexus->nodes[n];

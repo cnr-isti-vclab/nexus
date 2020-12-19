@@ -1,24 +1,8 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-//TODO move this include in a config.h include.
-#ifdef _MSC_VER
 
-typedef __int16 int16_t;
-typedef unsigned __int16 uint16_t;
-typedef __int32 int32_t;
-typedef unsigned __int32 uint32_t;
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
-
-#else
-#include <stdint.h>
-#endif
-
-#include <QString>
-#include <vector>
-#include <map>
-
+#include "config.h"
 
 /* Material loading strategy:
  * Create list of materials (1 for texture in ply, might be more in Obj or gltf)
@@ -56,9 +40,8 @@ so we can save a texture every 2 levels.
 	   if we had an area associated to a triangle, we could use that in kdtree instead of jus the number of triangles
 	b) node becomes virtual: they point to geometry, we need nodes, patches, geometry and textures.
 	   how this could work with different resolution in different part of the model?!
-
-
 */
+
 class Material {
 public:                               // gltf                  //obj
 
@@ -87,27 +70,6 @@ public:                               // gltf                  //obj
 
 };
 
-class BuildMaterial: public Material {
-public:
-	int32_t atlas_offset;
-	bool flipY = true;
-	std::vector<QString> textures;
-	std::map<int32_t, int8_t> countMaps();
-};
-
-class BuildMaterials: public std::vector<BuildMaterial> {
-public:
-	//map identical materials, it can be immediately mapped. //they always point back to a lower number..
-	std::vector<int> material_map;
-	//map materials with just a different texture, i need to keep them separated until we have created the nodes
-	std::vector<int> texture_map;
-
-	void unifyMaterials();
-	void unifyTextures();
-
-	//compact duplicated materials into an array and returns a mapping.
-	std::vector<int> compact(std::vector<Material> &materials);
-};
 
 
 

@@ -5,7 +5,7 @@ CONFIG   += console
 CONFIG   -= app_bundle
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++11
+QMAKE_CXXFLAGS += -std=c++14 -g
 
 DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
@@ -42,6 +42,7 @@ HEADERS += \
     ../common/nexusdata.h \
     ../common/traversal.h \
     ../common/signature.h \
+    ../common/dag.h \
     ../nxszip/zpoint.h \
     ../nxszip/model.h \
     ../nxszip/range.h \
@@ -53,6 +54,7 @@ HEADERS += \
     ../nxszip/cstream.h \
     ../nxszip/meshcoder.h \
     ../nxszip/meshdecoder.h \
-    extractor.h
+    extractor.h 
+
 
 DESTDIR = "../../bin"

@@ -23,8 +23,8 @@ public:
 
 private:
 	void cacheVertices();
-	BuildMaterial convertMaterial(fx::gltf::Material &m);
-	int8_t addTexture(BuildMaterial &m, int8_t &i, std::map<int32_t, int8_t> &remap);
+	nx::BuildMaterial convertMaterial(fx::gltf::Material &m);
+	int8_t addTexture(nx::BuildMaterial &m, int8_t &i, std::map<int32_t, int8_t> &remap);
 
 
 	VirtualArray<Vertex> vertices;

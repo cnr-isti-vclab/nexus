@@ -109,7 +109,7 @@ void ObjLoader::readMTLs() {
 
 	//create a basic material when no mtl has been specified.
 	//material_map[mtltag] = materials.size() + materialOffset;
-	BuildMaterial material;
+	nx::BuildMaterial material;
 	material.color[0] = material.color[1] = material.color[2] = 1.0f;
 	materials.push_back(material);
 
@@ -131,6 +131,9 @@ void ObjLoader::readMTLs() {
 
 
 void ObjLoader::readMTL(QString mtl_path) {
+
+	//how to convert obj material to gltf
+	//https://nicedoc.io/CesiumGS/obj2gltf
 	char buffer[1024];
 	
 	if (!mtl_path.isNull()) {
@@ -172,7 +175,7 @@ void ObjLoader::readMTL(QString mtl_path) {
 		//trim whitespaces at start and end and merge spaces
 		str = str.simplified();
 		if (str.startsWith("newmtl", Qt::CaseInsensitive)){
-			BuildMaterial material;
+			nx::BuildMaterial material;
 
 			QString mtltag = str.section(" ", 1);
 			QString txtfname;

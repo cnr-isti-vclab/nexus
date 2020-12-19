@@ -268,16 +268,19 @@ nx::Node Mesh::getNode()
 	return node;
 }
 
-quint32 Mesh::serializedSize(nx::Signature &sig) {
+quint32 Mesh::serializedSize(nx::Signature &sig, bool interleaved) {
 	assert(vn == (int)vert.size());
 	assert(fn == (int)face.size());
-	quint16 nvert = vn;
-	quint16 nface = fn;
-	return nvert*sig.vertex.size() + nface*sig.face.size();
+
+	if(interleaved) {
+		return vn*sig.vertex.stride() + fn*sig.face.size();
+	} else
+		return vn*sig.vertex.size() + fn*sig.face.size();
 }
 
-void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches) {
+void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> &patches, bool interleaved) {
 
+	assert(!sig.vertex.hasTextures());
 
 	quint32 current_node = 0;
 	//find patches and triangle (splat) offsets
@@ -328,42 +331,76 @@ void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> 
 	if(sig.vertex.hasNormals() && sig.face.hasIndex())
 		vcg::tri::UpdateNormal<Mesh>::PerVertexNormalized(*this);
 
-	vcg::Point3f *c = (vcg::Point3f *)buffer;
-	for(uint i = 0; i < vert.size(); i++)
-		c[i] = vert[i].P();
 
-	buffer += vert.size()*sizeof(vcg::Point3f);
-
-	assert(!sig.vertex.hasTextures());
-
-	if(sig.vertex.hasNormals()) {
-		vcg::Point3s *nstart = (vcg::Point3s *)buffer;
-		for(uint i = 0; i < vert.size(); i++) {
-			vcg::Point3f nf = vert[i].N();
-			nf.Normalize();
-			vcg::Point3s &ns = nstart[i];
-			for(int k = 0; k < 3; k++)
-				ns[k] = (short)(nf[k]*32766);
-		}
-		buffer += vert.size() * sizeof(vcg::Point3s);
-	}
-
-	if(sig.vertex.hasColors()) {
-		vcg::Color4b *cstart = (vcg::Color4b *)buffer;
+	if(interleaved) {
+		uint32_t stride = sig.vertex.stride();
 		for(uint i = 0; i < vert.size(); i++)
-			cstart[i] = vert[i].C();
-		buffer += vert.size() * sizeof(vcg::Color4b);
-	}
+			*(vcg::Point3f *)(buffer + i*stride) = vert[i].P();
 
-	quint16 *faces = (quint16 *)buffer;
-	for(uint i = 0; i < face.size(); i++) {
-		AFace &f = face[i];
-		for(int k = 0; k < 3; k++) {
-			AVertex *v = f.V(k);
-			faces[i*3 + k] = v - &*vert.begin();
+		if(sig.vertex.hasNormals()) {
+			uint32_t offset = sig.vertex.attributes[nx::VertexElement::NORM].offset;
+			for(uint i = 0; i < vert.size(); i++)  {
+				vcg::Point3f nf = vert[i].N();
+				nf.Normalize();
+				vcg::Point3s &ns = *(vcg::Point3s *)(buffer + offset +i*stride);
+				for(int k = 0; k < 3; k++)
+					ns[k] = (short)(nf[k]*32766);
+			}
 		}
+
+		if(sig.vertex.hasColors()) {
+			uint32_t offset = sig.vertex.attributes[nx::VertexElement::COLOR].offset;
+
+			for(uint i = 0; i < vert.size(); i++)
+				*(vcg::Color4b *)(buffer + offset + i*stride) = vert[i].C();
+		}
+
+		/*if(sig.vertex.hasTextures()) {
+			uint32_t offset = sig.vertex.attributes[nx::VertexElement::UV].offset;
+
+			for(uint i = 0; i < vert.size(); i++)
+				*(vcg::Point2f *)(buffer + offset + i*stride) = vert[i].T();
+		}*/
+
+
+
+	} else {
+		vcg::Point3f *c = (vcg::Point3f *)buffer;
+		for(uint i = 0; i < vert.size(); i++)
+			c[i] = vert[i].P();
+
+		buffer += vert.size()*sizeof(vcg::Point3f);
+
+
+		if(sig.vertex.hasNormals()) {
+			vcg::Point3s *nstart = (vcg::Point3s *)buffer;
+			for(uint i = 0; i < vert.size(); i++) {
+				vcg::Point3f nf = vert[i].N();
+				nf.Normalize();
+				vcg::Point3s &ns = nstart[i];
+				for(int k = 0; k < 3; k++)
+					ns[k] = (short)(nf[k]*32766);
+			}
+			buffer += vert.size() * sizeof(vcg::Point3s);
+		}
+
+		if(sig.vertex.hasColors()) {
+			vcg::Color4b *cstart = (vcg::Color4b *)buffer;
+			for(uint i = 0; i < vert.size(); i++)
+				cstart[i] = vert[i].C();
+			buffer += vert.size() * sizeof(vcg::Color4b);
+		}
+
+		quint16 *faces = (quint16 *)buffer;
+		for(uint i = 0; i < face.size(); i++) {
+			AFace &f = face[i];
+			for(int k = 0; k < 3; k++) {
+				AVertex *v = f.V(k);
+				faces[i*3 + k] = v - &*vert.begin();
+			}
+		}
+		buffer += face.size() * 6;
 	}
-	buffer += face.size() * 6;
 }
 
 vcg::Sphere3f Mesh::boundingSphere() {
@@ -416,7 +453,7 @@ float Mesh::quadricSimplify(quint16 target) {
 	vcg::tri::UpdateTopology<Mesh>::VertexFace(*this);
 	vcg::tri::TriEdgeCollapseQuadricParameter qparams;
 	qparams.NormalCheck = true;
-	qparams.QualityQuadric = true;	
+	qparams.QualityQuadric = true;
 	vcg::LocalOptimization<Mesh> DeciSession(*this,&qparams);
 
 	DeciSession.Init<TriEdgeCollapse>();
