@@ -334,7 +334,7 @@ void Mesh:: serialize(uchar *buffer, nx::Signature &sig, std::vector<nx::Patch> 
 
 	buffer += vert.size()*sizeof(vcg::Point3f);
 
-	assert(!sig.vertex.hasTextures());
+	//assert(!sig.vertex.hasTextures());
 
 	if(sig.vertex.hasNormals()) {
 		vcg::Point3s *nstart = (vcg::Point3s *)buffer;

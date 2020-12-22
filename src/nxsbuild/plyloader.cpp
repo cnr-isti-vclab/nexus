@@ -41,7 +41,7 @@ struct PlyVertex {
 };
 
 //TODO add uv?
-PropDescriptor plyprop1[13]= {
+PropDescriptor plyprop1[15]= {
 	{"vertex", "x",     T_FLOAT, T_FLOAT, offsetof(PlyVertex,v[0]),0,0,0,0,0,0},
 	{"vertex", "y",     T_FLOAT, T_FLOAT, offsetof(PlyVertex,v[1]),0,0,0,0,0,0},
 	{"vertex", "z",     T_FLOAT, T_FLOAT, offsetof(PlyVertex,v[2]),0,0,0,0,0,0},
@@ -55,6 +55,8 @@ PropDescriptor plyprop1[13]= {
 	{"vertex", "diffuse_red",   T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[0]),0,0,0,0,0,0},
 	{"vertex", "diffuse_green", T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[1]),0,0,0,0,0,0},
 	{"vertex", "diffuse_blue" , T_UCHAR, T_UCHAR, offsetof(PlyVertex,c[2]),0,0,0,0,0,0},
+	{"vertex", "s",    T_FLOAT, T_FLOAT, offsetof(PlyVertex, t[0]),0,0,0,0,0,0},
+	{"vertex", "t",    T_FLOAT, T_FLOAT, offsetof(PlyVertex, t[1]),0,0,0,0,0,0}
 };
 PropDescriptor doublecoords[3] = {
 	{"vertex", "x",     T_DOUBLE, T_DOUBLE, offsetof(PlyVertex,dv[0]),0,0,0,0,0,0},
@@ -129,8 +131,8 @@ PlyLoader::PlyLoader(QString filename):
 			texture_filenames.push_back(QString(buf2).trimmed());
 		}
 	}
-	if(has_textures && texture_filenames.size() == 0)
-		has_textures = false;
+//	if(has_textures && texture_filenames.size() == 0)
+//		has_textures = false;
 }
 
 PlyLoader::~PlyLoader() {
@@ -184,6 +186,12 @@ void PlyLoader::init() {
 		if(error ==  vcg::ply::E_NOERROR)
 			has_colors = true;
 	}
+
+	error = pf.AddToRead(plyprop1[13]);
+	pf.AddToRead(plyprop1[14]);
+
+	if(error ==  vcg::ply::E_NOERROR)
+		has_textures = true;
 
 	//these calls will fail silently if no normal is present
 	if(!has_faces) { //skip normals for triangle mesh
