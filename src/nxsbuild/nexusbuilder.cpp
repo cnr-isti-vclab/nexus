@@ -941,9 +941,15 @@ void NexusBuilder::save(QString filename) {
 		if(useNodeTex) {
 			//todo split into pieces.
 			nodeTex.seek(0);
-			bool success = file.write(nodeTex.readAll());
-			if(!success)
-				throw QString("failed writing texture");
+			qint64 buffer_size = 64*1<<20; //64 MB
+			do {
+				auto buffer = nodeTex.read(buffer_size);
+				if(!buffer.size())
+					break;
+				bool success = file.write(buffer);
+				if(!success)
+						throw QString("failed writing texture data from temporary file.");
+			} while(1);
 
 		} else {
 			for(int i = 0; i < textures.size()-1; i++) {
