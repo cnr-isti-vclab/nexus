@@ -635,15 +635,27 @@ Instance.prototype = {
 		if(Debug.extract == true)
 			return;
 
-		if(!t.isReady) return;
-
-		if(t.sameResolution)
-			if(!t.visitQueue.size && !t.nblocked) return;
-
 		var n = t.mesh.nodesCount;
+
+		if(t.sameResolution && t.selected != null) {
+			//check if status and selected agree:
+			let allok = true;
+			for(let i = 0; i < n; i++) {
+				if(t.selected[i] && t.mesh.status[i] == 0) {
+					allok = false;
+					break;
+				}
+			}
+			if(allok && !t.visitQueue.size && !t.nblocked) return;
+		}
+
+
+		t.selected = new Uint8Array(n);
+
+		if(!t.isReady) return;
 		t.visited  = new Uint8Array(n);
 		t.blocked  = new Uint8Array(n);
-		t.selected = new Uint8Array(n);
+
 
 		t.visitQueue = new PriorityQueue(n);
 		for(var i = 0; i < t.mesh.nroots; i++)

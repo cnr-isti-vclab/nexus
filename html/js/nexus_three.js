@@ -169,6 +169,13 @@ NexusObject.prototype.dispose = function() {
 	this.geometry.dispose();
 }
 
+NexusObject.prototype.flush = function() {
+	var instance = this.geometry.instance;
+	var context = instance.context;
+	var mesh = instance.mesh;
+	Nexus.flush(context, mesh);
+}
+
 NexusObject.prototype.georef = function(url) {
 	var n = this;
 	var obj = new XMLHttpRequest();
