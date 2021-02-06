@@ -84,7 +84,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.mesh.onUpdate.push(() => { for(let callback of t.onUpdate) callback(this); });
 
         this.traversal = new Traversal();
-        this.cache = new Cache();
+        this.cache = Cache; //new Cache();
         this.textures = {};        
     },
 
@@ -413,12 +413,21 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.textures[tex] = 0;
     },
 
-    
+	flush: function() {
+		this.cache.flush(this.mesh);
+	},
+
+	dispose: function() {
+		this.flush();
+		for(let child of this.children)
+			child.geometry.dispose();
+	},
+
 	toJSON: function ( meta ) {
-        throw "Can't"
+		throw "Can't";
 	},
 
 } );
 
 
-export { Nexus3D };
+export { Nexus3D, Cache };

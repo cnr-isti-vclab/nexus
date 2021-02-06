@@ -12,7 +12,7 @@ var maxReqAttempt = 2;
 var maxCacheSize  = 512 *(1<<20); 
 var drawBudget    = 5*(1<<20);
 
-function Cache() {
+function _Cache() {
     let t = this;
     t.cortopath = '.';
 	t.frame = 0;         //keep track of the time
@@ -47,7 +47,7 @@ function Cache() {
     t.lastupdate = performance.now();
 }
 
-Cache.prototype = {
+_Cache.prototype = {
     getTargetError:  function()      { return this.targetError; },
     getMinFps:       function()      { return this.minFps; },
     setMinFps:       function(fps)   { this.minFps = fps; },
@@ -348,6 +348,7 @@ Cache.prototype = {
     },
 
     flush: function(mesh) {
+        if(!this.nodes.has(mesh)) return;
         for(let id of this.nodes.get(mesh))
             this.removeNode(mesh, id);
         this.nodes.delete(mesh);
@@ -407,5 +408,6 @@ Cache.prototype = {
     }
 };
 
+let Cache = new _Cache;
 export { Cache }
 

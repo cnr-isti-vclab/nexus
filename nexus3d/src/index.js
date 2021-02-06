@@ -23,7 +23,7 @@ import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-import { Nexus3D} from './Nexus3D.js'
+import * as Nexus3D from './Nexus3D.js'
 import { Monitor } from './Monitor.js'
 
 
@@ -72,11 +72,15 @@ container.append(renderer.domElement);
 
 
 function onNexusLoad(nexus) {
-    const p = nexus.boundingSphere.center.negate();
-    const s   = 1/nexus.boundingSphere.radius;
+	const p   =   nexus.boundingSphere.center.negate();
+	const s   = 1/nexus.boundingSphere.radius;
+	//nexus.rotateX(-3.1415/2);
 
-    //nexus.rotateX(-3.1415/2);
-	nexus.position.set(p.x*s, p.y*s, p.z*s);
+	if(nexus == nexus1) {
+		nexus.position.set(p.x*s + 1, p.y*s, p.z*s);
+	} else
+		nexus.position.set(p.x*s - 1, p.y*s, p.z*s);
+
 	nexus.scale.set(s, s, s); 
 	redraw = true;
 }
@@ -84,19 +88,30 @@ function onNexusLoad(nexus) {
 var url = "models/gargo.nxz"; 
 
 //onUpdate parameter here is used to trigger a redraw
-let nexus = new Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+let nexus1 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 
 //create a second instance and position it.
-//let nexus1 = new Nexus3D(nexus, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }});
+let nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 
 //material can be changed replacing the material or modifying it.
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
 //nexus.material.color = new Color(1, 0, 0);
 
-let monitor = new Monitor(nexus.cache);
-scene.add(nexus);
-//scene.add(nexus1);
+let monitor = new Monitor(Nexus3D.Cache);
+scene.add(nexus1);
+scene.add(nexus2);
 
+window.addNexus = () => { 
+	nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+	scene.add(nexus2);
+	redraw = true;
+};
+window.removeNexus = () => { 
+	scene.remove(nexus2);
+	nexus2.dispose();
+	nexus2 = null;
+	redraw = true;
+};
 
 var mouse = new Vector2();
 
@@ -130,24 +145,26 @@ renderer.setAnimationLoop(()=> {
     
 	if(redraw) {
 	//during rendering it might be apparent we need another render pass, set it to false BEFORE render
-        redraw = false; 
+        redraw = true; 
 
 
         var raycaster = new Raycaster();
 	    raycaster.setFromCamera( mouse, camera );
 
-	    var intersections = raycaster.intersectObjects( [nexus], true );
+	    var intersections = raycaster.intersectObjects( [nexus1], true );
 	    if(intersections.length) {
-		    nexus.material.color =  new Color(1, 0, 0);
+		    nexus1.material.color =  new Color(1, 0, 0);
+	 	    nexus1.material.needsUpdate = true;
         } else {
-            nexus.material.color =  new Color(1, 1, 1);
+            nexus1.material.color =  new Color(1, 1, 1);
         }
- 	    nexus.material.needsUpdate = true;
-        redraw = true;
 
-        nexus.cache.beginFrame(30);
+
+		Nexus3D.Cache.beginFrame(30);
 		renderer.render( scene, camera );
-        nexus.cache.endFrame();
+		Nexus3D.Cache.endFrame();
+
+
     }
 })
 
