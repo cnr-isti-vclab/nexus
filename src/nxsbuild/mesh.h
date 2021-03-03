@@ -125,11 +125,16 @@ public:
 
 	vcg::Sphere3f boundingSphere();
 	nx::Cone3s normalsCone();
-protected:
+
 	float randomSimplify(quint16 target_faces);
+	void quadricInit();
 	float quadricSimplify(quint16 target_faces);
 
 	float edgeLengthError();
+
+protected:
+	vcg::LocalOptimization<Mesh> *deciSession = nullptr;
+	vcg::tri::TriEdgeCollapseQuadricParameter *qparams = nullptr;
 };
 
 typedef vcg::tri::BasicVertexPair<AVertex> VertexPair;

@@ -412,16 +412,22 @@ float Mesh::randomSimplify(quint16 /*target_faces*/) {
 	return -1;
 }
 
-float Mesh::quadricSimplify(quint16 target) {
+void Mesh::quadricInit() {
 	vcg::tri::UpdateTopology<Mesh>::VertexFace(*this);
-	vcg::tri::TriEdgeCollapseQuadricParameter qparams;
-	qparams.NormalCheck = true;
-	qparams.QualityQuadric = true;	
-	vcg::LocalOptimization<Mesh> DeciSession(*this,&qparams);
+	qparams = new vcg::tri::TriEdgeCollapseQuadricParameter();
+	qparams->NormalCheck = true;
+	qparams->QualityQuadric = true;
+	deciSession = new vcg::LocalOptimization<Mesh>(*this, qparams);
 
-	DeciSession.Init<TriEdgeCollapse>();
-	DeciSession.SetTargetSimplices(target);
-	DeciSession.DoOptimization();
+	deciSession->Init<TriEdgeCollapse>();
+}
+
+float Mesh::quadricSimplify(quint16 target) {
+
+	deciSession->SetTargetSimplices(target);
+	deciSession->DoOptimization();
+	delete deciSession;
+	delete qparams;
 	return edgeLengthError();
 }
 

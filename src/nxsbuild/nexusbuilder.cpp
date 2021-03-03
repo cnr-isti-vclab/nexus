@@ -690,6 +690,10 @@ void NexusBuilder::processBlock(KDTreeSoup *input, StreamSoup *output, uint bloc
 	{
 
 		if(!hasTextures()) {
+			{ //needed only if Mesh::QUADRICS
+				QMutexLocker locker(&m_texsimply);
+				mesh1.quadricInit();
+			}
 			error = mesh1.simplify(ntriangles*scaling, Mesh::QUADRICS);
 			nface = mesh1.fn;
 
