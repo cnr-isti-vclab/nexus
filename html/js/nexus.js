@@ -1275,7 +1275,7 @@ function readyNode(node) {
 		}
 
 		if(n == 0) {
-			m.basev = new Float32Array(vertices.buffer, 0, nv*3);
+			m.basev = new Float32Array(v.buffer, 0, nv*3);
 			m.basei = indices;
 		}
 
