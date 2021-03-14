@@ -21,7 +21,7 @@ camera.position.z = 4.0;
 
 var controls = new THREE.TrackballControls( camera );
 controls.target.set( 0, 0, 0 );
-controls.rotateSpeed = 50.0;
+controls.rotateSpeed = 10.0;
 controls.zoomSpeed = 1.5;
 controls.panSpeed = 0.8;
 controls.noZoom = false;
@@ -52,18 +52,16 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 var container = document.getElementById( 'container');
 container.appendChild( renderer.domElement );
 
-
 function onNexusLoad() {
 	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
 	var target = new THREE.Vector3();
 	var p = nexus_obj.geometry.boundingBox.getCenter(target).negate();
 
 	nexus_obj.position.set(p.x*s, p.y*s, p.z*s);
-	nexus_obj.scale.set(s, s, s); 
+	nexus_obj.scale.set(s, s, s);
+//	nexus_obj.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
 	redraw = true;
 }
-
-
 
 function getURLParameter(name) {
 	return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search) || [null, ''])[1].replace(/\+/g, '%20')) || null;
@@ -71,12 +69,12 @@ function getURLParameter(name) {
 
 var model = getURLParameter('model') || "models/gargo.nxz";
 
+/* An appropriate material can be used as optional fifth arg for the NexusObject constructor */
 let material = false;
 /* Material customizations examples: */
-//let material =  new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
-//let material = new THREE.MeshLambertMaterial( { color: 0xffffff }); //, vertexColors1: THREE.VertexColors } );
+//let material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+//let material = new THREE.MeshLambertMaterial( { color: 0xff0000 }); //, vertexColors: THREE.VertexColors } );
 //let material = new THREE.MeshNormalMaterial({});
-
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, material);
 scene.add(nexus_obj);
@@ -107,11 +105,6 @@ function animate() {
 }
 
 animate();
-
-
-
 </script>
 
-
 </html>
-
