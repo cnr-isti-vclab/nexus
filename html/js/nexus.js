@@ -305,6 +305,8 @@ Mesh = function() {
 	var t = this;
 	t.onLoad = null;
 	t.reqAttempt = 0;
+	t.georeq = {}
+	t.texreq = {}
 }
 
 Mesh.prototype = {
@@ -995,8 +997,8 @@ function removeNode(context, node) {
 	if(Debug.verbose) console.log("Removing " + m.url + " node: " + n);
 	m.status[n] = 0;
 
-	if (m.georeq.readyState != 4) {
-		m.georeq.abort();
+	if (n in m.georeq && m.georeq[n].readyState != 4) {
+		m.georeq[n].abort();
 		context.pending--;
 	}
 
@@ -1006,7 +1008,7 @@ function removeNode(context, node) {
 	m.vbo[n] = m.ibo[n] = null;
 
 	if(!m.vertex.texCoord) return;
-	if (m.texreq && m.texreq.readyState != 4) m.texreq.abort();
+	if (n in m.texreq && m.texreq[n].readyState != 4) m.texreq.abort();
 	var tex = m.patches[m.nfirstpatch[n]*3+2]; //TODO assuming one texture per node
 	m.texref[tex]--;
 
@@ -1040,15 +1042,19 @@ function requestNodeGeometry(context, node) {
 	var m = node.mesh;
 
 	m.status[n]++; //pending
-	m.georeq = m.httpRequest(
+	m.georeq[n] = m.httpRequest(
 		m.noffsets[n],
 		m.noffsets[n+1],
-		function() { loadNodeGeometry(this, context, node); },
 		function() {
+			delete m.georeq[n]; 
+			loadNodeGeometry(this, context, node); },
+		function() {
+			delete m.georeq[n]; 
 			if(Debug.verbose) console.log("Geometry request error!");
 			recoverNode(context, node, 0);
 		},
 		function() {
+			delete m.georeq[n]; 
 			if(Debug.verbose) console.log("Geometry request abort!");
 			removeNode(context, node);
 		},
@@ -1069,16 +1075,20 @@ function requestNodeTexture(context, node) {
 
 	m.status[n]++; //pending
 
-	m.texreq = m.httpRequest(
+	m.texreq[n] = m.httpRequest(
 		m.textures[tex],
 		m.textures[tex+1],
-		function() { loadNodeTexture(this, context, node, tex); },
+		function() { 
+			delete m.texreq[n]; 
+			loadNodeTexture(this, context, node, tex);  },
 		function() {
 			if(Debug.verbose) console.log("Texture request error!");
+			delete m.texreq[n];
 			recoverNode(context, node, 1);
 		},
 		function() {
 			if(Debug.verbose) console.log("Texture request abort!");
+			delete m.texreq[n];
 			removeNode(context, node);
 		},
 		'blob'
