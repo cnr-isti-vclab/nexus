@@ -144,10 +144,9 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
         let cube = new THREE.Mesh(geometry, this.material);
         cube.frustumCulled = false;
-        cube.onBeforeRender = (renderer, scene, camera, geometry, material, group) => { 
-            this.onBeforeRender(renderer, scene, camera, geometry, material, group) }
-        cube.onAfterRender = (renderer, scene, camera, geometry, material, group) => { 
-            this.onAfterRender(renderer, scene, camera, geometry, material, group) }
+        cube.castShadow = true;
+        cube.renderBufferDirect = (renderer, scene, camera, geometry, material, group) => { 
+            this.renderBufferDirect(renderer, scene, camera, geometry, material, group) }
 
         this.add(cube); 
             
@@ -155,9 +154,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             callback(this);
     },
 
-    onBeforeRender: function(renderer, scene, camera, geometry, material, group) {  
-    },
-    onAfterRender: function(renderer, scene, camera, geometry, material, group) {
+    renderBufferDirect: function(renderer, scene, camera, geometry, material, group) {
         let s = new THREE.Vector2();
         renderer.getSize(s);
 
@@ -173,11 +170,12 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             this.updateMaterials();
             this.material.version = 0;
             for(let callback of this.onUpdate) callback(this); 
-
+        }
         let gl = this.gl;
-        var program = gl.getParameter(gl.CURRENT_PROGRAM);
+        let program = gl.getParameter(gl.CURRENT_PROGRAM);
 
-        var attr = this.attributes;
+        //TODO these calls could be cached saving attrs per each material.
+        let attr = this.attributes;
         attr.position = gl.getAttribLocation(program, "position");
         attr.normal   = gl.getAttribLocation(program, "normal");
         attr.color    = gl.getAttribLocation(program, "color");
@@ -186,7 +184,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         attr.scale    = gl.getUniformLocation(program, "scale");
         let map_location = gl.getUniformLocation(program, "map"); 
         attr.map      = map_location ? gl.getUniform(program, map_location) : null;
-        }
+        
     
     
         //hack to detect if threejs using point or triangle shaders
@@ -428,6 +426,152 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 	},
 
 } );
+
+
+THREE.WebGLRenderer.prototype.renderBufferDirect = function ( camera, scene, geometry, material, object, group ) {
+    console.log('a');
+
+    if ( scene === null ) scene = _emptyScene; // renderBufferDirect second parameter used to be fog (could be null)
+
+    const frontFaceCW = ( object.isMesh && object.matrixWorld.determinant() < 0 );
+
+    const program = setProgram( camera, scene, material, object );
+
+    state.setMaterial( material, frontFaceCW );
+
+    //
+
+    let index = geometry.index;
+    const position = geometry.attributes.position;
+
+    //
+
+    if ( index === null ) {
+
+        if ( position === undefined || position.count === 0 ) return;
+
+    } else if ( index.count === 0 ) {
+
+        return;
+
+    }
+
+    //
+
+    let rangeFactor = 1;
+
+    if ( material.wireframe === true ) {
+
+        index = geometries.getWireframeAttribute( geometry );
+        rangeFactor = 2;
+
+    }
+
+    if ( material.morphTargets || material.morphNormals ) {
+
+        morphtargets.update( object, geometry, material, program );
+
+    }
+
+    bindingStates.setup( object, material, program, geometry, index );
+
+    let attribute;
+    let renderer = bufferRenderer;
+
+    if ( index !== null ) {
+
+        attribute = attributes.get( index );
+
+        renderer = indexedBufferRenderer;
+        renderer.setIndex( attribute );
+
+    }
+
+    //
+
+    const dataCount = ( index !== null ) ? index.count : position.count;
+
+    const rangeStart = geometry.drawRange.start * rangeFactor;
+    const rangeCount = geometry.drawRange.count * rangeFactor;
+
+    const groupStart = group !== null ? group.start * rangeFactor : 0;
+    const groupCount = group !== null ? group.count * rangeFactor : Infinity;
+
+    const drawStart = Math.max( rangeStart, groupStart );
+    const drawEnd = Math.min( dataCount, rangeStart + rangeCount, groupStart + groupCount ) - 1;
+
+    const drawCount = Math.max( 0, drawEnd - drawStart + 1 );
+
+    if ( drawCount === 0 ) return;
+
+    //
+
+    if ( object.isMesh ) {
+
+        if ( material.wireframe === true ) {
+
+            state.setLineWidth( material.wireframeLinewidth * getTargetPixelRatio() );
+            renderer.setMode( _gl.LINES );
+
+        } else {
+
+            renderer.setMode( _gl.TRIANGLES );
+
+        }
+
+    } else if ( object.isLine ) {
+
+        let lineWidth = material.linewidth;
+
+        if ( lineWidth === undefined ) lineWidth = 1; // Not using Line*Material
+
+        state.setLineWidth( lineWidth * getTargetPixelRatio() );
+
+        if ( object.isLineSegments ) {
+
+            renderer.setMode( _gl.LINES );
+
+        } else if ( object.isLineLoop ) {
+
+            renderer.setMode( _gl.LINE_LOOP );
+
+        } else {
+
+            renderer.setMode( _gl.LINE_STRIP );
+
+        }
+
+    } else if ( object.isPoints ) {
+
+        renderer.setMode( _gl.POINTS );
+
+    } else if ( object.isSprite ) {
+
+        renderer.setMode( _gl.TRIANGLES );
+
+    }
+
+    if ( object.renderBufferDirect) {
+        //actually geometry, material and group are not needed.
+        object.renderBufferDirect(renderer, scene, camera, geometry, material, group);
+
+    } else if ( object.isInstancedMesh ) {
+
+        renderer.renderInstances( drawStart, drawCount, object.count );
+
+    } else if ( geometry.isInstancedBufferGeometry ) {
+
+        const instanceCount = Math.min( geometry.instanceCount, geometry._maxInstanceCount );
+
+        renderer.renderInstances( drawStart, drawCount, instanceCount );
+
+    } else {
+
+        renderer.render( drawStart, drawCount );
+
+    }
+
+};
 
 
 export { Nexus3D, Cache };

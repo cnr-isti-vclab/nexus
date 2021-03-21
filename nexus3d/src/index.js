@@ -12,11 +12,15 @@ import {
     WebGLRenderer,
     Scene,
     Clock,
+    
 
-
-    BoxBufferGeometry,
     Mesh,
-    MeshBasicMaterial,
+    BoxGeometry,
+    MeshPhongMaterial,
+    BasicShadowMap
+    //BoxBufferGeometry,
+    
+    //MeshBasicMaterial,
 } from 'three'
 
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
@@ -58,6 +62,18 @@ scene.add( new AmbientLight( 0x444444 ) );
 
 var light1 = new DirectionalLight( 0xffffff, 1.0 );
 light1.position.set( 1, 1, -1 );
+
+light1.castShadow = true;
+light1.shadow.camera.near = 1;
+light1.shadow.camera.far = 10;
+light1.shadow.camera.right = 2;
+light1.shadow.camera.left = - 2;
+light1.shadow.camera.top	= 2;
+light1.shadow.camera.bottom = - 2;
+light1.shadow.mapSize.width = 1024;
+light1.shadow.mapSize.height = 1024;
+
+
 scene.add( light1 );
 
 var light2 = new DirectionalLight( 0xffffff, 1.0 );
@@ -67,6 +83,8 @@ scene.add( light2 );
 var renderer = new WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
 renderer.setPixelRatio( window.devicePixelRatio );
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = BasicShadowMap;
 
 container.append(renderer.domElement);
 
@@ -100,6 +118,25 @@ let nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate:
 let monitor = new Monitor(Nexus3D.Cache);
 scene.add(nexus1);
 scene.add(nexus2);
+
+nexus1.castShadow = true;
+
+
+let geometry = new BoxGeometry( 10, 0.15, 10 );
+let material = new MeshPhongMaterial( {
+    color: 0xa0adaf,
+    shininess: 150,
+    specular: 0x111111
+} );
+
+const ground = new Mesh( geometry, material );
+ground.scale.multiplyScalar( 3 );
+ground.castShadow = false;
+ground.receiveShadow = true;
+ground.position.set(0, -1, 0);
+scene.add( ground );
+
+
 
 window.addNexus = () => { 
 	nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
