@@ -423,12 +423,14 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
 	},
 
     patchWebGLRenderer: function(renderer) {
+        if(renderer.nexusPatched) return;
         let f = renderer.renderBufferDirect;
         renderer.renderBufferDirect = ( camera, scene, geometry, material, object, group) => { 
             f( camera, scene, geometry, material, object, group );
             if ( object.renderBufferDirect)
                 object.renderBufferDirect(renderer, scene, camera, geometry, material, group);
         };
+        renderer.nexusPatched = true;
     }        
 
 } );
