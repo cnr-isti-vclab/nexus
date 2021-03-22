@@ -23,10 +23,7 @@ import {
     //MeshBasicMaterial,
 } from 'three'
 
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-
 import * as Nexus3D from './Nexus3D.js'
 import { Monitor } from './Monitor.js'
 
@@ -61,7 +58,7 @@ scene.fog = new Fog( 0x050505, 2000, 3500 );
 scene.add( new AmbientLight( 0x444444 ) );
 
 var light1 = new DirectionalLight( 0xffffff, 1.0 );
-light1.position.set( 1, 1, -1 );
+light1.position.set( 2, 1, -0.5 );
 
 light1.castShadow = true;
 light1.shadow.camera.near = 1;
@@ -78,7 +75,7 @@ scene.add( light1 );
 
 var light2 = new DirectionalLight( 0xffffff, 1.0 );
 light2.position.set( -1, -1, 1 );
-scene.add( light2 ); 
+//scene.add( light2 ); 
 
 var renderer = new WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
@@ -107,9 +104,15 @@ var url = "models/gargo.nxz";
 
 //onUpdate parameter here is used to trigger a redraw
 let nexus1 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+//nexus1.castShadow = true;
+nexus1.receiveShadow = true;
 
 //create a second instance and position it.
 let nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+nexus2.castShadow = true;
+nexus2.receiveShadow = true;
+
+
 
 //material can be changed replacing the material or modifying it.
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );

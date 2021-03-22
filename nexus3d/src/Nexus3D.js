@@ -8,7 +8,9 @@ function Nexus3D(url, renderer, options) {
     if(typeof renderer == 'function') 
         throw "Nexus3D constructor has changed: Nexus3D(url, renderer, options) where options include: onLoad, onUpdate, onProgress and material"
 
-	THREE.Object3D.call( this );
+    this.patchWebGLRenderer(renderer);
+
+	THREE.Mesh.call( this );
 
 	this.type = 'NXS';
 
@@ -57,7 +59,8 @@ function Nexus3D(url, renderer, options) {
 
 }
 
-Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
+//Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
+Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
 
 	constructor: Nexus3D,
 
@@ -100,20 +103,15 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         this.onProgress.push(callback);
     },
 
+    //TODO this is not really needed, we might just conform to THREEJS standard of updating.
     set material(material) {
-        this.cube.material = this.material = material;
+        this.material = material;
         this.material.needsUpdate = true;
     },
     
-        //we need to hijack the material when nxs has textures: when we change the material it might have a map or not 
-    //and we need to update all the materials!
-    //we also need to create an array of materials for groups to work.
-
-    //Nexus has a list of materials and, usually, each node attach his texture.
-
     updateMaterials: function() {
         if(this.material.map !== false && this.mesh.vertex.texCoord)
-            this.material.map = this.cube_texture;
+            this.material.map = this.material_texture;
 
         if(this.mesh.vertex.color)
             this.material.vertexColors = THREE.VertexColors; 
@@ -137,18 +135,15 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         if(this.mesh.vertex.texCoord)
             geometry.setAttribute( 'uv', new THREE.BufferAttribute(new Float32Array(2), 2));
 
-        this.cube_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-        this.cube_texture.needsUpdate = true;
+        if(this.mesh.vertex.texCoord) {
+            this.material_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+            this.material_texture.needsUpdate = true;
+        }
 
         this.updateMaterials();
-
-        let cube = new THREE.Mesh(geometry, this.material);
-        cube.frustumCulled = false;
-        cube.castShadow = true;
-        cube.renderBufferDirect = (renderer, scene, camera, geometry, material, group) => { 
-            this.renderBufferDirect(renderer, scene, camera, geometry, material, group) }
-
-        this.add(cube); 
+        this.geometry = geometry;
+        
+        this.frustumCulled = false;
             
         for(let callback of this.onLoad)
             callback(this);
@@ -166,11 +161,12 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
 
         //threejs increments version when setting neeedsUpdate
-        if(this.material.version > 0) {
+        /*if(this.material.version > 0) {
             this.updateMaterials();
             this.material.version = 0;
-            for(let callback of this.onUpdate) callback(this); 
-        }
+            for(let callback of this.onUpdate) 
+                callback(this); 
+        }*/
         let gl = this.gl;
         let program = gl.getParameter(gl.CURRENT_PROGRAM);
 
@@ -182,6 +178,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         attr.uv       = gl.getAttribLocation(program, "uv");
         attr.size     = gl.getUniformLocation(program, "size");
         attr.scale    = gl.getUniformLocation(program, "scale");
+
         let map_location = gl.getUniformLocation(program, "map"); 
         attr.map      = map_location ? gl.getUniform(program, map_location) : null;
         
@@ -425,153 +422,18 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 		throw "Can't";
 	},
 
+    patchWebGLRenderer: function(renderer) {
+        let f = renderer.renderBufferDirect;
+        renderer.renderBufferDirect = ( camera, scene, geometry, material, object, group) => { 
+            f( camera, scene, geometry, material, object, group );
+            if ( object.renderBufferDirect)
+                object.renderBufferDirect(renderer, scene, camera, geometry, material, group);
+        };
+    }        
+
 } );
 
 
-THREE.WebGLRenderer.prototype.renderBufferDirect = function ( camera, scene, geometry, material, object, group ) {
-    console.log('a');
-
-    if ( scene === null ) scene = _emptyScene; // renderBufferDirect second parameter used to be fog (could be null)
-
-    const frontFaceCW = ( object.isMesh && object.matrixWorld.determinant() < 0 );
-
-    const program = setProgram( camera, scene, material, object );
-
-    state.setMaterial( material, frontFaceCW );
-
-    //
-
-    let index = geometry.index;
-    const position = geometry.attributes.position;
-
-    //
-
-    if ( index === null ) {
-
-        if ( position === undefined || position.count === 0 ) return;
-
-    } else if ( index.count === 0 ) {
-
-        return;
-
-    }
-
-    //
-
-    let rangeFactor = 1;
-
-    if ( material.wireframe === true ) {
-
-        index = geometries.getWireframeAttribute( geometry );
-        rangeFactor = 2;
-
-    }
-
-    if ( material.morphTargets || material.morphNormals ) {
-
-        morphtargets.update( object, geometry, material, program );
-
-    }
-
-    bindingStates.setup( object, material, program, geometry, index );
-
-    let attribute;
-    let renderer = bufferRenderer;
-
-    if ( index !== null ) {
-
-        attribute = attributes.get( index );
-
-        renderer = indexedBufferRenderer;
-        renderer.setIndex( attribute );
-
-    }
-
-    //
-
-    const dataCount = ( index !== null ) ? index.count : position.count;
-
-    const rangeStart = geometry.drawRange.start * rangeFactor;
-    const rangeCount = geometry.drawRange.count * rangeFactor;
-
-    const groupStart = group !== null ? group.start * rangeFactor : 0;
-    const groupCount = group !== null ? group.count * rangeFactor : Infinity;
-
-    const drawStart = Math.max( rangeStart, groupStart );
-    const drawEnd = Math.min( dataCount, rangeStart + rangeCount, groupStart + groupCount ) - 1;
-
-    const drawCount = Math.max( 0, drawEnd - drawStart + 1 );
-
-    if ( drawCount === 0 ) return;
-
-    //
-
-    if ( object.isMesh ) {
-
-        if ( material.wireframe === true ) {
-
-            state.setLineWidth( material.wireframeLinewidth * getTargetPixelRatio() );
-            renderer.setMode( _gl.LINES );
-
-        } else {
-
-            renderer.setMode( _gl.TRIANGLES );
-
-        }
-
-    } else if ( object.isLine ) {
-
-        let lineWidth = material.linewidth;
-
-        if ( lineWidth === undefined ) lineWidth = 1; // Not using Line*Material
-
-        state.setLineWidth( lineWidth * getTargetPixelRatio() );
-
-        if ( object.isLineSegments ) {
-
-            renderer.setMode( _gl.LINES );
-
-        } else if ( object.isLineLoop ) {
-
-            renderer.setMode( _gl.LINE_LOOP );
-
-        } else {
-
-            renderer.setMode( _gl.LINE_STRIP );
-
-        }
-
-    } else if ( object.isPoints ) {
-
-        renderer.setMode( _gl.POINTS );
-
-    } else if ( object.isSprite ) {
-
-        renderer.setMode( _gl.TRIANGLES );
-
-    }
-
-    if ( object.renderBufferDirect) {
-        //actually geometry, material and group are not needed.
-        object.renderBufferDirect(renderer, scene, camera, geometry, material, group);
-
-    } else if ( object.isInstancedMesh ) {
-
-        renderer.renderInstances( drawStart, drawCount, object.count );
-
-    } else if ( geometry.isInstancedBufferGeometry ) {
-
-        const instanceCount = Math.min( geometry.instanceCount, geometry._maxInstanceCount );
-
-        renderer.renderInstances( drawStart, drawCount, instanceCount );
-
-    } else {
-
-        renderer.render( drawStart, drawCount );
-
-    }
-
-};
 
 
 export { Nexus3D, Cache };
