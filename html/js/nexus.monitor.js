@@ -30,7 +30,8 @@ let css = `
 	background-color:black; 
 	color:white;
 	padding:10px 20px;
-	width:300px; 
+	width:300px;
+	font-family: Arial, Helvetica, sans-serif;	
 }
 #nexusMonitor table, #monitor tr { color:white; width:100% }
 #nexusMonitor p { margin:0px 10px; padding:5px 0px; }
@@ -38,6 +39,7 @@ let css = `
 .progress {
 	color:black;
 	height: 1.5em;
+	font-weight: bold;
 	width: 100%;
 	background-color: #c9c9c9;
 	position: relative;
@@ -122,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function(){
 	const greenToRed = (percent) => {
 		const r = 255 * percent/100;
 		const g = 255 - (255 * percent/100);
-		return 'rgb('+r+','+g+',0)';
+		return 'rgba('+r+','+g+',0,0.5)';
 	}
 
 	function toHuman(bytes, unit = '', decimals = 1) {
@@ -143,30 +145,30 @@ document.addEventListener('DOMContentLoaded', function(){
 
 		let cacheSize = context.cacheSize;
 		let maxCacheSize = context.maxCacheSize;
-		let cacheFraction = parseInt(100*cacheSize/maxCacheSize);
+		let cacheFraction = 100.0*cacheSize/maxCacheSize;
 
 		let targetError = context.targetError;
 		let realError = context.realError;
 		let currentError = context.currentError;
-		let errorFraction = 100*Math.min(5, Math.log2(currentError/targetError))/5;
+		let errorFraction = 100.0*Math.min(1.0, Math.log2(currentError/targetError));
 
 		let minFps = context.minFps;
 		let currentFps = context.currentFps;
-		let fpsFraction = 100*(Math.min(3, Math.max(0, 60/currentFps  -1)))/3;
+		let fpsFraction = 100.0*Math.min(1.0, currentFps/60.0);
 
 		let rendered = context.rendered;
 
 		cacheLabel.setAttribute('data-label', `${toHuman(cacheSize, 'B')}/${toHuman(maxCacheSize, 'B')}`);
-		cacheStyle.style.background_color = greenToRed(cacheFraction);
-		cacheStyle.style.width = cacheFraction;
+		cacheStyle.style.backgroundColor = greenToRed(cacheFraction);
+		cacheStyle.style.width = cacheFraction+"%";
 
 		errorLabel.setAttribute('data-label', `Real: ${realError.toFixed(1)} px  Current: ${currentError.toFixed(1)} px`);
-		errorStyle.style.background_color = greenToRed(errorFraction);
+		errorStyle.style.backgroundColor = greenToRed(errorFraction);
 		errorStyle.style.width = errorFraction;
 
 		fpsLabel.setAttribute('data-label', `${parseInt(Math.round(currentFps))} fps`);
-		fpsStyle.style.background_color = greenToRed(fpsFraction);
-		fpsStyle.style.width = fpsFraction;
+		fpsStyle.style.backgroundColor = greenToRed(100.0-fpsFraction);
+		fpsStyle.style.width = fpsFraction+"%";
 
 		trianglesCount.innerHTML = `${toHuman(rendered)} triangles`;
 
