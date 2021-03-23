@@ -73,8 +73,8 @@ var model = getURLParameter('model') || "models/gargo.nxz";
 let material = false;
 /* Material customizations examples: */
 //let material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
-//let material = new THREE.MeshLambertMaterial( { color: 0xff0000 }); //, vertexColors: THREE.VertexColors } );
-//let material = new THREE.MeshNormalMaterial({});
+//let material = new THREE.MeshLambertMaterial( { color: 0xff0000, vertexColors: THREE.VertexColors } );
+//let material = new THREE.MeshNormalMaterial({ flatShading: true });
 
 var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, material);
 scene.add(nexus_obj);

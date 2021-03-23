@@ -869,19 +869,21 @@ Instance.prototype = {
 			if (Debug.draw) continue;
 
 			if(t.mode == "POINT") {
-				var pointsize = t.pointsize;
-				var error = t.nodeError(n);
-				if(!pointsize)
-					var pointsize = Math.ceil(1.2* Math.min(error, 5));
+				var pointsize;
+				if(!t.pointsize)
+					pointsize = 1.0;
+				else {
+					if(typeof t.pointsize == 'number')
+						pointsize = t.pointsize;
+					else
+						pointsize = t.pointsize();
+				}
 
 				if(typeof attr.size == 'object') { //threejs pointcloud rendering
 					gl.uniform1f(attr.size, t.pointsize);
 					gl.uniform1f(attr.scale, t.pointscale);
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
-
-//				var fraction = (error/t.realError - 1);
-//				if(fraction > 1) fraction = 1;
 
 				var count = nv;
 				if(count != 0) {
