@@ -10,8 +10,6 @@ let attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
 //All addresses in the file are n*256 so,  256 * 2^32 is the max size of a Nxs file 
 var padding = 256;
 
-
-
 let Mesh = function(url) {
     var t = this;
     t.isReady = false;
@@ -21,6 +19,7 @@ let Mesh = function(url) {
     t.georeq = {}; //keeps track of existing httprequests
     t.texreq = {};
     t.frame = 0; //last time this mesh was traversed in rendering.
+    t.availableNodes = 0
     if(url)
         t.open(url);
 }

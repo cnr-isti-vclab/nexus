@@ -12,7 +12,7 @@ function header() {
 
 export default [
 	{
-		input: './Nexus3D.js',
+		input: './src/Nexus3D.js',
 		output: [{
 			format: 'umd',
 			name: 'Nexus3D',

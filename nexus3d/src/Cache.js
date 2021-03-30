@@ -264,12 +264,12 @@ _Cache.prototype = {
             throw "Was already removed!";
 
 	    mesh.status[id] = 0;
-	if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
+	    if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
             mesh.georeq[id].abort();
             delete mesh.georeq[id];
 		    this.pending--;
 	    }
-
+        mesh.availableNodes--;
         this.cacheSize -= mesh.nsize[id];
         mesh.deleteNodeGeometry(id);
 
@@ -277,7 +277,7 @@ _Cache.prototype = {
 
 	    const tex = mesh.patches[mesh.nfirstpatch[id]*3+2]; //TODO assuming one texture per node
 
-	if (tex in mesh.texreq && mesh.texreq[tex].readyState != 4) {
+	    if (tex in mesh.texreq && mesh.texreq[tex].readyState != 4) {
             mesh.texreq[tex].abort();
             delete mesh.texreq[tex];
         }
@@ -339,12 +339,16 @@ _Cache.prototype = {
 
 	    mesh.status[id]--;
         if(mesh.status[id] != 1) throw "A ready node should have status ==1"
-		    mesh.reqAttempt[id] = 0;
-            this.pending--;
-            mesh.createNode(id);
+
+		
+		mesh.reqAttempt[id] = 0;
+        this.pending--;
+        mesh.createNode(id);
+		mesh.availableNodes++;
+
         for(let callback of mesh.onUpdate)
             callback();
-            this.update();
+        this.update();
     },
 
     flush: function(mesh) {

@@ -74,6 +74,12 @@ let html = `<table>
     <td style="width:70%"><div class="progress" id="nexusMonitorFps" data-label="">
         <span class="value"></span>
     </div></td></tr>
+
+<tr><td>Progress</td>
+    <td style="width:70%"><div class="progress" id="nexusMonitorProgress" data-label="">
+        <span class="value"></span>
+    </div></td></tr>
+
 <tr><td>Rendered</td>
     <td><span id="nexusMonitorTriangles"></span></td></tr>
 <tr><td></td>
@@ -129,6 +135,9 @@ function Monitor(cache) {
 	        errorStyle: this.div.querySelector('#nexusMonitorError > span'),
     	    fpsLabel  : this.div.querySelector('#nexusMonitorFps'),
 	        fpsStyle  : this.div.querySelector('#nexusMonitorFps > span'),
+    	    progressLabel  : this.div.querySelector('#nexusMonitorProgress'),
+	        progressStyle  : this.div.querySelector('#nexusMonitorProgress > span'),
+			
 
 	        trianglesCount: this.div.querySelector('#nexusMonitorTriangles'),
 	        nodesCheckbox : this.div.querySelector('#nexusMonitorNodes'),
@@ -175,6 +184,14 @@ Monitor.prototype = {
 		let currentFps = context.currentFps;
 		let fpsFraction = 100*(Math.min(3, Math.max(0, 60/currentFps  -1)))/3;
 
+		
+		let mesh = context.nodes.keys().next();
+		if(mesh) mesh = mesh.value;
+		
+		console.log(mesh);
+		let progressFraction = mesh? mesh.availableNodes / mesh.nodesCount : 0;
+		let progressNodes = mesh ? mesh.availableNodes : 0;
+
         let rendered = context.rendered;
         
         let e = this.elements;
@@ -190,6 +207,10 @@ Monitor.prototype = {
 		e.fpsLabel.setAttribute('data-label', `${parseInt(Math.round(currentFps))} fps`);
 		e.fpsStyle.style.background_color = greenToRed(fpsFraction);
 		e.fpsStyle.style.width = fpsFraction;
+
+		e.progressLabel.setAttribute('data-label', `${parseInt(Math.round(progressNodes))} nodes`);
+		e.progressStyle.style.background_color = greenToRed(progressFraction);
+		e.progressStyle.style.width = progressFraction;
 
 		e.trianglesCount.innerHTML = `${toHuman(rendered)} triangles`;
 

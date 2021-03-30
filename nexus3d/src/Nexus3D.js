@@ -84,7 +84,10 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         this.mesh.deleteNodeGeometry = (id)           => { t.deleteNodeGeometry(id); };
         this.mesh.deleteTexture      = (id)           => { t.deleteTexture(id); };
         this.mesh.onLoad.push(() => { t.onLoadCallback(); });
-        this.mesh.onUpdate.push(() => { for(let callback of t.onUpdate) callback(this); });
+        this.mesh.onUpdate.push(() => { 
+			for(let callback of t.onUpdate) callback(this); 
+			for(let callback of t.onProgress) callback(this, this.mesh.availableNodes, this.mesh.nodesCount); 
+		});
 
         this.traversal = new Traversal();
         this.cache = Cache; //new Cache();

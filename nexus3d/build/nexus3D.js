@@ -419,8 +419,6 @@
     //All addresses in the file are n*256 so,  256 * 2^32 is the max size of a Nxs file 
     var padding = 256;
 
-
-
     let Mesh = function(url) {
         var t = this;
         t.isReady = false;
@@ -430,6 +428,7 @@
         t.georeq = {}; //keeps track of existing httprequests
         t.texreq = {};
         t.frame = 0; //last time this mesh was traversed in rendering.
+        t.availableNodes = 0;
         if(url)
             t.open(url);
     };
@@ -672,7 +671,7 @@
     var maxReqAttempt$1 = 2;
     var maxCacheSize  = 512 *(1<<20); 
 
-    function Cache() {
+    function _Cache() {
         let t = this;
         t.cortopath = '.';
     	t.frame = 0;         //keep track of the time
@@ -707,7 +706,7 @@
         t.lastupdate = performance.now();
     }
 
-    Cache.prototype = {
+    _Cache.prototype = {
         getTargetError:  function()      { return this.targetError; },
         getMinFps:       function()      { return this.minFps; },
         setMinFps:       function(fps)   { this.minFps = fps; },
@@ -924,12 +923,12 @@
                 throw "Was already removed!";
 
     	    mesh.status[id] = 0;
-    	if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
+    	    if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
                 mesh.georeq[id].abort();
                 delete mesh.georeq[id];
     		    this.pending--;
     	    }
-
+            mesh.availableNodes--;
             this.cacheSize -= mesh.nsize[id];
             mesh.deleteNodeGeometry(id);
 
@@ -937,7 +936,7 @@
 
     	    const tex = mesh.patches[mesh.nfirstpatch[id]*3+2]; //TODO assuming one texture per node
 
-    	if (tex in mesh.texreq && mesh.texreq[tex].readyState != 4) {
+    	    if (tex in mesh.texreq && mesh.texreq[tex].readyState != 4) {
                 mesh.texreq[tex].abort();
                 delete mesh.texreq[tex];
             }
@@ -999,15 +998,20 @@
 
     	    mesh.status[id]--;
             if(mesh.status[id] != 1) throw "A ready node should have status ==1"
-    		    mesh.reqAttempt[id] = 0;
-                this.pending--;
-                mesh.createNode(id);
+
+    		
+    		mesh.reqAttempt[id] = 0;
+            this.pending--;
+            mesh.createNode(id);
+    		mesh.availableNodes++;
+
             for(let callback of mesh.onUpdate)
                 callback();
-                this.update();
+            this.update();
         },
 
         flush: function(mesh) {
+            if(!this.nodes.has(mesh)) return;
             for(let id of this.nodes.get(mesh))
                 this.removeNode(mesh, id);
             this.nodes.delete(mesh);
@@ -1067,12 +1071,16 @@
         }
     };
 
+    let Cache = new _Cache;
+
     function Nexus3D(url, renderer, options) {
 
         if(typeof renderer == 'function') 
             throw "Nexus3D constructor has changed: Nexus3D(url, renderer, options) where options include: onLoad, onUpdate, onProgress and material"
 
-    	THREE.Object3D.call( this );
+        this.patchWebGLRenderer(renderer);
+
+    	THREE.Mesh.call( this );
 
     	this.type = 'NXS';
 
@@ -1121,7 +1129,8 @@
 
     }
 
-    Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
+    //Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
+    Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
 
     	constructor: Nexus3D,
 
@@ -1147,7 +1156,7 @@
             this.mesh.onUpdate.push(() => { for(let callback of t.onUpdate) callback(this); });
 
             this.traversal = new Traversal();
-            this.cache = new Cache();
+            this.cache = Cache; //new Cache();
             this.textures = {};        
         },
 
@@ -1163,20 +1172,15 @@
             this.onProgress.push(callback);
         },
 
+        //TODO this is not really needed, we might just conform to THREEJS standard of updating.
         set material(material) {
-            this.cube.material = this.material = material;
+            this.material = material;
             this.material.needsUpdate = true;
         },
         
-            //we need to hijack the material when nxs has textures: when we change the material it might have a map or not 
-        //and we need to update all the materials!
-        //we also need to create an array of materials for groups to work.
-
-        //Nexus has a list of materials and, usually, each node attach his texture.
-
         updateMaterials: function() {
             if(this.material.map !== false && this.mesh.vertex.texCoord)
-                this.material.map = this.cube_texture;
+                this.material.map = this.material_texture;
 
             if(this.mesh.vertex.color)
                 this.material.vertexColors = THREE.VertexColors; 
@@ -1200,27 +1204,21 @@
             if(this.mesh.vertex.texCoord)
                 geometry.setAttribute( 'uv', new THREE.BufferAttribute(new Float32Array(2), 2));
 
-            this.cube_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-            this.cube_texture.needsUpdate = true;
+            if(this.mesh.vertex.texCoord) {
+                this.material_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+                this.material_texture.needsUpdate = true;
+            }
 
             this.updateMaterials();
-
-            let cube = new THREE.Mesh(geometry, this.material);
-            cube.frustumCulled = false;
-            cube.onBeforeRender = (renderer, scene, camera, geometry, material, group) => { 
-                this.onBeforeRender(renderer, scene, camera, geometry, material, group); };
-            cube.onAfterRender = (renderer, scene, camera, geometry, material, group) => { 
-                this.onAfterRender(renderer, scene, camera, geometry, material, group); };
-
-            this.add(cube); 
+            this.geometry = geometry;
+            
+            this.frustumCulled = false;
                 
             for(let callback of this.onLoad)
                 callback(this);
         },
 
-        onBeforeRender: function(renderer, scene, camera, geometry, material, group) {  
-        },
-        onAfterRender: function(renderer, scene, camera, geometry, material, group) {
+        renderBufferDirect: function(renderer, scene, camera, geometry, material, group) {
             let s = new THREE.Vector2();
             renderer.getSize(s);
 
@@ -1232,24 +1230,27 @@
 
 
             //threejs increments version when setting neeedsUpdate
-            if(this.material.version > 0) {
+            /*if(this.material.version > 0) {
                 this.updateMaterials();
                 this.material.version = 0;
-                for(let callback of this.onUpdate) callback(this); 
-
+                for(let callback of this.onUpdate) 
+                    callback(this); 
+            }*/
             let gl = this.gl;
-            var program = gl.getParameter(gl.CURRENT_PROGRAM);
+            let program = gl.getParameter(gl.CURRENT_PROGRAM);
 
-            var attr = this.attributes;
+            //TODO these calls could be cached saving attrs per each material.
+            let attr = this.attributes;
             attr.position = gl.getAttribLocation(program, "position");
             attr.normal   = gl.getAttribLocation(program, "normal");
             attr.color    = gl.getAttribLocation(program, "color");
             attr.uv       = gl.getAttribLocation(program, "uv");
             attr.size     = gl.getUniformLocation(program, "size");
             attr.scale    = gl.getUniformLocation(program, "scale");
+
             let map_location = gl.getUniformLocation(program, "map"); 
             attr.map      = map_location ? gl.getUniform(program, map_location) : null;
-            }
+            
         
         
             //hack to detect if threejs using point or triangle shaders
@@ -1474,13 +1475,34 @@
             this.textures[tex] = 0;
         },
 
-        
-    	toJSON: function ( meta ) {
-            throw "Can't"
+    	flush: function() {
+    		this.cache.flush(this.mesh);
     	},
+
+    	dispose: function() {
+    		this.flush();
+    		for(let child of this.children)
+    			child.geometry.dispose();
+    	},
+
+    	toJSON: function ( meta ) {
+    		throw "Can't";
+    	},
+
+        patchWebGLRenderer: function(renderer) {
+            if(renderer.nexusPatched) return;
+            let f = renderer.renderBufferDirect;
+            renderer.renderBufferDirect = ( camera, scene, geometry, material, object, group) => { 
+                f( camera, scene, geometry, material, object, group );
+                if ( object.renderBufferDirect)
+                    object.renderBufferDirect(renderer, scene, camera, geometry, material, group);
+            };
+            renderer.nexusPatched = true;
+        }        
 
     } );
 
+    exports.Cache = Cache;
     exports.Nexus3D = Nexus3D;
 
     Object.defineProperty(exports, '__esModule', { value: true });
