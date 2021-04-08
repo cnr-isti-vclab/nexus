@@ -203,8 +203,6 @@ renderer.setAnimationLoop(()=> {
 		Nexus3D.Cache.beginFrame(30);
 		renderer.render( scene, camera );
 		Nexus3D.Cache.endFrame();
-
-
     }
 })
 

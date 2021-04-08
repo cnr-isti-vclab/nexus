@@ -188,7 +188,6 @@ Monitor.prototype = {
 		let mesh = context.nodes.keys().next();
 		if(mesh) mesh = mesh.value;
 		
-		console.log(mesh);
 		let progressFraction = mesh? mesh.availableNodes / mesh.nodesCount : 0;
 		let progressNodes = mesh ? mesh.availableNodes : 0;
 

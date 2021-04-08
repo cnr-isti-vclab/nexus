@@ -118,38 +118,40 @@ _Cache.prototype = {
 	    this.cacheSize += mesh.nsize[id];
 	    mesh.reqAttempt[id] = 0;
 
+		if(!this.nodes.has(mesh))
+			this.nodes.set(mesh, new Set());
+		this.nodes.get(mesh).add(id);
+
 	    this.requestNodeGeometry(mesh, id);
 	    this.requestNodeTexture(mesh, id);
     },
 
     requestNodeGeometry: function(mesh, id) {
-        let t = this;
 
 	    mesh.status[id]++; //pending
-	    mesh.georeq[id] = mesh.httpRequest(
+	    let request = mesh.georeq[id] = mesh.httpRequest(
 		    mesh.noffsets[id],
 		    mesh.noffsets[id+1],
-		    function() {
-                            delete mesh.texreq[id];
-                t.loadNodeGeometry(this, mesh, id);
+		    ()=>{
+                delete mesh.georeq[id];
+                this.loadNodeGeometry(request, mesh, id);
             },
-		    function() {
-                            delete mesh.texreq[id];
+		    ()=>{
+                delete mesh.georeq[id];
 			    if(this.debug.verbose) console.log("Geometry request error!");
-			    t.recoverNode(mesh, id, 0);
+			    this.recoverNode(mesh, id, 0);
 		    },
-		    function() {
-                            delete mesh.texreq[id];
+		    ()=>{
+                delete mesh.georeq[id];
 			    if(this.debug.verbose) console.log("Geometry request abort!");
-			    t.removeNode(mesh, id);
+			    this.removeNode(mesh, id);
 		    },
 		    'arraybuffer'
         );
     },
 
     requestNodeTexture: function(mesh, id) {
-        let t = this;
-	    
+
 	    if(!mesh.vertex.texCoord) return;
 
 	    let tex = mesh.patches[mesh.nfirstpatch[id]*3+2];
@@ -157,22 +159,22 @@ _Cache.prototype = {
 
 	    mesh.status[id]++; //pending
 
-	    mesh.texreq[tex] = mesh.httpRequest(
+	    let request = mesh.texreq[tex] = mesh.httpRequest(
 		    mesh.textures[tex],
 		    mesh.textures[tex+1],
-		    function() { 
-                        delete mesh.texreq[tex];
-                t.loadNodeTexture(this, mesh, id, tex); 
+		    ()=>{ 
+                delete mesh.texreq[tex];
+                this.loadNodeTexture(request, mesh, id, tex); 
             },
-		    function() {
-                        delete mesh.texreq[tex];
+		    ()=>{
+                delete mesh.texreq[tex];
 		    	if(this.debug.verbose) console.log("Texture request error!");
-			    t.recoverNode(mesh, id, 1);
+			    this.recoverNode(mesh, id, 1);
 		    },
-		    function() {
-                        delete mesh.texreq[tex];
+		    ()=>{
+                delete mesh.texreq[tex];
 		    	if(this.debug.verbose) console.log("Texture request abort!");
-		    	t.removeNode(mesh, id);
+		    	this.removeNode(mesh, id);
 		    },
 		    'blob'
 	    );
@@ -260,8 +262,11 @@ _Cache.prototype = {
     removeNode: function(mesh, id) {
         this.nodes.get(mesh).delete(id);
 
-        if(mesh.status[id] == 0)
-            throw "Was already removed!";
+        if(mesh.status[id] == 0) {
+			if(this.debug.verbose)
+				console.log("Double remove due to abort.");
+            return; //TODO
+		}
 
 	    mesh.status[id] = 0;
 	    if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
@@ -333,9 +338,6 @@ _Cache.prototype = {
 
     //the node is finished, add to cache, and update counters
     readyNode: function(mesh, id) {
-        if(!this.nodes.has(mesh))
-            this.nodes.set(mesh, new Set());
-        this.nodes.get(mesh).add(id);
 
 	    mesh.status[id]--;
         if(mesh.status[id] != 1) throw "A ready node should have status ==1"
@@ -353,6 +355,7 @@ _Cache.prototype = {
 
     flush: function(mesh) {
         if(!this.nodes.has(mesh)) return;
+
         for(let id of this.nodes.get(mesh))
             this.removeNode(mesh, id);
         this.nodes.delete(mesh);
