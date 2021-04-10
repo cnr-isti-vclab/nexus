@@ -112,9 +112,9 @@ _Cache.prototype = {
 
 
     requestNode: function(mesh, id) {
-	    mesh.status[id] = 2; //pending
+	    mesh.status[id] = 2; 
 
-	    this.pending++;
+	    
 	    this.cacheSize += mesh.nsize[id];
 	    mesh.reqAttempt[id] = 0;
 
@@ -127,24 +127,28 @@ _Cache.prototype = {
     },
 
     requestNodeGeometry: function(mesh, id) {
-
-	    mesh.status[id]++; //pending
+		this.pending++;
+		console.log("Request node, pending: " + this.pending);
+	    mesh.status[id]++;
 	    let request = mesh.georeq[id] = mesh.httpRequest(
 		    mesh.noffsets[id],
 		    mesh.noffsets[id+1],
 		    ()=>{
                 delete mesh.georeq[id];
                 this.loadNodeGeometry(request, mesh, id);
+				this.pending--;
             },
 		    ()=>{
                 delete mesh.georeq[id];
 			    if(this.debug.verbose) console.log("Geometry request error!");
 			    this.recoverNode(mesh, id, 0);
+				this.pending--;
 		    },
 		    ()=>{
                 delete mesh.georeq[id];
 			    if(this.debug.verbose) console.log("Geometry request abort!");
 			    this.removeNode(mesh, id);
+				this.pending--;
 		    },
 		    'arraybuffer'
         );
@@ -157,7 +161,7 @@ _Cache.prototype = {
 	    let tex = mesh.patches[mesh.nfirstpatch[id]*3+2];
 	    mesh.texref[tex]++;
 
-	    mesh.status[id]++; //pending
+	    mesh.status[id]++;
 
 	    let request = mesh.texreq[tex] = mesh.httpRequest(
 		    mesh.textures[tex],
@@ -165,6 +169,7 @@ _Cache.prototype = {
 		    ()=>{ 
                 delete mesh.texreq[tex];
                 this.loadNodeTexture(request, mesh, id, tex); 
+
             },
 		    ()=>{
                 delete mesh.texreq[tex];
@@ -272,7 +277,7 @@ _Cache.prototype = {
 	    if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
             mesh.georeq[id].abort();
             delete mesh.georeq[id];
-		    this.pending--;
+		    //this.pending--;
 	    }
         mesh.availableNodes--;
         this.cacheSize -= mesh.nsize[id];
@@ -344,7 +349,7 @@ _Cache.prototype = {
 
 		
 		mesh.reqAttempt[id] = 0;
-        this.pending--;
+        //this.pending--;
         mesh.createNode(id);
 		mesh.availableNodes++;
 
