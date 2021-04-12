@@ -108,7 +108,8 @@ public:
 	enum Simplification { QUADRICS, EDGE, CLUSTER, RANDOM };
 	void load(Soup &soup);
 	void load(Cloud &soup);
-	void lock(std::vector<bool> &locked);
+	//void lock(std::vector<bool> &locked);
+	void lockVertices();
 	void save(Soup &soup, quint32 node);
 	void getTriangles(Triangle *triangles, quint32 node);
 	void getVertices(Splat *vertices, quint32 node);

@@ -690,6 +690,7 @@ void NexusBuilder::processBlock(KDTreeSoup *input, StreamSoup *output, uint bloc
 	{
 
 		if(!hasTextures()) {
+			mesh1.lockVertices();
 			{ //needed only if Mesh::QUADRICS
 				QMutexLocker locker(&m_texsimply);
 				mesh1.quadricInit();

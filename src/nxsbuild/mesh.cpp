@@ -93,10 +93,18 @@ void Mesh::load(Cloud &cloud) {
 }
 
 
-void Mesh::lock(std::vector<bool> &locked) {
+/*void Mesh::lock(std::vector<bool> &locked) {
 	for(uint i = 0; i < face.size(); i++)
 		if(locked[i])
 			face[i].ClearW();
+}*/
+
+void Mesh::lockVertices() {
+	//lock border triangles
+	for(uint i = 0; i < face.size(); i++)
+		if(!face[i].IsW())
+			for(int k = 0; k < 3; k++)
+				face[i].V(k)->ClearW();
 }
 
 
@@ -167,12 +175,6 @@ void Mesh::getVertices(Splat *vertices, quint32 node) {
 }
 
 float Mesh::simplify(quint16 target_faces, Simplification method) {
-
-	//lock border triangles
-	for(uint i = 0; i < face.size(); i++)
-		if(!face[i].IsW())
-			for(int k = 0; k < 3; k++)
-				face[i].V(k)->ClearW();
 
 	float error = -1;
 	switch(method) {
