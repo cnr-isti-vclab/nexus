@@ -9,7 +9,7 @@ var minFps        = 15;
 var maxPending    = 3;
 var maxBlocked    = 3;
 var maxReqAttempt = 2;
-var maxCacheSize  = 512 *(1<<20); 
+var maxCacheSize  = 1024 *(1<<20); 
 var drawBudget    = 5*(1<<20);
 
 function _Cache() {
@@ -128,7 +128,6 @@ _Cache.prototype = {
 
     requestNodeGeometry: function(mesh, id) {
 		this.pending++;
-		console.log("Request node, pending: " + this.pending);
 	    mesh.status[id]++;
 	    let request = mesh.georeq[id] = mesh.httpRequest(
 		    mesh.noffsets[id],

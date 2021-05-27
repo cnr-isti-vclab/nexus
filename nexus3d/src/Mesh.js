@@ -68,12 +68,16 @@ Mesh.prototype = {
             switch (this.status){
                 case 0:
 //					console.log("0 response: server unreachable.");//returned in chrome for local files
+					error();
+					break;
                 case 206:
 //					console.log("206 response: partial content loaded.");
                     load.bind(this)();
                     break;
                 case 200:
 //					console.log("200 response: server does not support byte range requests.");
+					error();
+					break;
             }
         };
         r.onerror = error;
@@ -245,16 +249,3 @@ Mesh.prototype = {
 
 
 export { Mesh }
-/*
-if (typeof exports === 'object' && typeof module === 'object') {
-    module.exports = { NEXUSMesh: NEXUSMesh }
-    console.log('a');
-} else if (typeof define === 'function' && define['amd']) {
-    console.log('b');
-	define([], function() {
-		return { NEXUSMesh: NEXUSMesh }
-	});
-} else if (typeof exports === 'object') {
-    console.log('c');
-    exports["NEXUSMesh"] = NEXUSMesh;
-}*/

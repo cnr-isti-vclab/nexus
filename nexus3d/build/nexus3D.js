@@ -477,11 +477,16 @@
                 switch (this.status){
                     case 0:
     //					console.log("0 response: server unreachable.");//returned in chrome for local files
+    					error();
+    					break;
                     case 206:
     //					console.log("206 response: partial content loaded.");
                         load.bind(this)();
                         break;
+                    case 200:
     //					console.log("200 response: server does not support byte range requests.");
+    					error();
+    					break;
                 }
             };
             r.onerror = error;
@@ -650,26 +655,13 @@
         createTexture: function(id, image) {},
         deleteTexture: function(id) {},
     };
-    /*
-    if (typeof exports === 'object' && typeof module === 'object') {
-        module.exports = { NEXUSMesh: NEXUSMesh }
-        console.log('a');
-    } else if (typeof define === 'function' && define['amd']) {
-        console.log('b');
-    	define([], function() {
-    		return { NEXUSMesh: NEXUSMesh }
-    	});
-    } else if (typeof exports === 'object') {
-        console.log('c');
-        exports["NEXUSMesh"] = NEXUSMesh;
-    }*/
 
     var targetError   = 2.0;    //error won't go lower than this if we reach it
     var maxError      = 15;     //error won't go over this even if fps is low
     var minFps        = 15;
     var maxPending    = 3;
     var maxReqAttempt$1 = 2;
-    var maxCacheSize  = 512 *(1<<20); 
+    var maxCacheSize  = 1024 *(1<<20); 
 
     function _Cache() {
         let t = this;
@@ -771,67 +763,74 @@
 
 
         requestNode: function(mesh, id) {
-    	    mesh.status[id] = 2; //pending
+    	    mesh.status[id] = 2; 
 
-    	    this.pending++;
+    	    
     	    this.cacheSize += mesh.nsize[id];
     	    mesh.reqAttempt[id] = 0;
+
+    		if(!this.nodes.has(mesh))
+    			this.nodes.set(mesh, new Set());
+    		this.nodes.get(mesh).add(id);
 
     	    this.requestNodeGeometry(mesh, id);
     	    this.requestNodeTexture(mesh, id);
         },
 
         requestNodeGeometry: function(mesh, id) {
-            let t = this;
-
-    	    mesh.status[id]++; //pending
-    	    mesh.georeq[id] = mesh.httpRequest(
+    		this.pending++;
+    		console.log("Request node, pending: " + this.pending);
+    	    mesh.status[id]++;
+    	    let request = mesh.georeq[id] = mesh.httpRequest(
     		    mesh.noffsets[id],
     		    mesh.noffsets[id+1],
-    		    function() {
-                                delete mesh.texreq[id];
-                    t.loadNodeGeometry(this, mesh, id);
+    		    ()=>{
+                    delete mesh.georeq[id];
+                    this.loadNodeGeometry(request, mesh, id);
+    				this.pending--;
                 },
-    		    function() {
-                                delete mesh.texreq[id];
+    		    ()=>{
+                    delete mesh.georeq[id];
     			    if(this.debug.verbose) console.log("Geometry request error!");
-    			    t.recoverNode(mesh, id, 0);
+    			    this.recoverNode(mesh, id, 0);
+    				this.pending--;
     		    },
-    		    function() {
-                                delete mesh.texreq[id];
+    		    ()=>{
+                    delete mesh.georeq[id];
     			    if(this.debug.verbose) console.log("Geometry request abort!");
-    			    t.removeNode(mesh, id);
+    			    this.removeNode(mesh, id);
+    				this.pending--;
     		    },
     		    'arraybuffer'
             );
         },
 
         requestNodeTexture: function(mesh, id) {
-            let t = this;
-    	    
+
     	    if(!mesh.vertex.texCoord) return;
 
     	    let tex = mesh.patches[mesh.nfirstpatch[id]*3+2];
     	    mesh.texref[tex]++;
 
-    	    mesh.status[id]++; //pending
+    	    mesh.status[id]++;
 
-    	    mesh.texreq[tex] = mesh.httpRequest(
+    	    let request = mesh.texreq[tex] = mesh.httpRequest(
     		    mesh.textures[tex],
     		    mesh.textures[tex+1],
-    		    function() { 
-                            delete mesh.texreq[tex];
-                    t.loadNodeTexture(this, mesh, id, tex); 
+    		    ()=>{ 
+                    delete mesh.texreq[tex];
+                    this.loadNodeTexture(request, mesh, id, tex); 
+
                 },
-    		    function() {
-                            delete mesh.texreq[tex];
+    		    ()=>{
+                    delete mesh.texreq[tex];
     		    	if(this.debug.verbose) console.log("Texture request error!");
-    			    t.recoverNode(mesh, id, 1);
+    			    this.recoverNode(mesh, id, 1);
     		    },
-    		    function() {
-                            delete mesh.texreq[tex];
+    		    ()=>{
+                    delete mesh.texreq[tex];
     		    	if(this.debug.verbose) console.log("Texture request abort!");
-    		    	t.removeNode(mesh, id);
+    		    	this.removeNode(mesh, id);
     		    },
     		    'blob'
     	    );
@@ -919,14 +918,17 @@
         removeNode: function(mesh, id) {
             this.nodes.get(mesh).delete(id);
 
-            if(mesh.status[id] == 0)
-                throw "Was already removed!";
+            if(mesh.status[id] == 0) {
+    			if(this.debug.verbose)
+    				console.log("Double remove due to abort.");
+                return; //TODO
+    		}
 
     	    mesh.status[id] = 0;
     	    if (id in mesh.georeq && mesh.georeq[id].readyState != 4) {
                 mesh.georeq[id].abort();
                 delete mesh.georeq[id];
-    		    this.pending--;
+    		    //this.pending--;
     	    }
             mesh.availableNodes--;
             this.cacheSize -= mesh.nsize[id];
@@ -992,16 +994,13 @@
 
         //the node is finished, add to cache, and update counters
         readyNode: function(mesh, id) {
-            if(!this.nodes.has(mesh))
-                this.nodes.set(mesh, new Set());
-            this.nodes.get(mesh).add(id);
 
     	    mesh.status[id]--;
             if(mesh.status[id] != 1) throw "A ready node should have status ==1"
 
     		
     		mesh.reqAttempt[id] = 0;
-            this.pending--;
+            //this.pending--;
             mesh.createNode(id);
     		mesh.availableNodes++;
 
@@ -1012,6 +1011,7 @@
 
         flush: function(mesh) {
             if(!this.nodes.has(mesh)) return;
+
             for(let id of this.nodes.get(mesh))
                 this.removeNode(mesh, id);
             this.nodes.delete(mesh);
@@ -1153,7 +1153,10 @@
             this.mesh.deleteNodeGeometry = (id)           => { t.deleteNodeGeometry(id); };
             this.mesh.deleteTexture      = (id)           => { t.deleteTexture(id); };
             this.mesh.onLoad.push(() => { t.onLoadCallback(); });
-            this.mesh.onUpdate.push(() => { for(let callback of t.onUpdate) callback(this); });
+            this.mesh.onUpdate.push(() => { 
+    			for(let callback of t.onUpdate) callback(this); 
+    			for(let callback of t.onProgress) callback(this, this.mesh.availableNodes, this.mesh.nodesCount); 
+    		});
 
             this.traversal = new Traversal();
             this.cache = Cache; //new Cache();
