@@ -675,8 +675,10 @@ Instance.prototype = {
 				t.context.candidates.push({id: node, instance:t, mesh:t.mesh, frame:t.context.frame, error:error});
 				requested++;
 			}
+			//for points we don't block children.
+			let selected = t.expandNode(node, error);
+			var blocked = t.mode != "POINT" && (t.blocked[node] || !selected);
 
-			var blocked = t.blocked[node] || !t.expandNode(node, error);
 			if (blocked)
 				t.nblocked++;
 			else {
