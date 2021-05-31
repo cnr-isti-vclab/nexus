@@ -306,7 +306,8 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 			tdata.count_ram--;
 			if(tdata.count_ram != 0) continue;
 
-			delete []tdata.memory;
+			file->unmap((unsigned char *)tdata.memory);
+			//delete []tdata.memory;
 			tdata.memory = NULL;
 			size += tdata.width*tdata.height*4;
 		}
