@@ -6,7 +6,7 @@ Nexus is a c++/javascript library for creation and visualization of a batched mu
 
 Contact me @ federico.ponchio@isti.cnr.it 
 
-See INSTALL.MD for compilation instructions.
+See [INSTALL.MD](INSTALL.md) for compilation instructions.
 
 ### Main features
 
