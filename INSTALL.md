@@ -1,11 +1,15 @@
 
 ## Dependencies
 
+### vcglib
+
 [VCG library](https://github.com/cnr-isti-vclab/vcglib) needs to be found in the same directory as the `nexus` directory.
 
 ```sh
 git clone git@github.com:cnr-isti-vclab/vcglib.git
 ```
+
+### corto
 
 [Corto](https://github.com/cnr-isti-vclab/corto)
 
@@ -28,11 +32,15 @@ or placed in the parent directory of Nexus, in which case you need to add  `../.
 * `./src/nxsedit/CMakeLists.txt`
 * `./src/nxsview/CMakeLists.txt`
 
-[Glew](https://github.com/nigels-com/glew)
+### glew
+
+See [Glew](https://github.com/nigels-com/glew) for build instructions.
 
 ```sh
 git clone git@github.com:nigels-com/glew.git
 ```
+
+or
 
 ```sh
 brew install glew
@@ -108,7 +116,7 @@ qmake nxsbuild.pro
 make
 ```
 
-## nxsedit
+### nxsedit
 
 In nxsedit.pro and nxscompress.pro, line 20, you might have to
 
@@ -126,7 +134,7 @@ qmake nxscompress.pro
 make
 ```
 
-## nxsview
+### nxsview
 
 In nxsview.pro, line 20, you might have to
 
