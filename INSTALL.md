@@ -43,6 +43,12 @@ git clone git@github.com:nigels-com/glew.git
 or
 
 ```sh
+sudo apt-get install libglew-dev
+```
+
+or
+
+```sh
 brew install glew
 ```
 
