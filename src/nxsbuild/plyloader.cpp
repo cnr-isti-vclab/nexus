@@ -278,6 +278,9 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 		Triangle &current = buffer[count];
 
 		for(int k = 0; k < 3; k++) {
+			int v = face.f[k];
+			if(v < 0 || v >= nVertices())
+				throw QString("Bad index in triangle list.");
 			Vertex &vertex = vertices[face.f[k]];
 			vertex.t[0] = face.t[k*2];
 			vertex.t[1] = face.t[k*2+1];
