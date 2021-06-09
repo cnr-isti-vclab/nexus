@@ -43,6 +43,12 @@ git clone git@github.com:nigels-com/glew.git
 or
 
 ```sh
+sudo apt-get install libglew-dev
+```
+
+or
+
+```sh
 brew install glew
 ```
 
@@ -50,6 +56,12 @@ Again if glew is compiled and not installed, you need to add the include directo
 
 ```
 include_directories(../../../vcglib ../../../vcglib/eigenlib  ../../../glew-2.1.0/include )
+```
+### curl
+nxsview support view over http, curl is needed:
+
+```sh
+sudo apt  install libcurl4-openssl-dev
 ```
 
 ## On MacOS
