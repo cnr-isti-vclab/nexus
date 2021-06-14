@@ -90,7 +90,7 @@ public:
 	VertexElement vertex;
 	FaceElement face;
 
-	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4 };
+	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4, DEEPZOOM = 0x8 };
 	uint32_t flags;
 	void setFlag(Flags f) { flags |= f; }
 	void unsetFlag(Flags f) { flags &= ~f; }

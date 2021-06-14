@@ -313,10 +313,11 @@ Mesh.prototype = {
 	open: function(url) {
 		var mesh = this;
 		mesh.url = url;
-		mesh.httpRequest(
-			0,
-			88,
-			function() {
+		mesh.httpRequest({
+			url: this.url,
+			start:0,
+			end:88,
+			load:function() {
 				if(Debug.verbose) console.log("Loading header for " + mesh.url);
 				var view = new DataView(this.response);
 				view.offset = 0;
@@ -334,21 +335,26 @@ Mesh.prototype = {
 				mesh.face = mesh.signature.face;
 				mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
 				mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
+				mesh.deepzoom = (mesh.signature.flags & 8);
 				mesh.meco = (mesh.signature.flags & 2);
 				mesh.corto = (mesh.signature.flags & 4);
+				if(mesh.deepzoom)
+					mesh.baseurl = url.substr(0, url.length -4) + '_';
 				mesh.requestIndex();
 			},
-			function() { console.log("Open request error!");},
-			function() { console.log("Open request abort!");}
-		);
+			error:function() { console.log("Open request error!");},
+			abort:function() { console.log("Open request abort!");},
+			type:'arraybuffer'
+		});
 	},
 
-	httpRequest: function(start, end, load, error, abort, type) {
+	httpRequest: function({url, start, end, load, error, abort, type}) {
 		if(!type) type = 'arraybuffer';
 		var r = new XMLHttpRequest();
-		r.open('GET', this.url, true);
+		r.open('GET', url, true);
 		r.responseType = type;
-		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
+		if(end)
+			r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
 		r.onload = function(){
 			switch (this.status){
 				case 0:
@@ -358,7 +364,10 @@ Mesh.prototype = {
 					load.bind(this)();
 					break;
 				case 200:
-//					console.log("200 response: server does not support byte range requests.");
+					if(this.deepzoom)
+						console.log("200 response: server does not support byte range requests.");
+					else
+						load.bind(this)();
 			}
 		};
 		r.onerror = error;
@@ -370,13 +379,15 @@ Mesh.prototype = {
 	requestIndex: function() {
 		var mesh = this;
 		var end = 88 + mesh.nodesCount*44 + mesh.patchesCount*12 + mesh.texturesCount*68;
-		mesh.httpRequest(
-			88,
-			end,
-			function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
-			function() { console.log("Index request error!");},
-			function() { console.log("Index request abort!");}
-		);
+		mesh.httpRequest({
+			url: this.url,
+			start:88,
+			end:end,
+			load:function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
+			error:function() { console.log("Index request error!");},
+			abort:function() { console.log("Index request abort!");},
+			type:'arraybuffer',
+		});
 	},
 
 	handleIndex: function(buffer) {
@@ -1046,24 +1057,32 @@ function requestNodeGeometry(context, node) {
 	var m = node.mesh;
 
 	m.status[n]++; //pending
-	m.georeq[n] = m.httpRequest(
-		m.noffsets[n],
-		m.noffsets[n+1],
-		function() {
+	let request = {
+		load:function() {
 			delete m.georeq[n]; 
 			loadNodeGeometry(this, context, node); },
-		function() {
+		error:function() {
 			delete m.georeq[n]; 
 			if(Debug.verbose) console.log("Geometry request error!");
 			recoverNode(context, node, 0);
 		},
-		function() {
+		abort:function() {
 			delete m.georeq[n]; 
 			if(Debug.verbose) console.log("Geometry request abort!");
 			removeNode(context, node);
 		},
-		'arraybuffer'
-	);
+		type:'arraybuffer'
+	};
+	if(m.deepzoom) {
+		request.url = m.baseurl + n + '.nxn';
+	} else {
+		Object.assign(request, {
+			url:m.url,
+			start:m.noffsets[n],
+			end:m.noffsets[n+1],
+		});
+	}
+	m.georeq[n] = m.httpRequest(request);
 }
 
 function requestNodeTexture(context, node) {
@@ -1079,24 +1098,25 @@ function requestNodeTexture(context, node) {
 
 	m.status[n]++; //pending
 
-	m.texreq[n] = m.httpRequest(
-		m.textures[tex],
-		m.textures[tex+1],
-		function() { 
+	m.texreq[n] = m.httpRequest({
+		url:m.url,
+		start:m.textures[tex],
+		end:m.textures[tex+1],
+		load:function() { 
 			delete m.texreq[n]; 
 			loadNodeTexture(this, context, node, tex);  },
-		function() {
+		error:function() {
 			if(Debug.verbose) console.log("Texture request error!");
 			delete m.texreq[n];
 			recoverNode(context, node, 1);
 		},
-		function() {
+		abort:function() {
 			if(Debug.verbose) console.log("Texture request abort!");
 			delete m.texreq[n];
 			removeNode(context, node);
 		},
-		'blob'
-	);
+		type:'blob'
+	});
 }
 
 function recoverNode(context, node, id) {

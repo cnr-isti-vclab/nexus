@@ -137,6 +137,7 @@ public:
 	bool useNodeTex; //use node textures
 	int tex_quality;
 	bool createPowTwoTex;
+	bool deepzoom = false; //use deepzoom style where each node is in a different file.
 	
 	//if too many texel per edge, simplification is inhibited, but don't quit prematurely
 	int skipSimplifyLevels = 0;

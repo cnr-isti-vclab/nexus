@@ -931,11 +931,17 @@ void NexusBuilder::save(QString filename) {
 	file.seek(index_size);
 
 	//NODES
+	QString basename = filename.chopped(4);
 	for(uint i = 0; i < node_chunk.size(); i++) {
 		quint32 chunk = node_chunk[i];
 		uchar *buffer = chunks.getChunk(chunk);
 		optimizeNode(i, buffer);
-		file.write((char*)buffer, chunks.chunkSize(chunk));
+		if(header.signature.flags & Signature::Flags::DEEPZOOM) {
+			QFile nodefile(QString("%1_%2.nxn").arg(basename).arg(i));
+			nodefile.open(QFile::WriteOnly);
+			nodefile.write((char*)buffer, chunks.chunkSize(chunk));
+		} else
+			file.write((char*)buffer, chunks.chunkSize(chunk));
 	}
 
 	//TEXTURES
@@ -945,17 +951,32 @@ void NexusBuilder::save(QString filename) {
 	if(textures.size()) {
 		if(useNodeTex) {
 			//todo split into pieces.
-			nodeTex.seek(0);
-			qint64 buffer_size = 64*1<<20; //64 MB
-			do {
-				auto buffer = nodeTex.read(buffer_size);
-				if(!buffer.size())
-					break;
-				bool success = file.write(buffer);
-				if(!success)
-						throw QString("failed writing texture data from temporary file.");
-			} while(1);
+			if(header.signature.flags & Signature::Flags::DEEPZOOM) {
+				for(uint i = 0; i < textures.size()-1; i++) {
+					quint32 s = textures[i].offset;
+					quint32 size = textures[i+1].offset -s;
 
+					nodeTex.seek(s);
+					auto buffer = nodeTex.read(size);
+
+					QFile texfile(QString("%1_%2.nxt").arg(basename).arg(i));
+					texfile.open(QFile::WriteOnly);
+					texfile.write(buffer);
+				}
+			} else {
+				nodeTex.seek(0);
+
+				qint64 buffer_size = 64*1<<20; //64 MB
+				do {
+					auto buffer = nodeTex.read(buffer_size);
+					if(!buffer.size())
+						break;
+
+					bool success = file.write(buffer);
+					if(!success)
+						throw QString("failed writing texture data from temporary file.");
+				} while(1);
+			}
 		} else {
 			for(int i = 0; i < textures.size()-1; i++) {
 				Texture &tex = textures[i];
