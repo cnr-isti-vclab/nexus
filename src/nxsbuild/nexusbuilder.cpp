@@ -21,6 +21,7 @@ for more details.
 #include <QFileInfo>
 #include <QPainter>
 #include <QImage>
+#include <QDir>
 #include <QImageWriter>
 #include "vertex_cache_optimizer.h"
 
@@ -931,13 +932,15 @@ void NexusBuilder::save(QString filename) {
 	file.seek(index_size);
 
 	//NODES
-	QString basename = filename.chopped(4);
+	QString basename = filename.chopped(4) + "_files";
+	QDir dir;
+	dir.mkdir(basename);
 	for(uint i = 0; i < node_chunk.size(); i++) {
 		quint32 chunk = node_chunk[i];
 		uchar *buffer = chunks.getChunk(chunk);
 		optimizeNode(i, buffer);
 		if(header.signature.flags & Signature::Flags::DEEPZOOM) {
-			QFile nodefile(QString("%1_%2.nxn").arg(basename).arg(i));
+			QFile nodefile(QString("%1/%2.nxn").arg(basename).arg(i));
 			nodefile.open(QFile::WriteOnly);
 			nodefile.write((char*)buffer, chunks.chunkSize(chunk));
 		} else
@@ -959,7 +962,7 @@ void NexusBuilder::save(QString filename) {
 					nodeTex.seek(s);
 					auto buffer = nodeTex.read(size);
 
-					QFile texfile(QString("%1_%2.nxt").arg(basename).arg(i));
+					QFile texfile(QString("%1/%2.nxt").arg(basename).arg(i));
 					texfile.open(QFile::WriteOnly);
 					texfile.write(buffer);
 				}

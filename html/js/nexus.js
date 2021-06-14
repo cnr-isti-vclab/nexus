@@ -339,7 +339,7 @@ Mesh.prototype = {
 				mesh.meco = (mesh.signature.flags & 2);
 				mesh.corto = (mesh.signature.flags & 4);
 				if(mesh.deepzoom)
-					mesh.baseurl = url.substr(0, url.length -4) + '_';
+					mesh.baseurl = url.substr(0, url.length -4) + '_files/';
 				mesh.requestIndex();
 			},
 			error:function() { console.log("Open request error!");},
