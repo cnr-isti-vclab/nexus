@@ -14,9 +14,7 @@ SET(HEADERS
 	${VCGDIR}/wrap/gcache/dheap.h
 	${VCGDIR}/wrap/gcache/controller.h
 	${VCGDIR}/wrap/gcache/cache.h
-	../common/signature.h
 	../common/nexus.h
-	../common/cone.h
 	../common/traversal.h
 	../common/token.h
 	../common/renderer.h
@@ -28,8 +26,6 @@ SET(HEADERS
 	../common/dag.h
 	../common/controller.h
 	../common/nexusdata.h
-	../common/nexusfile.h
-	../common/qtnexusfile.h
 	../nxszip/bitstream.h
 	../nxszip/tunstall.h
 	../nxszip/meshcoder.h
@@ -46,7 +42,6 @@ SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	../common/controller.cpp
 	../common/nexus.cpp
-	../common/cone.cpp
 	../common/traversal.cpp
 	../common/renderer.cpp
 	../common/ram_cache.cpp
@@ -73,8 +68,7 @@ find_package(Qt5OpenGL)
 
 add_executable(nxsview ${SOURCES} ${HEADERS})
 if (WIN32)
-	target_link_libraries(nxsview vcglib corto Qt5::Widgets Qt5::OpenGL GLEW glu32 OpenGL32 curl)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL GLEW glu32 OpenGL32 curl)
 else()
-	target_link_libraries(nxsview vcglib corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL GLEW GLU GL curl)
 endif()
-

@@ -11,6 +11,8 @@ set (CMAKE_CXX_STANDARD 11)
 #enable setting options with SET cmake command
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+find_package(Qt5Widgets)
+
 # VCGLib -- required
 if (VCGDIR) # VCGDIR exists - using custom user vcglib path
 	if(EXISTS ${VCGDIR})
@@ -39,6 +41,8 @@ set(BUILD_CORTO_CODEC_UNITY OFF)
 set(BUILD_CORTO_EXE OFF)
 
 add_subdirectory(src/corto EXCLUDE_FROM_ALL)
+
+add_subdirectory(src)
 
 if (BUILD_NXS_BUILD)
 	add_subdirectory(src/nxsbuild)

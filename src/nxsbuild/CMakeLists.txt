@@ -32,9 +32,6 @@ SET(HEADERS
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	${VCGDIR}/wrap/ply/plylib.cpp
-	../common/virtualarray.cpp
-	../common/cone.cpp
-	../common/qtnexusfile.cpp
 	main.cpp
 	meshstream.cpp
 	meshloader.cpp
@@ -60,9 +57,4 @@ find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsbuild vcglib Qt5::Widgets corto)
-
-
-
-
-
+target_link_libraries(nxsbuild PUBLIC nexus)

@@ -7,10 +7,8 @@ set (CMAKE_CXX_STANDARD 11)
 
 SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h
-	../common/virtualarray.h
 	../common/nexusdata.h
 	../common/traversal.h
-	../common/signature.h
 	../nxszip/zpoint.h
 	../nxszip/model.h
 	../nxszip/range.h
@@ -28,10 +26,8 @@ SET(HEADERS
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	${VCGDIR}/wrap/ply/plylib.cpp
-	../common/virtualarray.cpp
 	../common/nexusdata.cpp
 	../common/traversal.cpp
-	../common/cone.cpp
 	../nxszip/abitstream.cpp
 	../nxszip/atunstall.cpp
 	../nxszip/meshcoder.cpp
@@ -52,7 +48,7 @@ find_package(Qt5Widgets)
 
 add_executable(nxsedit ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsedit vcglib Qt5::Widgets corto)
+target_link_libraries(nxsedit PUBLIC nexus)
 
 # --------------------------------------------------------
 
@@ -62,12 +58,8 @@ set (CMAKE_CXX_STANDARD 11)
 
 SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h
-	../common/virtualarray.h
 	../common/nexusdata.h
-	../common/nexusfile.h
-	../common/qtnexusfile.h
 	../common/traversal.h
-	../common/signature.h
 	../nxszip/zpoint.h
 	../nxszip/model.h
 	../nxszip/range.h
@@ -86,11 +78,8 @@ SET(HEADERS
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	${VCGDIR}/wrap/ply/plylib.cpp
-	../common/virtualarray.cpp
 	../common/nexusdata.cpp
 	../common/traversal.cpp
-	../common/cone.cpp
-	../common/qtnexusfile.cpp
 	../nxszip/meshcoder.cpp
 	../nxszip/meshdecoder.cpp
 	../nxszip/abitstream.cpp
@@ -110,5 +99,4 @@ find_package(Qt5Widgets)
 
 add_executable(nxscompress ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxscompress vcglib Qt5::Widgets corto)
-
+target_link_libraries(nxscompress PUBLIC nexus)
