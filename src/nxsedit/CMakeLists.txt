@@ -5,10 +5,8 @@ project(nxsedit)
 
 set (CMAKE_CXX_STANDARD 11)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
-
 SET(HEADERS
-	../../../vcglib/wrap/system/qgetopt.h
+	${VCGDIR}/wrap/system/qgetopt.h
 	../common/virtualarray.h
 	../common/nexusdata.h
 	../common/traversal.h
@@ -28,8 +26,8 @@ SET(HEADERS
 )
 
 SET(SOURCES
-	 ../../../vcglib/wrap/system/qgetopt.cpp
-	../../../vcglib/wrap/ply/plylib.cpp
+	${VCGDIR}/wrap/system/qgetopt.cpp
+	${VCGDIR}/wrap/ply/plylib.cpp
 	../common/virtualarray.cpp
 	../common/nexusdata.cpp
 	../common/traversal.cpp
@@ -54,7 +52,7 @@ find_package(Qt5Widgets)
 
 add_executable(nxsedit ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsedit Qt5::Widgets corto)
+target_link_libraries(nxsedit vcglib Qt5::Widgets corto)
 
 # --------------------------------------------------------
 
@@ -62,46 +60,43 @@ project(nxscompress)
 
 set (CMAKE_CXX_STANDARD 11)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
-
-
 SET(HEADERS
-    ../../../vcglib/wrap/system/qgetopt.h
-    ../common/virtualarray.h
-    ../common/nexusdata.h
-    ../common/nexusfile.h
-    ../common/qtnexusfile.h
-    ../common/traversal.h
-    ../common/signature.h
-    ../nxszip/zpoint.h
-    ../nxszip/model.h
-    ../nxszip/range.h
-    ../nxszip/fpu_precision.h
-    ../nxszip/bytestream.h
-    ../nxszip/math_class.h
-    ../nxszip/bitstream.h
-    ../nxszip/tunstall.h
-    ../nxszip/cstream.h
-    ../nxszip/meshcoder.h
-    ../nxszip/meshdecoder.h
-    extractor.h
+	${VCGDIR}/wrap/system/qgetopt.h
+	../common/virtualarray.h
+	../common/nexusdata.h
+	../common/nexusfile.h
+	../common/qtnexusfile.h
+	../common/traversal.h
+	../common/signature.h
+	../nxszip/zpoint.h
+	../nxszip/model.h
+	../nxszip/range.h
+	../nxszip/fpu_precision.h
+	../nxszip/bytestream.h
+	../nxszip/math_class.h
+	../nxszip/bitstream.h
+	../nxszip/tunstall.h
+	../nxszip/cstream.h
+	../nxszip/meshcoder.h
+	../nxszip/meshdecoder.h
+	extractor.h
 
 )
 
 SET(SOURCES
-    ../../../vcglib/wrap/system/qgetopt.cpp
-    ../../../vcglib/wrap/ply/plylib.cpp
-    ../common/virtualarray.cpp
-    ../common/nexusdata.cpp
-    ../common/traversal.cpp
-    ../common/cone.cpp
+	${VCGDIR}/wrap/system/qgetopt.cpp
+	${VCGDIR}/wrap/ply/plylib.cpp
+	../common/virtualarray.cpp
+	../common/nexusdata.cpp
+	../common/traversal.cpp
+	../common/cone.cpp
 	../common/qtnexusfile.cpp
-    ../nxszip/meshcoder.cpp
-    ../nxszip/meshdecoder.cpp
-    ../nxszip/abitstream.cpp
-    ../nxszip/atunstall.cpp
-    main_compress.cpp
-    extractor.cpp
+	../nxszip/meshcoder.cpp
+	../nxszip/meshdecoder.cpp
+	../nxszip/abitstream.cpp
+	../nxszip/atunstall.cpp
+	main_compress.cpp
+	extractor.cpp
 )
 
 cmake_minimum_required(VERSION 3.1)
@@ -115,5 +110,5 @@ find_package(Qt5Widgets)
 
 add_executable(nxscompress ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxscompress Qt5::Widgets corto)
+target_link_libraries(nxscompress vcglib Qt5::Widgets corto)
 

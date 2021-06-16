@@ -3,18 +3,16 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
-
 set (CMAKE_CXX_STANDARD 11)
 
 SET(HEADERS
-	../../../vcglib/wrap/system/qgetopt.h
-	../../../vcglib/wrap/ply/plylib.h
+	${VCGDIR}/wrap/system/qgetopt.h
+	${VCGDIR}/wrap/ply/plylib.h
 	../common/signature.h
 	../common/cone.h
 	../common/virtualarray.h
-    ../common/nexusfile.h
-    ../common/qtnexusfile.h
+	../common/nexusfile.h
+	../common/qtnexusfile.h
 	meshstream.h
 	meshloader.h
 	plyloader.h
@@ -32,8 +30,8 @@ SET(HEADERS
 )
 
 SET(SOURCES
-	../../../vcglib/wrap/system/qgetopt.cpp
-	../../../vcglib/wrap/ply/plylib.cpp
+	${VCGDIR}/wrap/system/qgetopt.cpp
+	${VCGDIR}/wrap/ply/plylib.cpp
 	../common/virtualarray.cpp
 	../common/cone.cpp
 	../common/qtnexusfile.cpp
@@ -62,7 +60,7 @@ find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsbuild Qt5::Widgets corto)
+target_link_libraries(nxsbuild vcglib Qt5::Widgets corto)
 
 
 

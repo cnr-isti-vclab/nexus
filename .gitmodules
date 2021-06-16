@@ -1,0 +1,3 @@
+[submodule "src/corto"]
+	path = src/corto
+	url = https://github.com/alemuntoni/corto

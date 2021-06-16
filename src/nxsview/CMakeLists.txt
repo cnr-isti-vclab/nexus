@@ -8,12 +8,12 @@ set (CMAKE_CXX_STANDARD 11)
 add_definitions( -DGL_COMPATIBILITY )
 
 SET(HEADERS
-	../../../vcglib/wrap/gcache/token.h
-	../../../vcglib/wrap/gcache/provider.h
-	../../../vcglib/wrap/gcache/door.h
-	../../../vcglib/wrap/gcache/dheap.h
-	../../../vcglib/wrap/gcache/controller.h
-	../../../vcglib/wrap/gcache/cache.h
+	${VCGDIR}/wrap/gcache/token.h
+	${VCGDIR}/wrap/gcache/provider.h
+	${VCGDIR}/wrap/gcache/door.h
+	${VCGDIR}/wrap/gcache/dheap.h
+	${VCGDIR}/wrap/gcache/controller.h
+	${VCGDIR}/wrap/gcache/cache.h
 	../common/signature.h
 	../common/nexus.h
 	../common/cone.h
@@ -41,9 +41,9 @@ SET(HEADERS
 )
 
 SET(SOURCES
-	../../../vcglib/wrap/gui/trackmode.cpp
-	../../../vcglib/wrap/gui/trackball.cpp
-	../../../vcglib/wrap/system/qgetopt.cpp
+	${VCGDIR}/wrap/gui/trackmode.cpp
+	${VCGDIR}/wrap/gui/trackball.cpp
+	${VCGDIR}/wrap/system/qgetopt.cpp
 	../common/controller.cpp
 	../common/nexus.cpp
 	../common/cone.cpp
@@ -67,16 +67,14 @@ set(CMAKE_AUTOUIC ON)
 
 add_definitions( -DGL_COMPATIBILITY )
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
-
 find_package(Qt5Widgets)
 find_package(Qt5OpenGL)
 #find_package(glew)
 
 add_executable(nxsview ${SOURCES} ${HEADERS})
 if (WIN32)
-	target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW glu32 OpenGL32 curl)
+	target_link_libraries(nxsview vcglib corto Qt5::Widgets Qt5::OpenGL GLEW glu32 OpenGL32 curl)
 else()
-	target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
+	target_link_libraries(nxsview vcglib corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
 endif()
 
