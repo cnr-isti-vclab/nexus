@@ -16,6 +16,8 @@ DEFINES += _USE_MATH_DEFINES
 
 win32-msvc: DEFINES += NOMINMAX
 
+LIBS += -lGLU
+
 SOURCES += \
     ../../../vcglib/wrap/system/qgetopt.cpp \
     ../../../vcglib/wrap/ply/plylib.cpp \
@@ -53,7 +55,9 @@ HEADERS += \
     tmesh.h \
     vertex_cache_optimizer.h \
     texpyramid.h \
-    stlloader.h
+    stlloader.h \
+    vcgloader.h \
+    vcgloadermesh.h
 
 DESTDIR = "../../bin"
 

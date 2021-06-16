@@ -95,7 +95,7 @@ class AFace: public vcg::Face<
 		AUsedTypes,
 		vcg::face::VFAdj,
 		vcg::face::VertexRef,
-		vcg::face::BitFlags > {
+		vcg::face::BitFlags> {
 public:
 	quint32 node;
 	bool operator<(const AFace &t) const {

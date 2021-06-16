@@ -44,6 +44,8 @@ public:
 	void setVertexQuantization(double q);
 	vcg::Box3d getBox(QStringList paths);
 	void load(QStringList paths, QString material);
+	void load(MeshLoader *loader); //texture filenames must have the correct (relative or absolute) path!
+
 
 	//return a block of triangles. The buffer is valid until next call to getTriangles. Return null when finished
 	void clear();

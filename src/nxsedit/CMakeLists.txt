@@ -7,7 +7,6 @@ set (CMAKE_CXX_STANDARD 11)
 
 include_directories(../../../vcglib ../../../vcglib/eigenlib)
 
-
 SET(HEADERS
 	../../../vcglib/wrap/system/qgetopt.h
 	../common/virtualarray.h
@@ -26,7 +25,6 @@ SET(HEADERS
 	../nxszip/meshcoder.h
 	../nxszip/meshdecoder.h
 	extractor.h
-
 )
 
 SET(SOURCES
@@ -43,7 +41,6 @@ SET(SOURCES
 	../common/qtnexusfile.cpp
 	main.cpp
 	extractor.cpp
-
 )
 
 cmake_minimum_required(VERSION 3.1)

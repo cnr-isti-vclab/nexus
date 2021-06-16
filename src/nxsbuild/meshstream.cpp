@@ -24,6 +24,8 @@ for more details.
 #include "tsploader.h"
 #include "objloader.h"
 #include "stlloader.h"
+#include "vcgloadermesh.h"
+#include "vcgloader.h"
 
 
 #include <iostream>
@@ -44,7 +46,7 @@ void Stream::setVertexQuantization(double q) {
 }
 
 MeshLoader *Stream::getLoader(QString file, QString material) {
-	MeshLoader *loader = nullptr;
+MeshLoader *loader = nullptr;
 	if(file.endsWith(".ply"))
 		loader = new PlyLoader(file);
 
@@ -57,11 +59,13 @@ MeshLoader *Stream::getLoader(QString file, QString material) {
 	else if(file.endsWith(".stl"))
 		loader = new STLLoader(file);
 
+	else
+		loader = new VcgLoader<VcgMesh>(file);
 	/*        else if(file.endsWith(".off"))
 		loader = new OffLoader(file, vertex_quantization, max_memory);*/
 
-	else
-		throw QString("Input format for file " + file + " is not supported at the moment");
+//	else
+//		throw QString("Input format for file " + file + " is not supported at the moment");
 	return loader;
 }
 
@@ -88,31 +92,41 @@ vcg::Box3d Stream::getBox(QStringList paths) {
 	return box;
 }
 
+void Stream::load(MeshLoader *loader) {
+	loader->setVertexQuantization(vertex_quantization);
+	loader->origin = origin;
+	loadMesh(loader);
+	has_colors &= loader->hasColors();
+	has_normals &= loader->hasNormals();
+	has_textures &= loader->hasTextures();
+
+	if(has_textures) {
+		for(auto tex: loader->texture_filenames) {
+			//windows paths .\ sometimes used in mtl,
+			//std::replace( tex.begin(), tex.end(), QChar('\\'), QChar('/') );
+			textures.push_back(tex);
+		}
+	}
+}
+
 void Stream::load(QStringList paths, QString material) {
+
 	has_colors = true;
 	has_normals = true;
 	has_textures = true;
 	foreach(QString file, paths) {
 		qDebug() << "Reading" << qPrintable(file);
 		MeshLoader *loader = getLoader(file, material);
-
-		loader->setVertexQuantization(vertex_quantization);
-		loader->origin = origin;
-		loadMesh(loader);
-		has_colors &= loader->hasColors();
-		has_normals &= loader->hasNormals();
-		has_textures &= loader->hasTextures();
-
-		if(has_textures) {
+		if(loader->hasTextures()) {
 			QFileInfo file(paths[0]);
 			QString path = file.path();
-			for(auto tex: loader->texture_filenames) {
+			for(auto &tex: loader->texture_filenames) {
 				//windows paths .\ sometimes used in mtl,
 				std::replace( tex.begin(), tex.end(), QChar('\\'), QChar('/') );
-				textures.push_back(path + "/" + tex);
+				tex = path + "/" + tex;
 			}
 		}
-
+		load(loader);
 		//box.Add(loader->box); //this lineB AFTER the mesh is streamed
 		delete loader;
 	}

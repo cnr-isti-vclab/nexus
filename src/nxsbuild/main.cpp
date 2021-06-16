@@ -213,6 +213,10 @@ int main(int argc, char *argv[]) {
 		//TODO: actually the stream will store textures or normals or colors even if not needed
 		stream->load(inputs, mtl);
 
+/*			VcgLoader<Mesh> *loader = new VcgLoader<Mesh>;
+			loader->load(inputs[0], has_colors, has_normals, has_textures);
+			stream->load(loader); */
+
 
 		bool has_colors = stream->hasColors();
 		bool has_normals = stream->hasNormals();
