@@ -8,11 +8,6 @@ set (CMAKE_CXX_STANDARD 11)
 SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h
 	${VCGDIR}/wrap/ply/plylib.h
-	../common/signature.h
-	../common/cone.h
-	../common/virtualarray.h
-	../common/nexusfile.h
-	../common/qtnexusfile.h
 	meshstream.h
 	meshloader.h
 	plyloader.h
