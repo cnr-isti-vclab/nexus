@@ -16,7 +16,6 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <algorithm>
-#include "globalgl.h"
 #include "traversal.h"
 
 using namespace std;
