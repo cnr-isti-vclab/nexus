@@ -8,7 +8,6 @@ SET(HEADERS
 	partition.h
 	trianglesoup.h
 	vertex_cache_optimizer.h
-
 )
 
 SET(SOURCES

@@ -50,7 +50,15 @@ set(SOURCES
 	nxszip/meshdecoder.cpp
 )
 
-add_library(nexus SHARED
+if (APPLE)
+	# seems to be no way to make share library on mac
+	# need to properly investigate this...
+	set(TARGET_TYPE STATIC)
+else()
+	set(TARGET_TYPE SHARED)
+endif()
+
+add_library(nexus ${TARGET_TYPE}
 	${SOURCES} ${HEADERS})
 
 target_include_directories(nexus PUBLIC
