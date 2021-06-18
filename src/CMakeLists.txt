@@ -9,11 +9,16 @@ set(HEADERS
 	common/qtnexusfile.h
 	common/traversal.h
 	common/virtualarray.h
+	nxsbuild/kdtree.h
+	nxsbuild/mesh.h
 	nxsbuild/meshstream.h
 	nxsbuild/meshloader.h
+	nxsbuild/nexusbuilder.h
 	nxsbuild/objloader.h
 	nxsbuild/plyloader.h
 	nxsbuild/stlloader.h
+	nxsbuild/texpyramid.h
+	nxsbuild/tmesh.h
 	nxsbuild/tsploader.h
 	nxszip/bitstream.h
 	nxszip/meshdecoder.h
@@ -26,11 +31,16 @@ set(SOURCES
 	common/qtnexusfile.cpp
 	common/traversal.cpp
 	common/virtualarray.cpp
+	nxsbuild/kdtree.cpp
+	nxsbuild/mesh.cpp
 	nxsbuild/meshstream.cpp
 	nxsbuild/meshloader.cpp
+	nxsbuild/nexusbuilder.cpp
 	nxsbuild/objloader.cpp
 	nxsbuild/plyloader.cpp
 	nxsbuild/stlloader.cpp
+	nxsbuild/texpyramid.cpp
+	nxsbuild/tmesh.cpp
 	nxsbuild/tsploader.cpp
 	nxszip/abitstream.cpp
 	nxszip/atunstall.cpp

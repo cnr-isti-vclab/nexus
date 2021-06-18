@@ -7,24 +7,15 @@ SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h
 	${VCGDIR}/wrap/ply/plylib.h
 	partition.h
-	kdtree.h
 	trianglesoup.h
-	mesh.h
-	nexusbuilder.h
-	tmesh.h
 	vertex_cache_optimizer.h
-	texpyramid.h
+
 )
 
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	${VCGDIR}/wrap/ply/plylib.cpp
 	main.cpp
-	kdtree.cpp
-	mesh.cpp
-	nexusbuilder.cpp
-	tmesh.cpp
-	texpyramid.cpp
 )
 
 cmake_minimum_required(VERSION 3.1)
