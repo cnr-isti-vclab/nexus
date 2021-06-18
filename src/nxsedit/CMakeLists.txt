@@ -17,7 +17,6 @@ SET(HEADERS
 
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
-	${VCGDIR}/wrap/ply/plylib.cpp
 	../nxszip/meshcoder.cpp
 	../common/qtnexusfile.cpp
 	main.cpp
@@ -57,7 +56,6 @@ SET(HEADERS
 
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
-	${VCGDIR}/wrap/ply/plylib.cpp
 	../nxszip/meshcoder.cpp
 	main_compress.cpp
 	extractor.cpp

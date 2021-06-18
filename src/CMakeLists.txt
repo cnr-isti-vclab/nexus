@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 project(nexus)
 
 set(HEADERS
+	${VCGDIR}/wrap/ply/plylib.h
 	common/cone.h
 	common/signature.h
 	common/nexusdata.h
@@ -20,12 +21,14 @@ set(HEADERS
 	nxsbuild/texpyramid.h
 	nxsbuild/tmesh.h
 	nxsbuild/tsploader.h
+	nxsbuild/vcgloader.h
 	nxszip/bitstream.h
 	nxszip/meshdecoder.h
 	nxszip/tunstall.h
 )
 
 set(SOURCES
+	${VCGDIR}/wrap/ply/plylib.cpp
 	common/cone.cpp
 	common/nexusdata.cpp
 	common/qtnexusfile.cpp
@@ -51,6 +54,6 @@ add_library(nexus SHARED
 	${SOURCES} ${HEADERS})
 
 target_include_directories(nexus PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}/common)
+	${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(nexus PUBLIC vcglib corto Qt5::Widgets)

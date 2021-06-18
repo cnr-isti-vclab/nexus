@@ -5,7 +5,6 @@ project(nxsbuild)
 
 SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h
-	${VCGDIR}/wrap/ply/plylib.h
 	partition.h
 	trianglesoup.h
 	vertex_cache_optimizer.h
@@ -14,7 +13,6 @@ SET(HEADERS
 
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
-	${VCGDIR}/wrap/ply/plylib.cpp
 	main.cpp
 )
 

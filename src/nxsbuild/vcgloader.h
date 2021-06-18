@@ -11,6 +11,8 @@ public:
 	typedef typename Mesh::FaceType FaceType;
 	typedef typename Mesh::VertexType VertexType;
 
+	VcgLoader() {}
+
 	VcgLoader(QString filename) {
 		Mesh *m = new Mesh;
 		int loadmask = 0;
