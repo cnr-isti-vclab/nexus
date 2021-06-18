@@ -11,6 +11,8 @@ set (CMAKE_CXX_STANDARD 11)
 #enable setting options with SET cmake command
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 find_package(Qt5Widgets)
 
 # VCGLib -- required

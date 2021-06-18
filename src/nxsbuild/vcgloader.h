@@ -76,6 +76,8 @@ public:
 	}
 
 	quint32 getVertices(quint32 size, Splat *vertex) {
+		//todo
+		return 0;
 	}
 private:
 	int current_face = 0;
