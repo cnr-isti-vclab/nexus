@@ -3,8 +3,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsview)
 
-set (CMAKE_CXX_STANDARD 11)
-
 add_definitions( -DGL_COMPATIBILITY )
 
 SET(HEADERS
@@ -15,7 +13,6 @@ SET(HEADERS
 	${VCGDIR}/wrap/gcache/controller.h
 	${VCGDIR}/wrap/gcache/cache.h
 	../common/nexus.h
-	../common/traversal.h
 	../common/token.h
 	../common/renderer.h
 	../common/ram_cache.h
@@ -25,13 +22,9 @@ SET(HEADERS
 	../common/frustum.h
 	../common/dag.h
 	../common/controller.h
-	../common/nexusdata.h
-	../nxszip/bitstream.h
-	../nxszip/tunstall.h
 	../nxszip/meshcoder.h
 	../nxszip/cstream.h
 	../nxszip/zpoint.h
-	../nxszip/meshdecoder.h
 	gl_nxsview.h
 	scene.h
 )
@@ -42,15 +35,10 @@ SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	../common/controller.cpp
 	../common/nexus.cpp
-	../common/traversal.cpp
 	../common/renderer.cpp
 	../common/ram_cache.cpp
 	../common/frustum.cpp
-	../common/nexusdata.cpp
 	../common/qtnexusfile.cpp
-	../nxszip/abitstream.cpp
-	../nxszip/atunstall.cpp
-	../nxszip/meshdecoder.cpp
 	main.cpp
 	gl_nxsview.cpp
 	scene.cpp
@@ -62,7 +50,6 @@ set(CMAKE_AUTOUIC ON)
 
 add_definitions( -DGL_COMPATIBILITY )
 
-find_package(Qt5Widgets)
 find_package(Qt5OpenGL)
 #find_package(glew)
 
