@@ -36,10 +36,10 @@ public:
 
 		//fill in the texture filenames
 	}
-	void setMaxMemory(quint64 max_memory) {}
+	void setMaxMemory(quint64) {}
 
-	quint32 nVertices() { mesh->nv; }
-	quint32 nTriangles() { mesh->nf; }
+	quint32 nVertices() { return mesh->nv; }
+	quint32 nTriangles() { return mesh->nf; }
 
 	quint32 getTriangles(quint32 size, Triangle *buffer) {
 		int count = 0;
