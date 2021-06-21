@@ -6,7 +6,7 @@
 
 template <typename Mesh> class VcgLoader: public MeshLoader {
 public:
-	Mesh *mesh = nullptr;
+	const Mesh *mesh = nullptr;
 	bool per_face_texture = false;
 	typedef typename Mesh::FaceType FaceType;
 	typedef typename Mesh::VertexType VertexType;
@@ -28,7 +28,7 @@ public:
 		load(m, has_colors, has_normals, has_textures);
 	}
 
-	void load(Mesh *m, bool colors, bool normals, bool textures) {
+	void load(const Mesh *m, bool colors, bool normals, bool textures) {
 		mesh = m;
 		has_colors = colors;
 		has_normals = normals;
@@ -44,14 +44,14 @@ public:
 	quint32 getTriangles(quint32 size, Triangle *buffer) {
 		int count = 0;
 		while(current_face	< mesh->face.size() && count < size) {
-			FaceType &face = mesh->face[current_face];
+			const FaceType &face = mesh->face[current_face];
 			current_face++;
 			if(face.IsD())
 				continue;
 
 			Triangle &triangle = buffer[count];
 			for(int k = 0; k < 3; k++) {
-				VertexType *vp = face.V(k);
+				const VertexType *vp = face.V(k);
 				Vertex &vertex = triangle.vertices[k];
 				for(int j = 0; j < 3; j++) {
 					vertex.v[j] = vp->P()[j];
