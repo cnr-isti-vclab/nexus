@@ -22,7 +22,9 @@ set(HEADERS
 	nxsbuild/tmesh.h
 	nxsbuild/tsploader.h
 	nxsbuild/vcgloader.h
+	nxsedit/extractor.h
 	nxszip/bitstream.h
+	nxszip/meshcoder.h
 	nxszip/meshdecoder.h
 	nxszip/tunstall.h
 )
@@ -45,8 +47,10 @@ set(SOURCES
 	nxsbuild/texpyramid.cpp
 	nxsbuild/tmesh.cpp
 	nxsbuild/tsploader.cpp
+	nxsedit/extractor.cpp
 	nxszip/abitstream.cpp
 	nxszip/atunstall.cpp
+	nxszip/meshcoder.cpp
 	nxszip/meshdecoder.cpp
 )
 

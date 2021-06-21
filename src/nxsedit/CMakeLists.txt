@@ -49,16 +49,11 @@ SET(HEADERS
 	../nxszip/bytestream.h
 	../nxszip/math_class.h
 	../nxszip/cstream.h
-	../nxszip/meshcoder.h
-	extractor.h
-
 )
 
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
-	../nxszip/meshcoder.cpp
 	main_compress.cpp
-	extractor.cpp
 )
 
 cmake_minimum_required(VERSION 3.1)
