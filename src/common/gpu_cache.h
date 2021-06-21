@@ -32,7 +32,6 @@ for more details.
 #endif
 
 #include <iostream>
-using namespace std;
 
 namespace nx {
 

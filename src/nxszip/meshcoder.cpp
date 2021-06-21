@@ -780,7 +780,7 @@ int needed(int v) {
 }
 
 void MeshEncoder::encodeVertex(int target, const Point3i &predicted, const Point2i &texpredicted, BitStream &bitstream,
-							   vector<::uchar> &diffs, vector<::uchar> &tdiffs) {
+							   std::vector<::uchar> &diffs, std::vector<::uchar> &tdiffs) {
 
 
 	static int count = 0;

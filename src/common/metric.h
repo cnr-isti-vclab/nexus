@@ -23,7 +23,6 @@ for more details.
 #include <vcg/space/sphere3.h>
 
 #include <iostream>
-using namespace std;
 
 namespace nx {
 
