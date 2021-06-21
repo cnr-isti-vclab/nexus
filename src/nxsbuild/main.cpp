@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 	int top_node_size = 4096;
 	float vertex_quantization = 0.0f;   //optionally quantize vertices position.
 	int tex_quality(92);                //default jpg texture quality
-	QString decimation("quadric");      //simplification method
+	//QString decimation("quadric");      //simplification method
 	int ram_buffer(2000);               //Mb of ram to use
 	int n_threads = 4;
 	float scaling(0.5);                 //simplification ratio
@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
 	//construction options
 	opt.addOption('f', "node faces", "number of faces per patch, default 32768", &node_size);
 	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096", &top_node_size);
-	opt.addOption('d', "decimation", "decimation method [quadric, edgelen], default quadric", &decimation);
-	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
+	//opt.addOption('d', "decimation", "decimation method [quadric, edgelen], default quadric", &decimation);
+	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &scaling);
 	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0", &skiplevels);
 	opt.addSwitch('O', "original textures", "use original textures, no repacking", &useOrigTex);
 	opt.addOption('m', "mtl file", "mtl for a single obj file", &mtl);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('C', "colors", "save colors", &colors);
 	opt.addSwitch('c', "no colors", "do not store per vertex colors", &no_colors);
 	opt.addSwitch('u', "no textures", "do not store per vertex texture coordinates", &no_texcoords);
-	
+
 
 	//other options
 	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 		cerr << "Patch size (" << node_size << ") out of bounds [1000-65536]" << endl;
 		return -1;
 	}
-	
+
 	vcg::Point3d origin(0, 0, 0);
 	if(!translate.isEmpty()) {
 		QStringList p = translate.split(':');
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
 			stream->origin = box.Center();
 		} else
 			stream->origin = origin;
-		
+
 		vcg::Point3d &o = stream->origin;
 		if(o[0] != 0.0 || o[1] != 0.0 || o[2] != 0.0) {
 			int lastPoint = output.lastIndexOf(".");
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
 			components |= NexusBuilder::TEXTURES;
 			cout << "Textures enabled\n";
 		}
-		
+
 		//WORKAROUND to save loading textures not needed
 		if(!(components & NexusBuilder::TEXTURES)) {
 			stream->textures.clear();
@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
 	} catch(QString error) {
 		cerr << "Fatal error: " << qPrintable(error) << endl;
 		returncode = 1;
-		
+
 	} catch(const char *error) {
 		cerr << "Fatal error: " << error << endl;
 		returncode = 1;
@@ -294,6 +294,6 @@ int main(int argc, char *argv[]) {
 
 	if(tree)   delete tree;
 	if(stream) delete stream;
-	
+
 	return returncode;
 }
