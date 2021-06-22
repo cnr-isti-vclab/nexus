@@ -933,8 +933,10 @@ void NexusBuilder::save(QString filename) {
 
 	//NODES
 	QString basename = filename.chopped(4) + "_files";
-	QDir dir;
-	dir.mkdir(basename);
+	if(header.signature.flags & Signature::Flags::DEEPZOOM) {
+		QDir dir;
+		dir.mkdir(basename);
+	}
 	for(uint i = 0; i < node_chunk.size(); i++) {
 		quint32 chunk = node_chunk[i];
 		uchar *buffer = chunks.getChunk(chunk);
