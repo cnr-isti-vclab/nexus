@@ -25,3 +25,5 @@ set(CMAKE_AUTOMOC ON)
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
 target_link_libraries(nxsbuild PUBLIC nexus)
+
+install(TARGETS nxsbuild)

@@ -59,3 +59,5 @@ if (WIN32)
 else()
 	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL GLEW GLU GL curl)
 endif()
+
+install (TARGETS nxsview)
