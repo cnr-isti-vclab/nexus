@@ -3,79 +3,69 @@ import { Traversal } from './Traversal.js'
 import { Mesh } from './Mesh.js'
 import { Cache } from './Cache.js'
 
-function Nexus3D(url, renderer, options) {
+class Nexus3D extends THREE.Mesh {
 
-    if(typeof renderer == 'function') 
-        throw "Nexus3D constructor has changed: Nexus3D(url, renderer, options) where options include: onLoad, onUpdate, onProgress and material"
+    constructor(url, renderer, options) {
 
-    this.patchWebGLRenderer(renderer);
+        super();
+        if(typeof renderer == 'function') 
+            throw "Nexus3D constructor has changed: Nexus3D(url, renderer, options) where options include: onLoad, onUpdate, onProgress and material"
 
-	THREE.Mesh.call( this );
+        this.patchWebGLRenderer(renderer);
 
-	this.type = 'NXS';
+        Object.assign(this, {
+            isNXS: true,
+            type:'NXS',
+            url: url,
+            gl: renderer.getContext(),
+            material: null,
 
-    this.url = url;
-    this.gl = renderer.getContext();
+            autoUpdate: true,
+            mesh: new Mesh(),
+            vbo: [],
+            ibo: [],
+            textures: [],
+            attributes: {},  //here we store the uniform attributes of the shader.
 
-    this.material = null;
-    if('material' in options)
-        this.material = options.material;
-    if(!this.material) 
-        this.material = new THREE.MeshStandardMaterial();
-        
-    for(let call of ['onLoad', 'onUpdate', 'onProgress']) {
-        this[call] = [];
-        if(call in options)
-            this[call].push(options[call])
+            basemesh: null,  //highest level of the nexus, for picking
+        });
+
+        if('material' in options)
+            this.material = options.material;
+        if(!this.material) 
+            this.material = new THREE.MeshStandardMaterial();
+            
+        for(let call of ['onLoad', 'onUpdate', 'onProgress']) {
+            this['_' + call] = [];
+            if(call in options)
+                this['_' + call].push(options[call])
+        }
+
+        if(this.url) {
+            if(typeof url == 'object') {
+                this.nxs = this.url;
+                this.nxs.onLoad.push((m) => { 
+                    this.mesh = this.nxs.mesh;
+                    this.traversal = this.nxs.traversal;
+                    this.cache = this.nxs.cache;
+                    this.vbo = this.nxs.vbo;
+                    this.ibo = this.nxs.ibo;
+                    this.textures = this.nxs.textures;
+                    this.onLoadCallback(this); 
+                });
+            } else
+                this.open(this.url);
+        }
     }
 
-
-    this.autoUpdate = true;
-    this.mesh = new Mesh(); 
-    
-    this.vbo = [];
-    this.ibo = [];
-    this.textures = [];
-    this.attributes = {};  //here we store the uniform attributes of the shader.
-
-    this.basemesh = null;  //highest level of the nexus, for picking
-
-
-    if(this.url) {
-        if(typeof url == 'object') {
-            this.nxs = this.url;
-            this.nxs.onLoad.push((m) => { 
-                this.mesh = this.nxs.mesh;
-                this.traversal = this.nxs.traversal;
-                this.cache = this.nxs.cache;
-                this.vbo = this.nxs.vbo;
-                this.ibo = this.nxs.ibo;
-                this.textures = this.nxs.textures;
-                this.onLoadCallback(this); 
-            });
-        } else
-            this.open(this.url);
-    }
-
-}
-
-//Nexus3D.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
-Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
-
-	constructor: Nexus3D,
-
-	isNXS: true,
-
-	copy: function(source) {
-
+	copy(source) {
 		Object3D.prototype.copy.call( this, source, false );
         throw "Can't really copy."
 		return this;
-
-    },
+    }
 
     
-    open: function(url) {
+    open(url) {
         let t = this;
         this.mesh.open(url);
         this.mesh.createNode         = (id)           => { };
@@ -85,43 +75,43 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         this.mesh.deleteTexture      = (id)           => { t.deleteTexture(id); };
         this.mesh.onLoad.push(() => { t.onLoadCallback(); });
         this.mesh.onUpdate.push(() => { 
-			for(let callback of t.onUpdate) callback(this); 
-			for(let callback of t.onProgress) callback(this, this.mesh.availableNodes, this.mesh.nodesCount); 
+			for(let callback of t._onUpdate) callback(this); 
+			for(let callback of t._onProgress) callback(this, this.mesh.availableNodes, this.mesh.nodesCount); 
 		});
 
         this.traversal = new Traversal();
         this.cache = Cache; //new Cache();
         this.textures = {};        
-    },
+    }
 
     set onLoad(callback) {
-        this.onLoad.push(callback);
-    },
+        this._onLoad.push(callback);
+    }
 
     set onUpdate(callback) {
-        this.onLoad.push(callback);
-    },
+        this._onUpdate.push(callback);
+    }
 
     set onProgress(callback) {
-        this.onProgress.push(callback);
-    },
+        this._onProgress.push(callback);
+    }
 
     //TODO this is not really needed, we might just conform to THREEJS standard of updating.
-    set material(material) {
+    /*set material(material) {
         this.material = material;
         this.material.needsUpdate = true;
-    },
+    }*/
     
-    updateMaterials: function() {
+    updateMaterials() {
         if(this.material.map !== false && this.mesh.vertex.texCoord)
             this.material.map = this.material_texture;
 
         if(this.mesh.vertex.color)
             this.material.vertexColors = THREE.VertexColors; 
         this.material.needsUpdate = true; 
-    },
+    }
 
-    onLoadCallback: function() {
+    onLoadCallback() {
         const c = this.mesh.sphere.center;
 		const center = new THREE.Vector3(c[0], c[1], c[2]);
         const radius = this.mesh.sphere.radius;
@@ -148,11 +138,11 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         
         this.frustumCulled = false;
             
-        for(let callback of this.onLoad)
+        for(let callback of this._onLoad)
             callback(this);
-    },
+    }
 
-    renderBufferDirect: function(renderer, scene, camera, geometry, material, group) {
+    renderBufferDirect(renderer, scene, camera, geometry, material, group) {
         let s = new THREE.Vector2();
         renderer.getSize(s);
 
@@ -160,9 +150,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         this.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, this.matrixWorld );
         this.traversal.updateView([0, 0, s.width, s.height], camera.projectionMatrix.elements, this.modelViewMatrix.elements);
         this.instance_errors = this.traversal.traverse(this.mesh, this.cache);
-
-
-
+        
         //threejs increments version when setting neeedsUpdate
         /*if(this.material.version > 0) {
             this.updateMaterials();
@@ -186,7 +174,6 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         attr.map      = map_location ? gl.getUniform(program, map_location) : null;
         
     
-    
         //hack to detect if threejs using point or triangle shaders
         //instance.mode = attr.size ? "POINT" : "FILL";
         //if(attr.size != -1) 
@@ -197,9 +184,9 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         //    instance.pointscale = 2.0;
 
         this.setVisibility();
-    },
+    }
 
-    setVisibility: function() {
+    setVisibility() {
         //set visibile what is visible!
         let t = this.traversal;
         let m = this.mesh;
@@ -322,11 +309,9 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
             }
         }
         this.cache.rendered += rendered;
-    },
+    }
 
-
-
-    createNodeGeometry: function(id, data) {
+    createNodeGeometry(id, data) {
         let m = this.mesh;
         var nv = m.nvertices[id];
         var nf = m.nfaces[id];
@@ -370,9 +355,9 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         var ibo = this.ibo[id] = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-    },
+    }
 
-    createTexture: function(id, image) {
+    createTexture(id, image) {
         let gl = this.gl;
         var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -394,38 +379,38 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
 		}
 
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);   
-    },
+    }
     //schedule for removal of this node( might not want to delete it in the middle of something.
     //TODO check if this is really needed!
-    deleteNodeGeometry: function(id) {
+    deleteNodeGeometry(id) {
         this.gl.deleteBuffer(this.vbo[id]);
 	    this.gl.deleteBuffer(this.ibo[id]);
         this.vbo[id] = this.ibo[id] = null;
-    },
+    }
 
-    deleteTexture: function(tex) {
+    deleteTexture(tex) {
         if(!this.textures[tex])
             throw "Deleting missing texture!"
 
         this.gl.deleteTexture(this.textures[tex]);
         this.textures[tex] = 0;
-    },
+    }
 
-	flush: function() {
+	flush() {
 		this.cache.flush(this.mesh);
-	},
+	}
 
-	dispose: function() {
+	dispose() {
 		this.flush();
 		for(let child of this.children)
 			child.geometry.dispose();
-	},
+	}
 
-	toJSON: function ( meta ) {
+	toJSON(meta) {
 		throw "Can't";
-	},
+	}
 
-    patchWebGLRenderer: function(renderer) {
+    patchWebGLRenderer(renderer) {
         if(renderer.nexusPatched) return;
         let f = renderer.renderBufferDirect;
         renderer.renderBufferDirect = ( camera, scene, geometry, material, object, group) => { 
@@ -436,7 +421,7 @@ Nexus3D.prototype = Object.assign( Object.create( THREE.Mesh.prototype ), {
         renderer.nexusPatched = true;
     }        
 
-} );
+}
 
 
 
