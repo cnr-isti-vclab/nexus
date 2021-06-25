@@ -20,10 +20,25 @@ jobs:
       run: |
        cd ..
        git clone --single-branch --branch devel https://github.com/cnr-isti-vclab/vcglib
+       echo "VCINSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC" >> $GITHUB_ENV
     - name: Configure and Build
       shell: bash
       run: |
         mkdir build
+        mkdir install
         cd build
-        cmake -GNinja ..
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=../install ..
         ninja
+        ninja install
+    - name: Deploy
+      shell: bash
+      run: |
+        cd install/bin
+        windeployqt nxsview.exe
+        cd ..
+        mv bin nexus_portable
+    - name: Uploading Nexus Portable
+      uses: actions/upload-artifact@v2
+      with:
+        name: nexus_windows_portable
+        path: install/nexus_portable
