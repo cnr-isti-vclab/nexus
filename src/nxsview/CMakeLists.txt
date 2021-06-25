@@ -52,9 +52,9 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
 add_executable(nxsview ${SOURCES} ${HEADERS})
 if (WIN32)
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32 curl)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32)
 else()
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew GLU GL curl)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew GLU GL)
 endif()
 
 target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)
