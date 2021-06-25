@@ -3,8 +3,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsview)
 
-add_definitions( -DGL_COMPATIBILITY )
-
 SET(HEADERS
 	${VCGDIR}/wrap/gcache/token.h
 	${VCGDIR}/wrap/gcache/provider.h
@@ -48,16 +46,17 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_definitions( -DGL_COMPATIBILITY )
-
 find_package(Qt5OpenGL)
-#find_package(glew)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
 add_executable(nxsview ${SOURCES} ${HEADERS})
 if (WIN32)
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL GLEW glu32 OpenGL32 curl)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32 curl)
 else()
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL GLEW GLU GL curl)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew GLU GL curl)
 endif()
+
+target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)
 
 install (TARGETS nxsview)
