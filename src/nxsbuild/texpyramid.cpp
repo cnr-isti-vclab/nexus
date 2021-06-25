@@ -9,6 +9,33 @@
 using namespace nx;
 using namespace std;
 
+void TexLevel::init(int t, TexAtlas* c, const QImage& texture) {
+	tex = t;
+	level = 0;
+	collection = c;
+	int side = collection->side;
+
+	width = texture.width();
+	height = texture.height();
+
+	tilew = (width-1)/side +1;
+	tileh = (height-1)/side +1;
+
+	for(int y = 0; y < tileh; y++) {
+		for(int x = 0; x < tilew; x++) {
+			int sx = x*side;
+			int wx = (sx + side > width)? width - sx : side;
+			int sy = y*side;
+			int wy = (sy + side > height)? height - sy : side;
+			int isy = height - (sy + wy);
+			QImage img = texture.copy(QRect(sx, isy, wx, wy));
+			img = img.convertToFormat(QImage::Format_RGB32);
+			img = img.mirrored();
+			collection->addImg(TexAtlas::Index(tex, level, x + y*tilew), img);
+		}
+	}
+}
+
 bool TexLevel::init(int t, TexAtlas *c, QString filename) {
 	tex = t;
 	level = 0;
@@ -113,6 +140,14 @@ void TexLevel::build(TexLevel &parent) {
 	}
 }
 
+void TexPyramid::init(int tex, TexAtlas *c, const QImage &texture) {
+	collection = c;
+	//create level zero.
+	levels.resize(1);
+	TexLevel &level = levels.back();
+	return level.init(tex, collection, texture);
+}
+
 bool TexPyramid::init(int tex, TexAtlas *c, const QString &file) {
 	collection = c;
 	//create level zero.
@@ -138,7 +173,15 @@ void TexPyramid::buildLevel(int level) {
 
 
 
-bool TexAtlas::addTextures(std::vector<QString> &filenames) {
+void TexAtlas::addTextures(const std::vector<QImage>& textures) {
+	pyramids.resize(textures.size());
+	for(size_t i = 0; i < pyramids.size(); i++) {
+		TexPyramid &py = pyramids[i];
+		py.init(i, this, textures[i]);
+	}
+}
+
+bool TexAtlas::addTextures(const std::vector<QString> &filenames) {
 	pyramids.resize(filenames.size());
 	for(size_t i = 0; i < pyramids.size(); i++) {
 		TexPyramid &py = pyramids[i];

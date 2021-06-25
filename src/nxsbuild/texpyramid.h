@@ -19,6 +19,7 @@ public:
 	int tilew, tileh;              //how many tiles to make up side.
 	//std::vector<qint64> offsets; //where each tile starts in the cache.
 
+	void init(int tex, TexAtlas *c, const QImage& texture);
 	bool init(int tex, TexAtlas *c, QString filename);
 	QImage read(QRect region);
 	void build(TexLevel &parent);
@@ -31,6 +32,7 @@ public:
 	TexAtlas *collection;
 	std::vector<TexLevel> levels;
 
+	void init(int tex, TexAtlas *c, const QImage &texture);
 	bool init(int tex, TexAtlas *c, const QString &file);
 	QImage read(int level, QRect region);
 	void buildLevel(int level);
@@ -80,7 +82,8 @@ public:
 
 	TexAtlas() {}
 
-	bool addTextures(std::vector<QString> &filenames);
+	void addTextures(const std::vector<QImage>& textures);
+	bool addTextures(const std::vector<QString>& filenames);
 	QImage read(int tex, int level, QRect region);
 	void buildLevel(int level);
 

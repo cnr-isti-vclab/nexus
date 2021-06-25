@@ -86,7 +86,8 @@ public:
 	bool hasColors() { return header.signature.vertex.hasColors(); }
 	bool hasTextures() const { return header.signature.vertex.hasTextures(); }
 
-	bool initAtlas(std::vector<QString> &textures);
+	void initAtlas(const std::vector<QImage>& textures);
+	bool initAtlas(const std::vector<QString>& textures);
 	void create(KDTree *input, Stream *output, uint top_node_size);
 	void createLevel(KDTree *input, Stream *output, int level);
 	void createCloudLevel(KDTreeCloud *input, StreamCloud *output, int level);
