@@ -230,12 +230,12 @@ class Nexus3D extends THREE.Mesh {
             let gl2 = gl instanceof WebGL2RenderingContext;
             if(gl2) {
                 gl.bindVertexArray(this.vao[id]);
-            } else {
+            } //else {
                 //gl.bindVertexArray(null);
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
                 //if(t.mode != "POINT")
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
-            }
+            //}
     
             gl.vertexAttribPointer(attr.position, 3, gl.FLOAT, false, 12, 0);
             gl.enableVertexAttribArray(attr.position);
