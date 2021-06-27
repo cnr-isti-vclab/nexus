@@ -196,7 +196,13 @@ class Nexus3D extends THREE.Mesh {
         if(!m.isReady)
             return;
         let rendered = 0;
-
+        
+        let attr = this.attributes;
+        let mesh = this.mesh;
+        let gl = this.gl;
+        let gl2 = gl instanceof WebGL2RenderingContext;
+        let state = attr.uv + 10*attr.color + 100*attr.normal;
+        	
         for(let id = 0; id < m.nodesCount; id++) {
 //            let err = m.nerrors[id];
 
@@ -224,71 +230,74 @@ class Nexus3D extends THREE.Mesh {
             if(!t.isVisible(sp[off], sp[off+1], sp[off+2], sp[off+4])) //tight radius
                 continue;
     
-            let attr = this.attributes;
-            let mesh = this.mesh;
-            let gl = this.gl;
-            let gl2 = gl instanceof WebGL2RenderingContext;
-            if(gl2) {
-                gl.bindVertexArray(this.vao[id]);
-            } //else {
-                //gl.bindVertexArray(null);
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
-                //if(t.mode != "POINT")
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
-            //}
-    
-            gl.vertexAttribPointer(attr.position, 3, gl.FLOAT, false, 12, 0);
-            gl.enableVertexAttribArray(attr.position);
-    
-            let nv = this.mesh.nvertices[id];
-            let offset = nv*12;
-    
-            if(mesh.vertex.texCoord) {
-                if(attr.uv >= 0) {
-                    gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset);
-                    gl.enableVertexAttribArray(attr.uv);
-                }
-                offset += nv*8;
-            }
-            if(mesh.vertex.color) {
-                if(attr.color >= 0) {
-                    gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
-                    gl.enableVertexAttribArray(attr.color);
-                }
-                offset += nv*4;
-            }
-            if(mesh.vertex.normal) {
-                if(attr.normal >= 0) {
-                    gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset);
-                    gl.enableVertexAttribArray(attr.normal);
-                }
-            }
+            let doBind = true;
 
-            if(this.cache.debug.nodes) {
-				gl.disableVertexAttribArray(attr.color);
+			if(gl2) {
+    	    	if(state in this.vao[id])
+	    	    	doBind = false;
+	    	    else
+		            this.vao[id][state] = gl.createVertexArray();
+	    	    	
+	    	   	gl.bindVertexArray(this.vao[id][state]);
+			}
+			
+			if(doBind) { 
+	            gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
+	           	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
+    
+	            gl.vertexAttribPointer(attr.position, 3, gl.FLOAT, false, 12, 0);
+	            gl.enableVertexAttribArray(attr.position);
+    
+	            let nv = this.mesh.nvertices[id];
+	            let offset = nv*12;
+    
+	            if(mesh.vertex.texCoord) {
+	                if(attr.uv >= 0) {
+	                    gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset);
+	                    gl.enableVertexAttribArray(attr.uv);
+	                }
+	                offset += nv*8;
+	            }
+	            if(mesh.vertex.color) {
+	                if(attr.color >= 0) {
+	                    gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
+	                    gl.enableVertexAttribArray(attr.color);
+	                }
+	                offset += nv*4;
+	            }
+	            if(mesh.vertex.normal) {
+	                if(attr.normal >= 0) {
+	                    gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset);
+	                    gl.enableVertexAttribArray(attr.normal);
+	                }
+	            }
 
-                var error = this.instance_errors[id]; //this.mesh.errors[id];
-				var palette = [
-					[1, 1, 1, 1], //white
-                    [1, 1, 1, 1], //white
-                    [0, 1, 0, 1], //green
-					[0, 1, 1, 1], //cyan
-					[1, 1, 0, 1], //yellow
-                    [1, 0, 1, 1], //magenta
-					[1, 0, 0, 1]  //red
-				];
-				let w = Math.min(5.99, Math.max(0, Math.log2(error)/2));
-				let low = Math.floor(w);
-				w -= low;
-				let color = [];
-				for( let k = 0; k < 4; k++)
-                    color[k] = palette[low][k]*(1-w) + palette[low+1][k]*w;
+	            if(this.cache.debug.nodes) {
+					gl.disableVertexAttribArray(attr.color);
+
+	                var error = this.instance_errors[id]; //this.mesh.errors[id];
+					var palette = [
+						[1, 1, 1, 1], //white
+	                    [1, 1, 1, 1], //white
+	                    [0, 1, 0, 1], //green
+						[0, 1, 1, 1], //cyan
+						[1, 1, 0, 1], //yellow
+	                    [1, 0, 1, 1], //magenta
+						[1, 0, 0, 1]  //red
+					];
+					let w = Math.min(5.99, Math.max(0, Math.log2(error)/2));
+					let low = Math.floor(w);
+					w -= low;
+					let color = [];
+					for( let k = 0; k < 4; k++)
+	                    color[k] = palette[low][k]*(1-w) + palette[low+1][k]*w;
                     
-				gl.vertexAttrib4fv(attr.color, color);
+					gl.vertexAttrib4fv(attr.color, color);
+	            }
             }
             this.cache.realError = Math.min(this.mesh.errors[id], this.cache.realError);
             
-             offset = 0;
+            let offset = 0;
             let end = 0;
             let last = m.nfirstpatch[id+1]-1;
             for (let p = m.nfirstpatch[id]; p < m.nfirstpatch[id+1]; ++p) {
@@ -356,18 +365,15 @@ class Nexus3D extends THREE.Mesh {
         }
         
         var gl = this.gl
-        let gl2 = gl instanceof WebGL2RenderingContext
-        if(gl2) {
-            this.vao[id] = gl.createVertexArray();
-            gl.bindVertexArray(this.vao[id]);
-        }
+        this.vao[id] = {}; //one for each attrib combination in use (casting shadows for example).
+        gl.bindVertexArray(null);
+        
         var vbo = this.vbo[id] = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
         var ibo = this.ibo[id] = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-        //gl.bindVertexArray(null);
     }
 
     createTexture(id, image) {
@@ -399,7 +405,10 @@ class Nexus3D extends THREE.Mesh {
         this.gl.deleteBuffer(this.vbo[id]);
 	    this.gl.deleteBuffer(this.ibo[id]);
 
-        this.vbo[id] = this.ibo[id] = this.vao[id] = null;
+        this.vbo[id] = this.ibo[id] = null;
+        for(const [state, vao] of Object.entries(this.vao[id]))
+        	this.gl.deleteVertexArray(vao);
+        this.vao[id] = null;
     }
 
     deleteTexture(tex) {
