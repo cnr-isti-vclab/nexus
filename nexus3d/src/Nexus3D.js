@@ -24,6 +24,7 @@ class Nexus3D extends THREE.Mesh {
             mesh: new Mesh(),
             vbo: [],
             ibo: [],
+            vao: [],
             textures: [],
             attributes: {},  //here we store the uniform attributes of the shader.
 
@@ -50,6 +51,7 @@ class Nexus3D extends THREE.Mesh {
                     this.cache = this.nxs.cache;
                     this.vbo = this.nxs.vbo;
                     this.ibo = this.nxs.ibo;
+                    this.vao = this.nxs.vao;
                     this.textures = this.nxs.textures;
                     this.onLoadCallback(this); 
                 });
@@ -225,10 +227,15 @@ class Nexus3D extends THREE.Mesh {
             let attr = this.attributes;
             let mesh = this.mesh;
             let gl = this.gl;
-            //gl.bindVertexArray(null);
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
-            //if(t.mode != "POINT")
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
+            let gl2 = gl instanceof WebGL2RenderingContext;
+            if(gl2) {
+                gl.bindVertexArray(this.vao[id]);
+            } else {
+                //gl.bindVertexArray(null);
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
+                //if(t.mode != "POINT")
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
+            }
     
             gl.vertexAttribPointer(attr.position, 3, gl.FLOAT, false, 12, 0);
             gl.enableVertexAttribArray(attr.position);
@@ -349,12 +356,18 @@ class Nexus3D extends THREE.Mesh {
         }
         
         var gl = this.gl
+        let gl2 = gl instanceof WebGL2RenderingContext
+        if(gl2) {
+            this.vao[id] = gl.createVertexArray();
+            gl.bindVertexArray(this.vao[id]);
+        }
         var vbo = this.vbo[id] = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
         var ibo = this.ibo[id] = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+        //gl.bindVertexArray(null);
     }
 
     createTexture(id, image) {
@@ -385,7 +398,8 @@ class Nexus3D extends THREE.Mesh {
     deleteNodeGeometry(id) {
         this.gl.deleteBuffer(this.vbo[id]);
 	    this.gl.deleteBuffer(this.ibo[id]);
-        this.vbo[id] = this.ibo[id] = null;
+
+        this.vbo[id] = this.ibo[id] = this.vao[id] = null;
     }
 
     deleteTexture(tex) {
