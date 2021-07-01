@@ -909,7 +909,7 @@ void NexusBuilder::save(QString filename) {
 	nodes.back().offset = size/NEXUS_PADDING;
 
 	if(textures.size()) {
-		if(!useNodeTex) { //texture.offset keeps the size of each texture
+		if(!useNodeTex) {
 			for(uint i = 0; i < textures.size()-1; i++) {
 				quint32 s = textures[i].offset;
 				textures[i].offset = size/NEXUS_PADDING;
@@ -919,10 +919,16 @@ void NexusBuilder::save(QString filename) {
 			textures.back().offset = size/NEXUS_PADDING;
 
 		} else { //texture.offset keeps the index in the nodeTex temporay file (already padded and in NEXUS_PADDING units
-			for(uint i = 0; i < textures.size()-1; i++)
-				textures[i].offset += size/NEXUS_PADDING;
-			size += nodeTex.size();
-			textures.back().offset = size/NEXUS_PADDING;
+			if(header.signature.flags & Signature::Flags::DEEPZOOM) {
+				//just fix the last one
+				textures.back().offset = nodeTex.size()/NEXUS_PADDING;
+
+			} else { //texture.offset holds the size of each texture
+				for(uint i = 0; i < textures.size()-1; i++)
+					textures[i].offset += size/NEXUS_PADDING;
+				size += nodeTex.size();
+				textures.back().offset = size/NEXUS_PADDING;
+			}
 		}
 	}
 
@@ -964,13 +970,13 @@ void NexusBuilder::save(QString filename) {
 			//todo split into pieces.
 			if(header.signature.flags & Signature::Flags::DEEPZOOM) {
 				for(uint i = 0; i < textures.size()-1; i++) {
-					quint32 s = textures[i].offset;
-					quint32 size = textures[i+1].offset -s;
+					quint32 s = textures[i].offset*NEXUS_PADDING;
+					quint32 size = textures[i+1].offset*NEXUS_PADDING -s;
 
 					nodeTex.seek(s);
 					auto buffer = nodeTex.read(size);
 
-					QFile texfile(QString("%1/%2.nxt").arg(basename).arg(i));
+					QFile texfile(QString("%1/%2.jpg").arg(basename).arg(i));
 					texfile.open(QFile::WriteOnly);
 					texfile.write(buffer);
 				}

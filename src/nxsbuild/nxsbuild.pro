@@ -5,7 +5,7 @@ CONFIG   += console
 CONFIG   -= app_bundle
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++11 -g
+QMAKE_CXXFLAGS += -std=c++11 -g -fpermissive
 
 INCLUDEPATH += \
     ../../../vcglib \

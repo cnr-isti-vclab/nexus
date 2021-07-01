@@ -1097,11 +1097,8 @@ function requestNodeTexture(context, node) {
 		return;
 
 	m.status[n]++; //pending
-
-	m.texreq[n] = m.httpRequest({
-		url:m.url,
-		start:m.textures[tex],
-		end:m.textures[tex+1],
+	
+	let request = {
 		load:function() { 
 			delete m.texreq[n]; 
 			loadNodeTexture(this, context, node, tex);  },
@@ -1116,7 +1113,18 @@ function requestNodeTexture(context, node) {
 			removeNode(context, node);
 		},
 		type:'blob'
-	});
+	};
+
+	if(m.deepzoom) {
+		request.url = m.baseurl + tex + '.jpg';
+	} else {
+		Object.assign(request, {
+			url:m.url,
+			start:m.noffsets[n],
+			end:m.noffsets[n+1],
+		});
+	}
+	m.texreq[n] = m.httpRequest(request);
 }
 
 function recoverNode(context, node, id) {
