@@ -24,14 +24,20 @@ THE SOFTWARE.
 
 function nocenter() { throw "Centering and in general applying matrix to geometry is unsupported."; }
 
-function NexusObject(url, onLoad, onUpdate, renderer, material) {
+class NexusObject extends THREE.Mesh {
+constructor(url, onLoad, onUpdate, renderer, material) {
+
+	var geometry = new THREE.BufferGeometry();
+	geometry.center = nocenter;
+	var positions = new Float32Array(3);
+	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+	super(geometry, material); //THREE.Mesh.call( this, geometry, material);
+	
 	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
 
 	var gl = renderer.getContext();
-	var geometry = new THREE.BufferGeometry();
-
-	geometry.center = nocenter;
 
 /*
 function() { 
@@ -42,13 +48,11 @@ function() {
 };
 */
 
-	var positions = new Float32Array(3);
-	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
 	if(!material)
 		this.autoMaterial = true;
 
-	THREE.Mesh.call( this, geometry, material);
+
 	this.frustumCulled = false;
 
 	var mesh = this;
@@ -110,6 +114,7 @@ function() {
 	instance.onUpdate = function() { onUpdate(this) };
 
 	this.onAfterRender = onAfterRender;
+}
 }
 
 function onAfterRender(renderer, scene, camera, geometry, material, group) {
