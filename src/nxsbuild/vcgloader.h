@@ -28,11 +28,12 @@ public:
 		load(m, has_colors, has_normals, has_textures);
 	}
 
-	void load(const Mesh *m, bool colors, bool normals, bool textures) {
+	void load(const Mesh *m, bool colors, bool normals, bool perVertexTextures, bool perWedgeTextures) {
 		mesh = m;
 		has_colors = colors;
 		has_normals = normals;
-		has_textures = textures;
+		has_textures = perVertexTextures || perWedgeTextures;
+		per_face_texture = perWedgeTextures;
 
 		//fill in the texture filenames
 	}
