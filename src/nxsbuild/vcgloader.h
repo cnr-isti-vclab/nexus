@@ -25,7 +25,7 @@ public:
 			has_textures = per_face_texture = true;
 		for(auto s: m->textures)
 			texture_filenames.push_back(s.c_str());
-		load(m, has_colors, has_normals, has_textures);
+		load(m, has_colors, has_normals, has_textures, per_face_texture);
 	}
 
 	void load(const Mesh *m, bool colors, bool normals, bool perVertexTextures, bool perWedgeTextures) {
