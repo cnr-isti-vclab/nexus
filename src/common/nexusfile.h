@@ -1,12 +1,14 @@
 #ifndef NX_NEXUSFILE_H
 #define NX_NEXUSFILE_H
+
+#include <stddef.h>
 namespace nx {
 	class NexusFile {
 	public:
 		enum OpenMode {
-			Read		= 0b00000001,
-			Write		= 0b00000010,
-			Append		= 0b00000100,
+			Read		= 1,
+			Write		= 2,
+			Append		= 4,
 			ReadWrite	= Read | Write,
 		};
 		virtual ~NexusFile() {}
