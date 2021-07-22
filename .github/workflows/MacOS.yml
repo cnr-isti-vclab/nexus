@@ -32,8 +32,10 @@ jobs:
       run: |
         cd install
         macdeployqt nxsview.app -executable=nxsview.app/Contents/MacOS/nxsbuild -executable=nxsview.app/Contents/MacOS/nxscompress -executable=nxsview.app/Contents/MacOS/nxsedit
+        rm -r bin
+        rm -r lib
     - name: Upload nxsview Portable
       uses: actions/upload-artifact@v2
       with:
         name: nxsview_macos_portable
-        path: install/nxsview.app
+        path: install/
