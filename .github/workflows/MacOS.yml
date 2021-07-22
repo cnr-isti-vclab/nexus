@@ -1,0 +1,39 @@
+name: MacOS
+
+on:
+  [push, pull_request]
+
+jobs:
+  macos_build:
+    name: Build Nexus (MacOS)
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
+    - name: Install dependencies
+      run: |
+       cd ..
+       git clone --single-branch --branch devel https://github.com/cnr-isti-vclab/vcglib
+    - name: Configure and Build
+      shell: bash
+      run: |
+        mkdir build
+        mkdir install
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=../install ..
+        make -j4
+        make install
+    - name: Deploy
+      shell: bash
+      run: |
+        cd install
+        macdeployqt nxsview.app
+    - name: Upload nxsview Portable
+      uses: actions/upload-artifact@v2
+      with:
+        name: nxsview_macos_portable
+        path: install/nxsview.app

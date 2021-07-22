@@ -60,7 +60,10 @@ endif()
 target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)
 
 if (APPLE)
+	set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+	set(CMAKE_INSTALL_RPATH $ORIGIN/../Frameworks)
 	set_target_properties(nxsview PROPERTIES
+		INSTALL_RPATH @executable_path/../Frameworks
 		MACOSX_BUNDLE_BUNDLE_VERSION "${NEXUS_VERSION}"
 		MACOSX_BUNDLE_SHORT_VERSION_STRING "${NEXUS_VERSION}"
 		MACOSX_BUNDLE_INFO_STRING "nxsview ${NEXUS_VERSION}"
@@ -70,6 +73,8 @@ if (APPLE)
 	set_additional_settings_info_plist(
 		TARGET nxsview
 		FILE ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Info.plist)
+	
+	install(TARGETS external-glew DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Frameworks)
 endif()
 
 install (TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})
