@@ -31,7 +31,7 @@ jobs:
       shell: bash
       run: |
         cd install
-        macdeployqt nxsview.app
+        macdeployqt nxsview.app -executable=nxsview.app/Contents/MacOS/nxsbuild -executable=nxsview.app/Contents/MacOS/nxscompress -executable=nxsview.app/Contents/MacOS/nxsedit
     - name: Upload nxsview Portable
       uses: actions/upload-artifact@v2
       with:

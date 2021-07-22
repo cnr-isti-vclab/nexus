@@ -70,11 +70,26 @@ if (APPLE)
 		MACOSX_BUNDLE_COPYRIGHT "Copyright VCG-ISTI-CNR © 2012-2021. All rights reserved."
 		)
 	
+	if (BUILD_NXS_BUILD)
+		set_target_properties(nxsbuild PROPERTIES
+			INSTALL_RPATH @executable_path/../Frameworks)
+		
+		install(TARGETS nxsbuild DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/MacOS/)
+	endif()
+	
+	if (BUILD_NXS_EDIT)
+		set_target_properties(nxsedit PROPERTIES
+			INSTALL_RPATH @executable_path/../Frameworks)
+		set_target_properties(nxscompress PROPERTIES
+			INSTALL_RPATH @executable_path/../Frameworks)
+		
+		install(TARGETS nxsedit nxscompress DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/MacOS/)
+	endif()
+	
 	set_additional_settings_info_plist(
 		TARGET nxsview
 		FILE ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Info.plist)
 	
 	install(TARGETS external-glew DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Frameworks)
+	install (TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})
 endif()
-
-install (TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})
