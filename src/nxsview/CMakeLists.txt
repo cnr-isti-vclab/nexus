@@ -50,13 +50,26 @@ find_package(Qt5OpenGL)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
-add_executable(nxsview ${SOURCES} ${HEADERS})
+add_executable(nxsview MACOSX_BUNDLE ${SOURCES} ${HEADERS})
 if (WIN32)
 	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32)
 else()
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew GLU GL)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew OpenGL::GLU OpenGL::GL)
 endif()
 
 target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)
 
-install (TARGETS nxsview)
+if (APPLE)
+	set_target_properties(nxsview PROPERTIES
+		MACOSX_BUNDLE_BUNDLE_VERSION "${NEXUS_VERSION}"
+		MACOSX_BUNDLE_SHORT_VERSION_STRING "${NEXUS_VERSION}"
+		MACOSX_BUNDLE_INFO_STRING "nxsview ${NEXUS_VERSION}"
+		MACOSX_BUNDLE_COPYRIGHT "Copyright VCG-ISTI-CNR © 2012-2021. All rights reserved."
+		)
+	
+	set_additional_settings_info_plist(
+		TARGET nxsview
+		FILE ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Info.plist)
+endif()
+
+install (TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})

@@ -8,12 +8,21 @@ option(BUILD_NXS_VIEW "" ON)
 
 set (CMAKE_CXX_STANDARD 11)
 
-#enable setting options with SET cmake command
+# enable setting options with SET cmake command
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 find_package(Qt5Widgets)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/cmake/tools.cmake)
+
+# nexus version
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/NEXUS_VERSION")
+	file (READ "${CMAKE_CURRENT_SOURCE_DIR}/NEXUS_VERSION" NEXUS_VERSION)
+else()
+	message(FATAL_ERROR "NEXUS_VERSION file not found in the repository")
+endif()
 
 # VCGLib -- required
 if (VCGDIR) # VCGDIR exists - using custom user vcglib path
