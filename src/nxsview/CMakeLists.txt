@@ -92,4 +92,6 @@ if (APPLE)
 	
 	install(TARGETS external-glew DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Frameworks)
 	install (TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})
+else()
+	install (TARGETS nxsview)
 endif()
