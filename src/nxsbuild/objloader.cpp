@@ -387,7 +387,9 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 				face_[w] = rr[0] - 1;
 				vtxt_[w] = rr[1] - 1;
 				normal_[w] = rr[2] - 1;
-			}
+				if(face_[w] < 0 || vtxt_[w] < 0 || normal_[w] < 0)
+					throw QString("Relative indexes in OBJ are not supported");
+				}
 
 			for (int j = 0; j < valence - 2; j++) {
 
