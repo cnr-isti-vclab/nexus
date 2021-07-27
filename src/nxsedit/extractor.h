@@ -18,8 +18,10 @@ public:
 
 	Extractor(nx::NexusData *nexus);
 
+	int levelCount(); //return number of levels in the nexus (assuming it's a constant depth tree)
 	void setMatrix(vcg::Matrix44f m);
 	void selectBySize(quint64 size);
+	void selectByLevel(int level); //select up to level included (zero based)
 	void selectByError(float error);
 	void selectByTriangles(quint64 triangles);
 	void dropLevel();
@@ -28,18 +30,21 @@ public:
 	void savePly(QString filename);
 
 	void saveUnifiedPly(QString filename);
+
+	virtual float nodeError(uint32_t node, bool &visible);
+	nx::Traversal::Action expand(HeapNode h);
+
 protected:
 
 	bool transform;
 	vcg::Matrix44f matrix;
 	quint64 max_size, current_size;
 	float min_error, current_error;
+	int max_level = -1, nlevels = 0;
 	quint64 max_triangles, current_triangles;
 
-
-
-	Action expand(HeapNode h);
 	quint32 pad(quint32 s);
+	int sinkDistance(int node);
 
 	void compress(QFile &file, nx::Signature &signature, nx::Node &node, nx::NodeData &data, nx::Patch *patches);
 };

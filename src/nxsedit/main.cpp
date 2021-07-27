@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
 	double error(-1.0);
 	double max_size(0.0);
 	int max_triangles(0.0);
+	int max_level(-1);
 	QString projection("");
 	QString matrix("");
 	QString imatrix("");
@@ -98,7 +99,8 @@ int main(int argc, char *argv[]) {
 	opt.addOption('s', "size", "size in MegaBytes of the final file [requires -o]", &max_size);
 	opt.addOption('e', "error", "remove nodes below this error from the node [requires -o]", &error);
 	opt.addOption('t', "triangles", "drop nodes until total number of triangles is < triangles  [requires -o]", &max_triangles);
-	opt.addSwitch('l', "last level", "remove nodes from last level [requires -o]", &drop_level);
+	opt.addOption('l', "level", "remove nodes above level <level>, (root is level zero)", &max_level);
+	opt.addSwitch('L', "last level", "remove nodes from last level [requires -o]", &drop_level);
 
 	//compression and quantization options
 	opt.addSwitch('z', "compress", "compress patches", &compress);
@@ -204,6 +206,9 @@ int main(int argc, char *argv[]) {
 
 		if(max_triangles != 0)
 			extractor.selectByTriangles(max_triangles);
+
+		if(max_level >= 0)
+			extractor.selectByLevel(max_level);
 
 		if(drop_level)
 			extractor.dropLevel();

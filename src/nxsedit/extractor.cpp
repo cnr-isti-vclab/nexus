@@ -36,6 +36,21 @@ Extractor::Extractor(NexusData *nx):
 	selected.back() = false;
 }
 
+int Extractor::sinkDistance(int node) {
+	int dist = 0;
+	int sink = nexus->header.n_nodes - 1;
+	while(node != sink) {
+		Node &nodeData = nexus->nodes[node];
+		node = nexus->patches[nodeData.first_patch].node;
+		dist++;
+	}
+	return dist;
+
+}
+int Extractor::levelCount() {
+	return sinkDistance(0);
+}
+
 void Extractor::setMatrix(vcg::Matrix44f m) {
 	transform = true;
 	matrix = m;
@@ -55,6 +70,14 @@ void Extractor::selectByTriangles(quint64 triangles) {
 	max_triangles = triangles;
 	traverse(nexus);
 }
+
+void Extractor::selectByLevel(int level) {
+	nlevels = levelCount();
+	if(level >= nlevels)
+		throw QString("Extracted level must be < than the number of levels: %1").arg(nlevels);
+	max_level = level;
+	traverse(nexus);
+} //select up to level included (zero based)
 
 void Extractor::dropLevel() {
 	selected.resize(nexus->header.n_nodes, true);
@@ -219,9 +242,17 @@ nx::Traversal::Action Extractor::expand(nx::Traversal::HeapNode h) {
 		return STOP;
 	if(min_error && node.error < min_error)
 		return STOP;
+	if(max_level >= 0 && nlevels- sinkDistance(h.node) > max_level)
+		return STOP;
 	
 	return EXPAND;
 }
+
+float Extractor::nodeError(uint32_t node, bool &visible) {
+	if(max_level >= 0) return sinkDistance(node);
+	return Traversal::nodeError(node, visible);
+}
+
 
 quint32 Extractor::pad(quint32 s) {
 	const quint32 padding = NEXUS_PADDING;
