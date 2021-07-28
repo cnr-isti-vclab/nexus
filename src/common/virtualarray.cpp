@@ -19,10 +19,12 @@ for more details.
 #include "virtualarray.h"
 #include <iostream>
 
+#include <QTemporaryDir>
+
 using namespace std;
 
 VirtualMemory::VirtualMemory(QString prefix):
-	QTemporaryFile(prefix),
+	QTemporaryFile(QTemporaryDir().path() +"/" + prefix),
 	used_memory(0),
 	max_memory(1<<28) {
 
