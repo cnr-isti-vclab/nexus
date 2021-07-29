@@ -1,15 +1,3 @@
-# make quiet some portions of cmake
-# usage
-#
-# set(MESSAGE_QUIET ON)
-# #everything here will be quiet
-# unset(MESSAGE_QUIET)
-function(message)
-	if (NOT MESSAGE_QUIET)
-		_message(${ARGN})
-	endif()
-endfunction()
-
 # add opening file format to info.plist
 function(add_file_format_info_plist)
 	cmake_parse_arguments(ARG "" "TARGET;FILE;FORMAT" "" ${ARGN})
