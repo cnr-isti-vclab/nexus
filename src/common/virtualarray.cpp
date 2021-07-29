@@ -19,18 +19,18 @@ for more details.
 #include "virtualarray.h"
 #include <iostream>
 
-#include <QTemporaryDir>
+#include <QDir>
 
 using namespace std;
 
 VirtualMemory::VirtualMemory(QString prefix):
-	QTemporaryFile(QTemporaryDir().path() +"/" + prefix),
+	QTemporaryFile(QDir::tempPath() +"/" + prefix),
 	used_memory(0),
 	max_memory(1<<28) {
 
 	setAutoRemove(true);
 	if(!open())
-		throw QString("unable to open temporary file");
+		throw QString("unable to open temporary file: " + QDir::tempPath() +"/" + prefix);
 
 }
 
