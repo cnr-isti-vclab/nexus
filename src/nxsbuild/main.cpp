@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 	int node_size = 1<<15;
 	int top_node_size = 4096;
 	float vertex_quantization = 0.0f;   //optionally quantize vertices position.
-	int tex_quality(92);                //default jpg texture quality
+	int tex_quality(95);                //default jpg texture quality
 	//QString decimation("quadric");      //simplification method
 	int ram_buffer(2000);               //Mb of ram to use
 	int n_threads = 4;
@@ -68,46 +68,54 @@ int main(int argc, char *argv[]) {
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
-	QString help("ARGS specify a ply file (specify more ply files or the directory containing them to get a merged output)");
+	QString help("ARGS specify a ply, obj, stl, tsp  file (specify more files or just the directory containing them to get a merged output)");
 	opt.setHelp(help);
 
-	opt.allowUnlimitedArguments(true); //able to join several plys
+	opt.allowUnlimitedArguments(true); //able to join several files
 
 	//extraction options
 	opt.addOption('o', "output filename", "filename of the nexus output file", &output);
 
 	//construction options
-	opt.addOption('f', "node faces", "number of faces per patch, default 32768", &node_size);
-	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096", &top_node_size);
+	opt.addOption('f', "node faces", "number of faces per patch, (min ~1000, max 32768, default 32768)\n"
+				  "This parameter controls the granularity of the multiresolution: smaller values result in smaller changes (less 'pop')"
+				  "Small nodes are less efficient in rendering and compression.\n"
+				  "Meshes with very large textures and few vertices benefit from small nodes.", &node_size);
+	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096\n"
+				  "Controls the size of the smallest LOD. Higher values will delay the first rendering but with higher quality.", &top_node_size);
 	//opt.addOption('d', "decimation", "decimation method [quadric, edgelen], default quadric", &decimation);
 	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &scaling);
-	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0", &skiplevels);
-	opt.addSwitch('O', "original textures", "use original textures, no repacking", &useOrigTex);
+	opt.addOption('S', "skiplevels", "decimation skipped for n levels, default 0\n"
+				  "Use for meshes with large textures and very few vertices.", &skiplevels);
+	opt.addSwitch('O', "original textures", "use original textures, no repacking (deprecated)", &useOrigTex);
 	opt.addOption('m', "mtl file", "mtl for a single obj file", &mtl);
-	opt.addSwitch('k', "pow 2 textures", "create textures to be power of 2", &create_pow_two_tex);
-	opt.addSwitch('D', "deepzoom", "save each node and texture to a separated file", &deepzoom);
+	opt.addSwitch('k', "pow 2 textures", "create textures to be power of 2\n"
+				  "Allows mipmaps, it will increase GPU memory required.", &create_pow_two_tex);
+	opt.addSwitch('D', "deepzoom", "save each node and texture to a separated file\n"
+				  "Used for server which do not support http range requests (206). Will generate MANY files.", &deepzoom);
 
 	//btree options
-	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333", &adaptive);
+	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333\n"
+				  "Different settings might help with very uneven distribution of geometry.", &adaptive);
 
 	opt.addOption('v', "vertex quantization", "vertex quantization grid size (might be approximated)", &vertex_quantization);
-	opt.addOption('q', "texture quality", "texture quality [0-100], default 92", &tex_quality);
+	opt.addOption('q', "texture quality", "JPEG texture quality [0-100], default 95", &tex_quality);
 
 	//format options
-	opt.addSwitch('p', "point cloud", "generate a multiresolution point cloud", &point_cloud);
+	opt.addSwitch('p', "point cloud", "generate a multiresolution point cloud (needed only to discard faces)", &point_cloud);
 
 	opt.addSwitch('N', "normals", "force per vertex normals, even in point clouds", &normals);
 	opt.addSwitch('n', "no normals", "do not store per vertex normals", &no_normals);
-	opt.addSwitch('C', "colors", "save colors", &colors);
+	opt.addSwitch('C', "colors", "save vertex colors", &colors);
 	opt.addSwitch('c', "no colors", "do not store per vertex colors", &no_colors);
-	opt.addSwitch('u', "no textures", "do not store per vertex texture coordinates", &no_texcoords);
+	opt.addSwitch('u', "no textures", "do not store textures and vertex texture coordinates", &no_texcoords);
 
 
 	//other options
-	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
+	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: just an approximation)", &ram_buffer);
 	opt.addOption('w', "workers", "number of workers: default = 4", &n_threads);
-	opt.addOption('T', "origin", "new origin for the model X:Y:Z", &translate);
-	opt.addSwitch('G', "center", "set origin in the bounding box center", &center);
+	opt.addOption('T', "origin", "new origin for the model in the format X:Y:Z", &translate);
+	opt.addSwitch('G', "center", "set origin in the bounding box center of the input meshes", &center);
 	opt.parse();
 
 	//Check parameters are correct
