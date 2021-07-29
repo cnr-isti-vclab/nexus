@@ -18,6 +18,7 @@ for more details.
 #include <QApplication>
 #include <QWidget>
 #include <QImageIOPlugin>
+#include <QFileDialog>
 
 #include <wrap/system/qgetopt.h>
 
@@ -111,9 +112,15 @@ int main(int argc, char *argv[]) {
 
 	QStringList inputs = opt.arguments;
 	if(inputs.size() == 0) {
-		cerr << "No input files specified.\n";
-		cerr << qPrintable(opt.usage()) << "\n";
-		return -1;
+		inputs = QFileDialog::getOpenFileNames(
+					window, "Import Nxs/Nxz",
+					QDir::home().path(),
+					"All known files (*.nxs *.nxz);;nxs file (*.nxs);;nxz file (*.nxz)");
+		if (inputs.size() == 0){
+			cerr << "No input files specified.\n";
+			cerr << qPrintable(opt.usage()) << "\n";
+			return -1;
+		}
 	}
 
 	Scene &scene = ui.area->scene;
@@ -172,6 +179,4 @@ int main(int argc, char *argv[]) {
 	}
 	return 0;
 }
-
-
 
