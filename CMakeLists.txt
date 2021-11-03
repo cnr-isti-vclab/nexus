@@ -15,7 +15,9 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 find_package(Qt5Widgets)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/cmake/tools.cmake)
+if (BUILD_NXS_VIEW)
+	include(${CMAKE_CURRENT_SOURCE_DIR}/src/cmake/tools.cmake)
+endif()
 
 # nexus version
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/NEXUS_VERSION")
