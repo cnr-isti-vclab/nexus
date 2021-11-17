@@ -119,7 +119,7 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 	Texture& texture = textures[t];
 	data.memory = (char*)file->map(texture.getBeginOffset(), texture.getSize());
 	if (!data.memory) {
-		cerr << "Failed mapping texture data" << endl;
+		std::cerr << "Failed mapping texture data" << std::endl;
 		exit(0);
 	}
 	QImage img;
@@ -127,7 +127,7 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 	file->unmap((uchar*)data.memory);
 
 	if (!success) {
-		cerr << "Failed loading texture" << endl;
+		std::cerr << "Failed loading texture" << std::endl;
 		exit(0);
 	}
 

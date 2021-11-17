@@ -80,7 +80,7 @@ void RamCache::loadNexus(Nexus *nexus) {
 			nexus->loadHeader();
 			nexus->loadIndex();
 		} catch (const char *error) {
-			cerr << "Error: " << error << endl;
+			std::cerr << "Error: " << error << std::endl;
 			return;
 		}
 
