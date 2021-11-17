@@ -535,13 +535,13 @@ float TMesh::quadricSimplify(quint32 target) {
 
 	vcg::math::Quadric<double> QZero;
 	QZero.SetZero();
-	QuadricTexHelper<TMesh>::QuadricTemp TD3(this->vert,QZero);
-	QuadricTexHelper<TMesh>::TDp3()=&TD3;
+	vcg::tri::QuadricTexHelper<TMesh>::QuadricTemp TD3(this->vert,QZero);
+	vcg::tri::QuadricTexHelper<TMesh>::TDp3()=&TD3;
 
 	std::vector<std::pair<vcg::TexCoord2<float>, vcg::Quadric5<double> > > qv;
 
-	QuadricTexHelper<TMesh>::Quadric5Temp TD(this->vert,qv);
-	QuadricTexHelper<TMesh>::TDp()=&TD;
+	vcg::tri::QuadricTexHelper<TMesh>::Quadric5Temp TD(this->vert,qv);
+	vcg::tri::QuadricTexHelper<TMesh>::TDp()=&TD;
 
 
 
