@@ -376,20 +376,64 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 				int n = list[w].length();
 				int rr[3]; rr[0] = rr[1] = rr[2] = 0;
 				int rri = 0;
+				int cntSlashes = 0;
+				int cntConsecutiveSlashes = 0;
+				bool lastCharWasSlash = false;
 				for (int i = 0; i < n; i++) {
 					char c = (char)list[w][i].cell();
 					if (c == '/') {
+						cntSlashes++;
+
+						if (lastCharWasSlash) cntConsecutiveSlashes++;
 						if (rri < 3) rri++;
+
+						lastCharWasSlash = true;
 					}
-					else
+					else {
 						rr[rri] = rr[rri] * 10 + (c - '0');
+
+						lastCharWasSlash = false;
+					}
 				}
 				face_[w] = rr[0] - 1;
 				vtxt_[w] = rr[1] - 1;
 				normal_[w] = rr[2] - 1;
-				if(face_[w] < 0 || vtxt_[w] < 0 || normal_[w] < 0)
-					throw QString("Relative indexes in OBJ are not supported");
+
+				// Find out face format (see https://en.wikipedia.org/wiki/Wavefront_.obj_file#Face_elements)
+				// and check if the face definition contains relative indices.
+
+				// f v1 v2 v3
+				bool vertexIndicesFormat = (cntSlashes == 0) && (cntConsecutiveSlashes == 0);
+
+				// f v1/vt1 v2/vt2 v3/vt3
+				bool vertexTextureCoordIndicesFormat = (cntSlashes == 1) && (cntConsecutiveSlashes == 0);
+
+				// f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3
+				bool vertexNormalIndicesFormat = (cntSlashes == 2) && (cntConsecutiveSlashes == 0);
+
+				// f v1//vn1 v2//vn2 v3//vn3
+				bool vertexNormalIndicesWithoutTextureCoordIndicesFormat = (cntSlashes == 2) && (cntConsecutiveSlashes == 1);
+
+				bool faceHasRelativeIndices = false;
+
+				if (vertexIndicesFormat) {
+						faceHasRelativeIndices = (face_[w] < 0);
 				}
+				else if (vertexTextureCoordIndicesFormat) {
+						faceHasRelativeIndices = (face_[w] < 0) || (vtxt_[w] < 0);
+				}
+				else if (vertexNormalIndicesFormat) {
+						faceHasRelativeIndices = (face_[w] < 0) || (vtxt_[w] < 0) || (normal_[w] < 0);
+				}
+				else if (vertexNormalIndicesWithoutTextureCoordIndicesFormat) {
+						faceHasRelativeIndices = (face_[w] < 0) || (normal_[w] < 0);
+				}
+
+				if(faceHasRelativeIndices)
+				{
+						throw QString("Relative indexes in OBJ are not supported");
+				}
+      }
 
 			for (int j = 0; j < valence - 2; j++) {
 
