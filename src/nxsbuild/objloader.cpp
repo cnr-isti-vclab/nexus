@@ -39,6 +39,8 @@ ObjLoader::ObjLoader(QString filename, QString _mtl):
 	file.setFileName(filename);
 	if(!file.open(QFile::ReadOnly))
 		throw QString("could not open file %1. Error: %2").arg(filename).arg(file.errorString());
+
+	readMTL();	
 }
 
 ObjLoader::~ObjLoader() {
@@ -189,6 +191,9 @@ void ObjLoader::readMTL() {
 			qint32 color = R + G + B + A;
 			colors_map.insert(mtltag, color);
 
+			sanitizeTextureFilepath(txtfname);
+			resolveTextureFilepath(file.fileName(), txtfname);
+
 			if (txtfname.length() > 0) {
 				textures_map.insert(mtltag, txtfname);
 				bool exists = false;
@@ -207,6 +212,8 @@ void ObjLoader::readMTL() {
 	std::cout << "Colors read: " << cnt << std::endl;
 	for (auto fn : texture_filenames)
 		std::cout << qPrintable("Texture: " + fn) << std::endl;
+	if (texture_filenames.size() > 0)
+		has_textures = true;
 	if (cnt)
 		has_colors = true;
 }
@@ -285,11 +292,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 	if (n_triangles == 0) {
 		cacheVertices();
 		cacheTextureUV();
-		readMTL();
 	}
-
-	if (texture_filenames.size() > 0)
-		has_textures = true;
 
 	char buffer[1024];
 	file.seek(current_tri_pos);
