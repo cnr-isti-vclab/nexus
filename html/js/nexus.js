@@ -1120,8 +1120,8 @@ function requestNodeTexture(context, node) {
 	} else {
 		Object.assign(request, {
 			url:m.url,
-			start:m.noffsets[n],
-			end:m.noffsets[n+1],
+			start:m.textures[tex],
+			end:m.textures[tex+1],
 		});
 	}
 	m.texreq[n] = m.httpRequest(request);
