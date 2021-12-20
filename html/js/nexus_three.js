@@ -280,7 +280,7 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 			if(d < raycaster.near || d > raycaster.far ) continue;
 			if(distance == -1.0 || d < distance) {
 				distance = d;
-				intersect = hit;
+				intersect = hit.clone();
 			}
 		}
 	}
