@@ -238,8 +238,8 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 	var r = nexus.sphere.radius;
 	var center = new THREE.Vector3(c[0], c[1], c[2]);
 	var sphere = new THREE.Sphere(center, r);
-	var m = new THREE.Matrix4();
-	m.getInverse(this.matrixWorld);
+	sphere.applyMatrix4(this.matrixWorld);
+	var m = new THREE.Matrix4().copy(this.matrixWorld).invert();
 	var ray = new THREE.Ray();
 	ray.copy(raycaster.ray).applyMatrix4(m);
 
