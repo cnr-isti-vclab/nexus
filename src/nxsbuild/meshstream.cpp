@@ -102,8 +102,6 @@ void Stream::load(MeshLoader *loader) {
 
 	if(has_textures) {
 		for(auto tex: loader->texture_filenames) {
-			//windows paths .\ sometimes used in mtl,
-			//std::replace( tex.begin(), tex.end(), QChar('\\'), QChar('/') );
 			textures.push_back(tex);
 		}
 	}
@@ -117,15 +115,6 @@ void Stream::load(QStringList paths, QString material) {
 	foreach(QString file, paths) {
 		qDebug() << "Reading" << qPrintable(file);
 		MeshLoader *loader = getLoader(file, material);
-		if(loader->hasTextures()) {
-			QFileInfo file(paths[0]);
-			QString path = file.path();
-			for(auto &tex: loader->texture_filenames) {
-				//windows paths .\ sometimes used in mtl,
-				std::replace( tex.begin(), tex.end(), QChar('\\'), QChar('/') );
-				tex = path + "/" + tex;
-			}
-		}
 		load(loader);
 		//box.Add(loader->box); //this lineB AFTER the mesh is streamed
 		delete loader;

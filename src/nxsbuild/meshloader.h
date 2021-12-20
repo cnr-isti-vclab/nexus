@@ -51,6 +51,8 @@ protected:
 	float quantization;
 
 	void quantize(float &value);
+	void sanitizeTextureFilepath (QString &textureFilepath);
+	void resolveTextureFilepath (const QString &modelFilepath, QString &textureFilepath);
 };
 
 #endif // NX_MESHLOADER_H
