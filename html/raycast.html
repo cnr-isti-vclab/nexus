@@ -9,6 +9,7 @@
 <script src="js/nexus.js"></script>
 <script src="js/nexus_three.js"></script>
 <script src="js/trackball_three.js"></script>
+<script src="js/lil-gui.js"></script>
 </head>
 
 <body>
@@ -16,6 +17,20 @@
 </body>
 
 <script>
+const gui = new lil.GUI();
+
+const guiConfig =
+{
+	visualizePointFromRaycasting: true,
+};
+
+gui.add(guiConfig, "visualizePointFromRaycasting")
+.name("Visualize point returned from raycasting")
+.onChange(shouldVisualize => {
+	raycastingIntersectionSphere.visible = shouldVisualize;
+});
+
+
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
 camera.position.z = 4.0;
 
@@ -44,6 +59,13 @@ var light2 = new THREE.DirectionalLight( 0xffffff, 1.0 );
 light2.position.set( -1, -1, 1 );
 scene.add( light2 );
 
+const raycastingIntersectionSphere = new THREE.Mesh (
+  new THREE.SphereGeometry(0.05, 32, 16), 
+  new THREE.MeshBasicMaterial({color: 0xff0000})
+);
+raycastingIntersectionSphere.visible = false;
+scene.add( raycastingIntersectionSphere );
+
 var mouse = new THREE.Vector2();
 var raycaster = new THREE.Raycaster();
 
@@ -63,6 +85,15 @@ function onDocumentMouseMove( event ) {
 		nexus_obj.material.needsUpdate = true;
 		redraw = true;
 	} 
+
+	if (guiConfig.visualizePointFromRaycasting) {
+		if (intersections.length) {
+			raycastingIntersectionSphere.visible = true;
+			raycastingIntersectionSphere.position.copy(intersections[0].point);
+		} else {
+			raycastingIntersectionSphere.visible = false;
+		}
+	}
 }
 
 var renderer = new THREE.WebGLRenderer( { antialias: false } );
