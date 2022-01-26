@@ -852,7 +852,7 @@ void NexusBuilder::save(QString filename, bool gltf) {
 	//unify materials, writing to header.materials.
 	std::vector<int> material_map = materials.compact(header.materials);
 	for(Patch &patch: patches)
-		patch.material = material_map[patch.material];
+		patch.material = material_map[patch.material]; 
 
 	if(gltf)
 		saveGLTF(file);

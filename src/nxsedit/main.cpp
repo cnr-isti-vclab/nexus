@@ -23,6 +23,7 @@ for more details.
 
 #include "../nxsbuild/nexusbuilder.h"
 #include "../common/traversal.h"
+#include "../common/qtnexusfile.h"
 #include "extractor.h"
 
 #include <QtGui>
@@ -133,6 +134,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	NexusData nexus;
+	nexus.file = new QTNexusFile();
+
 	bool read_only = true;
 	if(!recompute_error.isEmpty())
 		read_only = false;

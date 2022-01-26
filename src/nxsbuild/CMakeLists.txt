@@ -34,7 +34,6 @@ SET(SOURCES
 	../../../vcglib/wrap/ply/plylib.cpp
 	../common/virtualarray.cpp
 	../common/cone.cpp
-    ../common/material.cpp 
 	main.cpp
 	meshstream.cpp
 	meshloader.cpp

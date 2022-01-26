@@ -34,7 +34,8 @@ SOURCES += \
     ../nxszip/atunstall.cpp \
     main.cpp \
     extractor.cpp \
-    ../common/dag.cpp
+    ../common/dag.cpp \
+    ../common/qtnexusfile.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -54,7 +55,8 @@ HEADERS += \
     ../nxszip/cstream.h \
     ../nxszip/meshcoder.h \
     ../nxszip/meshdecoder.h \
-    extractor.h 
+    extractor.h \ 
+    ../common/qtnexusfile.h
 
 
 DESTDIR = "../../bin"

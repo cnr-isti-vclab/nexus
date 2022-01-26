@@ -79,14 +79,15 @@ function loadMeco() {
 var corto = null;
 function loadCorto() {
 
-	function getWorkerURL( url ) {
+	/*function getWorkerURL( url ) {
 		const content = `importScripts( "${ url }" );`;
 		return URL.createObjectURL( new Blob( [ content ], { type: "text/javascript" } ) );
-	}
+	} */
 
-	let corto_url = path.replace('nexus.js', 'corto.em.js');
+	//let corto_url = path.replace('nexus.js', 'corto.em.js');
 
-	corto = new Worker(getWorkerURL(corto_url));
+	//corto = new Worker(getWorkerURL(corto_url));
+	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
@@ -417,7 +418,7 @@ Mesh.prototype = {
 			t.patches = new Int32Array(view.buffer, view.offset, t.n_patches*4); //node, lastTriangle, texture, material
 		else {
 			let tmp = new Int32Array(view.buffer, view.offset, t.n_patches*3); //node, lastTriangle, texture
-			t.patches =  new Uint32Array(t.n_patches*4);
+			t.patches =  new Int32Array(t.n_patches*4);
 			for(let i = 0; i < t.n_patches; i++) {
 				t.patches[i*4+0] = tmp[i*3+0];
 				t.patches[i*4+1] = tmp[i*3+1];

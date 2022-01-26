@@ -30,7 +30,7 @@ for more details.
 
 namespace nx {
 
-#define NEXUS_PADDING 256
+#define NEXUS_PADDING 256ll
 
 
 
@@ -91,6 +91,9 @@ struct Node {
 	uint64_t getBeginOffset() { return uint64_t(offset) * uint64_t(NEXUS_PADDING); }
 	uint64_t getEndOffset() { return getBeginOffset() + size; }
 	uint64_t getSize() { return size; }
+	uint32_t indexByteOffset() { return 0; }
+	uint32_t attributesByteOffset() { return (nface*6 + 3) & (~3u); } //assumes short indexes
+
 };
 
 //todo read index node, patch and texrture are different!!!

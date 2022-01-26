@@ -13837,7 +13837,8 @@ class serializer
     void dump(const BasicJsonType& val, const bool pretty_print,
               const bool ensure_ascii,
               const unsigned int indent_step,
-              const unsigned int current_indent = 0)
+			  const unsigned int current_indent = 0,
+			  const int float_digits = -1)
     {
         switch (val.m_type)
         {
@@ -13868,7 +13869,7 @@ class serializer
                         o->write_character('\"');
                         dump_escaped(i->first, ensure_ascii);
                         o->write_characters("\": ", 3);
-                        dump(i->second, true, ensure_ascii, indent_step, new_indent);
+						dump(i->second, true, ensure_ascii, indent_step, new_indent, float_digits);
                         o->write_characters(",\n", 2);
                     }
 
@@ -13879,7 +13880,7 @@ class serializer
                     o->write_character('\"');
                     dump_escaped(i->first, ensure_ascii);
                     o->write_characters("\": ", 3);
-                    dump(i->second, true, ensure_ascii, indent_step, new_indent);
+					dump(i->second, true, ensure_ascii, indent_step, new_indent, float_digits);
 
                     o->write_character('\n');
                     o->write_characters(indent_string.c_str(), current_indent);
@@ -13896,7 +13897,7 @@ class serializer
                         o->write_character('\"');
                         dump_escaped(i->first, ensure_ascii);
                         o->write_characters("\":", 2);
-                        dump(i->second, false, ensure_ascii, indent_step, current_indent);
+						dump(i->second, false, ensure_ascii, indent_step, current_indent, float_digits);
                         o->write_character(',');
                     }
 
@@ -13906,7 +13907,7 @@ class serializer
                     o->write_character('\"');
                     dump_escaped(i->first, ensure_ascii);
                     o->write_characters("\":", 2);
-                    dump(i->second, false, ensure_ascii, indent_step, current_indent);
+					dump(i->second, false, ensure_ascii, indent_step, current_indent, float_digits);
 
                     o->write_character('}');
                 }
@@ -13938,14 +13939,14 @@ class serializer
                             i != val.m_value.array->cend() - 1; ++i)
                     {
                         o->write_characters(indent_string.c_str(), new_indent);
-                        dump(*i, true, ensure_ascii, indent_step, new_indent);
+						dump(*i, true, ensure_ascii, indent_step, new_indent, float_digits);
                         o->write_characters(",\n", 2);
                     }
 
                     // last element
                     assert(not val.m_value.array->empty());
                     o->write_characters(indent_string.c_str(), new_indent);
-                    dump(val.m_value.array->back(), true, ensure_ascii, indent_step, new_indent);
+					dump(val.m_value.array->back(), true, ensure_ascii, indent_step, new_indent, float_digits);
 
                     o->write_character('\n');
                     o->write_characters(indent_string.c_str(), current_indent);
@@ -13965,7 +13966,7 @@ class serializer
 
                     // last element
                     assert(not val.m_value.array->empty());
-                    dump(val.m_value.array->back(), false, ensure_ascii, indent_step, current_indent);
+					dump(val.m_value.array->back(), false, ensure_ascii, indent_step, current_indent, float_digits);
 
                     o->write_character(']');
                 }
@@ -14008,7 +14009,7 @@ class serializer
 
             case value_t::number_float:
             {
-                dump_float(val.m_value.number_float);
+				dump_float(val.m_value.number_float, float_digits);
                 return;
             }
 
@@ -14425,7 +14426,7 @@ class serializer
 
     @param[in] x  floating-point number to dump
     */
-    void dump_float(number_float_t x)
+	void dump_float(number_float_t x, int digits = -1)
     {
         // NaN / inf
         if (not std::isfinite(x))
@@ -14443,18 +14444,31 @@ class serializer
             = (std::numeric_limits<number_float_t>::is_iec559 and std::numeric_limits<number_float_t>::digits == 24 and std::numeric_limits<number_float_t>::max_exponent == 128) or
               (std::numeric_limits<number_float_t>::is_iec559 and std::numeric_limits<number_float_t>::digits == 53 and std::numeric_limits<number_float_t>::max_exponent == 1024);
 
-        dump_float(x, std::integral_constant<bool, is_ieee_single_or_double>());
+		dump_float(x, std::integral_constant<bool, is_ieee_single_or_double>(), digits);
     }
 
-    void dump_float(number_float_t x, std::true_type /*is_ieee_single_or_double*/)
+	void dump_float(number_float_t x, std::true_type /*is_ieee_single_or_double*/, int digits = -1)
     {
         char* begin = number_buffer.data();
         char* end = ::nlohmann::detail::to_chars(begin, begin + number_buffer.size(), x);
-
+		//truncate to
+		if(digits > 0) {
+			//find . and truncate to
+			char *c = begin;
+			while(c < end && *c != '.')
+				c++;
+			//now either we are at the end or c is .
+			if(*c == '.') {
+				if(c - begin < digits) {
+					end = std::min(end, begin + digits);
+					if(*(end-1) == '.') end++;
+				}
+			}
+		}
         o->write_characters(begin, static_cast<size_t>(end - begin));
     }
 
-    void dump_float(number_float_t x, std::false_type /*is_ieee_single_or_double*/)
+	void dump_float(number_float_t x, std::false_type /*is_ieee_single_or_double*/, int digits = -1)
     {
         // get number of digits for a float -> text -> float round-trip
         static constexpr auto d = std::numeric_limits<number_float_t>::max_digits10;
@@ -16559,6 +16573,7 @@ class basic_json
     */
     string_t dump(const int indent = -1,
                   const char indent_char = ' ',
+				  const int float_digits = -1,
                   const bool ensure_ascii = false,
                   const error_handler_t error_handler = error_handler_t::strict) const
     {
@@ -16567,11 +16582,11 @@ class basic_json
 
         if (indent >= 0)
         {
-            s.dump(*this, true, ensure_ascii, static_cast<unsigned int>(indent));
+			s.dump(*this, true, ensure_ascii, static_cast<unsigned int>(indent), 0, float_digits);
         }
         else
         {
-            s.dump(*this, false, ensure_ascii, 0);
+			s.dump(*this, false, ensure_ascii, 0, 0, float_digits);
         }
 
         return result;
