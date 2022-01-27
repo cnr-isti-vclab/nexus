@@ -3,7 +3,7 @@ project(nexus)
 
 set (CMAKE_CXX_STANDARD 14)
 add_compile_options(-w)
-include_directories(../../../vcglib ../../../vcglib/eigenlib ../draco/include)
+include_directories(draco/include)
 
 set(HEADERS
 	${VCGDIR}/wrap/ply/plylib.h
