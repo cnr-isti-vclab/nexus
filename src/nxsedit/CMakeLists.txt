@@ -65,7 +65,7 @@ target_link_libraries(nxsedit Qt5::Widgets corto)
 
 project(nxscompress)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 
 include_directories(../../../vcglib ../../../vcglib/eigenlib)
 
@@ -98,6 +98,9 @@ SET(SOURCES
     ../common/nexusdata.cpp
     ../common/traversal.cpp
     ../common/cone.cpp
+	../common/signature.cpp
+	../common/dag.cpp
+	../common/qtnexusfile.cpp
     ../nxszip/meshcoder.cpp
     ../nxszip/meshdecoder.cpp
     ../nxszip/abitstream.cpp
