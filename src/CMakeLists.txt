@@ -3,6 +3,7 @@ project(nexus)
 
 set (CMAKE_CXX_STANDARD 14)
 add_compile_options(-w)
+add_compile_options(-std=c++14)
 include_directories(draco/include)
 
 set(HEADERS
