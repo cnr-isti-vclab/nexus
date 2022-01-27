@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsview)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 
 add_definitions( -DGL_COMPATIBILITY )
 
@@ -49,7 +49,9 @@ SET(SOURCES
 	../common/renderer.cpp
 	../common/ram_cache.cpp
 	../common/frustum.cpp
+	../common/dag.cpp
 	../common/nexusdata.cpp
+	../common/qtnexusfile.cpp
 	../nxszip/abitstream.cpp
 	../nxszip/atunstall.cpp
 	../nxszip/meshdecoder.cpp

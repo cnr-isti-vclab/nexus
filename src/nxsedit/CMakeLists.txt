@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsedit)
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 
 include_directories(../../../vcglib ../../../vcglib/eigenlib)
 
@@ -36,6 +36,9 @@ SET(SOURCES
 	../common/nexusdata.cpp
 	../common/traversal.cpp
 	../common/cone.cpp
+	../common/signature.cpp
+	../common/dag.cpp
+	../common/qtnexusfile.cpp
 	../nxszip/abitstream.cpp
 	../nxszip/atunstall.cpp
 	../nxszip/meshcoder.cpp

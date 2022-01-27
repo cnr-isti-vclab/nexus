@@ -34,20 +34,24 @@ SET(SOURCES
 	../../../vcglib/wrap/ply/plylib.cpp
 	../common/virtualarray.cpp
 	../common/cone.cpp
+	../common/signature.cpp
+	../common/dag.cpp
 	main.cpp
+	mesh.cpp
+	tmesh.cpp
 	meshstream.cpp
 	meshloader.cpp
 	plyloader.cpp
-	kdtree.cpp
-	mesh.cpp
-	tsploader.cpp
-	gltfloader.cpp
-    gltf.cpp
-	nexusbuilder.cpp
 	objloader.cpp
 	stlloader.cpp
-	tmesh.cpp
+	tsploader.cpp
+	gltfloader.cpp
+	gltf.cpp
+	kdtree.cpp
+	nexusbuilder.cpp
+	buildmaterial.cpp
 	texpyramid.cpp
+	nodetexcreator.cpp
 )
 
 cmake_minimum_required(VERSION 3.1)
@@ -61,7 +65,7 @@ find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsbuild Qt5::Widgets corto)
+target_link_libraries(nxsbuild Qt5::Widgets corto draco)
 
 
 
