@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(nexus)
 
+add_compile_options(-w)
+
 set(HEADERS
 	${VCGDIR}/wrap/ply/plylib.h
 	common/cone.h
@@ -35,6 +37,8 @@ set(SOURCES
 	common/qtnexusfile.cpp
 	common/traversal.cpp
 	common/virtualarray.cpp
+	common/dag.cpp
+	common/
 	nxsbuild/kdtree.cpp
 	nxsbuild/mesh.cpp
 	nxsbuild/meshstream.cpp
@@ -49,6 +53,7 @@ set(SOURCES
 	nxsbuild/gltfloader.cpp
 	nxsbuild/gltf.cpp
 	nxsbuild/buildmaterial.cpp
+	nxsbuild/nodetexcreator.cpp
 	nxsedit/extractor.cpp
 	nxszip/abitstream.cpp
 	nxszip/atunstall.cpp

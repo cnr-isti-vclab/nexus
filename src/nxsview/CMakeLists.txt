@@ -8,13 +8,12 @@ set (CMAKE_CXX_STANDARD 14)
 add_definitions( -DGL_COMPATIBILITY )
 
 SET(HEADERS
-	../../../vcglib/wrap/gcache/token.h
-	../../../vcglib/wrap/gcache/provider.h
-	../../../vcglib/wrap/gcache/door.h
-	../../../vcglib/wrap/gcache/dheap.h
-	../../../vcglib/wrap/gcache/controller.h
-	../../../vcglib/wrap/gcache/cache.h
-	../common/signature.h
+	${VCGDIR}/wrap/gcache/token.h
+	${VCGDIR}/wrap/gcache/provider.h
+	${VCGDIR}/wrap/gcache/door.h
+	${VCGDIR}/wrap/gcache/dheap.h
+	${VCGDIR}/wrap/gcache/controller.h
+	${VCGDIR}/wrap/gcache/cache.h
 	../common/nexus.h
 	../common/cone.h
 	../common/traversal.h
@@ -39,22 +38,17 @@ SET(HEADERS
 )
 
 SET(SOURCES
-	../../../vcglib/wrap/gui/trackmode.cpp
-	../../../vcglib/wrap/gui/trackball.cpp
-	../../../vcglib/wrap/system/qgetopt.cpp
+	${VCGDIR}/wrap/gui/trackmode.cpp
+	${VCGDIR}/wrap/gui/trackball.cpp
+	${VCGDIR}/wrap/system/qgetopt.cpp
 	../common/controller.cpp
 	../common/nexus.cpp
-	../common/cone.cpp
-	../common/traversal.cpp
 	../common/renderer.cpp
 	../common/ram_cache.cpp
 	../common/frustum.cpp
-	../common/dag.cpp
-	../common/nexusdata.cpp
 	../common/qtnexusfile.cpp
 	../nxszip/abitstream.cpp
 	../nxszip/atunstall.cpp
-	../nxszip/meshdecoder.cpp
 	main.cpp
 	gl_nxsview.cpp
 	scene.cpp
@@ -64,15 +58,52 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_definitions( -DGL_COMPATIBILITY )
-
-include_directories(../../../vcglib ../../../vcglib/eigenlib)
-
-find_package(Qt5Widgets)
 find_package(Qt5OpenGL)
-#find_package(glew)
 
-add_executable(nxsview ${SOURCES} ${HEADERS})
+include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
-target_link_libraries(nxsview corto Qt5::Widgets Qt5::OpenGL GLEW GLU GL curl)
+add_executable(nxsview MACOSX_BUNDLE ${SOURCES} ${HEADERS})
+if (WIN32)
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32)
+else()
+	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew OpenGL::GLU OpenGL::GL)
+endif()
 
+target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)
+
+if (APPLE)
+	set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+	set(CMAKE_INSTALL_RPATH $ORIGIN/../Frameworks)
+	set_target_properties(nxsview PROPERTIES
+		INSTALL_RPATH @executable_path/../Frameworks
+		MACOSX_BUNDLE_BUNDLE_VERSION "${NEXUS_VERSION}"
+		MACOSX_BUNDLE_SHORT_VERSION_STRING "${NEXUS_VERSION}"
+		MACOSX_BUNDLE_INFO_STRING "nxsview ${NEXUS_VERSION}"
+		MACOSX_BUNDLE_COPYRIGHT "Copyright VCG-ISTI-CNR © 2012-2021. All rights reserved."
+		)
+
+	if (BUILD_NXS_BUILD)
+		set_target_properties(nxsbuild PROPERTIES
+			INSTALL_RPATH @executable_path/../Frameworks)
+		
+		install(TARGETS nxsbuild DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/MacOS/)
+	endif()
+	
+	if (BUILD_NXS_EDIT)
+		set_target_properties(nxsedit PROPERTIES
+			INSTALL_RPATH @executable_path/../Frameworks)
+		set_target_properties(nxscompress PROPERTIES
+			INSTALL_RPATH @executable_path/../Frameworks)
+		
+		install(TARGETS nxsedit nxscompress DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/MacOS/)
+	endif()
+	
+	set_additional_settings_info_plist(
+		TARGET nxsview
+		FILE ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Info.plist)
+	
+	install(TARGETS external-glew DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Frameworks)
+	install (TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})
+else()
+	install (TARGETS nxsview)
+endif()

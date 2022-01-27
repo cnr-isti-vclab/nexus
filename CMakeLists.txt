@@ -7,6 +7,7 @@ option(BUILD_NXS_EDIT "" ON)
 option(BUILD_NXS_VIEW "" ON)
 
 set (CMAKE_CXX_STANDARD 14)
+add_compile_options(-w)
 
 # enable setting options with SET cmake command
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
@@ -69,3 +70,4 @@ endif()
 if(BUILD_NXS_VIEW)
 	add_subdirectory(src/nxsview)
 endif()
+
