@@ -71,10 +71,10 @@ add_library(nexus STATIC ${SOURCES} ${HEADERS})
 target_include_directories(nexus PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(nexus PUBLIC vcglib draco corto Qt5::Widgets)
+target_link_libraries(nexus PUBLIC vcglib corto draco Qt5::Widgets)
+target_link_directories(nexus PUBLIC draco/lib)
 
-target_compile_features(nexus INTERFACE cxx_std_14)
-
+ 
 if (WIN32)
 	target_compile_definitions(nexus PUBLIC NOMINMAX)
 endif()
