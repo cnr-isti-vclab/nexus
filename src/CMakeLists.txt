@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(nexus)
 
+set (CMAKE_CXX_STANDARD 14)
 add_compile_options(-w)
+include_directories(../../../vcglib ../../../vcglib/eigenlib ../draco/include)
 
 set(HEADERS
 	${VCGDIR}/wrap/ply/plylib.h
