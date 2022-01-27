@@ -1,3 +1,5 @@
+#include <utility>
+
 auto func(int i)
 {
     return [i=std::move(i)](int b){return b+i;};
