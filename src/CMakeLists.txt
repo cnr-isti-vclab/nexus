@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 project(nexus)
 
 set (CMAKE_CXX_STANDARD 14)
-target_compile_features(${FX_GLTF_LIB_TARGET_NAME} INTERFACE cxx_std_14)
+
 
 add_compile_options(-w)
 include_directories(draco/include)
@@ -71,6 +71,8 @@ target_include_directories(nexus PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(nexus PUBLIC vcglib draco corto Qt5::Widgets)
+
+target_compile_features(nexus INTERFACE cxx_std_14)
 
 if (WIN32)
 	target_compile_definitions(nexus PUBLIC NOMINMAX)
