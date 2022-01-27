@@ -3,8 +3,12 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib ../draco/include)
 
+set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+include_directories(../draco/include)
 
 SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h
@@ -25,7 +29,6 @@ project(nxsbuild)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-#find_package(Qt5Widgets)
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
 
