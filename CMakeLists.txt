@@ -7,6 +7,9 @@ option(BUILD_NXS_EDIT "" ON)
 option(BUILD_NXS_VIEW "" ON)
 
 set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 add_compile_options(-w)
 
 # enable setting options with SET cmake command

@@ -27,8 +27,6 @@ jobs:
     - name: Configure and Build
       shell: bash
       run: |
-        c++ --version
-        c++ -std=c++14 test.cpp
         mkdir build
         cd build
         cmake ..
