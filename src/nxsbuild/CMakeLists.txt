@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(nxsbuild)
 
-include_directories(../../../vcglib ../../../vcglib/eigenlib ../../../draco/include)
+include_directories(../../../vcglib ../../../vcglib/eigenlib ../draco/include)
 
 set (CMAKE_CXX_STANDARD 14)
 
