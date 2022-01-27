@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.1)
 project(nexus)
 
 set (CMAKE_CXX_STANDARD 14)
+target_compile_features(${FX_GLTF_LIB_TARGET_NAME} INTERFACE cxx_std_14)
+
 add_compile_options(-w)
-add_compile_options(-std=c++14)
 include_directories(draco/include)
 
 set(HEADERS
