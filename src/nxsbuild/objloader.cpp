@@ -198,20 +198,21 @@ void ObjLoader::readMTL() {
 				textures_map.insert(mtltag, txtfname);
 				bool exists = false;
 				for (auto fn : texture_filenames)
-					if (fn == txtfname) {
+					if (fn.filename == txtfname) {
 						exists = true;
 						break;
 					}
-				if (!exists)
-					texture_filenames.push_back(txtfname);
+				if (!exists) {
+					texture_filenames.push_back(LoadTexture(txtfname));
+				}
 			}
 			//std::cout << buffer;// << endl;
 			cnt++;
 		}
 	}
 	std::cout << "Colors read: " << cnt << std::endl;
-	for (auto fn : texture_filenames)
-		std::cout << qPrintable("Texture: " + fn) << std::endl;
+	for (auto tex : texture_filenames)
+		std::cout << qPrintable("Texture: " + tex.filename) << std::endl;
 	if (texture_filenames.size() > 0)
 		has_textures = true;
 	if (cnt)
@@ -329,7 +330,7 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 			QString txtfname = textures_map[str];
 			if (txtfname.length() > 0) {
 				for (int i = 0; i < texture_filenames.size(); i++) {
-					if (texture_filenames[i] == txtfname)
+					if (texture_filenames[i].filename == txtfname)
 						current_texture_id = i;
 				}
 			}

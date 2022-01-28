@@ -32,11 +32,12 @@ for more details.
 
 class Stream {
 public:
+
 	vcg::Box3f box;
 	bool has_colors;
 	bool has_normals;
 	bool has_textures;
-	std::vector<QString> textures;
+	std::vector<LoadTexture> textures;
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 
 	Stream();

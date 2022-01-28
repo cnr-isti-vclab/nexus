@@ -23,8 +23,11 @@ public:
 		has_textures = (loadmask | vcg::tri::io::Mask::IOM_VERTTEXCOORD);
 		if(loadmask | vcg::tri::io::Mask::IOM_WEDGTEXCOORD)
 			has_textures = per_face_texture = true;
-		for(auto s: m->textures)
-			texture_filenames.push_back(s.c_str());
+		for(auto s: m->textures) {
+			LoadTexture tex;
+			tex.filename = s.c_str();
+			texture_filenames.push_back(tex);
+		}
 		load(m, has_colors, has_normals, has_textures, per_face_texture);
 	}
 

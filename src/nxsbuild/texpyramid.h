@@ -5,6 +5,7 @@
 #include <QString>
 #include <QImage>
 #include <QTemporaryFile>
+#include "meshloader.h"
 
 namespace nx {
 
@@ -20,7 +21,7 @@ public:
 	//std::vector<qint64> offsets; //where each tile starts in the cache.
 
 	void init(int tex, TexAtlas *c, const QImage& texture);
-	bool init(int tex, TexAtlas *c, QString filename);
+	bool init(int tex, TexAtlas *c, LoadTexture &texture);
 	QImage read(QRect region);
 	void build(TexLevel &parent);
 
@@ -33,7 +34,7 @@ public:
 	std::vector<TexLevel> levels;
 
 	void init(int tex, TexAtlas *c, const QImage &texture);
-	bool init(int tex, TexAtlas *c, const QString &file);
+	bool init(int tex, TexAtlas *c, LoadTexture &file);
 	QImage read(int level, QRect region);
 	void buildLevel(int level);
 };
@@ -83,7 +84,8 @@ public:
 	TexAtlas() {}
 
 	void addTextures(const std::vector<QImage>& textures);
-	bool addTextures(const std::vector<QString>& filenames);
+	//will actually fill width and height information
+	bool addTextures(std::vector<LoadTexture> &filenames);
 	QImage read(int tex, int level, QRect region);
 	void buildLevel(int level);
 

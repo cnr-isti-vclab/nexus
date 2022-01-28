@@ -36,16 +36,16 @@ void TexLevel::init(int t, TexAtlas* c, const QImage& texture) {
 	}
 }
 
-bool TexLevel::init(int t, TexAtlas *c, QString filename) {
+bool TexLevel::init(int t, TexAtlas *c, LoadTexture &texture) {
 	tex = t;
 	level = 0;
 	collection = c;
 	int side = collection->side;
-	QImageReader test(filename);
+	QImageReader test(texture.filename);
 	if(!test.canRead()) return false;
 
-	width = test.size().width();
-	height = test.size().height();
+	texture.width = width = test.size().width();
+	texture.height = height = test.size().height();
 
 	tilew = (width-1)/side +1;
 	tileh = (height-1)/side +1;
@@ -56,7 +56,7 @@ bool TexLevel::init(int t, TexAtlas *c, QString filename) {
 			int wx = (sx + side > width)? width - sx : side;
 			int sy = y*side;
 			int wy = (sy + side > height)? height - sy : side;
-			QImageReader reader(filename);
+			QImageReader reader(texture.filename);
 			//invert y.
 			int isy = height - (sy + wy);
 			reader.setClipRect(QRect(sx, isy, wx, wy));
@@ -148,7 +148,7 @@ void TexPyramid::init(int tex, TexAtlas *c, const QImage &texture) {
 	return level.init(tex, collection, texture);
 }
 
-bool TexPyramid::init(int tex, TexAtlas *c, const QString &file) {
+bool TexPyramid::init(int tex, TexAtlas *c, LoadTexture &file) {
 	collection = c;
 	//create level zero.
 	levels.resize(1);
@@ -181,13 +181,13 @@ void TexAtlas::addTextures(const std::vector<QImage>& textures) {
 	}
 }
 
-bool TexAtlas::addTextures(const std::vector<QString> &filenames) {
-	pyramids.resize(filenames.size());
+bool TexAtlas::addTextures(std::vector<LoadTexture> &textures) {
+	pyramids.resize(textures.size());
 	for(size_t i = 0; i < pyramids.size(); i++) {
 		TexPyramid &py = pyramids[i];
-		bool ok = py.init(i, this, filenames[i]);
+		bool ok = py.init(i, this, textures[i]);
 		if(!ok) {
-			throw ("could not load texture: " + filenames[i]);
+			throw ("could not load texture: " + textures[i].filename);
 		}
 	}
 	return true;

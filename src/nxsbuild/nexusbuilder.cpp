@@ -126,9 +126,9 @@ void NexusBuilder::initAtlas(const std::vector<QImage>& textures) {
 	}
 }
 
-bool NexusBuilder::initAtlas(const std::vector<QString> &filenames) {
-	if(filenames.size()) {
-		bool success = atlas.addTextures(filenames);
+bool NexusBuilder::initAtlas(std::vector<LoadTexture> &textures) {
+	if(textures.size()) {
+		bool success = atlas.addTextures(textures);
 		if(!success)
 			return false;
 	}
@@ -292,6 +292,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		origin[1] = std::max(0.0f, floor(box.min[1]/py));
 		if(origin[0] >= w) origin[0] = w-1;
 		if(origin[1] >= h) origin[1] = h-1;
+
+		assert(origin[0] >= 0);
 
 		size[0] = std::min(w, ceil(box.max[0]/px)) - origin[0];
 		size[1] = std::min(h, ceil(box.max[1]/py)) - origin[1];
@@ -944,7 +946,9 @@ void NexusBuilder::save(QString filename) {
 	file.seek(index_size);
 
 	//NODES
-	QString basename = filename.chopped(4) + "_files";
+	QString basename = filename;
+	basename.chop(4);
+	basename += "_files";
 	if(header.signature.flags & Signature::Flags::DEEPZOOM) {
 		QDir dir;
 		dir.mkdir(basename);

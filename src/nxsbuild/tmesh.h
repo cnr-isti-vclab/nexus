@@ -109,7 +109,6 @@ public:
 
 class TMesh: public vcg::tri::TriMesh<std::vector<TVertex>, std::vector<TFace> > {
 public:
-	QString texture;
 
 	enum Simplification { QUADRICS, EDGE, CLUSTER, RANDOM };
 	void load(Soup &soup);

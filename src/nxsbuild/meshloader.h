@@ -23,6 +23,14 @@ for more details.
 #include <vcg/space/point3.h>
 #include <vcg/space/box3.h>
 
+class LoadTexture {
+public:
+	LoadTexture(QString name = QString()): filename(name) {}
+	QString filename;
+	uint32_t width = 0;
+	uint32_t height = 0;
+};
+
 class MeshLoader {
 public:
 	MeshLoader(): has_colors(false), has_normals(false), has_textures(false), quantization(0) {}
@@ -40,7 +48,7 @@ public:
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
 	vcg::Box3d box;
 	
-	std::vector<QString> texture_filenames;
+	std::vector<LoadTexture> texture_filenames;
 	int texOffset; //when returning triangles add texOffset to refer to the correct texture in stream.
 
 	

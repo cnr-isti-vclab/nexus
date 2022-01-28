@@ -40,6 +40,8 @@ int main(int argc, char *argv[]) {
 	QLocale::setDefault(QLocale::C);
 
 	int node_size = 1<<15;
+	float texel_weight =0.1; //relative weight of texels.
+
 	int top_node_size = 4096;
 	float vertex_quantization = 0.0f;   //optionally quantize vertices position.
 	int tex_quality(95);                //default jpg texture quality
@@ -77,10 +79,11 @@ int main(int argc, char *argv[]) {
 	opt.addOption('o', "output filename", "filename of the nexus output file", &output);
 
 	//construction options
-	opt.addOption('f', "node faces", "number of faces per patch, (min ~1000, max 32768, default 32768)\n"
+	opt.addOption('f', "node-faces", "number of faces per patch, (min ~1000, max 32768, default 32768)\n"
 				  "This parameter controls the granularity of the multiresolution: smaller values result in smaller changes (less 'pop')"
 				  "Small nodes are less efficient in rendering and compression.\n"
 				  "Meshes with very large textures and few vertices benefit from small nodes.", &node_size);
+	opt.addOption('F', "texel-weight", "texels weight are included in node-face computation", &texel_weight);
 	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096\n"
 				  "Controls the size of the smallest LOD. Higher values will delay the first rendering but with higher quality.", &top_node_size);
 	//opt.addOption('d', "decimation", "decimation method [quadric, edgelen], default quadric", &decimation);
@@ -281,8 +284,11 @@ int main(int argc, char *argv[]) {
 
 		tree->setMaxMemory((1<<20)*(uint64_t)ram_buffer/2);
 		KDTreeSoup *treesoup = dynamic_cast<KDTreeSoup *>(tree);
-		if(treesoup)
+		if(treesoup) {
+			treesoup->setMaxWeight(node_size);
+			treesoup->texelWeight = texel_weight;
 			treesoup->setTrianglesPerBlock(node_size);
+		}
 
 		KDTreeCloud *treecloud = dynamic_cast<KDTreeCloud *>(tree);
 		if(treecloud)
