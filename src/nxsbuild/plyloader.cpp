@@ -64,25 +64,37 @@ PropDescriptor doublecoords[3] = {
 	{"vertex", "z",     T_DOUBLE, T_DOUBLE, offsetof(PlyVertex,dv[2]),0,0,0,0,0,0}
 };
 
-PropDescriptor vindex[1]=	{
+PropDescriptor vindices[2]=	{
 	{"face", "vertex_indices",T_INT,T_UINT,offsetof(PlyFace,f[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
 
-PropDescriptor vindex_uint[1]=	{
+PropDescriptor vindices_uint[1]=	{
 	{"face", "vertex_indices",T_UINT,T_UINT,offsetof(PlyFace,f[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
 
-PropDescriptor plyprop3[1]=	{
+PropDescriptor vindices_ushort[1] = {
+	{"face", "vertex_indices",T_USHORT,T_UINT,offsetof(PlyFace,f[0]),
+	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
+};
+
+PropDescriptor vindex[1]=	{
 	{"face", "vertex_index",T_INT,T_UINT,offsetof(PlyFace,f[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
 
-PropDescriptor plyprop3_uint[1]=	{
+PropDescriptor vindex_uint[1]=	{
 	{"face", "vertex_index",T_UINT,T_UINT,offsetof(PlyFace,f[0]),
 	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
 };
+
+PropDescriptor vindex_ushort[1]=	{
+	{"face", "vertex_index",T_USHORT,T_UINT,offsetof(PlyFace,f[0]),
+	 1,0,T_UCHAR,T_UCHAR, offsetof(PlyFace,n) ,0}
+};
+
+
 
 PropDescriptor plyprop4[1]=	{
 	{"face", "texcoord",T_FLOAT,T_FLOAT,offsetof(PlyFace,t[0]),
@@ -211,8 +223,10 @@ void PlyLoader::init() {
 
 	pf.AddToRead(vindex[0]);
 	pf.AddToRead(vindex_uint[0]);
-	pf.AddToRead(plyprop3[0]);
-	pf.AddToRead(plyprop3_uint[0]);
+	pf.AddToRead(vindex_ushort[0]);
+	pf.AddToRead(vindices[0]);
+	pf.AddToRead(vindices_uint[0]);
+	pf.AddToRead(vindices_ushort[0]);
 
 	//these calls will fail silently if no texture is present
 	if (pf.AddToRead(plyprop4[0]) == vcg::ply::E_NOERROR)

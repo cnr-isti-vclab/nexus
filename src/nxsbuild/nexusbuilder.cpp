@@ -946,9 +946,7 @@ void NexusBuilder::save(QString filename) {
 	file.seek(index_size);
 
 	//NODES
-	QString basename = filename;
-	basename.chop(4);
-	basename += "_files";
+	QString basename = filename.left(filename.size() - 4) + "_files";
 	if(header.signature.flags & Signature::Flags::DEEPZOOM) {
 		QDir dir;
 		dir.mkdir(basename);
