@@ -10,7 +10,7 @@ add_compile_options(-w)
 
 include_directories(draco/include)
 
-add_definitions( -DGL_COMPATIBILITY )
+#add_definitions( -DGL_COMPATIBILITY )
 
 SET(HEADERS
 	${VCGDIR}/wrap/gcache/token.h
