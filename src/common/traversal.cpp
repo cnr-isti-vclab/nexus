@@ -110,7 +110,7 @@ bool Traversal::skipNode(uint32_t n) {
 
 	Node &node = nexus->nodes[n];
 
-	for(uint p = node.first_patch; p < node.last_patch(); p++)
+	for(uint32_t p = node.first_patch; p < node.last_patch(); p++)
 		if(!selected[nexus->patches[p].node])
 			return false;
 	return true;
