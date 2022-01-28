@@ -1,38 +1,38 @@
 #export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
 
 cmake_minimum_required(VERSION 3.1)
-project(nxsedit)
+# project(nxsedit)
 
-SET(HEADERS
-	${VCGDIR}/wrap/system/qgetopt.h
-	../nxszip/zpoint.h
-	../nxszip/model.h
-	../nxszip/range.h
-	../nxszip/fpu_precision.h
-	../nxszip/math_class.h
-	../nxszip/cstream.h
-	../nxszip/meshcoder.h
-	extractor.h
-)
+# SET(HEADERS
+# 	${VCGDIR}/wrap/system/qgetopt.h
+# 	../nxszip/zpoint.h
+# 	../nxszip/model.h
+# 	../nxszip/range.h
+# 	../nxszip/fpu_precision.h
+# 	../nxszip/math_class.h
+# 	../nxszip/cstream.h
+# 	../nxszip/meshcoder.h
+# 	extractor.h
+# )
 
-SET(SOURCES
-	${VCGDIR}/wrap/system/qgetopt.cpp
-	../nxszip/meshcoder.cpp
-	../common/qtnexusfile.cpp
-	main.cpp
-	extractor.cpp
-)
+# SET(SOURCES
+# 	${VCGDIR}/wrap/system/qgetopt.cpp
+# 	../nxszip/meshcoder.cpp
+# 	../common/qtnexusfile.cpp
+# 	main.cpp
+# 	extractor.cpp
+# )
 
-cmake_minimum_required(VERSION 3.1)
+# cmake_minimum_required(VERSION 3.1)
 
-project(nxsedit)
+# project(nxsedit)
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_AUTOMOC ON)
+# set(CMAKE_INCLUDE_CURRENT_DIR ON)
+# set(CMAKE_AUTOMOC ON)
 
-add_executable(nxsedit ${SOURCES} ${HEADERS})
+# add_executable(nxsedit ${SOURCES} ${HEADERS})
 
-target_link_libraries(nxsedit PUBLIC nexus)
+# target_link_libraries(nxsedit PUBLIC nexus)
 
 # --------------------------------------------------------
 

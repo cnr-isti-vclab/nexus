@@ -60,7 +60,7 @@ add_library(nexus STATIC
 target_include_directories(nexus PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(nexus PUBLIC vcglib corto Qt5::Widgets)
+target_link_libraries(nexus PUBLIC vcglib corto Qt5::Core Qt5::Gui)
 
 if (WIN32)
 	target_compile_definitions(nexus PUBLIC NOMINMAX)
