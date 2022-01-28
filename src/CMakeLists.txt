@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_options(-w)
 
-include_directories(draco/include)
-
 set(HEADERS
 	${VCGDIR}/wrap/ply/plylib.h
 	common/cone.h
@@ -71,8 +69,9 @@ add_library(nexus STATIC ${SOURCES} ${HEADERS})
 target_include_directories(nexus PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(nexus PUBLIC vcglib corto draco Qt5::Widgets)
-target_link_directories(nexus PUBLIC draco/lib)
+target_include_directories(nexus PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/draco/src) # include dirs
+target_include_directories(nexus PUBLIC ${CMAKE_BINARY_DIR}) # needed to find draco_features.h
+target_link_libraries(nexus PUBLIC vcglib corto draco_static Qt5::Widgets)
 
  
 if (WIN32)
