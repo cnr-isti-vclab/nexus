@@ -19,7 +19,7 @@ for more details.
 #define NX_TRAVERSAL_H
 
 #include "nexusdata.h"
-#include "metric.h"
+//#include "metric.h"
 
 /* a generic DAG traversal algorithm:
    add(0) //needs virtual compute error

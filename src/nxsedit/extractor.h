@@ -3,6 +3,7 @@
 
 #include <QFile>
 
+#include <vcg/math/matrix44.h>
 #include "../common/traversal.h"
 
 class Extractor: public nx::Traversal {
