@@ -24,7 +24,7 @@ jobs:
         mkdir build
         mkdir install
         cd build
-        cmake -DCMAKE_INSTALL_PREFIX=../install ..
+        cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INSTALL_PREFIX=../install ..
         make -j4
         make install
     - name: Deploy

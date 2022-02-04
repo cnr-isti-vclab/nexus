@@ -23,5 +23,5 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake ..
+        cmake -DCMAKE_BUILD_TYPE=MinSizeRel .. 
         make -j4 VERBOSE=1
