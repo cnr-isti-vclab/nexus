@@ -94,3 +94,6 @@ set(CMAKE_AUTOMOC ON)
 add_executable(nxscompress ${SOURCES} ${HEADERS})
 
 target_link_libraries(nxscompress PUBLIC nexus)
+
+install(TARGETS nxscompress nxsedit)
+
