@@ -118,7 +118,7 @@ nexus2.receiveShadow = true;
 //nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
 //nexus.material.color = new Color(1, 0, 0);
 
-let monitor = new Monitor(Nexus3D.Cache);
+let monitor = new Monitor(Nexus3D.Cache, nexus2);
 scene.add(nexus1);
 scene.add(nexus2);
 
