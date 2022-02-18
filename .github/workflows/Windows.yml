@@ -36,7 +36,6 @@ jobs:
         cd install/bin
         windeployqt nxsbuild.exe
         windeployqt nxsview.exe
-        windeployqt nxsedit.exe
         cd ..
         mv bin nexus_portable
     - name: Uploading Nexus Portable
