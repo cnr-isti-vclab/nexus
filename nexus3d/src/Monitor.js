@@ -274,6 +274,7 @@ class Monitor {
 	}
 
 	updateNodeMonitor() {
+
 		let ctx = this.ctx;
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 

@@ -443,6 +443,12 @@ class Nexus3D extends THREE.Mesh {
 			if ( object.renderBufferDirect)
 				object.renderBufferDirect(renderer, scene, camera, geometry, material, group);
 		};
+		renderer.originalRender = renderer.render;
+		renderer.render = (scene, camera) => {
+			Cache.beginFrame(30);
+			renderer.originalRender(scene, camera);
+			Cache.endFrame();
+		}
 		renderer.nexusPatched = true;
 	}        
 
