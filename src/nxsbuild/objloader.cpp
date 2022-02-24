@@ -191,10 +191,10 @@ void ObjLoader::readMTL() {
 			qint32 color = R + G + B + A;
 			colors_map.insert(mtltag, color);
 
-			sanitizeTextureFilepath(txtfname);
-			resolveTextureFilepath(file.fileName(), txtfname);
-
 			if (txtfname.length() > 0) {
+				sanitizeTextureFilepath(txtfname);
+				resolveTextureFilepath(file.fileName(), txtfname);
+				
 				textures_map.insert(mtltag, txtfname);
 				bool exists = false;
 				for (auto fn : texture_filenames)
