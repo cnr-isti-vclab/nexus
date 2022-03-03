@@ -426,7 +426,7 @@ void KDTreeCloud::findRealMiddle(KDCell &node) {
 	//node.middle = tmp[soup.size()/2];
 	node.middle = tmp[(int)(cloud.size()*ratio)];
 	if(node.middle == box.min[node.split] || node.middle == box.max[node.split])
-		throw "Bad node middle in kdtree.";
+		cerr << "Point cloud might have some problem with point replication or pathological distribution\n";
 }
 
 void KDTreeCloud::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
