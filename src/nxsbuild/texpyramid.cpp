@@ -112,6 +112,11 @@ QImage TexLevel::read(QRect region) {
 	collection->pruneCache();
 	return image;
 }
+//TODO could we speed up this process?
+//in theory we should be able to process the file just once
+//reading line by line and fill all the levels at the same time
+//keep 2 lines in float for averaging, for each first line of tiles of each level.
+//in qimage reader use setscaledcliprect
 void TexLevel::build(TexLevel &parent) {
 	int side = collection->side;
 	float scale = collection->scale;
@@ -213,7 +218,6 @@ QImage TexAtlas::getImg(Index index) {
 	if(dt == disk.end())
 		throw QString("unespected missing image in disk and ram");
 
-	//cout << "Loading from disk: " << index.level << " " << index.index << endl;
 	QImage img(dt->second.w, dt->second.h, QImage::Format_RGB32);
 	uchar *data = storage.map(dt->second.offset, dt->second.size);
 	img.loadFromData(data, dt->second.size);

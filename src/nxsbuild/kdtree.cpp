@@ -341,10 +341,13 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 		if(node.isLeaf()) {
 
 			double w = 0;
-			if(textures.size())
+			if(textures.size() && texelWeight > 0)
 				w = weight(t);
-
-			if(!isBlockFull(node.block) && w + node.weight < max_weight) {
+			uint32_t node_triangles = occupancy[node.block];
+			bool too_large = node_triangles >=triangles_per_block;
+			bool too_small = node_triangles < triangles_per_block/16;
+			bool too_heavy = node.weight > max_weight;
+			if(too_small || (!too_large && !too_heavy)) {
 				Soup soup = get(node.block);
 				soup.push_back(t);
 				node.weight += w;

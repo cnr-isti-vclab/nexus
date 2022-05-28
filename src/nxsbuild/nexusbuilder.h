@@ -137,6 +137,7 @@ public:
 	float scaling;
 	bool useNodeTex; //use node textures
 	int tex_quality;
+	int max_node_triangles = 32000;
 	bool createPowTwoTex;
 	bool deepzoom = false; //use deepzoom style where each node is in a different file.
 	

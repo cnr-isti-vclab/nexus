@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	QLocale::setDefault(QLocale::C);
 
 	int node_size = 1<<15;
-	float texel_weight =0.1; //relative weight of texels.
+	float texel_weight =0.05; //relative weight of texels.
 
 	int top_node_size = 4096;
 	float vertex_quantization = 0.0f;   //optionally quantize vertices position.
@@ -261,6 +261,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		NexusBuilder builder(components);
+		builder.max_node_triangles = node_size;
 		builder.skipSimplifyLevels = skiplevels;
 		builder.setMaxMemory(max_memory);
 		builder.n_threads = n_threads;
