@@ -88,8 +88,14 @@ function onDocumentMouseMove( event ) {
 
 	if (guiConfig.visualizePointFromRaycasting) {
 		if (intersections.length) {
+			let hit = intersections[0];
 			raycastingIntersectionSphere.visible = true;
-			raycastingIntersectionSphere.position.copy(intersections[0].point);
+			raycastingIntersectionSphere.position.copy(hit.point);
+			if(hit.face) {
+				console.log("Face: ", hit.face.a, hit.face.b, hit.face.c);
+				console.log("Normal: ", hit.face.normal);
+				//TODO read also UV
+			}
 		} else {
 			raycastingIntersectionSphere.visible = false;
 		}

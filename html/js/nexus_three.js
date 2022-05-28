@@ -249,44 +249,51 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 	if(!intersect)
 		return;
 
+	let face = {};
 	if(!nexus.sink || !nexus.basei) {
 		return;
 		//no mesh loaded, we can still use the sphere.
 		intersect.applyMatrix4(this.matrixWorld);
-		var d = intersect.distanceTo(raycaster.ray.origin);
+		let d = intersect.distanceTo(raycaster.ray.origin);
 		if(d < raycaster.near || d > raycaster.far )  
 			distance = d;
 	} else {
-		var vert = nexus.basev;
-		var face = nexus.basei;
+		let vert = nexus.basev;
+		let tri = nexus.basei;
 
 		let A = new THREE.Vector3(0, 0, 0);
 		let B = new THREE.Vector3(0, 0, 0);
 		let C = new THREE.Vector3(0, 0, 0);
-		for(var j = 0; j < nexus.basei.length; j += 3) {
-			var a = face[j];
-			var b = face[j+1];
-			var c = face[j+2];
+		for(let j = 0; j < nexus.basei.length; j += 3) {
+			let a = tri[j];
+			let b = tri[j+1];
+			let c = tri[j+2];
 			A.set(vert[a*3], vert[a*3+1], vert[a*3+2]);
 			B.set(vert[b*3], vert[b*3+1], vert[b*3+2]);
 			C.set(vert[c*3], vert[c*3+1], vert[c*3+2]);
 			//TODO use material to determine if using doubleface or not!
-			var hit = ray.intersectTriangle( C, B, A, false, point ); 
+			let hit = ray.intersectTriangle( C, B, A, false, point ); 
 			if(!hit) continue;
+
 
 			//check distances in world space
 			hit.applyMatrix4(this.matrixWorld);
-			var d = hit.distanceTo(raycaster.ray.origin);
+			let d = hit.distanceTo(raycaster.ray.origin);
 			if(d < raycaster.near || d > raycaster.far ) continue;
 			if(distance == -1.0 || d < distance) {
 				distance = d;
 				intersect = hit.clone();
+
+				face = { a: a, b: b, c: c,
+					normal: new THREE.Vector3(),
+				};
+				THREE.Triangle.getNormal( A, B, C, face.normal );
 			}
 		}
 	}
 
 	if(distance == -1.0) return;
-	intersects.push({ distance: distance, point: intersect, object: this} );
+	intersects.push({ distance: distance, point: intersect, face: face, object: this} );
 	return;
 
 /* Kept for reference, should we want to implement a raycasting on the higher resolution nodes 
