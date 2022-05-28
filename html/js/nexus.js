@@ -303,6 +303,7 @@ var drawBudget    = 5*(1<<20);
 
 Mesh = function() {
 	var t = this;
+	t.useIndexedDb = true;
 	t.onLoad = null;
 	t.reqAttempt = 0;
 	t.georeq = {}
@@ -311,6 +312,19 @@ Mesh = function() {
 
 Mesh.prototype = {
 	open: function(url) {
+		if(this.useIndexedDb) {
+			let indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB;
+			this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction;
+			this.db = null;
+			let request = indexedDB.open(url);
+			request.onsuccess = () => { this.db = request.result; };
+			request.onupgradeneeded = (event) => {
+					let db = event.target.result;
+				this.meshStore = db.createObjectStore('mesh');
+				this.texStore = db.createObjectStore('tex');
+			};
+		}
+
 		var mesh = this;
 		mesh.url = url;
 		mesh.httpRequest({
@@ -1047,7 +1061,6 @@ function requestNode(context, node) {
 	node.nvert = m.nvertices[n];
 	node.nface = m.nfaces[n];
 
-//	console.log("Requesting " + m.url + " node: " + n);
 	requestNodeGeometry(context, node);
 	requestNodeTexture(context, node);
 }
@@ -1057,6 +1070,26 @@ function requestNodeGeometry(context, node) {
 	var m = node.mesh;
 
 	m.status[n]++; //pending
+
+	if(m.db) {
+		let transaction = node.mesh.db.transaction('mesh', "readwrite");
+		let request = transaction.objectStore('mesh').get(node.id);
+		request.onsuccess = (e) => { 
+			if(request.result) {
+				loadNodeGeometry({ response: request.result}, context, node);
+			} else {
+				httpRequestNodeGeometry(context, node);
+			}
+		};
+		//probably not needed
+		//transaction.commit();
+	} else
+		httpRequestNodeGeometry(context, node);
+}
+
+function httpRequestNodeGeometry(context, node) {
+	var n = node.id;
+	var m = node.mesh;
 	let request = {
 		load:function() {
 			delete m.georeq[n]; 
@@ -1073,6 +1106,7 @@ function requestNodeGeometry(context, node) {
 		},
 		type:'arraybuffer'
 	};
+
 	if(m.deepzoom) {
 		request.url = m.baseurl + n + '.nxn';
 	} else {
@@ -1097,10 +1131,30 @@ function requestNodeTexture(context, node) {
 		return;
 
 	m.status[n]++; //pending
-	
+
+	if(m.db) {
+		let transaction = node.mesh.db.transaction('tex', "readwrite");
+		let request = transaction.objectStore('tex').get(node.id);
+		request.onsuccess = (e) => { 
+			if(request.result) {
+				loadNodeTecture({ response: request.result}, context, node);
+			} else {
+				httpRequestNodeTexture(context, node, tex);
+			}
+		};
+		//probably not needed
+		//transaction.commit();
+	} else {
+		httpRequestNodeTexture(context, node, tex);
+	}
+}
+
+function httpRequestNodeTexture(context, node, tex) {
+	var n = node.id;
+	var m = node.mesh;
 	let request = {
 		load:function() { 
-			delete m.texreq[n]; 
+			delete m.texreq[n];
 			loadNodeTexture(this, context, node, tex);  },
 		error:function() {
 			if(Debug.verbose) console.log("Texture request error!");
@@ -1160,6 +1214,12 @@ function loadNodeGeometry(request, context, node) {
 	if(m.status[n] == 0) return;
 
 	node.buffer = request.response;
+
+	if(m.db) {
+		let transaction = m.db.transaction('mesh', "readwrite");
+		transaction.objectStore('mesh').put(node.buffer, n);
+		transaction.commit();
+	}
 
 	if(!m.compressed)
 		readyNode(node);
