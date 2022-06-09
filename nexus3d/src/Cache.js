@@ -129,9 +129,12 @@ _Cache.prototype = {
     requestNodeGeometry: function(mesh, id) {
 		this.pending++;
 	    mesh.status[id]++;
-	    let request = mesh.georeq[id] = mesh.httpRequest(
-		    mesh.noffsets[id],
-		    mesh.noffsets[id+1],
+		let url = mesh.deepzoom ? mesh.baseurl + id + ".nxn" : this.url;
+		let start = mesh.deepzoom ? 0 : mesh.noffsets[id];
+		let end = mesh.deepzoom ? 0 : mesh.noffsets[id+1];
+	    let request = mesh.georeq[id] = mesh.httpRequest(url,
+		    start,
+		    end, 
 		    ()=>{
                 delete mesh.georeq[id];
                 this.loadNodeGeometry(request, mesh, id);
@@ -159,12 +162,14 @@ _Cache.prototype = {
 
 	    let tex = mesh.patches[mesh.nfirstpatch[id]*3+2];
 	    mesh.texref[tex]++;
-
 	    mesh.status[id]++;
 
-	    let request = mesh.texreq[tex] = mesh.httpRequest(
-		    mesh.textures[tex],
-		    mesh.textures[tex+1],
+		let url = mesh.deepzoom ? mesh.baseurl + tex + ".jpg" : this.url;
+		let start = mesh.deepzoom ? 0 : mesh.textures[tex];
+		let end = mesh.deepzoom ? 0 : mesh.textures[tex+1];
+	    let request = mesh.texreq[tex] = mesh.httpRequest(url,
+		    start,
+		    end,
 		    ()=>{ 
                 delete mesh.texreq[tex];
                 this.loadNodeTexture(request, mesh, id, tex); 

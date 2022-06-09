@@ -100,7 +100,7 @@ function onNexusLoad(nexus) {
 	redraw = true;
 }
 
-var url = "models/gargo.nxz"; 
+var url = "gargoyle.nxs"; 
 
 //onUpdate parameter here is used to trigger a redraw
 let nexus1 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );

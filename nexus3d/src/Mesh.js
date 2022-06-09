@@ -28,7 +28,7 @@ Mesh.prototype = {
     open: function(url) {
         let mesh = this;
         mesh.url = url;
-        mesh.httpRequest(
+        mesh.httpRequest(url,
             0,
             88,
             function() {
@@ -51,6 +51,12 @@ Mesh.prototype = {
                 mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
                 mesh.meco = (mesh.signature.flags & 2);
                 mesh.corto = (mesh.signature.flags & 4);
+
+				mesh.deepzoom = (mesh.signature.flags & 8);
+				if(mesh.deepzoom)
+					mesh.baseurl = url.substr(0, url.length -4) + '_files/';
+
+
                 mesh.requestIndex();
             },
             function() { console.log("Open request error!");},
@@ -58,12 +64,13 @@ Mesh.prototype = {
         );
     },
 
-    httpRequest: function(start, end, load, error, abort, type) {
+    httpRequest: function(url, start, end, load, error, abort, type) {
         if(!type) type = 'arraybuffer';
         var r = new XMLHttpRequest();
-        r.open('GET', this.url, true);
+        r.open('GET', url, true);
         r.responseType = type;
-        r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
+		if(end)
+			r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
         r.onload = function(){
             switch (this.status){
                 case 0:
@@ -76,7 +83,10 @@ Mesh.prototype = {
                     break;
                 case 200:
 //					console.log("200 response: server does not support byte range requests.");
-					error();
+					if(end == 0)
+						load.bind(this)();
+					else
+						error();
 					break;
             }
         };
@@ -89,7 +99,7 @@ Mesh.prototype = {
     requestIndex: function() {
         var mesh = this;
         var end = 88 + mesh.nodesCount*44 + mesh.patchesCount*12 + mesh.texturesCount*68;
-        mesh.httpRequest(
+        mesh.httpRequest(this.url,
             88,
             end,
             function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
