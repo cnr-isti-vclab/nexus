@@ -318,7 +318,9 @@ class Nexus3D extends THREE.Mesh {
 							gl.bindTexture(gl.TEXTURE_2D, texid);
 						}
 					}
-					gl.drawElements(gl.TRIANGLES, (end - offset) * 3, gl.UNSIGNED_SHORT, offset * 6);
+					let mode = this.material.wireframe ? gl.LINE_STRIP : gl.TRIANGLES;
+
+					gl.drawElements(mode, (end - offset) * 3, gl.UNSIGNED_SHORT, offset * 6);
 					rendered += end - offset;
 				}
 				offset = m.patches[p*3+1];

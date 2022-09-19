@@ -100,7 +100,7 @@ function onNexusLoad(nexus) {
 	redraw = true;
 }
 
-var url = "gargoyle.nxs"; 
+var url = "models/gargo.nxz"; 
 
 //onUpdate parameter here is used to trigger a redraw
 let nexus1 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
@@ -115,8 +115,9 @@ nexus2.receiveShadow = true;
 
 
 //material can be changed replacing the material or modifying it.
-//nexus.material = new MeshBasicMaterial( { color: 0xff0000 } );
-//nexus.material.color = new Color(1, 0, 0);
+//nexus1.material = new MeshBasicMaterial( { color: 0xffff00, wireframe: true } );
+//nexus.material.color = new Color(1, 0, 0));
+//nexus.material.wireframe = true;
 
 let monitor = new Monitor(Nexus3D.Cache, nexus2);
 scene.add(nexus1);
@@ -194,6 +195,7 @@ renderer.setAnimationLoop(()=> {
 	    var intersections = raycaster.intersectObjects( [nexus1], true );
 	    if(intersections.length) {
 		    nexus1.material.color =  new Color(1, 0, 0);
+//			nexus1.material.wireframe = true;
 	 	    nexus1.material.needsUpdate = true;
         } else {
             nexus1.material.color =  new Color(1, 1, 1);

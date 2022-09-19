@@ -129,7 +129,7 @@ _Cache.prototype = {
     requestNodeGeometry: function(mesh, id) {
 		this.pending++;
 	    mesh.status[id]++;
-		let url = mesh.deepzoom ? mesh.baseurl + id + ".nxn" : this.url;
+		let url = mesh.deepzoom ? mesh.baseurl + id + ".nxn" : mesh.url;
 		let start = mesh.deepzoom ? 0 : mesh.noffsets[id];
 		let end = mesh.deepzoom ? 0 : mesh.noffsets[id+1];
 	    let request = mesh.georeq[id] = mesh.httpRequest(url,
@@ -164,7 +164,7 @@ _Cache.prototype = {
 	    mesh.texref[tex]++;
 	    mesh.status[id]++;
 
-		let url = mesh.deepzoom ? mesh.baseurl + tex + ".jpg" : this.url;
+		let url = mesh.deepzoom ? mesh.baseurl + tex + ".jpg" : mesh.url;
 		let start = mesh.deepzoom ? 0 : mesh.textures[tex];
 		let end = mesh.deepzoom ? 0 : mesh.textures[tex+1];
 	    let request = mesh.texreq[tex] = mesh.httpRequest(url,
