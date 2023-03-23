@@ -116,6 +116,9 @@ ACM Trans. on Graphics, vol. 23(3), pp. 796-803, August 2004 (Siggraph '04)
 P.Cignoni, F.Ganovelli, E. Gobbetti, F.Marton, F. Ponchio, R. Scopigno
 Computer Graphics Forum, 22(3), pp. 505-514, September 2003
 
+### Feedback
+
+For documented and repeatable bugs, feature requests, etc., please use the [GitHub issues](https://github.com/cnr-isti-vclab/nexus/issues).
 
 ### Support and thanks
 
