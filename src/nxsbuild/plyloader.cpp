@@ -16,7 +16,7 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include "plyloader.h"
-
+#include <math.h>
 using namespace vcg;
 using namespace vcg::ply;
 
@@ -307,14 +307,10 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 			vertex.t[1] = face.t[k*2+1];
 
 			if (has_textures) {
-				while (vertex.t[0] > 1.0f)
-					vertex.t[0] -= 1.0f;
-				while (vertex.t[1] > 1.0f)
-					vertex.t[1] -= 1.0f;
-				while (vertex.t[0] < 0.0f)
-					vertex.t[0] += 1.0f;
-				while (vertex.t[1] < 0.0f)
-					vertex.t[1] += 1.0f;
+				float n;
+				vertex.t[0] = modf(vertex.t[0], &n);
+				vertex.t[1] = modf(vertex.t[1], &n);
+
 			}
 
 			current.vertices[k] = vertex;
