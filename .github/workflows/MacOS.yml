@@ -13,7 +13,10 @@ jobs:
       with:
         submodules: recursive
     - name: Install Qt
-      uses: jurplel/install-qt-action@v2
+      uses: jurplel/install-qt-action@v3
+      with:
+        cache: true
+        version: '5.15.2'
     - name: Install dependencies
       run: |
        cd ..
