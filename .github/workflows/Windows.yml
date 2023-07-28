@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
     - name: Setup MSVC
@@ -41,7 +41,7 @@ jobs:
         cd ..
         mv bin nexus_portable
     - name: Uploading Nexus Portable
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: nexus_windows_portable
         path: install/nexus_portable

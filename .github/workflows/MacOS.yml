@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
     - name: Install Qt
@@ -39,7 +39,7 @@ jobs:
         rm -r lib
         tar -cvzf nxsview-macos.tar.gz *
     - name: Upload nxsview Portable
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: nxsview_macos_portable
         path: install/nxsview-macos.tar.gz
