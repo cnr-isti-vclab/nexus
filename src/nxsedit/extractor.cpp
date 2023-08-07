@@ -636,7 +636,7 @@ void Extractor::saveUnifiedPly(QString filename) {
 		}
 		if(has_faces) {
 			stream << "element face " << n_faces << "\n"
-				   << "property list uchar int vertex_index\n";
+				   << "property list uchar int vertex_indices\n";
 		}
 		stream << "end_header\n";        //qtextstrem adds a \n when closed. stupid.	
 	}
