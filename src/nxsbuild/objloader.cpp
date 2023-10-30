@@ -131,9 +131,9 @@ void ObjLoader::readMTL() {
 		if (str.startsWith("newmtl", Qt::CaseInsensitive)){
 			QString mtltag = str.section(" ", 1);
 			QString txtfname;
-			qint32 R = 0;
-			qint32 G = 0;
-			qint32 B = 0;
+			qint32 R = 0xff000000;
+			qint32 G = 0x00ff0000;
+			qint32 B = 0x0000ff00;
 			qint32 A = 255;
 
 			do {
