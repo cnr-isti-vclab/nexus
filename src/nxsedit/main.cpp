@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
 	//extraction options
 	opt.addOption('o', "nexus file", "filename of the nexus output file", &output);
-	opt.addOption('p', "ply file", "filename of the ply output file", &ply);
+	opt.addOption('p', "ply or stl file", "filename of the ply or stl output file", &ply);
 
 	opt.addOption('s', "size", "size in MegaBytes of the final file [requires -o]", &max_size);
 	opt.addOption('e', "error", "remove nodes below this error from the node [requires -o]", &error);
@@ -214,7 +214,10 @@ int main(int argc, char *argv[]) {
 			extractor.dropLevel();
 
 		if(!ply.isEmpty()) {       //export to ply
-			extractor.saveUnifiedPly(ply);
+			if(ply.endsWith("stl") || ply.endsWith("STL"))
+				extractor.saveStl(ply);
+			else
+				extractor.saveUnifiedPly(ply);
 			cout << "Saving to file " << qPrintable(ply) << endl;
 		} else if(!output.isEmpty()) { //export to nexus
 

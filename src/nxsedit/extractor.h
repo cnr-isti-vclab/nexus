@@ -28,6 +28,7 @@ public:
 
 	void save(QString output, nx::Signature &signature);
 	void savePly(QString filename);
+	void saveStl(QString filename);
 
 	void saveUnifiedPly(QString filename);
 
@@ -47,6 +48,8 @@ protected:
 	int sinkDistance(int node);
 
 	void compress(QFile &file, nx::Signature &signature, nx::Node &node, nx::NodeData &data, nx::Patch *patches);
+	//counts vertices and faces in the selected mesh.
+	void countElements(quint64 &n_vertices, quint64 &n_faces);
 };
 
 #endif // EXTRACTOR_H

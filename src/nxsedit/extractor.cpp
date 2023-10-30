@@ -22,6 +22,7 @@ for more details.
 //typedef MeshCoder MeshEncoder;
 #include <corto/corto.h>
 
+#include <vcg/space/triangle3.h>
 using namespace std;
 using namespace nx;
 
@@ -302,7 +303,7 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 			encoder.addPositions((float *)data.coords(), data.faces(signature, node.nvert), pow(2, coord_q));
 		
 		if(signature.vertex.hasNormals()) {
-			encoder.addNormals((int16_t *)data.normals(signature, node.nvert), norm_bits, 
+			encoder.addNormals((int16_t *)data.normals(signature, node.nvert), norm_bits,
 							   node.nface == 0? crt::NormalAttr::DIFF : crt::NormalAttr::ESTIMATED);
 		}
 		
@@ -356,37 +357,27 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 	}
 }
 
-
-
-void Extractor::savePly(QString filename) {
-	
+void Extractor::countElements(quint64 &n_vertices, quint64 &n_faces) {
 	uint32_t n_nodes = nexus->header.n_nodes;
 	Node *nodes = nexus->nodes;
 	Patch *patches = nexus->patches;
-	
+
 	if(!selected.size())
 		selected.resize(n_nodes, true);
-	
+
 	selected.back() = false;
-	QFile ply(filename);
-	if(!ply.open(QFile::ReadWrite)) {
-		cerr << "Could not open file: " << qPrintable(filename) << endl;
-		exit(-1);
-	}
 	//extracted patches
-	quint64 n_vertices = 0;
-	quint64 n_faces = 0;
+	n_vertices = 0;
+	n_faces = 0;
 	std::vector<quint64> offsets(n_nodes, 0);
-	
-	
+
+
 	for(quint32 i = 0; i < n_nodes-1; i++) {
-		offsets[i] = n_vertices;
-		
 		if(skipNode(i)) continue;
-		
+
 		Node &node = nodes[i];
 		n_vertices += node.nvert;
-		
+
 		uint start = 0;
 		for(uint p = node.first_patch; p < node.last_patch(); p++) {
 			Patch &patch = patches[p];
@@ -395,13 +386,28 @@ void Extractor::savePly(QString filename) {
 			}
 			start = patch.triangle_offset;
 		}
-		
 	}
+}
+void Extractor::savePly(QString filename) {
+	
+	uint32_t n_nodes = nexus->header.n_nodes;
+	Node *nodes = nexus->nodes;
+	Patch *patches = nexus->patches;
 	
 	bool has_colors = nexus->header.signature.vertex.hasColors();
+
+	quint64 n_vertices, n_faces;
+	countElements(n_vertices, n_faces);
 	
 	cout << "Vertices: " << n_vertices << endl;
 	cout << "Faces: " << n_faces << endl;
+
+	QFile ply(filename);
+	if(!ply.open(QFile::ReadWrite)) {
+		cerr << "Could not open file: " << qPrintable(filename) << endl;
+		exit(-1);
+	}
+
 	{ //stram flushes on destruction
 		QTextStream stream(&ply);
 		stream << "ply\n"
@@ -427,9 +433,11 @@ void Extractor::savePly(QString filename) {
 	quint32 bytes_per_vertex = 12; //3 floats
 	if(has_colors) bytes_per_vertex += 4;
 	
-	quint64 verify_vertices = 0;
+	std::vector<quint64> offsets(n_nodes, 0);
+
+	quint64 count_vertices = 0;
 	for(uint n = 0; n < n_nodes-1; n++) {
-		
+		offsets[n] = count_vertices;
 		if(skipNode(n)) continue;
 		
 		Node &node = nodes[n];
@@ -452,8 +460,8 @@ void Extractor::savePly(QString filename) {
 				pos = (char *)c;
 			}
 		}
+		count_vertices += n_vertices;
 		ply.write((char *)buffer, bytes_per_vertex * node.nvert);
-		verify_vertices += node.nvert;
 		delete []buffer;
 		nexus->dropRam(n);
 	}
@@ -462,7 +470,6 @@ void Extractor::savePly(QString filename) {
 	
 	//writing faces
 	quint32 bytes_per_face = 1 + 3*sizeof(quint32);
-	
 	
 	char *buffer = new char[bytes_per_face * (1<<16)];
 	
@@ -510,6 +517,82 @@ void Extractor::savePly(QString filename) {
 	
 	
 	ply.close();
+}
+
+
+void Extractor::saveStl(QString filename) {
+
+	quint64 n_vertices, n_faces;
+	countElements(n_vertices, n_faces);
+
+	uint32_t n_nodes = nexus->header.n_nodes;
+	Node *nodes = nexus->nodes;
+	Patch *patches = nexus->patches;
+
+	cout << "Vertices: " << n_vertices << endl;
+	cout << "Faces: " << n_faces << endl;
+
+
+	QFile stl(filename);
+	if(!stl.open(QFile::ReadWrite)) {
+		cerr << "Could not open file: " << qPrintable(filename) << endl;
+		exit(-1);
+	}
+	char header[80] = "STL";
+	stl.write(header, 80);
+
+	uint32_t nfaces = uint32_t(n_faces);
+	stl.write((char *)&nfaces, 4);
+
+	//each triangles needs 50 bytes (face normal, vertex coords an attribute short (unused)
+	char *buffer = new char[50 * (1<<16)];
+
+	for(uint n = 0; n < n_nodes-1; n++) {
+
+		if(skipNode(n)) continue;
+
+
+
+		Node &node = nodes[n];
+		assert(node.nface <= (1<<16));
+
+		memset(buffer, 0, 50*(1<<16));
+		quint64 face_count = 0;
+
+		nexus->loadRam(n);
+		NodeData &data = nexus->nodedata[n];
+		uint start = 0;
+		for(uint p = node.first_patch; p < node.last_patch(); p++) {
+			Patch &patch = patches[p];
+			if(selected[patch.node]) {
+				start = patch.triangle_offset;
+				continue;
+			}
+
+			uint16_t *triangles = data.faces(nexus->header.signature, node.nvert);
+			vcg::Point3f *coords = data.coords();
+
+			for(uint k = start; k < patch.triangle_offset; k++) {
+				vcg::Point3f *face = (vcg::Point3f *)(buffer + 50*face_count);
+				vcg::Point3f &p0 = coords[triangles[3*k + 0]];
+				vcg::Point3f &p1 = coords[triangles[3*k + 1]];
+				vcg::Point3f &p2 = coords[triangles[3*k + 2]];
+
+				face[0] = (( p1 - p0) ^ (p2 - p0)).Normalize();
+				face[1] = p0;
+				face[2] = p1;
+				face[3] = p2;
+				face_count++;
+			}
+
+			start = patch.triangle_offset;
+		}
+		stl.write((char *)buffer, 50 * face_count);
+		nexus->dropRam(n);
+	}
+	delete []buffer;
+
+	stl.close();
 }
 
 struct PlyVertex {
@@ -638,7 +721,7 @@ void Extractor::saveUnifiedPly(QString filename) {
 			stream << "element face " << n_faces << "\n"
 				   << "property list uchar int vertex_indices\n";
 		}
-		stream << "end_header\n";        //qtextstrem adds a \n when closed. stupid.	
+		stream << "end_header\n";        //qtextstrem adds a \n when closed. stupid.
 	}
 	
 	assert(sizeof(PlyVertex) == 12);
