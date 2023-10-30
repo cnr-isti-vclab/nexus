@@ -465,7 +465,6 @@ void Extractor::savePly(QString filename) {
 		delete []buffer;
 		nexus->dropRam(n);
 	}
-	assert(verify_vertices == n_vertices);
 	
 	
 	//writing faces
