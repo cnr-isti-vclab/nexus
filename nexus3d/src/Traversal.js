@@ -208,7 +208,7 @@ Traversal.prototype = {
         const cx = spheres[off+0];
         const cy = spheres[off+1];
         const cz = spheres[off+2];
-        const r  = spheres[off+3];
+        let r  = spheres[off+3];
         if(tight)
             r = spheres[off+4];
         const d0 = b[0] - cx;

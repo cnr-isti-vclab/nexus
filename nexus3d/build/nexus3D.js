@@ -2,7 +2,27 @@
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('three')) :
     typeof define === 'function' && define.amd ? define(['exports', 'three'], factory) :
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.Nexus3D = {}, global.THREE));
-}(this, (function (exports, THREE) { 'use strict';
+})(this, (function (exports, THREE) { 'use strict';
+
+    function _interopNamespace(e) {
+        if (e && e.__esModule) return e;
+        var n = Object.create(null);
+        if (e) {
+            Object.keys(e).forEach(function (k) {
+                if (k !== 'default') {
+                    var d = Object.getOwnPropertyDescriptor(e, k);
+                    Object.defineProperty(n, k, d.get ? d : {
+                        enumerable: true,
+                        get: function () { return e[k]; }
+                    });
+                }
+            });
+        }
+        n["default"] = e;
+        return Object.freeze(n);
+    }
+
+    var THREE__namespace = /*#__PURE__*/_interopNamespace(THREE);
 
     /* UTILITIES */
         
@@ -364,7 +384,7 @@
             const cx = spheres[off+0];
             const cy = spheres[off+1];
             const cz = spheres[off+2];
-            const r  = spheres[off+3];
+            let r  = spheres[off+3];
             if(tight)
                 r = spheres[off+4];
             const d0 = b[0] - cx;
@@ -1084,7 +1104,7 @@
 
     let Cache = new _Cache;
 
-    class Nexus3D extends THREE.Mesh {
+    class Nexus3D extends THREE__namespace.Mesh {
 
     	constructor(url, renderer, options) {
 
@@ -1115,7 +1135,7 @@
     		if('material' in options)
     			this.material = options.material;
     		if(!this.material) 
-    			this.material = new THREE.MeshStandardMaterial();
+    			this.material = new THREE__namespace.MeshStandardMaterial();
     			
     		for(let call of ['onLoad', 'onUpdate', 'onProgress']) {
     			this['_' + call] = [];
@@ -1189,29 +1209,37 @@
     			this.material.map = this.material_texture;
 
     		if(this.mesh.vertex.color)
+<<<<<<< HEAD
     			this.material.vertexColors = true; 
+=======
+    			this.material.vertexColors = THREE__namespace.VertexColors; 
+>>>>>>> c5d1f5c9885a0ab0f0ea816a162bce0d1d14c02b
     		this.material.needsUpdate = true; 
     	}
 
     	onLoadCallback() {
     		const c = this.mesh.sphere.center;
-    		const center = new THREE.Vector3(c[0], c[1], c[2]);
+    		const center = new THREE__namespace.Vector3(c[0], c[1], c[2]);
     		const radius = this.mesh.sphere.radius;
-    		this.boundingSphere = new THREE.Sphere(center, radius);
+    		this.boundingSphere = new THREE__namespace.Sphere(center, radius);
 
-    		var geometry = new THREE.BufferGeometry();
+    		var geometry = new THREE__namespace.BufferGeometry();
 
-    		geometry.setAttribute( 'position', new THREE.BufferAttribute(new Float32Array(3), 3));
+    		geometry.setAttribute( 'position', new THREE__namespace.BufferAttribute(new Float32Array(3), 3));
     		
     		if(this.mesh.vertex.normal)
-    			geometry.setAttribute( 'normal', new THREE.BufferAttribute(new Float32Array(3), 3));
+    			geometry.setAttribute( 'normal', new THREE__namespace.BufferAttribute(new Float32Array(3), 3));
     		if(this.mesh.vertex.color)
-    			geometry.setAttribute( 'color', new THREE.BufferAttribute(new Float32Array(4), 4));
+    			geometry.setAttribute( 'color', new THREE__namespace.BufferAttribute(new Float32Array(4), 4));
     		if(this.mesh.vertex.texCoord)
-    			geometry.setAttribute( 'uv', new THREE.BufferAttribute(new Float32Array(2), 2));
+    			geometry.setAttribute( 'uv', new THREE__namespace.BufferAttribute(new Float32Array(2), 2));
 
     		if(this.mesh.vertex.texCoord) {
+<<<<<<< HEAD
     			this.material_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1, 1]), 1, 1, THREE.RGBAFormat );
+=======
+    			this.material_texture = new THREE__namespace.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE__namespace.RGBFormat );
+>>>>>>> c5d1f5c9885a0ab0f0ea816a162bce0d1d14c02b
     			this.material_texture.needsUpdate = true;
     		}
 
@@ -1225,7 +1253,7 @@
     	}
 
     	renderBufferDirect(renderer, scene, camera, geometry, material, group) {
-    		let s = new THREE.Vector2();
+    		let s = new THREE__namespace.Vector2();
     		renderer.getSize(s);
 
     	   	//object modelview is multiplied by camera during rendering, we need to do it here for visibility computations
@@ -1291,7 +1319,7 @@
     			//check for children: if all are selected, bail out.
     			{
     				let visible = false;
-    				let last = m.nfirstpatch[id+1]-1;
+    				m.nfirstpatch[id+1]-1;
     				for (var p = m.nfirstpatch[id]; p < m.nfirstpatch[id+1]; ++p) {
     					var child = m.patches[p*3];
     	
@@ -1410,7 +1438,7 @@
     	createNodeGeometry(id, data) {
     		let m = this.mesh;
     		var nv = m.nvertices[id];
-    		var nf = m.nfaces[id];
+    		m.nfaces[id];
     		let indices  = data.index;
     		let vertices = new ArrayBuffer(nv*m.vsize);
     		var position = new Float32Array(vertices, 0, nv*3);
@@ -1434,12 +1462,12 @@
     		
     		//needed for approximate picking.
     		if(id < this.mesh.nroots) {
-    			let basegeometry = new THREE.BufferGeometry();
-    			basegeometry.setAttribute( 'position', new THREE.BufferAttribute(data.position, 3 ) );
-    			basegeometry.setAttribute( 'normal', new THREE.BufferAttribute(data.normal, 3 ) );
-    			basegeometry.setIndex(new THREE.BufferAttribute( data.index, 1 ) );
+    			let basegeometry = new THREE__namespace.BufferGeometry();
+    			basegeometry.setAttribute( 'position', new THREE__namespace.BufferAttribute(data.position, 3 ) );
+    			basegeometry.setAttribute( 'normal', new THREE__namespace.BufferAttribute(data.normal, 3 ) );
+    			basegeometry.setIndex(new THREE__namespace.BufferAttribute( data.index, 1 ) );
 
-    			this.basemesh = new THREE.Mesh(basegeometry, this.material);
+    			this.basemesh = new THREE__namespace.Mesh(basegeometry, this.material);
     			this.basemesh.visible = false;
     			this.add(this.basemesh);
     		}
@@ -1464,7 +1492,7 @@
     		gl.bindTexture(gl.TEXTURE_2D, tex);
 
     		//TODO some textures might be alpha only! save space
-    		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
     		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -1539,4 +1567,4 @@
 
     Object.defineProperty(exports, '__esModule', { value: true });
 
-})));
+}));
