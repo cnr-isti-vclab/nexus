@@ -1189,7 +1189,7 @@
     			this.material.map = this.material_texture;
 
     		if(this.mesh.vertex.color)
-    			this.material.vertexColors = THREE.VertexColors; 
+    			this.material.vertexColors = true; 
     		this.material.needsUpdate = true; 
     	}
 
@@ -1211,7 +1211,7 @@
     			geometry.setAttribute( 'uv', new THREE.BufferAttribute(new Float32Array(2), 2));
 
     		if(this.mesh.vertex.texCoord) {
-    			this.material_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+    			this.material_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1, 1]), 1, 1, THREE.RGBAFormat );
     			this.material_texture.needsUpdate = true;
     		}
 

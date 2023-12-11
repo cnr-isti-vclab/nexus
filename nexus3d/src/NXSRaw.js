@@ -94,7 +94,7 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             this.material.map = this.cube_texture;
 
         if(this.mesh.vertex.color)
-            this.material.vertexColors = THREE.VertexColors; 
+            this.material.vertexColors = true; 
     },
 
     onLoadCallback: function() {

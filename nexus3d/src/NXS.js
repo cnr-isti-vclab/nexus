@@ -195,7 +195,7 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
         if(this.mesh.vertex.texCoord)
             options.map = null;
         if(this.mesh.vertex.color)
-           options.vertexColors = THREE.VertexColors;   
+           options.vertexColors = true;
         //options.wireframe = true;
         this.material = new THREE.MeshStandardMaterial(options);
         //this.material = [new THREE.MeshPhongMaterial(options)];
