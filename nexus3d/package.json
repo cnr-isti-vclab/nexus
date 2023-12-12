@@ -1,10 +1,11 @@
 {
   "name": "nexus3d",
-  "version": "1.0.7",
+  "version": "1.0.10",
   "description": "Streaming 3D on the web (threejs supported)",
   "author": "",
   "license": "ISC",
   "private": false,
+  "browser": "build/nexus3D.min.js",
   "main": "build/nexus3D.min.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -30,6 +31,8 @@
   },
   "files": [
     "build/nexus3D.min.js",
+    "build/nexus3D.js",
+    "dist/corto.em.js",
     "LICENSE",
     "package.json",
     "README.md",
