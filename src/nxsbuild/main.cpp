@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 	QString translate;
 	bool center = false;
 
-
+	bool tileset = false;
 	bool point_cloud = false;
 	bool normals = false;
 	bool no_normals = false;
@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
 
 	//format options
 	opt.addSwitch('p', "point cloud", "generate a multiresolution point cloud (needed only to discard faces)", &point_cloud);
+	opt.addSwitch('e', "export tileset", "export model as a 3D tileset", &tileset);
 
 	opt.addSwitch('N', "normals", "force per vertex normals, even in point clouds", &normals);
 	opt.addSwitch('n', "no normals", "do not store per vertex normals", &no_normals);
@@ -181,7 +182,7 @@ int main(int argc, char *argv[]) {
 	try {
 		quint64 max_memory = (1<<20)*(uint64_t)ram_buffer/4; //hack 4 is actually an estimate...
 
-		//autodetect point cloud ply
+				//autodetect point cloud ply
 		if(inputs[0].endsWith(".ply")) {
 			PlyLoader autodetect(inputs[0]);
 			if(autodetect.nTriangles() == 0)
@@ -296,7 +297,13 @@ int main(int argc, char *argv[]) {
 			treecloud->setTrianglesPerBlock(node_size);
 
 		builder.create(tree, stream,  top_node_size);
-		builder.save(output);
+
+		if(!tileset) {
+			builder.save(output);
+		}
+		else {
+			builder.exportAsTileset();
+		}
 
 	} catch(QString error) {
 		cerr << "Fatal error: " << qPrintable(error) << endl;
