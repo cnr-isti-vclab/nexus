@@ -34,7 +34,7 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
 
-			// we create a QCoreApplication just so that QT loads image IO plugins (for jpg and tiff loading)
+	// we create a QCoreApplication just so that QT loads image IO plugins (for jpg and tiff loading)
 	QCoreApplication myUselessApp(argc, argv);
 	setlocale(LC_ALL, "C");
 	QLocale::setDefault(QLocale::C);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 	bool create_pow_two_tex = false;
 	bool deepzoom = false;
 
-			//BTREE options
+	//BTREE options
 	QVariant adaptive(0.333f);
 
 	GetOpt opt(argc, argv);
@@ -75,10 +75,10 @@ int main(int argc, char *argv[]) {
 
 	opt.allowUnlimitedArguments(true); //able to join several files
 
-			//extraction options
+	//extraction options
 	opt.addOption('o', "output filename", "filename of the nexus output file", &output);
 
-			//construction options
+	//construction options
 	opt.addOption('f', "node-faces", "number of faces per patch, (min ~1000, max 32768, default 32768)\n"
 				  "This parameter controls the granularity of the multiresolution: smaller values result in smaller changes (less 'pop')"
 				  "Small nodes are less efficient in rendering and compression.\n"
@@ -97,14 +97,14 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('D', "deepzoom", "save each node and texture to a separated file\n"
 				  "Used for server which do not support http range requests (206). Will generate MANY files.", &deepzoom);
 
-			//btree options
+	//btree options
 	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333\n"
 				  "Different settings might help with very uneven distribution of geometry.", &adaptive);
 
 	opt.addOption('v', "vertex quantization", "vertex quantization grid size (might be approximated)", &vertex_quantization);
 	opt.addOption('q', "texture quality", "JPEG texture quality [0-100], default 95", &tex_quality);
 
-			//format options
+	//format options
 	opt.addSwitch('p', "point cloud", "generate a multiresolution point cloud (needed only to discard faces)", &point_cloud);
 	opt.addSwitch('e', "export tileset", "export model as a 3D tileset", &tileset);
 
@@ -115,14 +115,14 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('u', "no textures", "do not store textures and vertex texture coordinates", &no_texcoords);
 
 
-			//other options
+	//other options
 	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: just an approximation)", &ram_buffer);
 	opt.addOption('w', "workers", "number of workers: default = 4", &n_threads);
 	opt.addOption('T', "origin", "new origin for the model in the format X:Y:Z", &translate);
 	opt.addSwitch('G', "center", "set origin in the bounding box center of the input meshes", &center);
 	opt.parse();
 
-			//Check parameters are correct
+	//Check parameters are correct
 	QStringList inputs = opt.arguments;
 	if(inputs.size() == 0) {
 		cerr << "No input files specified" << endl;
@@ -225,9 +225,9 @@ int main(int argc, char *argv[]) {
 		//TODO: actually the stream will store textures or normals or colors even if not needed
 		stream->load(inputs, mtl);
 
-		/*			VcgLoader<Mesh> *loader = new VcgLoader<Mesh>;
-					loader->load(inputs[0], has_colors, has_normals, has_textures);
-					stream->load(loader); */
+/*			VcgLoader<Mesh> *loader = new VcgLoader<Mesh>;
+			loader->load(inputs[0], has_colors, has_normals, has_textures);
+			stream->load(loader); */
 
 
 		bool has_colors = stream->hasColors();
@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
 			cout << "Textures enabled\n";
 		}
 
-				//WORKAROUND to save loading textures not needed
+		//WORKAROUND to save loading textures not needed
 		if(!(components & NexusBuilder::TEXTURES)) {
 			stream->textures.clear();
 		}

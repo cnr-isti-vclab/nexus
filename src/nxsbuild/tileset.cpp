@@ -43,22 +43,21 @@ void TilesetJSON::makeTileObject(int tileIndex) {
 
 	Tile tile;
 
-			// 1. Extract bounding volume and convert it in 3D tiles boundingVolume specification.
+	// 1. Extract bounding volume and convert it in 3D tiles boundingVolume specification.
 	auto axes = m_nexus.boxes[tileIndex].axes;
 	auto box = m_nexus.boxes[tileIndex].box;
 	auto bbox = convertBoundingBox(axes[0], axes[1], axes[2], box.min, box.max);
 	tile.boundingVolume.box = bbox;
 
-			// 2. GeometricError
+	// 2. GeometricError
 	nx::Node &node = m_nexus.nodes[tileIndex];
 	tile.geometricError = node.error;
 	// are they the same values ??
 
-			// 3. Uri
+	// 3. Uri
 	tile.content.uri = std::to_string(tileIndex) + ".b3dm";
 
-			// 4. Extract children;
-
+	// 4. Extract children
 	for(int i = node.first_patch; i < node.last_patch(); i++) {
 		const nx::Patch &patch = m_nexus.patches[i];
 		if(!(patch.node == m_nexus.nodes.size()-1)){

@@ -408,7 +408,7 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	//compute area waste
 	for(int i = 0; i < mesh.face.size(); i++) {
 		auto &face = mesh.face[i];
-        int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
+		int b = vertex_to_box[face.V(0) - &(mesh.vert[0])];
 		vcg::Point2i &o = origins[b];
 		vcg::Point2i m = mapping[b];
 		auto V0 = face.V(0)->T().P();

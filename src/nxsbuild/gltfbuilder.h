@@ -38,7 +38,7 @@ class GltfBuilder
 	void exportNodeAsTile(int node_index);
 	void writeB3DM(const QString & filename);
 
-			// debug
+	// debug
 	void writeGLB(const QString &filename);
 };
 

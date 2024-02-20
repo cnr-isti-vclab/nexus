@@ -136,20 +136,20 @@ void GltfBuilder::exportNodeAsTile(int node_index) {
 		m_model.extensionsUsed.emplace_back("KHR_materials_unlit");
 	}
 
-			// create root nodes
+	// create root nodes
 	tinygltf::Node rootNodeGltf;
 	rootNodeGltf.matrix = {1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1};
 	m_model.nodes.emplace_back(rootNodeGltf);
 	int rootIndex = 0;
 
-			// create geometry buffer
+	// create geometry buffer
 	size_t totalBufferSize = node.nvert * m_nexus.header.signature.vertex.size()
 							 + node.nface * m_nexus.header.signature.face.size();
 	tinygltf::Buffer bufferGltf;
 	auto &bufferData = bufferGltf.data;
 	bufferData.resize(totalBufferSize);
 
-			// add geometry
+	// add geometry
 	tinygltf::Primitive primitiveGltf;
 	primitiveGltf.mode = TINYGLTF_MODE_TRIANGLES;
 	primitiveGltf.material = m_model.materials.size();
@@ -220,14 +220,14 @@ void GltfBuilder::exportNodeAsTile(int node_index) {
 	if(m_nexus.header.signature.vertex.hasNormals()) {
 		size_t normalOffset = sizeof(vcg::Point3f) + m_nexus.header.signature.vertex.hasTextures() * sizeof(vcg::Point2f);
 		vcg::Point3s *normal = (vcg::Point3s *)(buffer + normalOffset * node.nvert);
-				// TODO
+		// TODO
 	}
 
 	if(m_nexus.header.signature.vertex.hasColors()) {
 		size_t vertexColorOffset = sizeof(vcg::Point3f) + m_nexus.header.signature.vertex.hasTextures() * sizeof(vcg::Point2f)
 								   + m_nexus.header.signature.vertex.hasNormals() * sizeof(vcg::Point3s);
 		uchar *color =  buffer + vertexColorOffset;
-				// TODO
+		// TODO
 	}
 
 	if (node.nface != 0) {
@@ -249,11 +249,11 @@ void GltfBuilder::exportNodeAsTile(int node_index) {
 		primitiveGltf.indices = static_cast<int>(m_model.accessors.size() - 1);
 	}
 
-			// add buffer to gltf model
+	// add buffer to gltf model
 	m_model.buffers.emplace_back(bufferGltf);
 
-			// add image data to a second buffer
-			// then add an image and a texture to gltf model
+	// add image data to a second buffer
+	// then add an image and a texture to gltf model
 	if(m_nexus.textures.size()) {
 
 		if(m_nexus.useNodeTex) {
@@ -310,24 +310,24 @@ void GltfBuilder::exportNodeAsTile(int node_index) {
 		else { /* keep original texture : TODO*/ }
 	}
 
-			// add material
+	// add material
 	createGltfMaterial(m_model, customMat);
 
-			// add mesh
+	// add mesh
 	tinygltf::Mesh meshGltf;
 	meshGltf.primitives.emplace_back(primitiveGltf);
 	m_model.meshes.emplace_back(meshGltf);
 
-			// create node
+	// create node
 	tinygltf::Node meshNode;
 	meshNode.mesh = static_cast<int>(m_model.meshes.size() - 1);
 	//meshNode.translation = {center.x, center.y, center.z};
 	m_model.nodes.emplace_back(meshNode);
 
-			// add node to the root
+	// add node to the root
 	m_model.nodes[rootIndex].children.emplace_back(m_model.nodes.size() - 1);
 
-			// create scene
+	// create scene
 	tinygltf::Scene sceneGltf;
 	sceneGltf.nodes.emplace_back(0);
 	m_model.scenes.emplace_back(sceneGltf);
@@ -358,12 +358,12 @@ void GltfBuilder::writeGLB(const QString &path) {
 void GltfBuilder::writeB3DM(const QString & path) {
 	tinygltf::TinyGLTF loader;
 
-			// writing .glb file to output/temp%
+	// writing .glb file to output/temp%
 	QString tempPath = QString("output/temp");
 	bool result = loader.WriteGltfSceneToFile(&m_model, tempPath.toStdString(), true, true, true, true);
 	if(!result) { throw QString("Error : can't write gltf to file : output/temp"); }
 
-			// looking for file size
+	// looking for file size
 	std::ifstream is(tempPath.toStdString(), std::ifstream::in|std::ifstream::binary);
 	is.ignore(std::numeric_limits<std::streamsize>::max());
 	std::streamsize length = is.gcount();
