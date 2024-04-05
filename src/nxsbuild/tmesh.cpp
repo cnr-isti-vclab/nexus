@@ -32,7 +32,7 @@ using namespace std;
 
 void TMesh::loadPly(const QString& filename) {
 	int loadmask = 0;
-	vcg::tri::io::ImporterPLY<TMesh>::Open(*this, filename.toLatin1().data(), loadmask);
+	vcg::tri::io::ImporterPLY<TMesh>::Open(*this, filename.toLocal8Bit().data(), loadmask);
 	vcg::tri::UpdateNormal<TMesh>::PerVertexNormalized(*this);
 	vcg::tri::UpdateNormal<TMesh>::PerFaceNormalized(*this);
 }

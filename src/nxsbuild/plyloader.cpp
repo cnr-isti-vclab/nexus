@@ -115,7 +115,7 @@ PlyLoader::PlyLoader(QString filename):
 	current_triangle(0),
 	current_vertex(0) {
 
-	int val = pf.Open(filename.toLatin1().data(), PlyFile::MODE_READ);
+	int val = pf.Open(filename.toLocal8Bit().data(), PlyFile::MODE_READ);
 	if(val == -1) {
 		int error = pf.GetError();
 		throw QString("could not open file " + filename + ". Error: %1").arg(error);
@@ -139,7 +139,7 @@ PlyLoader::PlyLoader(QString filename):
 				if(bufstr[i]!='\t' && bufstr[i]>=32 && bufstr[i]<=126 )	bufclean.push_back(bufstr[i]);
 
 			char buf2[255];
-			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2, 255);
+			ply::interpret_texture_name( bufclean.c_str(),filename.toLocal8Bit().data(), buf2, 255);
 			LoadTexture tex;
 			tex.filename = QString(buf2).trimmed();
 			texture_filenames.push_back(tex);
