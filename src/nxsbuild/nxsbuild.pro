@@ -16,19 +16,20 @@ DEFINES += _USE_MATH_DEFINES
 
 win32-msvc: DEFINES += NOMINMAX
 
-LIBS += -lGLU
-
 SOURCES += \
     ../../../vcglib/wrap/system/qgetopt.cpp \
     ../../../vcglib/wrap/ply/plylib.cpp \
     ../common/virtualarray.cpp \
     ../common/cone.cpp \
+    b3dm.cpp \
+    gltfbuilder.cpp \
     main.cpp \
     meshstream.cpp \
     meshloader.cpp \
     plyloader.cpp \
     kdtree.cpp \
     mesh.cpp \
+    tileset.cpp \
     tsploader.cpp \
     nexusbuilder.cpp \
     objloader.cpp \
@@ -42,11 +43,14 @@ HEADERS += \
     ../common/signature.h \
     ../common/cone.h \
     ../common/virtualarray.h \
+    b3dm.h \
+    gltfbuilder.h \
     meshstream.h \
     meshloader.h \
     plyloader.h \
     partition.h \
     kdtree.h \
+    tileset.h \
     trianglesoup.h \
     mesh.h \
     tsploader.h \
@@ -57,7 +61,13 @@ HEADERS += \
     texpyramid.h \
     stlloader.h \
     vcgloader.h \
-    vcgloadermesh.h
+    vcgloadermesh.h \
+    vcgloadermesh.h \
+    deps/tiny_gltf.h \
+    deps/stb_image_write.h \
+    deps/stb_image.h \
+    deps/json.hpp \
+
 
 DESTDIR = "../../bin"
 
