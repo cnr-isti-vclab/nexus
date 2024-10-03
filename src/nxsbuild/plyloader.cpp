@@ -209,8 +209,10 @@ void PlyLoader::init() {
 	error = pf.AddToRead(plyprop1[13]);
 	pf.AddToRead(plyprop1[14]);
 
-	if(error ==  vcg::ply::E_NOERROR)
+	if(error ==  vcg::ply::E_NOERROR) {
 		has_textures = true;
+		has_vertex_tex_coords = true;
+	}
 
 	//these calls will fail silently if no normal is present
 	if(!has_faces) { //skip normals for triangle mesh
@@ -303,14 +305,15 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 			if(v < 0 || v >= nVertices())
 				throw QString("Bad index in triangle list.");
 			Vertex &vertex = vertices[face.f[k]];
-			vertex.t[0] = face.t[k*2];
-			vertex.t[1] = face.t[k*2+1];
+			if(!has_vertex_tex_coords) {
+				vertex.t[0] = face.t[k*2];
+				vertex.t[1] = face.t[k*2+1];
+			}
 
 			if (has_textures) {
 				float n;
 				vertex.t[0] = modf(vertex.t[0], &n);
 				vertex.t[1] = modf(vertex.t[1], &n);
-
 			}
 
 			current.vertices[k] = vertex;
