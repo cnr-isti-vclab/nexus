@@ -13,13 +13,15 @@ DEFINES += NDEBUG
 
 INCLUDEPATH += \
     ../../../vcglib \
-    ../../../vcglib/eigenlib
+	../../../vcglib/eigenlib \
+	../corto/include
 
 win32:INCLUDEPATH += ../../../glew/include ../../../corto/include
 win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib ../../../corto/lib/corto.lib
 
-unix:INCLUDEPATH += /usr/local/lib
-unix:LIBS += -L /usr/local/lib -lcorto
+#unix:INCLUDEPATH += /usr/local/lib
+#unix:LIBS += -L /usr/local/lib -lcorto
+unix:LIBS += ../corto/libcorto.a
 
 SOURCES += \
     ../../../vcglib/wrap/system/qgetopt.cpp \

@@ -207,6 +207,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	std::vector<int> vertex_to_box;
 
 
+	//find connected pieces of triangles belonging to the same texture
+	//iterate over the triangles and connect the vertices.
 	UnionFind components;
 	components.init(mesh.vert.size());
 
@@ -214,8 +216,8 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		int v[3];
 		for(int i = 0; i < 3; i++) {
 			v[i] = face.V(i) - &*mesh.vert.begin();
-			
-			
+
+
 			int &t = vertex_to_tex[v[i]];
 
 			if(t != -1 && t != face.tex) qDebug() << "Missing vertex replication across seams\n";
@@ -227,17 +229,15 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 	int n_boxes = components.compact(vertex_to_box);
 
+	//assign a texture to each vertex (we already split)
 	for(auto &face: mesh.face) {
 		int v[3];
 		for(int i = 0; i < 3; i++) {
 			int v = face.V(i) - &*mesh.vert.begin();
 			vertex_to_tex[v] = face.tex;
 		}
-		/*		assert(vertex_to_box[v[0]] == vertex_to_box[v[1]]);
-		assert(vertex_to_box[v[0]] == vertex_to_box[v[2]]);
-		assert(components.root(v[0]) == components.root(v[2]));
-		assert(components.root(v[0]) == components.root(v[1])); */
 	}
+
 	//assign all boxes to a tex (and remove boxes where the tex is -1
 
 	//compute boxes
@@ -251,13 +251,15 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		vcg::Box2f &box = boxes[b];
 		box_texture[b] = tex;
 		auto &t = mesh.vert[i].T().P();
-		t[0] = fmod(t[0], 1.0);
-		t[1] = fmod(t[1], 1.0);
-		//		if(isnan(t[0]) || isnan(t[1]) || t[0] < 0 || t[1] < 0 || t[0] > 1 || t[1] > 1)
-		//				cout << "T: " << t[0] << " " << t[1] << endl;
+		if(t[0] != 1.0)
+			t[0] = fmod(t[0], 1.0);
+		if(t[1] != 1.0)
+			t[1] = fmod(t[1], 1.0);
+
 		if(t[0] != 0.0f || t[1] != 0.0f)
 			box.Add(t);
 	}
+
 	//erase boxes assigned to no texture, and remap vertex_to_box
 	int count = 0;
 	std::vector<int> remap(mesh.vert.size(), -1);
@@ -277,6 +279,18 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	std::vector<vcg::Point2i> origins(boxes.size());
 	for(size_t b = 0; b < boxes.size(); b++) {
 		auto &box = boxes[b];
+		cout << "Box: " << box.DimX() << endl;
+		if(box.DimX() > 0.9) {
+			for(auto &face: mesh.face) {
+				int v[3];
+				for(int i = 0; i < 3; i++) {
+					auto v = face.V(i);
+					int j = (i+1)%3;
+					if(fabs(v->T().u() - face.V(j)->T().u()) > 0.1)
+						cout << v->T().u() << " " << face.V(j)->T().u() << endl;
+				}
+			}
+		}
 		int tex = box_texture[b];
 
 		//enlarge 1 pixel
@@ -414,7 +428,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		auto V1 = face.V(1)->T().P();
 		auto V2 = face.V(2)->T().P();
 		areausage += (V2 - V0)^(V2 - V1)/2;
-		
 	}
 
 	{

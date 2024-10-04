@@ -312,8 +312,10 @@ quint32 PlyLoader::getTriangles(quint32 size, Triangle *buffer) {
 
 			if (has_textures) {
 				float n;
-				vertex.t[0] = modf(vertex.t[0], &n);
-				vertex.t[1] = modf(vertex.t[1], &n);
+				if(vertex.t[0] != 1.0)
+					vertex.t[0] = modf(vertex.t[0], &n);
+				if(vertex.t[1] != 1.0)
+					vertex.t[1] = modf(vertex.t[1], &n);
 			}
 
 			current.vertices[k] = vertex;

@@ -9,7 +9,7 @@ QMAKE_CXXFLAGS += -std=c++11 -g -fpermissive
 
 INCLUDEPATH += \
     ../../../vcglib \
-    ../../../vcglib/eigenlib
+	../../../vcglib/eigenlib
 
 DEFINES += _FILE_OFFSET_BITS=64
 DEFINES += _USE_MATH_DEFINES
