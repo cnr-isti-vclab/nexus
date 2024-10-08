@@ -143,7 +143,6 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 	int level = 0;
 	int last_top_level_size = 0;
 	do {
-		cout << "Creating level " << level << endl;
 		tree->clear();
 		if(level % 2) tree->setAxesDiagonal();
 		else tree->setAxesOrthogonal();
@@ -279,7 +278,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	std::vector<vcg::Point2i> origins(boxes.size());
 	for(size_t b = 0; b < boxes.size(); b++) {
 		auto &box = boxes[b];
-		cout << "Box: " << box.DimX() << endl;
 		if(box.DimX() > 0.9) {
 			for(auto &face: mesh.face) {
 				int v[3];
@@ -293,7 +291,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		}
 		int tex = box_texture[b];
 
-		//enlarge 1 pixel
 		float w = atlas.width(tex, level); //img->size().width();
 		float h = atlas.height(tex, level); //img->size().height();
 		float px = 1/(float)w;
@@ -373,10 +370,9 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		vcg::Point2i &o = origins[b];
 		vcg::Point2i m = mapping[b];
 
-		//QImageReader &img = textures[box_texture[b]];
 		int tex = box_texture[b];
-		float w = atlas.width(tex, level); //img->size().width();
-		float h = atlas.height(tex, level); //img->size().height();
+		float w = atlas.width(tex, level);
+		float h = atlas.height(tex, level);
 		float px = 1/(float)w;
 		float py = 1/(float)h;
 

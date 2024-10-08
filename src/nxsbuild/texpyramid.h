@@ -20,11 +20,11 @@ public:
 	int tilew, tileh;              //how many tiles to make up side.
 	//std::vector<qint64> offsets; //where each tile starts in the cache.
 
-	void init(int tex, TexAtlas *c, const QImage& texture);
-	bool init(int tex, TexAtlas *c, LoadTexture &texture);
+	void init(int tex, TexAtlas *c, const QImage& texture, int _level);
+	bool init(int tex, TexAtlas *c, LoadTexture &texture, int _level);
 	QImage read(QRect region);
 	void build(TexLevel &parent);
-
+	//void build(QImage img);
 };
 
 //manage a pyramid of splitted textured
@@ -37,6 +37,7 @@ public:
 	bool init(int tex, TexAtlas *c, LoadTexture &file);
 	QImage read(int level, QRect region);
 	void buildLevel(int level);
+	void buildAllLevels(int n_levels);
 };
 
 //Collection of tex pyramids, level 0 is biggest one (bottom).

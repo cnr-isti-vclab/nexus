@@ -99,7 +99,7 @@ public:
 		chunks.setMaxMemory(m);
 		atlas.cache_max = m;
 	}
-	void setScaling(float s) { scaling = s; }
+	void setScaling(float s) { scaling = s; atlas.scale = sqrt(scaling); }
 
 	void saturate();
 

@@ -9,9 +9,9 @@
 using namespace nx;
 using namespace std;
 
-void TexLevel::init(int t, TexAtlas* c, const QImage& texture) {
+void TexLevel::init(int t, TexAtlas* c, const QImage& texture, int _level = 0) {
 	tex = t;
-	level = 0;
+	level = _level;
 	collection = c;
 	int side = collection->side;
 
@@ -36,9 +36,9 @@ void TexLevel::init(int t, TexAtlas* c, const QImage& texture) {
 	}
 }
 
-bool TexLevel::init(int t, TexAtlas *c, LoadTexture &texture) {
+bool TexLevel::init(int t, TexAtlas *c, LoadTexture &texture, int _level = 0) {
 	tex = t;
-	level = 0;
+	level = _level;
 	collection = c;
 	int side = collection->side;
 	QImageReader test(texture.filename);
@@ -144,16 +144,54 @@ void TexLevel::build(TexLevel &parent) {
 		}
 	}
 }
+/*
+void TexLevel::build(QImage img) {
+	int side = collection->side;
+	width = img.width();
+	height = img.height();
+
+	tilew = 1 + (width-1)/side;
+	tileh = 1 + (height-1)/side;
+
+	for(int y = 0; y < tileh; y++) {
+		for(int x = 0; x < tilew; x++) {
+			int w = (x*side + side > width)? width - x*side : side;
+			int h = (y*side + side > height)? height - y*side : side;
+			int sx = x*side;
+			int sy = y*side;
+			QRect region(sx, sy, w, h);
+			QImage img = img.copy(region);
+			collection->addImg(TexAtlas::Index(tex, level, x + tilew*y), img);
+		}
+	}
+}*/
+
 
 void TexPyramid::init(int tex, TexAtlas *c, const QImage &texture) {
 	collection = c;
+	int size = std::max(texture.width(), texture.height());
+	int count = 1;
+	while(size > collection->side) {
+		size /= 2;
+		count++;
+	}
 	//create level zero.
-	levels.resize(1);
-	TexLevel &level = levels.back();
-	return level.init(tex, collection, texture);
+	levels.resize(count);
+	for(int i = 0; i < levels.size(); i++) {
+		TexLevel &level = levels[i];
+		level.init(tex, collection, texture, i);
+		texture = texture.scaled(round(texture.width()*collection->scale), round(texture.height()*collection->scale));
+	}
 }
 
 bool TexPyramid::init(int tex, TexAtlas *c, LoadTexture &file) {
+	QImage img;
+	bool success = img.load(file.filename);
+	if(!success)
+		return false;
+	init(tex, c, img);
+	return true;
+
 	collection = c;
 	//create level zero.
 	levels.resize(1);
