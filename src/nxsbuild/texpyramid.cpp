@@ -9,7 +9,7 @@
 using namespace nx;
 using namespace std;
 
-void TexLevel::init(int t, TexAtlas* c, const QImage& texture, int _level = 0) {
+void TexLevel::init(int t, TexAtlas* c, QImage& texture, int _level = 0) {
 	tex = t;
 	level = _level;
 	collection = c;
@@ -167,7 +167,7 @@ void TexLevel::build(QImage img) {
 }*/
 
 
-void TexPyramid::init(int tex, TexAtlas *c, const QImage &texture) {
+void TexPyramid::init(int tex, TexAtlas *c, QImage &texture) {
 	collection = c;
 	int size = std::max(texture.width(), texture.height());
 	int count = 1;
@@ -216,7 +216,7 @@ void TexPyramid::buildLevel(int level) {
 
 
 
-void TexAtlas::addTextures(const std::vector<QImage>& textures) {
+void TexAtlas::addTextures(std::vector<QImage>& textures) {
 	pyramids.resize(textures.size());
 	for(size_t i = 0; i < pyramids.size(); i++) {
 		TexPyramid &py = pyramids[i];

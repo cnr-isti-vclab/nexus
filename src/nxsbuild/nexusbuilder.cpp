@@ -120,7 +120,7 @@ NexusBuilder::NexusBuilder(Signature &signature): chunks("cache_chunks"), scalin
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 }
 
-void NexusBuilder::initAtlas(const std::vector<QImage>& textures) {
+void NexusBuilder::initAtlas(std::vector<QImage>& textures) {
 	if(textures.size()) {
 		atlas.addTextures(textures);
 	}
@@ -284,8 +284,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 				for(int i = 0; i < 3; i++) {
 					auto v = face.V(i);
 					int j = (i+1)%3;
-					if(fabs(v->T().u() - face.V(j)->T().u()) > 0.1)
-						cout << v->T().u() << " " << face.V(j)->T().u() << endl;
 				}
 			}
 		}
@@ -310,10 +308,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		size[1] = std::min(h, ceil(box.max[1]/py)) - origin[1];
 		if(size[0] <= 0) size[0] = 1;
 		if(size[1] <= 0) size[1] = 1;
-		
-		//		cout << "Box: " << box_texture[b] << " [" << box.min[0] << "  " << box.min[1] << " ] [ " << box.max[0] << "  " << box.max[1] << "]" << std::endl;
-		//		cout << "Size: " << size[0] << " - " << size[1] << endl << endl;
-		//		getchar();
 	}
 
 	//pack boxes;
@@ -351,7 +345,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 		finalSize[ 1 ] = (int) nextPowerOf2( finalSize[ 1 ] );
 	}
 
-	//	std::cout << "Boxes: " << boxes.size() << " Final size: " << finalSize[0] << " " << finalSize[1] << std::endl;
 	QImage image(finalSize[0], finalSize[1], QImage::Format_RGB32);
 	image.fill(QColor(127, 127, 127));
 	//copy boxes using mapping
@@ -862,7 +855,6 @@ void NexusBuilder::reverseDag() {
 
 void NexusBuilder::save(QString filename) {
 
-	//cout << "Saving to file " << qPrintable(filename) << endl;
 	//cout << "Input squaresize " << sqrt(input_pixels) <<  " Output size " << sqrt(output_pixels) << "\n";
 
 	file.setFileName(filename);
