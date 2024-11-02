@@ -30,7 +30,8 @@ for more details.
 #include "meshstream.h"
 #include "mesh.h"
 #include "tmesh.h"
-#include "../common/nexus.h"
+#include "../nxsbuild/gltfbuilder.h"
+#include "../nxsbuild/tileset.h"
 
 #include <vcg/math/similarity2.h>
 #include <vcg/space/rect_packer.h>
@@ -856,7 +857,6 @@ void NexusBuilder::reverseDag() {
 void NexusBuilder::save(QString filename) {
 
 	//cout << "Input squaresize " << sqrt(input_pixels) <<  " Output size " << sqrt(output_pixels) << "\n";
-
 	file.setFileName(filename);
 	if(!file.open(QIODevice::ReadWrite | QIODevice::Truncate))
 		throw QString("could not open file " + filename);
@@ -1025,6 +1025,40 @@ void NexusBuilder::save(QString filename) {
 	file.close();
 }
 
+void NexusBuilder::exportAsTileset() {
+
+    if(header.signature.vertex.hasNormals() && header.signature.face.hasIndex())
+        uniformNormals();
+
+    if(textures.size())
+        textures.push_back(Texture());
+
+    quint64 size = sizeof(Header)  +
+                   nodes.size()*sizeof(Node) +
+                   patches.size()*sizeof(Patch) +
+                   textures.size()*sizeof(Texture);
+    size = pad(size);
+
+    if(textures.size()) {
+        if(!useNodeTex) {
+            for(uint i = 0; i < textures.size()-1; i++) {
+                quint32 s = textures[i].offset;
+                textures[i].offset = size/NEXUS_PADDING;
+                size += s;
+                size = pad(size);
+            }
+            textures.back().offset = size/NEXUS_PADDING;
+
+        } else {
+            textures.back().offset = nodeTex.size()/NEXUS_PADDING;
+        }
+    }
+
+    GltfBuilder builder(*this);
+    builder.generateTiles();
+    TilesetJSON tileset(*this);
+    tileset.generate();
+}
 
 //include sphere of the children and ensure error s bigger.
 void NexusBuilder::saturateNode(quint32 n) {
