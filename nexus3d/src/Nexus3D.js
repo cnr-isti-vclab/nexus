@@ -386,7 +386,8 @@ class Nexus3D extends THREE.Mesh {
 		gl.bindTexture(gl.TEXTURE_2D, tex);
 
 		//TODO some textures might be alpha only! save space
-		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+		let internalFormat = this.material.map.colorSpace == THREE.LinearSRGBColorSpace ? gl.RGBA : gl.SRGB8_ALPHA8;
+		let s = gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, gl.RGBA, gl.UNSIGNED_BYTE, image);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
