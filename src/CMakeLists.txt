@@ -48,7 +48,7 @@ set(SOURCES
 	nxsbuild/texpyramid.cpp
 	nxsbuild/tmesh.cpp
 	nxsbuild/tsploader.cpp
-	nxsbuild/tploader.cpp
+	nxsbuild/tsloader.cpp
 	nxsedit/extractor.cpp
 	nxszip/abitstream.cpp
 	nxszip/atunstall.cpp
