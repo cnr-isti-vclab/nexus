@@ -26,6 +26,7 @@ for more details.
 #include "stlloader.h"
 #include "vcgloadermesh.h"
 #include "vcgloader.h"
+#include "tsloader.h"
 
 
 #include <iostream>
@@ -58,6 +59,9 @@ MeshLoader *loader = nullptr;
 
 	else if(file.endsWith(".stl"))
 		loader = new STLLoader(file);
+
+	else if(file.endsWith(".ts"))
+		loader = new TsLoader(file);
 
 	else
 		loader = new VcgLoader<VcgMesh>(file);
@@ -95,6 +99,7 @@ vcg::Box3d Stream::getBox(QStringList paths) {
 void Stream::load(MeshLoader *loader) {
 	loader->setVertexQuantization(vertex_quantization);
 	loader->origin = origin;
+	loader->scale = scale;
 	loadMesh(loader);
 	has_colors &= loader->hasColors();
 	has_normals &= loader->hasNormals();

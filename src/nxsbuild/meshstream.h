@@ -39,6 +39,7 @@ public:
 	bool has_textures;
 	std::vector<LoadTexture> textures;
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
+	vcg::Point3d scale = vcg::Point3d(1, 1, 1);
 
 	Stream();
 	virtual ~Stream() {}

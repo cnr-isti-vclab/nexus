@@ -247,6 +247,9 @@ void ObjLoader::cacheVertices() {
 				int n = sscanf(buffer, "v %lf %lf %lf", &p[0], &p[1], &p[2]);
 				if(n != 3) throw QString("error parsing vertex line %1 while caching").arg(buffer);
 				p -= origin;
+				p[0] *= scale[0];
+				p[1] *= scale[1];
+				p[2] *= scale[2];
 				box.Add(p);
 				
 				vertex.v[0] = (float)p[0];
@@ -543,6 +546,9 @@ quint32 ObjLoader::getVertices(quint32 size, Splat *vertices) {
 		if(n != 3) throw QString("error parsing vertex line %1").arg(buffer);
 		
 		p -= origin;
+		p[0] *= scale[0];
+		p[1] *= scale[1];
+		p[2] *= scale[2];
 		box.Add(p);
 
 		vertex.v[0] = (float)p[0];

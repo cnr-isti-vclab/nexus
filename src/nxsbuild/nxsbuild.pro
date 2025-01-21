@@ -34,7 +34,8 @@ SOURCES += \
     objloader.cpp \
     tmesh.cpp \
     texpyramid.cpp \
-    stlloader.cpp
+    stlloader.cpp \
+    tsloader.cpp
 
 HEADERS += \
     ../../../vcglib/wrap/system/qgetopt.h \
@@ -57,7 +58,8 @@ HEADERS += \
     texpyramid.h \
     stlloader.h \
     vcgloader.h \
-    vcgloadermesh.h
+    vcgloadermesh.h \
+    tsloader.h
 
 DESTDIR = "../../bin"
 
