@@ -32,7 +32,7 @@ for more details.
 {
 	// log(n)/log(2) is log2.
 	return log( n )* 3.32192809;
-}*/jurplel/install-qt-action@v3
+}*/
 #endif
 
 extern int current_texture;
