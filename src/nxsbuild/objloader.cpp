@@ -40,7 +40,7 @@ ObjLoader::ObjLoader(QString filename, QString _mtl):
 	if(!file.open(QFile::ReadOnly))
 		throw QString("could not open file %1. Error: %2").arg(filename).arg(file.errorString());
 
-	readMTL();	
+	readMTL(file);
 }
 
 ObjLoader::~ObjLoader() {
@@ -83,20 +83,32 @@ void ObjLoader::cacheTextureUV() {
 	}
 }
 
-void ObjLoader::readMTL() {
+void ObjLoader::readMTL(QFile &file) {
 	
-	quint64 pos = file.pos();
 
 	char buffer[1024];
 	
 	if (!mtl.isNull()) {
 		if(!QFileInfo::exists(mtl))
 			throw QString("Could not find .mtl file: %1").arg(mtl);
-	} else {
+	}
+
+	if(mtl.isNull()) { //look for mtllib
+		while (1) {
+			if(file.readLine(buffer, 1000) == -1)
+				break;
+			if(strncmp(buffer, "mtllib", 6) != 0)
+				continue;
+
+			QString m = QString(buffer).mid(7).trimmed();
+			if (QFileInfo::exists(m))
+				mtl = m;
+			break;
+		}
+	}
+	if(mtl.isNull()) { //assume the name is the same
 		QString fname = file.fileName();
 		QFileInfo info = QFileInfo(fname);
-	
-		//assuming mtl base file name the same as obj
 		mtl = info.path() + "/" + info.completeBaseName() + ".mtl";
 	}
 		

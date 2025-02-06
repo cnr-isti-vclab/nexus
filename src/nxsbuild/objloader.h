@@ -37,7 +37,7 @@ public:
 
 private:
 	
-	void readMTL();
+	void readMTL(QFile &file); //obj file passed to search for mtllib
 	void cacheTextureUV();
 	void cacheVertices();
 	
