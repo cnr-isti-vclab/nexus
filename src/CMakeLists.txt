@@ -20,6 +20,7 @@ set(HEADERS
 	nxsbuild/stlloader.h
 	nxsbuild/texpyramid.h
 	nxsbuild/tmesh.h
+	nxsbuild/colormap.h
 	nxsbuild/tsploader.h
 	nxsbuild/tsloader.h
 	nxsbuild/vcgloader.h
@@ -47,6 +48,7 @@ set(SOURCES
 	nxsbuild/stlloader.cpp
 	nxsbuild/texpyramid.cpp
 	nxsbuild/tmesh.cpp
+	nxsbuild/colormap.cpp
 	nxsbuild/tsploader.cpp
 	nxsbuild/tsloader.cpp
 	nxsedit/extractor.cpp
