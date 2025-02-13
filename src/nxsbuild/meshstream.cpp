@@ -60,8 +60,12 @@ MeshLoader *loader = nullptr;
 	else if(file.endsWith(".stl"))
 		loader = new STLLoader(file);
 
-	else if(file.endsWith(".ts"))
-		loader = new TsLoader(file);
+	else if(file.endsWith(".ts")) {
+		TsLoader *ts = new TsLoader(file);
+		loader = ts;
+		if(!colormap.isEmpty())
+			ts->useColormapFor(colormap[0], colormap[1]);
+	}
 
 	else
 		loader = new VcgLoader<VcgMesh>(file);

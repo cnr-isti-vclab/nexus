@@ -23,6 +23,7 @@ SOURCES += \
     ../../../vcglib/wrap/ply/plylib.cpp \
     ../common/virtualarray.cpp \
     ../common/cone.cpp \
+    colormap.cpp \
     main.cpp \
     meshstream.cpp \
     meshloader.cpp \
@@ -43,6 +44,7 @@ HEADERS += \
     ../common/signature.h \
     ../common/cone.h \
     ../common/virtualarray.h \
+    colormap.h \
     meshstream.h \
     meshloader.h \
     plyloader.h \

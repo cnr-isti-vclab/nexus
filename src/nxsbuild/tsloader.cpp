@@ -21,6 +21,7 @@ for more details.
 #include <QTextStream>
 #include <iostream>
 
+using namespace std;
 
 TsLoader::TsLoader(QString filename):
 	vertices("cache_tsvertex"),
@@ -31,6 +32,68 @@ TsLoader::TsLoader(QString filename):
 	file.setFileName(filename);
 	if(!file.open(QFile::ReadOnly))
 		throw QString("could not open file %1. Error: %2").arg(filename).arg(file.errorString());
+
+	//search for properties, here an example:
+	/*
+	PROPERTY_CLASS_HEADER temperature {
+	kind: Real Number
+	unit: unitless
+	pclip: 99
+	low_clip: 9
+	high_clip: 143.54482
+	}
+	*/
+}
+
+bool TsLoader::useColormapFor(const QString &_property, const QString &palette) {
+	property = _property;
+
+	bool inside_property = false;
+	while(1) {
+		QString line = file.readLine(1024).trimmed();
+		if(line.isEmpty())
+			break;
+		if(line.startsWith(QString("PROPERTY_CLASSES"))) {
+			QStringList props = line.split(" ");
+			int pos = props.indexOf(property);
+			if(pos == -1) {
+				throw QString("Could not find property: %1").arg(property);
+			}
+			property_position = pos-1;
+		}
+
+		if(line.startsWith(QString("PROPERTY_CLASS_HEADER %1").arg(property))) {
+			inside_property = true;
+		}
+
+		if(inside_property) {
+			if(line.startsWith("low_clip")) {
+				bool ok;
+				colormap.minValue = line.split(" ").back().toFloat(&ok);
+				if(!ok) throw QString("Proble parsing line: %1").arg(line);
+			}
+			if(line.startsWith("high_clip")) {
+				bool ok;
+				colormap.maxValue = line.split(" ").back().toFloat(&ok);
+				if(!ok) throw QString("Proble parsing line: %1").arg(line);
+			}
+			if(line[0] == "}") {
+				break;
+			}
+		}
+		if(line.startsWith("TFACE")) {
+			break;
+		}
+	}
+	file.seek(0);
+
+	bool found = colormap.setColormap(palette.toStdString());
+
+	if(!found) {
+		throw QString("Could not find colormap: %1 (values accepted are plasma, spectral and viridis)");
+		return false;
+	}
+	return true;
 }
 
 TsLoader::~TsLoader() {
@@ -65,8 +128,17 @@ void TsLoader::cacheVertices() {
 
 			vcg::Point3d p;
 			int id;
-			int n = sscanf(buffer, "%*s %*d %lf %lf %lf", &p[0], &p[1], &p[2]);
-			if(n != 3) throw QString("error parsing vertex line %1 while caching").arg(buffer);
+			QString line(buffer);
+			QStringList parts = line.trimmed().split(" ");
+			if(parts.size() < 5 || parts.size() < property_position)
+				throw QString("error parsing vertex line %1 while caching").arg(buffer);
+			p[0] = parts[2].toFloat();
+			p[1] = parts[3].toFloat();
+			p[2] = parts[4].toFloat();
+
+			//std::string pattern = "%*s %*d %lf %lf %lf";
+			//int n = sscanf(buffer, pattern.c_str(), &p[0], &p[1], &p[2]);
+
 			p -= origin;
 			p[0] *= scale[0];
 			p[1] *= scale[1];
@@ -76,6 +148,13 @@ void TsLoader::cacheVertices() {
 			vertex.v[0] = (float)p[0];
 			vertex.v[1] = (float)p[1];
 			vertex.v[2] = (float)p[2];
+
+			if(property_position >= 0) {
+				float value = parts[5 + property_position].toFloat();
+				std::array<unsigned char, 4> c = colormap.map(value);
+				for(int k = 0; k < 4; k++)
+					vertex.c[k] = c[k];
+			}
 
 			cnt++;
 			if(quantization) {

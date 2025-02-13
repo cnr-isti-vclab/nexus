@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
 	QString mtl;
 	QString translate;
 	QString scalate;
+	QString colormap;
 	bool center = false;
 
 
@@ -121,6 +122,9 @@ int main(int argc, char *argv[]) {
 	opt.addOption('T', "origin", "new origin for the model in the format X:Y:Z", &translate);
 	opt.addOption('W', "scale", "scale vector (after origin subtraction) X:Y:Z", &scalate);
 	opt.addSwitch('G', "center", "set origin in the bounding box center of the input meshes", &center);
+
+	//ts specific options
+	opt.addOption('K', "colormap", "for .ts files: property:colormap such as temperature:viridis (or plasma, spectral)", &colormap);
 	opt.parse();
 
 	//Check parameters are correct
@@ -222,6 +226,14 @@ int main(int argc, char *argv[]) {
 		}
 		else
 			stream = new StreamSoup("cache_stream");
+
+		if(!colormap.isNull()) {
+			stream->colormap = colormap.split(":");
+			if(stream->colormap.size() != 2) {
+				throw QString("Format for color map is 'property:colormap'");
+			}
+			colors = true;
+		}
 
 		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
