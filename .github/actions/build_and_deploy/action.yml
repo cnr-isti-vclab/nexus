@@ -41,13 +41,17 @@ runs:
         brew install qt@5
         echo Qt5_DIR=$(brew --prefix qt@5) >> $GITHUB_ENV
         echo $(brew --prefix qt@5)/bin >> $GITHUB_PATH
+    - name: Ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ matrix.os }}-${{ github.ref }}
     - name: Configure and Build
       shell: bash
       run: |
         mkdir build
         mkdir install
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install ..
+        cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install ..
         ninja
         ninja install
     - name: Deploy Linux
