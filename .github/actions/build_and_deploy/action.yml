@@ -64,13 +64,10 @@ runs:
         chmod +x linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage
         wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
         chmod +x linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
-
         # deploy
         ./linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage --executable=$PWD/bin/nxsbuild --executable=$PWD/bin/nxscompress --executable=$PWD/bin/nxsedit --executable=$PWD/bin/nxsview --appdir=. --plugin qt
-
         rm -r bin
         rm linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
-        tar -cvzf nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz *
     - name: Deploy MacOS
       shell: bash
       if: ${{ runner.os == 'macOS' }}
@@ -79,7 +76,6 @@ runs:
         macdeployqt nxsview.app -executable=nxsview.app/Contents/MacOS/nxsbuild -executable=nxsview.app/Contents/MacOS/nxscompress -executable=nxsview.app/Contents/MacOS/nxsedit
         rm -r bin
         rm -r lib
-        tar -cvzf nxsview-macos-${{ steps.envs.outputs.arch }}.tar.gz *
     - name: Deploy Windows
       shell: bash
       if: ${{ runner.os == 'Windows' }}
@@ -88,4 +84,3 @@ runs:
         windeployqt nxsview.exe
         cd ..
         mv bin nexus_portable-${{ steps.envs.outputs.arch }}
-        powershell Compress-Archive -Path nexus_portable-${{ steps.envs.outputs.arch }} -DestinationPath nexus-windows-${{ steps.envs.outputs.arch }}.zip

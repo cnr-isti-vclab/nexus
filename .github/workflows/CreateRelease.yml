@@ -35,7 +35,16 @@ jobs:
         submodules: recursive
     - name: Build and Deploy
       uses: ./.github/actions/build_and_deploy
-    # TODO: sign
+    - name: Sign and Notarize
+      uses: cnr-isti-vclab/sign-and-notarize@v1
+      with:
+        input-path: 'install/*.app'
+        macos-certificate: '${{ secrets.MACOS_CERTIFICATE }}'
+        macos-certificate-id: '${{ secrets.MACOS_CERT_ID }}'
+        macos-certificate-password: '${{ secrets.MACOS_CERTIFICATE_PSSW }}'
+        macos-notarization-team: '${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}'
+        macos-notarization-user: '${{ secrets.MACOS_NOTARIZATION_USER }}'
+        macos-notarization-password: '${{ secrets.MACOS_NOTARIZATION_PSSW }}'
     - name: Upload
       uses: ./.github/actions/upload
     

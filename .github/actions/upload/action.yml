@@ -10,18 +10,36 @@ runs:
     run: |
       ARCH=$(uname -m)
       echo "arch=$ARCH" >> $GITHUB_OUTPUT
+  - name: Archive Linux
+    shell: bash
+    if: ${{ runner.os == 'Linux' }}
+    run: |
+      cd install
+      tar -cvzf nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz *
   - name: Upload nexus Linux
     uses: actions/upload-artifact@v4
     if: ${{ runner.os == 'Linux' }}
     with:
       name: nexus-linux-${{ steps.envs.outputs.arch }}
       path: install/nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz
+  - name: Archive MacOS
+    shell: bash
+    if: ${{ runner.os == 'macOS' }}
+    run: |
+      cd install
+      tar -cvzf nxsview-macos-${{ steps.envs.outputs.arch }}.tar.gz *
   - name: Upload nxsview MacOS
     uses: actions/upload-artifact@v4
     if: ${{ runner.os == 'macOS' }}
     with:
       name: nxsview-macos-${{ steps.envs.outputs.arch }}
       path: install/nxsview-macos-${{ steps.envs.outputs.arch }}.tar.gz
+  - name: Archive Windows
+    shell: bash
+    if: ${{ runner.os == 'Windows' }}
+    run: |
+      cd install
+      powershell Compress-Archive -Path nexus_portable-${{ steps.envs.outputs.arch }} -DestinationPath nexus-windows-${{ steps.envs.outputs.arch }}.zip
   - name: Uploading Nexus Windows
     uses: actions/upload-artifact@v4
     if: ${{ runner.os == 'Windows' }}
