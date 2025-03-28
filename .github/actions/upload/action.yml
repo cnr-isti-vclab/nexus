@@ -1,0 +1,30 @@
+name: 'Upload'
+description: 'Upload'
+
+runs:
+  using: "composite"
+  steps:
+  - name: Setup Env variables
+    shell: bash
+    id: envs
+    run: |
+      ARCH=$(uname -m)
+      echo "arch=$ARCH" >> $GITHUB_OUTPUT
+  - name: Upload nxsview Portable
+    uses: actions/upload-artifact@v4
+    if: ${{ runner.os == 'Linux' }}
+    with:
+      name: nexus-linux_portable_${{ steps.envs.outputs.arch }}
+      path: install/nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz
+  - name: Upload nxsview Portable
+    uses: actions/upload-artifact@v4
+    if: ${{ runner.os == 'macOS' }}
+    with:
+      name: nxsview_macos_portable_${{ steps.envs.outputs.arch }}
+      path: install/nxsview-macos-${{ steps.envs.outputs.arch }}.tar.gz
+  - name: Uploading Nexus Portable
+    uses: actions/upload-artifact@v4
+    if: ${{ runner.os == 'Windows' }}
+    with:
+      name: nexus_windows_portable_${{ steps.envs.outputs.arch }}
+      path: install/nexus_portable-${{ steps.envs.outputs.arch }}

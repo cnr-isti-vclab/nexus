@@ -1,0 +1,86 @@
+name: 'Build and Deploy'
+description: 'Build and Deploy'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      if: ${{ matrix.os != 'macos-latest' && matrix.os != 'ubuntu-22.04-arm' }}
+      with:
+        cache: true
+        version: '5.15.2'
+    - name: Setup Env variables
+      shell: bash
+      id: envs
+      run: |
+        echo "name=VCINSTALLDIR::C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC" >> $GITHUB_ENV
+        ARCH=$(uname -m)
+        echo "arch=$ARCH" >> $GITHUB_OUTPUT
+    - name: Clone VCG
+      shell: bash
+      run: |
+        cd ..
+        git clone --single-branch --branch devel https://github.com/cnr-isti-vclab/vcglib
+    - name: Install dependencies Linux
+      shell: bash
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+       sudo apt-get install -y mesa-common-dev libglu1-mesa-dev libglew-dev ninja-build
+    - name: Install dependencies Linux arm
+      shell: bash
+      if: ${{ matrix.os == 'ubuntu-22.04-arm' }}
+      run: |
+        sudo apt-get install -y qtbase5-dev qt5-qmake
+    - name: Install dependencies macOS arm
+      shell: bash
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: |
+        brew install qt@5
+        echo Qt5_DIR=$(brew --prefix qt@5) >> $GITHUB_ENV
+        echo $(brew --prefix qt@5)/bin >> $GITHUB_PATH
+    - name: Configure and Build
+      shell: bash
+      run: |
+        mkdir build
+        mkdir install
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install ..
+        ninja
+        ninja install
+    - name: Deploy Linux
+      shell: bash
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        cd install
+        # download linuxdeployqt
+        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage
+        chmod +x linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage
+        wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
+        chmod +x linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
+
+        # deploy
+        ./linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage --executable=$PWD/bin/nxsbuild --executable=$PWD/bin/nxscompress --executable=$PWD/bin/nxsedit --executable=$PWD/bin/nxsview --appdir=. --plugin qt
+
+        rm -r bin
+        rm linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
+        tar -cvzf nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz *
+    - name: Deploy MacOS
+      shell: bash
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        cd install
+        macdeployqt nxsview.app -executable=nxsview.app/Contents/MacOS/nxsbuild -executable=nxsview.app/Contents/MacOS/nxscompress -executable=nxsview.app/Contents/MacOS/nxsedit
+        rm -r bin
+        rm -r lib
+        tar -cvzf nxsview-macos-${{ steps.envs.outputs.arch }}.tar.gz *
+    - name: Deploy Windows
+      shell: bash
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+        cd install/bin
+        windeployqt nxsview.exe
+        cd ..
+        mv bin nexus_portable-${{ steps.envs.outputs.arch }}
