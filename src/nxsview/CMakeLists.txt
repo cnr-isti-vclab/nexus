@@ -46,7 +46,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5OpenGL)
+find_package(Qt5 COMPONENTS OpenGL REQUIRED)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
