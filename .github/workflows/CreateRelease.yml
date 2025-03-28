@@ -1,0 +1,61 @@
+name: CreateRelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New Nexus Version'
+        required: true
+        default: 'X.Y'
+
+jobs:
+  update_version:
+    name: Update Version
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Update NEXUS_VERSION
+      run: |
+        echo ${{ github.event.inputs.version }} | tr -d '\n'> NEXUS_VERSION
+    - name: Commit change
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Set Nexus version to ${{ github.event.inputs.version }}
+
+  build_nexus:
+    name: Build Nexus
+    needs: update_version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-22.04', 'ubuntu-22.04-arm', 'macos-13', 'macos-latest', 'windows-latest']
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Build and Deploy
+      uses: ./.github/actions/build_and_deploy
+    # TODO: sign
+    - name: Upload
+      uses: ./.github/actions/upload
+    
+  create_release:
+    name: Create Release
+    needs: build_nexus
+    runs-on: ubuntu-latest
+    steps:
+    #download all the artifacts
+    - name: Download Nexus Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+    
+    #Create release
+    - name: Create Release
+      uses: "ncipollo/release-action@v1"
+      with:
+        token: "${{ secrets.GITHUB_TOKEN }}"
+        tag: v${{ github.event.inputs.version }}
+        name: 'Nexus v${{ github.event.inputs.version }}'
+        artifacts: |
+          artifacts/n*/*
