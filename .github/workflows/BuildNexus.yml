@@ -59,7 +59,24 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install ..
         ninja
         ninja install
-    - name: Deploy
+    - name: Deploy Linux
+      shell: bash
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        cd install
+        # download linuxdeployqt
+        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage
+        chmod +x linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage
+        wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
+        chmod +x linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
+
+        # deploy
+        ./linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage --executable=$PWD/bin/nxsbuild --executable=$PWD/bin/nxscompress --executable=$PWD/bin/nxsedit --executable=$PWD/bin/nxsview --appdir=. --plugin qt
+
+        rm -r bin
+        rm linuxdeploy-${{ steps.envs.outputs.arch }}.AppImage linuxdeploy-plugin-qt-${{ steps.envs.outputs.arch }}.AppImage
+        tar -cvzf nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz *
+    - name: Deploy MacOS
       shell: bash
       if: ${{ runner.os == 'macOS' }}
       run: |
@@ -68,7 +85,7 @@ jobs:
         rm -r bin
         rm -r lib
         tar -cvzf nxsview-macos-${{ steps.envs.outputs.arch }}.tar.gz *
-    - name: Deploy
+    - name: Deploy Windows
       shell: bash
       if: ${{ runner.os == 'Windows' }}
       run: |
@@ -76,6 +93,12 @@ jobs:
         windeployqt nxsview.exe
         cd ..
         mv bin nexus_portable-${{ steps.envs.outputs.arch }}
+    - name: Upload nxsview Portable
+      uses: actions/upload-artifact@v4
+      if: ${{ runner.os == 'Linux' }}
+      with:
+        name: nexus-linux_portable_${{ steps.envs.outputs.arch }}
+        path: install/nexus-linux-${{ steps.envs.outputs.arch }}.tar.gz
     - name: Upload nxsview Portable
       uses: actions/upload-artifact@v4
       if: ${{ runner.os == 'macOS' }}
