@@ -88,3 +88,4 @@ runs:
         windeployqt nxsview.exe
         cd ..
         mv bin nexus_portable-${{ steps.envs.outputs.arch }}
+        powershell Compress-Archive -Path nexus_portable-${{ steps.envs.outputs.arch }} -DestinationPath nexus-windows-${{ steps.envs.outputs.arch }}.zip
