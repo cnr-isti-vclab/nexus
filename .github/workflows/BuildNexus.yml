@@ -49,6 +49,7 @@ jobs:
       run: |
         brew install qt@5
         echo Qt5_DIR=$(brew --prefix qt@5) >> $GITHUB_ENV
+        echo $(brew --prefix qt@5)/bin >> $GITHUB_PATH
     - name: Configure and Build
       shell: bash
       run: |
