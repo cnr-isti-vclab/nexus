@@ -1,6 +1,6 @@
 #export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 project(nxsview)
 
 SET(HEADERS

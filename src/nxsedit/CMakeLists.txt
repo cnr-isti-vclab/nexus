@@ -1,6 +1,6 @@
 #export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 project(nxsedit)
 
 SET(HEADERS
@@ -22,10 +22,6 @@ SET(SOURCES
 	main.cpp
 	extractor.cpp
 )
-
-cmake_minimum_required(VERSION 3.1)
-
-project(nxsedit)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -55,10 +51,6 @@ SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	main_compress.cpp
 )
-
-cmake_minimum_required(VERSION 3.1)
-
-project(nxscompress)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
