@@ -145,8 +145,8 @@ PlyLoader::PlyLoader(QString filename):
 			texture_filenames.push_back(tex);
 		}
 	}
-//	if(has_textures && texture_filenames.size() == 0)
-//		has_textures = false;
+	if(has_textures && texture_filenames.size() == 0)
+		has_textures = false;
 
 	for(auto &tex: texture_filenames) {
 		sanitizeTextureFilepath(tex.filename);
