@@ -27,7 +27,12 @@ else()
 endif()
 
 # VCGLib -- required
-if (VCGDIR) # VCGDIR exists - using custom user vcglib path
+find_package(vcglib CONFIG)
+if(TARGET vcglib::vcglib)
+	message(STATUS "nexus - VCGLib - using system provided library")
+	add_library(vcglib ALIAS vcglib::vcglib)
+	get_target_property(VCGDIR vcglib::vcglib INTERFACE_INCLUDE_DIRECTORIES)
+elseif (VCGDIR) # VCGDIR exists - using custom user vcglib path
 	if(EXISTS ${VCGDIR})
 		add_subdirectory(${VCGDIR} ${CMAKE_CURRENT_BINARY_DIR}/vcglib)
 		message(STATUS "nexus - VCGLib - using custom VCGDIR path library")
@@ -53,7 +58,13 @@ endif()
 set(BUILD_CORTO_CODEC_UNITY OFF)
 set(BUILD_CORTO_EXE OFF)
 
-add_subdirectory(src/corto EXCLUDE_FROM_ALL)
+find_package(corto CONFIG)
+if(TARGET corto::corto)
+	message(STATUS "nexus - corto - using system provided library")
+	add_library(corto ALIAS corto::corto)
+else()
+	add_subdirectory(src/corto EXCLUDE_FROM_ALL)
+endif()
 
 add_subdirectory(src)
 
@@ -68,3 +79,23 @@ endif()
 if(BUILD_NXS_VIEW)
 	add_subdirectory(src/nxsview)
 endif()
+
+install(EXPORT nexusTargets
+	DESTINATION lib/cmake/nexus
+	NAMESPACE nexus::
+	FILE nexusTargets.cmake
+)
+
+include(CMakePackageConfigHelpers)
+# generate the config file that includes the exports
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+	"${CMAKE_CURRENT_BINARY_DIR}/nexusConfig.cmake"
+	INSTALL_DESTINATION lib/cmake/nexus
+	NO_SET_AND_CHECK_MACRO
+	NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+install(FILES
+	"${CMAKE_CURRENT_BINARY_DIR}/nexusConfig.cmake"
+	DESTINATION lib/cmake/nexus
+)
