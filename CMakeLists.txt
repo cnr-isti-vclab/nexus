@@ -80,22 +80,24 @@ if(BUILD_NXS_VIEW)
 	add_subdirectory(src/nxsview)
 endif()
 
-install(EXPORT nexusTargets
-	DESTINATION lib/cmake/nexus
-	NAMESPACE nexus::
-	FILE nexusTargets.cmake
-)
+if(TARGET vcglib::vcglib AND TARGET corto::corto)
+	install(EXPORT nexusTargets
+		DESTINATION lib/cmake/nexus
+		NAMESPACE nexus::
+		FILE nexusTargets.cmake
+	)
 
-include(CMakePackageConfigHelpers)
-# generate the config file that includes the exports
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
-	"${CMAKE_CURRENT_BINARY_DIR}/nexusConfig.cmake"
-	INSTALL_DESTINATION lib/cmake/nexus
-	NO_SET_AND_CHECK_MACRO
-	NO_CHECK_REQUIRED_COMPONENTS_MACRO
-)
+	include(CMakePackageConfigHelpers)
+	# generate the config file that includes the exports
+	configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+		"${CMAKE_CURRENT_BINARY_DIR}/nexusConfig.cmake"
+		INSTALL_DESTINATION lib/cmake/nexus
+		NO_SET_AND_CHECK_MACRO
+		NO_CHECK_REQUIRED_COMPONENTS_MACRO
+	)
 
-install(FILES
-	"${CMAKE_CURRENT_BINARY_DIR}/nexusConfig.cmake"
-	DESTINATION lib/cmake/nexus
-)
+	install(FILES
+		"${CMAKE_CURRENT_BINARY_DIR}/nexusConfig.cmake"
+		DESTINATION lib/cmake/nexus
+	)
+endif()
