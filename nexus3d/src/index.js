@@ -87,7 +87,7 @@ container.append(renderer.domElement);
 
 
 function onNexusLoad(nexus) {
-	const p   =   nexus.boundingSphere.center.negate();
+	const p   =   nexus.boundingSphere.center.clone().negate();
 	const s   = 1/nexus.boundingSphere.radius;
 	//nexus.rotateX(-3.1415/2);
 
