@@ -18,6 +18,7 @@ class Nexus3D extends THREE.Mesh {
 			type:'NXS',
 			url: url,
 			gl: renderer.getContext(),
+			XRMode: false, //set to true to avoid flickering due to double eye rendering.
 			material: null,
 
 			autoUpdate: true,
@@ -145,14 +146,15 @@ class Nexus3D extends THREE.Mesh {
 	}
 
 	renderBufferDirect(renderer, scene, camera, geometry, material, group) {
-		let s = new THREE.Vector2();
-		renderer.getSize(s);
+		let s = new THREE.Vector4();
+		renderer.getViewport(s);
 
 	   	//object modelview is multiplied by camera during rendering, we need to do it here for visibility computations
 		this.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, this.matrixWorld );
-		this.traversal.updateView([0, 0, s.width, s.height], camera.projectionMatrix.elements, this.modelViewMatrix.elements);
+		if(s.x() == 0 && this.XRMode) { //hack to only traverse on the left eye
+			this.traversal.updateView(s, camera.projectionMatrix.elements, this.modelViewMatrix.elements);
 		this.instance_errors = this.traversal.traverse(this.mesh, this.cache);
-		
+		}
 		//threejs increments version when setting neeedsUpdate
 		/*if(this.material.version > 0) {
 			this.updateMaterials();
