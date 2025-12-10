@@ -24,7 +24,7 @@ import {
 } from 'three'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import * as Nexus3D from './Nexus3D.js'
+import { Nexus3D, Cache } from './Nexus3D.js'
 import { Monitor } from './Monitor.js'
 
 
@@ -83,7 +83,7 @@ renderer.setPixelRatio( window.devicePixelRatio );
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = BasicShadowMap;
 
-container.append(renderer.domElement);
+container.appendChild(renderer.domElement);
 
 
 function onNexusLoad(nexus) {
@@ -103,12 +103,12 @@ function onNexusLoad(nexus) {
 var url = "models/gargo.nxz"; 
 
 //onUpdate parameter here is used to trigger a redraw
-let nexus1 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+let nexus1 = new Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 //nexus1.castShadow = true;
 nexus1.receiveShadow = true;
 
 //create a second instance and position it.
-let nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+let nexus2 = new Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 nexus2.castShadow = true;
 nexus2.receiveShadow = true;
 
@@ -119,7 +119,7 @@ nexus2.receiveShadow = true;
 //nexus.material.color = new Color(1, 0, 0));
 //nexus.material.wireframe = true;
 
-let monitor = new Monitor(Nexus3D.Cache, nexus2);
+let monitor = new Monitor(Cache, nexus2);
 scene.add(nexus1);
 scene.add(nexus2);
 
@@ -143,7 +143,7 @@ scene.add( ground );
 
 
 window.addNexus = () => { 
-	nexus2 = new Nexus3D.Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
+	nexus2 = new Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 	scene.add(nexus2);
 	redraw = true;
 };
@@ -180,7 +180,7 @@ function onWindowResize() {
 const clock = new Clock();
 var redraw = true;
 
-renderer.setAnimationLoop(()=> {
+function animate() {
     const delta = clock.getDelta()
     controls.update(delta);
     
@@ -202,6 +202,8 @@ renderer.setAnimationLoop(()=> {
         }
 		renderer.render( scene, camera );
     }
-})
+}
+
+renderer.setAnimationLoop(animate);
 
 onWindowResize();

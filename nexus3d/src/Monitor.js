@@ -288,7 +288,7 @@ class Monitor {
 			let dx = 10;
 			for(let i = 0; i < nodes.length; i++) {
 				let n = nodes[i];
-				let selected = this.model.traversal.selected[n];
+				let selected = this.model.traversal.selected ? this.model.traversal.selected[n] : false;
 				let status = this.mesh.status[n];
 				let color = 'red';
 				if(selected)

@@ -1,15 +1,25 @@
-import * as THREE from 'three'
+import {
+	Mesh as THREEMesh,
+	MeshStandardMaterial,
+	Object3D,
+	Vector3,
+	Vector4,
+	Sphere,
+	BufferGeometry,
+	BufferAttribute,
+	DataTexture,
+	RGBAFormat,
+	LinearSRGBColorSpace
+} from 'three'
 import { Traversal } from './Traversal.js'
 import { Mesh } from './Mesh.js'
 import { Cache } from './Cache.js'
 
-class Nexus3D extends THREE.Mesh {
+class Nexus3D extends THREEMesh {
 
-	constructor(url, renderer, options) {
+	constructor(url, renderer, options = {}) {
 
 		super();
-		if(typeof renderer == 'function') 
-			throw "Nexus3D constructor has changed: Nexus3D(url, renderer, options) where options include: onLoad, onUpdate, onProgress and material"
 
 		this.patchWebGLRenderer(renderer);
 
@@ -35,7 +45,7 @@ class Nexus3D extends THREE.Mesh {
 		if('material' in options)
 			this.material = options.material;
 		if(!this.material) 
-			this.material = new THREE.MeshStandardMaterial();
+			this.material = new MeshStandardMaterial();
 			
 		for(let call of ['onLoad', 'onUpdate', 'onProgress']) {
 			this['_' + call] = [];
@@ -62,8 +72,8 @@ class Nexus3D extends THREE.Mesh {
 	}
 
 	copy(source) {
-		Object3D.prototype.copy.call( this, source, false );
-		throw "Can't really copy."
+		Object3D.prototype.copy.call(this, source, false);
+		throw new Error("Can't really copy a Nexus3D object.");
 		return this;
 	}
 
@@ -116,23 +126,23 @@ class Nexus3D extends THREE.Mesh {
 
 	onLoadCallback() {
 		const c = this.mesh.sphere.center;
-		const center = new THREE.Vector3(c[0], c[1], c[2]);
+		const center = new Vector3(c[0], c[1], c[2]);
 		const radius = this.mesh.sphere.radius;
-		this.boundingSphere = new THREE.Sphere(center, radius);
+		this.boundingSphere = new Sphere(center, radius);
 
-		var geometry = new THREE.BufferGeometry();
+		var geometry = new BufferGeometry();
 
-		geometry.setAttribute( 'position', new THREE.BufferAttribute(new Float32Array(3), 3));
+		geometry.setAttribute( 'position', new BufferAttribute(new Float32Array(3), 3));
 		
 		if(this.mesh.vertex.normal)
-			geometry.setAttribute( 'normal', new THREE.BufferAttribute(new Float32Array(3), 3));
+			geometry.setAttribute( 'normal', new BufferAttribute(new Float32Array(3), 3));
 		if(this.mesh.vertex.color)
-			geometry.setAttribute( 'color', new THREE.BufferAttribute(new Float32Array(4), 4));
+			geometry.setAttribute( 'color', new BufferAttribute(new Float32Array(4), 4));
 		if(this.mesh.vertex.texCoord)
-			geometry.setAttribute( 'uv', new THREE.BufferAttribute(new Float32Array(2), 2));
+			geometry.setAttribute( 'uv', new BufferAttribute(new Float32Array(2), 2));
 
 		if(this.mesh.vertex.texCoord) {
-			this.material_texture = new THREE.DataTexture( new Uint8Array([1, 1, 1, 1]), 1, 1, THREE.RGBAFormat );
+			this.material_texture = new DataTexture( new Uint8Array([1, 1, 1, 1]), 1, 1, RGBAFormat );
 			this.material_texture.needsUpdate = true;
 		}
 
@@ -146,14 +156,14 @@ class Nexus3D extends THREE.Mesh {
 	}
 
 	renderBufferDirect(renderer, scene, camera, geometry, material, group) {
-		let s = new THREE.Vector4();
+		let s = new Vector4();
 		renderer.getViewport(s);
 
 	   	//object modelview is multiplied by camera during rendering, we need to do it here for visibility computations
 		this.modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, this.matrixWorld );
-		if(s.x() == 0 && this.XRMode) { //hack to only traverse on the left eye
+		if(s.x == 0 || !this.XRMode) { //hack to only traverse on the left eye
 			this.traversal.updateView(s, camera.projectionMatrix.elements, this.modelViewMatrix.elements);
-		this.instance_errors = this.traversal.traverse(this.mesh, this.cache);
+			this.instance_errors = this.traversal.traverse(this.mesh, this.cache);
 		}
 		//threejs increments version when setting neeedsUpdate
 		/*if(this.material.version > 0) {
@@ -358,12 +368,12 @@ class Nexus3D extends THREE.Mesh {
 		
 		//needed for approximate picking.
 		if(id < this.mesh.nroots) {
-			let basegeometry = new THREE.BufferGeometry();
-			basegeometry.setAttribute( 'position', new THREE.BufferAttribute(data.position, 3 ) );
-			basegeometry.setAttribute( 'normal', new THREE.BufferAttribute(data.normal, 3 ) );
-			basegeometry.setIndex(new THREE.BufferAttribute( data.index, 1 ) );
+			let basegeometry = new BufferGeometry();
+			basegeometry.setAttribute( 'position', new BufferAttribute(data.position, 3 ) );
+			basegeometry.setAttribute( 'normal', new BufferAttribute(data.normal, 3 ) );
+			basegeometry.setIndex(new BufferAttribute( data.index, 1 ) );
 
-			this.basemesh = new THREE.Mesh(basegeometry, this.material);
+			this.basemesh = new THREEMesh(basegeometry, this.material);
 			this.basemesh.visible = false;
 			this.add(this.basemesh);
 		}
@@ -388,8 +398,15 @@ class Nexus3D extends THREE.Mesh {
 		gl.bindTexture(gl.TEXTURE_2D, tex);
 
 		//TODO some textures might be alpha only! save space
-		let internalFormat = this.material.map.colorSpace == THREE.LinearSRGBColorSpace ? gl.RGBA : gl.SRGB8_ALPHA8;
-		let s = gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, gl.RGBA, gl.UNSIGNED_BYTE, image);
+		let internalFormat;
+		if (this.material && this.material.map && this.material.map.colorSpace === LinearSRGBColorSpace) {
+			internalFormat = gl.RGBA;
+		} else if (typeof gl.SRGB8_ALPHA8 !== 'undefined') {
+			internalFormat = gl.SRGB8_ALPHA8;
+		} else {
+			internalFormat = gl.RGBA;
+		}
+		gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, gl.RGBA, gl.UNSIGNED_BYTE, image);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -437,7 +454,7 @@ class Nexus3D extends THREE.Mesh {
 	}
 
 	toJSON(meta) {
-		throw "Can't";
+		throw new Error("Can't convert to json.");
 	}
 
 	patchWebGLRenderer(renderer) {
