@@ -117,14 +117,22 @@ void Nexus::loadIndex(char *buffer) {
 void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 {
 	Texture& texture = textures[t];
-	data.memory = (char*)file->map(texture.getBeginOffset(), texture.getSize());
+	if(header.signature.isDeepzoom()) {
+		data.memory = file->loadDZTex(t);
+	} else {
+		data.memory = (char*)file->map(texture.getBeginOffset(), texture.getSize());
+	}
 	if (!data.memory) {
 		std::cerr << "Failed mapping texture data" << std::endl;
 		exit(0);
 	}
 	QImage img;
 	bool success = img.loadFromData((uchar*)data.memory, texture.getSize());
-	file->unmap((uchar*)data.memory);
+	if(header.signature.isDeepzoom()) {
+		file->dropDZTex(t);
+	} else {
+		file->unmap((uchar*)data.memory);
+	}
 
 	if (!success) {
 		std::cerr << "Failed loading texture" << std::endl;
@@ -148,7 +156,6 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 }
 void Nexus::loadIndex() {
 	NexusData::loadIndex();
-
 	loaded = true;
 }
 

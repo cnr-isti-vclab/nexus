@@ -97,6 +97,7 @@ public:
 
 	bool hasPTextures() { return (bool)(flags | PTEXTURE); }
 	bool isCompressed() { return (bool)(flags & (MECO|CORTO)); }
+	bool isDeepzoom() { return (bool)(flags & (DEEPZOOM)); }
 
 	Signature(): flags(0) {}
 };

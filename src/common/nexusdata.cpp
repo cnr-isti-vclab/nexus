@@ -149,6 +149,7 @@ uint32_t NexusData::size(uint32_t node) {
 	return nodes[node].getSize();
 }
 
+
 uint64_t NexusData::loadRam(uint32_t n) {
 
 	Signature &sign = header.signature;
@@ -160,20 +161,27 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 	uint64_t size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
 
-	if(!sign.isCompressed()) {
 
-		d.memory = (char *)file->map(offset, size);
+
+	if(!sign.isCompressed()) {
+		if(sign.isDeepzoom())
+			d.memory = file->loadDZNode(n);
+		else
+			d.memory = (char *)file->map(offset, size);
 
 	} else {
 
-		char *buffer = new char[compressed_size];
-		file->seek(offset);
-		int64_t r = file->read(buffer, compressed_size);
-		assert(r == (int64_t)compressed_size);
+		char *buffer = nullptr;
+		if(sign.isDeepzoom()) {
+			buffer = file->loadDZNode(n);
+		} else {
+			buffer = new char[compressed_size];
+			file->seek(offset);
+			int64_t r = file->read(buffer, compressed_size);
+			assert(r == (int64_t)compressed_size);
+		}
 
 		d.memory = new char[size];
-
-		int iterations = 1;
 
 		if(sign.flags & Signature::MECO) {
 			meco::MeshDecoder coder(node, d, patches, sign);
@@ -195,6 +203,10 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 			decoder.decode();
 		}
+		if(sign.isDeepzoom())
+			file->dropDZNode(buffer);
+		else
+			delete []buffer;
 
 		//Shuffle points in compressed point clouds
 		if(!sign.face.hasIndex()) {
@@ -228,6 +240,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 	}
 
 	assert(d.memory);
+	// If DEEPZOOM mode, textures are stored externally (in _files/) — skip texture loading here.
 	if(header.n_textures) {
 		//be sure to load images
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
@@ -240,13 +253,17 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				continue;
 
 			Texture &texture = textures[t];
-			data.memory = (char *)file->map(texture.getBeginOffset(), texture.getSize());
+			if(sign.isDeepzoom()) {
+				data.memory = file->loadDZTex(n);
+			} else {
+				data.memory = (char *)file->map(texture.getBeginOffset(), texture.getSize());
+			}
 			if(!data.memory) {
 				cerr << "Failed mapping texture data" << endl;
 				exit(0);
 			}
 
-			loadImageFromData(data, t);
+			//loadImageFromData(data, t);
 
 			/*
 			QImage img;
@@ -288,16 +305,21 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(!data.vbo);
 	assert(data.memory);
 
-	if(!header.signature.isCompressed()) //not compressed.
-		file->unmap((unsigned char *)data.memory);
-	else
+	auto &sign = header.signature;
+	if(!sign.isCompressed()) {
+		if(sign.isDeepzoom())
+			file->dropDZNode(data.memory);
+		else
+			file->unmap((unsigned char *)data.memory);
+	} else {
 		delete []data.memory;
+	}
 
 	data.memory = NULL;
 
 	//report RAM size for compressed meshes.
-	uint32_t size = node.nvert * header.signature.vertex.size() +
-				node.nface * header.signature.face.size();
+	uint32_t size = node.nvert * sign.vertex.size() +
+				node.nface * sign.face.size();
 
 	if(header.n_textures) {
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++) {
@@ -307,9 +329,11 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 			TextureData &tdata = texturedata[t];
 			tdata.count_ram--;
 			if(tdata.count_ram != 0) continue;
+			if(sign.isDeepzoom())
+				file->dropDZTex(tdata.memory);
+			else
+				file->unmap((unsigned char *)tdata.memory);
 
-			file->unmap((unsigned char *)tdata.memory);
-			//delete []tdata.memory;
 			tdata.memory = NULL;
 			size += tdata.width*tdata.height*4;
 		}
