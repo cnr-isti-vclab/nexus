@@ -319,7 +319,7 @@ Mesh.prototype = {
 			let request = indexedDB.open(url);
 			request.onsuccess = () => { this.db = request.result; };
 			request.onupgradeneeded = (event) => {
-					let db = event.target.result;
+				let db = event.target.result;
 				this.meshStore = db.createObjectStore('mesh');
 				this.texStore = db.createObjectStore('tex');
 			};
@@ -1093,6 +1093,11 @@ function httpRequestNodeGeometry(context, node) {
 	let request = {
 		load:function() {
 			delete m.georeq[n]; 
+			if(m.db) {
+				let transaction = m.db.transaction('mesh', "readwrite");
+				transaction.objectStore('mesh').put(this.response, n);
+				transaction.commit();
+			}
 			loadNodeGeometry(this, context, node); },
 		error:function() {
 			delete m.georeq[n]; 
@@ -1137,7 +1142,7 @@ function requestNodeTexture(context, node) {
 		let request = transaction.objectStore('tex').get(node.id);
 		request.onsuccess = (e) => { 
 			if(request.result) {
-				loadNodeTecture({ response: request.result}, context, node);
+				loadNodeTexture({ response: request.result}, context, node, tex);
 			} else {
 				httpRequestNodeTexture(context, node, tex);
 			}
@@ -1155,7 +1160,13 @@ function httpRequestNodeTexture(context, node, tex) {
 	let request = {
 		load:function() { 
 			delete m.texreq[n];
-			loadNodeTexture(this, context, node, tex);  },
+			if(m.db) {
+				let transaction = m.db.transaction('tex', "readwrite");
+				transaction.objectStore('tex').put(this.response, tex);
+				transaction.commit();
+			}
+			loadNodeTexture(this, context, node, tex);  
+		},
 		error:function() {
 			if(Debug.verbose) console.log("Texture request error!");
 			delete m.texreq[n];
@@ -1214,12 +1225,6 @@ function loadNodeGeometry(request, context, node) {
 	if(m.status[n] == 0) return;
 
 	node.buffer = request.response;
-
-	if(m.db) {
-		let transaction = m.db.transaction('mesh', "readwrite");
-		transaction.objectStore('mesh').put(node.buffer, n);
-		transaction.commit();
-	}
 
 	if(!m.compressed)
 		readyNode(node);
