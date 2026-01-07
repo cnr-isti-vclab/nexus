@@ -1,25 +1,14 @@
-#export CMAKE_PREFIX_PATH=path to Qt/5.5/gcc_64/ (save for bin/qmake)
-
 cmake_minimum_required(VERSION 3.10)
 project(nxsbuild)
 
-SET(HEADERS
-	${VCGDIR}/wrap/system/qgetopt.h
-	partition.h
-	trianglesoup.h
-	vertex_cache_optimizer.h
-)
-
-SET(SOURCES
-	${VCGDIR}/wrap/system/qgetopt.cpp
+set(SOURCES
 	main.cpp
+	../core/mapped_file.cpp
+	../core/mesh.cpp
 )
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_AUTOMOC ON)
+add_executable(nxsbuild ${SOURCES})
 
-add_executable(nxsbuild ${SOURCES} ${HEADERS})
+target_include_directories(nxsbuild PRIVATE ../core)
 
-target_link_libraries(nxsbuild PUBLIC nexus)
-
-install(TARGETS nxsbuild)
+install(TARGETS nxsbuild DESTINATION bin)
