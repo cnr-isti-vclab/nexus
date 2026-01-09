@@ -5,6 +5,8 @@ set(SOURCES
 	main.cpp
 	../core/mapped_file.cpp
 	../core/mesh.cpp
+    ../loaders/meshloader.cpp
+    ../loaders/objloader.cpp
 )
 
 add_executable(nxsbuild ${SOURCES})

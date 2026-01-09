@@ -1,23 +1,11 @@
 #include <iostream>
 #include <string>
-#include <vector>
+#include <filesystem>
+#include <ctime>
+#include <unistd.h>
 
-#include "../core/mesh_types.h"
-#include "../core/mapped_file.h"
-
-namespace nx {
-
-class MeshLoader {
-public:
-    bool load(const std::string& filename) {
-        std::cout << "Stub: Loading mesh from " << filename << std::endl;
-        // Todo: Implement loading logic for Ply, Obj, STL, etc.
-        // This will populate a stream of Wedges/Triangles
-        return true;
-    }
-};
-
-} // namespace nx
+#include "../core/mesh.h"
+#include "../loaders/meshloader.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -26,10 +14,21 @@ int main(int argc, char *argv[]) {
     }
 
     std::string input_file = argv[1];
-    
-    nx::MeshLoader loader;
-    if (!loader.load(input_file)) {
-        std::cerr << "Failed to load mesh." << std::endl;
+    nx::MeshFiles mesh;
+
+    // Create a unique temporary directory for the mesh files
+    namespace fs = std::filesystem;
+    fs::path tmp = fs::temp_directory_path() / ("nexus_build_" + std::to_string(::getpid()) + "_" + std::to_string(static_cast<long>(std::time(nullptr))));
+    fs::create_directories(tmp);
+    mesh.create(tmp);
+
+    try {
+        if (!nx::load_mesh(fs::path(input_file), mesh)) {
+            std::cerr << "Failed to load mesh." << std::endl;
+            return 1;
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Error loading mesh: " << e.what() << std::endl;
         return 1;
     }
 
