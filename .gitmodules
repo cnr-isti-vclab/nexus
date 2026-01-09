@@ -1,6 +1,6 @@
 [submodule "src/corto"]
-	path = src/corto
-	url = https://github.com/cnr-isti-vclab/corto
+path = src/corto
+url = https://github.com/cnr-isti-vclab/corto
 [submodule "src/draco"]
-	path = src/draco
-	url = https://github.com/google/draco
+path = src/draco
+url = https://github.com/google/draco

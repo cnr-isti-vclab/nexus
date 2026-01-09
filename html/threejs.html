@@ -16,7 +16,6 @@
 </body>
 
 <script>
-
 var camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.1, 100 );
 camera.position.z = 4.0;
 
@@ -48,17 +47,10 @@ scene.add( light2 );
 var renderer = new THREE.WebGLRenderer( { antialias: false } );
 renderer.setClearColor( scene.fog.color );
 renderer.setPixelRatio( window.devicePixelRatio );
-renderer.setSize( window.innerWidth, window.innerHeight);
+renderer.setSize( window.innerWidth, window.innerHeight );
 
 var container = document.getElementById( 'container');
 container.appendChild( renderer.domElement );
-
-/* An appropriate material can be used as a fourth arg for the NexusObject constructor
-
-var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-texture.needsUpdate = true;
-var material = new THREE.MeshLambertMaterial( { color: 0xffffff, map: texture } );
-*/
 
 function onNexusLoad() {
 	var s   = 1/nexus_obj.geometry.boundingSphere.radius;
@@ -66,10 +58,9 @@ function onNexusLoad() {
 	var p = nexus_obj.geometry.boundingBox.getCenter(target).negate();
 
 	nexus_obj.position.set(p.x*s, p.y*s, p.z*s);
-	nexus_obj.scale.set(s, s, s); 
-	redraw = true;
-
+	nexus_obj.scale.set(s, s, s);
 //	nexus_obj.material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+	redraw = true;
 }
 
 function getURLParameter(name) {
@@ -78,7 +69,14 @@ function getURLParameter(name) {
 
 var model = getURLParameter('model') || "models/gargo.nxz";
 
-var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer);
+/* An appropriate material can be used as optional fifth arg for the NexusObject constructor */
+let material = false;
+/* Material customizations examples: */
+//let material = new THREE.PointsMaterial( {  size:3, color: 0x00ff00, transparent: false, opacity:0.25 } );
+//let material = new THREE.MeshLambertMaterial( { color: 0xff0000, vertexColors: THREE.VertexColors } );
+//let material = new THREE.MeshNormalMaterial({ flatShading: true });
+
+var nexus_obj = new NexusObject(model, onNexusLoad, function() { redraw = true; }, renderer, material);
 scene.add(nexus_obj);
 
 window.addEventListener( 'resize', onWindowResize, false );
@@ -89,7 +87,7 @@ function onWindowResize() {
 
 	renderer.setSize( window.innerWidth, window.innerHeight );
 
-	controls.handleResize();
+//	controls.handleResize();
 	controls.update();
 	redraw = true;
 }
@@ -107,9 +105,6 @@ function animate() {
 }
 
 animate();
-
 </script>
 
-
 </html>
-

@@ -16,23 +16,23 @@ namespace nx {
 		return file.open(mode);
 	}
 
-	int nx::QTNexusFile::read(char* where, unsigned int length)
+	long long int nx::QTNexusFile::read(char* where, size_t length)
 	{
 		return file.read(where, length);
 	}
 
 
-	int nx::QTNexusFile::write(char* from, unsigned int length)
+	long long int nx::QTNexusFile::write(char* from, size_t length)
 	{
 		return file.write(from, length);
 	}
 
-	int QTNexusFile::size()
+	size_t QTNexusFile::size()
 	{
 		return file.size();
 	}
 
-	void* nx::QTNexusFile::map(unsigned int from, unsigned int size)
+	void* nx::QTNexusFile::map(size_t from, size_t size)
 	{
 		return file.map(from, size);
 	}
@@ -42,13 +42,8 @@ namespace nx {
 		return file.unmap((uchar*)mapped);
 	}
 
-	bool nx::QTNexusFile::seek(unsigned int to)
+	bool nx::QTNexusFile::seek(size_t to)
 	{
 		return file.seek(to);
-	}
-
-	std::string nx::QTNexusFile::errorString()
-	{
-		return file.errorString().toStdString();
 	}
 }

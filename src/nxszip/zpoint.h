@@ -24,7 +24,6 @@ for more details.
 #include <vcg/space/box3.h>
 
 #include <iostream>
-using namespace std;
 
 class ZPoint {
 public:
@@ -174,8 +173,8 @@ public:
 	}
 	void debug() {
 		for(int i = 0; i < 64; i++)
-			if(testBit(i)) cout << '1';
-			else cout << '0';
+			if(testBit(i)) std::cout << '1';
+			else std::cout << '0';
 	}
 };
 

@@ -1,0 +1,22 @@
+name: BuildNexus
+
+on:
+  [push, pull_request]
+
+jobs:
+  build_nexus:
+    name: Build Nexus
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-22.04', 'ubuntu-22.04-arm', 'macos-15-intel', 'macos-latest', 'windows-latest']
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Build and Deploy
+      uses: ./.github/actions/build_and_deploy
+    - name: Upload
+      uses: ./.github/actions/upload

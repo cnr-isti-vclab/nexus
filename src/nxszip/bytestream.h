@@ -22,7 +22,6 @@ for more details.
 
 #include <vector>
 #include <iostream>
-using namespace std;
 
 //input and output byte: you must know when to stop reading.
 

@@ -39,7 +39,7 @@ uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
 }
 
 
-NexusData::NexusData(): nodes(0), patches(0), textures(0), nodedata(0), texturedata(0), nroots(0) {
+NexusData::NexusData(): file(nullptr), nodes(0), patches(0), textures(0), nodedata(0), texturedata(0), nroots(0) {
 }
 
 NexusData::~NexusData() {

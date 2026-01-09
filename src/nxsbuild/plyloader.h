@@ -39,6 +39,7 @@ public:
 private:
 	vcg::ply::PlyFile pf;
 	bool double_coords = false;
+	bool has_vertex_tex_coords = false;
 	qint64 vertices_element;
 	qint64 faces_element;
 

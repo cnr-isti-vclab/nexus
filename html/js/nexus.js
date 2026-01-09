@@ -79,26 +79,27 @@ function loadMeco() {
 var corto = null;
 function loadCorto() {
 
-	/*function getWorkerURL( url ) {
-		const content = `importScripts( "${ url }" );`;
-		return URL.createObjectURL( new Blob( [ content ], { type: "text/javascript" } ) );
-	} */
+//	function getWorkerURL( url ) {
+//		const content = `importScripts( "${ url }" );`;
+//		return URL.createObjectURL( new Blob( [ content ], { type: "text/javascript" } ) );
+//	}
 
-	//let corto_url = path.replace('nexus.js', 'corto.em.js');
+//	let corto_url = path.replace('nexus.js', 'corto.em.js');
 
-	//corto = new Worker(getWorkerURL(corto_url));
+//	corto = new Worker(getWorkerURL(corto_url));
 	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
-		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_index: true, short_normals: true });
+		corto.postMessage({ buffer: node.buffer, request:this.count, rgba_colors: true, short_index: true, short_normals: true});
 		node.buffer = null;
 		this.requests[this.count++] = node;
 	}
 	corto.onmessage = function(e) {
-		var node = this.requests[e.data.request];
-		delete this.requests[e.data.request];
-		node.model = e.data.geometry || e.data.model;  //for old corto.js compatibility
+		var request = e.data.request;
+		var node = this.requests[request];
+		delete this.requests[request];
+		node.model = e.data.model;
 		readyNode(node);
 	};
 }
@@ -302,19 +303,35 @@ var drawBudget    = 5*(1<<20);
 
 Mesh = function() {
 	var t = this;
-	t.headerSize = 4096;
+	t.useIndexedDb = true;
 	t.onLoad = null;
 	t.reqAttempt = 0;
+	t.georeq = {}
+	t.texreq = {}
 }
 
 Mesh.prototype = {
 	open: function(url) {
+		if(this.useIndexedDb) {
+			let indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB;
+			this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction;
+			this.db = null;
+			let request = indexedDB.open(url);
+			request.onsuccess = () => { this.db = request.result; };
+			request.onupgradeneeded = (event) => {
+					let db = event.target.result;
+				this.meshStore = db.createObjectStore('mesh');
+				this.texStore = db.createObjectStore('tex');
+			};
+		}
+
 		var mesh = this;
 		mesh.url = url;
-		mesh.httpRequest(
-			0,
-			mesh.headerSize,
-			function() {
+		mesh.httpRequest({
+			url: this.url,
+			start:0,
+			end:88,
+			load:function() {
 				if(Debug.verbose) console.log("Loading header for " + mesh.url);
 				var view = new DataView(this.response);
 				view.offset = 0;
@@ -330,23 +347,28 @@ Mesh.prototype = {
 					mesh[i] = header[i];
 				mesh.vertex = mesh.signature.vertex;
 				mesh.face = mesh.signature.face;
-				mesh.renderMode = mesh.face.INDEX?["FILL", "POINT"]:["POINT"];
+				mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
 				mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
+				mesh.deepzoom = (mesh.signature.flags & 8);
 				mesh.meco = (mesh.signature.flags & 2);
 				mesh.corto = (mesh.signature.flags & 4);
+				if(mesh.deepzoom)
+					mesh.baseurl = url.substr(0, url.length -4) + '_files/';
 				mesh.requestIndex();
 			},
-			function() { console.log("Open request error!");},
-			function() { console.log("Open request abort!");}
-		);
+			error:function() { console.log("Open request error!");},
+			abort:function() { console.log("Open request abort!");},
+			type:'arraybuffer'
+		});
 	},
 
-	httpRequest: function(start, end, load, error, abort, type) {
+	httpRequest: function({url, start, end, load, error, abort, type}) {
 		if(!type) type = 'arraybuffer';
 		var r = new XMLHttpRequest();
-		r.open('GET', this.url, true);
+		r.open('GET', url, true);
 		r.responseType = type;
-		r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
+		if(end)
+			r.setRequestHeader("Range", "bytes=" + start + "-" + (end -1));
 		r.onload = function(){
 			switch (this.status){
 				case 0:
@@ -356,7 +378,10 @@ Mesh.prototype = {
 					load.bind(this)();
 					break;
 				case 200:
-//					console.log("200 response: server does not support byte range requests.");
+					if(this.deepzoom)
+						console.log("200 response: server does not support byte range requests.");
+					else
+						load.bind(this)();
 			}
 		};
 		r.onerror = error;
@@ -367,14 +392,16 @@ Mesh.prototype = {
 
 	requestIndex: function() {
 		var mesh = this;
-
-		mesh.httpRequest(
-			mesh.indexStart,
-			mesh.indexEnd,
-			function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
-			function() { console.log("Index request error!");},
-			function() { console.log("Index request abort!");}
-		);
+		var end = 88 + mesh.nodesCount*44 + mesh.patchesCount*12 + mesh.texturesCount*68;
+		mesh.httpRequest({
+			url: this.url,
+			start:88,
+			end:end,
+			load:function() { if(Debug.verbose) console.log("Loading index for " + mesh.url); mesh.handleIndex(this.response); },
+			error:function() { console.log("Index request error!");},
+			abort:function() { console.log("Index request abort!");},
+			type:'arraybuffer',
+		});
 	},
 
 	handleIndex: function(buffer) {
@@ -382,22 +409,18 @@ Mesh.prototype = {
 		var view = new DataView(buffer);
 		view.offset = 0;
 
-		var n = t.n_nodes;
+		var n = t.nodesCount;
 
-		t.v3 = (t.version == 3);
 		t.noffsets  = new Uint32Array(n);
-		t.nsizes    = new Uint32Array(n); //size of the node on disk
 		t.nvertices = new Uint32Array(n);
 		t.nfaces    = new Uint32Array(n);
 		t.nerrors   = new Float32Array(n);
 		t.nspheres  = new Float32Array(n*5);
-		t.nsize     = new Float32Array(n); //decompressed size in ram.
+		t.nsize     = new Float32Array(n);
 		t.nfirstpatch = new Uint32Array(n);
 
 		for(i = 0; i < n; i++) {
 			t.noffsets[i] = padding*getUint32(view); //offset
-			if(t.v3)
-				t.nsizes[i] = getUint32(view);
 			t.nvertices[i] = getUint16(view);        //verticesCount
 			t.nfaces[i] = getUint16(view);           //facesCount
 			t.nerrors[i] = getFloat32(view);
@@ -406,77 +429,27 @@ Mesh.prototype = {
 				t.nspheres[i*5+k] = getFloat32(view);       //sphere + tight
 			t.nfirstpatch[i] = getUint32(view);          //first patch
 		}
-		if(!t.v3) {
-		    for(i = 0; i < n-1; i++)
-			    t.nsizes[i] = t.noffsets[i+1] - t.noffsets[i];
-		}
-
 		t.sink = n -1;
 
-
-		if(t.v3)
-			t.patches = new Int32Array(view.buffer, view.offset, t.n_patches*4); //node, lastTriangle, texture, material
-		else {
-			let tmp = new Int32Array(view.buffer, view.offset, t.n_patches*3); //node, lastTriangle, texture
-			t.patches =  new Int32Array(t.n_patches*4);
-			for(let i = 0; i < t.n_patches; i++) {
-				t.patches[i*4+0] = tmp[i*3+0];
-				t.patches[i*4+1] = tmp[i*3+1];
-				t.patches[i*4+2] = tmp[i*3+2];
-				t.patches[i*4+3] = 0; //material
-			}
-		}
-
-		t.nroots = t.n_nodes;
+		t.patches = new Uint32Array(view.buffer, view.offset, t.patchesCount*3); //noded, lastTriangle, texture
+		t.nroots = t.nodesCount;
 		for(j = 0; j < t.nroots; j++) {
 			for(i = t.nfirstpatch[j]; i < t.nfirstpatch[j+1]; i++) {
-				if(t.patches[i*4] < t.nroots)
-					t.nroots = t.patches[i*4];
+				if(t.patches[i*3] < t.nroots)
+					t.nroots = t.patches[i*3];
 			}
 		}
 
-		if(t.v3)
-			view.offset += t.n_patches*16;
-		else
-			view.offset += t.n_patches*12;
+		view.offset += t.patchesCount*12;
 
-		//TODO rename n_textures to n_groups
-		//texture groups (1 group per material)
-		t.groups = new Array(t.n_textures);
-		
-		if(t.v3) {
-
-			let g = new Uint32Array(view.buffer, view.offset, t.n_textures*2);
-			for(let i = 0; i < t.groups.length; i++) {
-				t.groups[i] = {
-					offset: padding*g[2*i],
-					size: g[2*i+1],
-					ref: 0,
-					textures: []
-				};
-			}
-		} else {
-			for(let i = 0; i < t.groups.length; i++) {
-				t.groups[i] = {
-					offset: padding*getUint32(view),
-					size: 0,
-					ref: 0,
-					textures: []
-				};
-			}
-			for(let i = 0; i < t.groups.length-1; i++)
-				t.groups[i].size = t.groups[i+1].offset - t.groups[i].offset;
-
-/*			t.tgroups = new Uint32Array(t.n_textures*2);
-			for(let i = 0; i < t.n_textures; i++) {
-				t.tgroups[2*i] = padding*getUint32(view);
-				view.offset += 16*4; //skip proj matrix
-			} 
-			for(let i = 0; i < t.n_textures-1; i++)
-				t.tgroups[2*i+1] = t.tgroups[2*(i+1)] - t.tgroups[2*i]; */
+		t.textures = new Uint32Array(t.texturesCount);
+		t.texref = new Uint32Array(t.texturesCount);
+		for(i = 0; i < t.texturesCount; i++) {
+			t.textures[i] = padding*getUint32(view);
+			view.offset += 16*4; //skip proj matrix
 		}
 
-		t.vsize = 12 + (t.vertex.NORMAL?6:0) + (t.vertex.COLOR_0?4:0) + (t.vertex.UV_0?8:0);
+		t.vsize = 12 + (t.vertex.normal?6:0) + (t.vertex.color?4:0) + (t.vertex.texCoord?8:0);
 		t.fsize = 6;
 
 		//problem: I have no idea how much space a texture is needed in GPU. 10x factor assumed.
@@ -484,17 +457,14 @@ Mesh.prototype = {
 		var tmptexcount = new Uint32Array(n-1);
 		for(var i = 0; i < n-1; i++) {
 			for(var p = t.nfirstpatch[i]; p != t.nfirstpatch[i+1]; p++) {
-				var tex = t.patches[p*4+2];
-				if(tex == -1)
-					continue;
-				tmptexsize[i] += 10 * t.groups[tex].size;
+				var tex = t.patches[p*3+2];
+				tmptexsize[i] += t.textures[tex+1] - t.textures[tex];
 				tmptexcount[i]++;
 			}
 			t.nsize[i] = t.vsize*t.nvertices[i] + t.fsize*t.nfaces[i];
 		}
 		for(var i = 0; i < n-1; i++) {
-			if(tmptexcount[i] > 0)
-				t.nsize[i] += tmptexsize[i]/tmptexcount[i];
+			t.nsize[i] += 10*tmptexsize[i]/tmptexcount[i];
 		}
 
 		t.status = new Uint8Array(n); //0 for none, 1 for ready, 2+ for waiting data
@@ -502,8 +472,6 @@ Mesh.prototype = {
 		t.errors = new Float32Array(n); //biggest error of instances
 		t.ibo    = new Array(n);
 		t.vbo    = new Array(n);
-
-//		need a place where we store the tex id of each texture (we have the group)
 		t.texids = new Array(n);
 
 		t.isReady = true;
@@ -528,17 +496,17 @@ Mesh.prototype = {
 		return e;
 	},
 
-	importVertex: function(view) {	//enum POSITION, NORMAL, COLOR_0, UV_0, DATA0
+	importVertex: function(view) {	//enum POSITION, NORMAL, COLOR, TEXCOORD, DATA0
 		var e = this.importElement(view);
 		var color = e[2];
 		if(color) {
 			color.type = 2; //unsigned byte
 			color.glType = attrGlMap[2];
 		}
-		return { POSITION: e[0], NORMAL: e[1], COLOR_0: e[2], UV_0: e[3], data: e[4] };
+		return { position: e[0], normal: e[1], color: e[2], texCoord: e[3], data: e[4] };
 	},
 
-	//enum INDEX, NORMAL, COLOR, UV, DATA0
+	//enum INDEX, NORMAL, COLOR, TEXCOORD, DATA0
 	importFace: function(view) {
 		var e = this.importElement(view);
 		var color = e[2];
@@ -546,7 +514,7 @@ Mesh.prototype = {
 			color.type = 2; //unsigned byte
 			color.glType = attrGlMap[2];
 		}
-		return { INDEX: e[0], NORMAL: e[1], COLOR_0: e[2], UV_0: e[3], data: e[4] };
+		return { index: e[0], normal: e[1], color: e[2], texCoord: e[3], data: e[4] };
 	},
 
 	importSignature: function(view) {
@@ -558,49 +526,20 @@ Mesh.prototype = {
 	},
 
 	importHeader: function(view) {
-		let magic = getUint32(view);
-		if(magic != 0x4E787320) {
-			console.log("Not a nexus file.");
-			return null;
-		}
-		this.version = getUint32(view);
-		if(this.version == 2)
-			return this.importHeader2(view);
-		if(this.version == 3)
-			return this.importHeader3(view);
-		throw "Nexus version: " + this.version + " not supported";
-		return null;
-	},
-
-	importHeader2: function(view) {
+		var magic = getUint32(view);
+		if(magic != 0x4E787320) return null;
 		var h = {};
+		h.version = getUint32(view);
 		h.verticesCount = getUint64(view);
 		h.facesCount = getUint64(view);
 		h.signature = this.importSignature(view);
-		h.n_nodes = getUint32(view);
-		h.n_patches = getUint32(view);
-		h.n_textures = getUint32(view);
+		h.nodesCount = getUint32(view);
+		h.patchesCount = getUint32(view);
+		h.texturesCount = getUint32(view);
 		h.sphere = {
 			center: [getFloat32(view), getFloat32(view), getFloat32(view)],
 			radius: getFloat32(view)
 		};
-		this.indexStart = 88;
-		this.indexEnd = 88 + h.n_nodes*44 + h.n_patches*12 + h.n_textures*68;
-		return h;
-	},
-
-	importHeader3: function(view) {
-		var h = {};
-		let jsonLength = getUint32(view);
-		this.headerSize = jsonLength + 12;
-		if(this.headerSize < view.length)
-			return null;
-		
-		var str = String.fromCharCode.apply(null, new Uint8Array(view.buffer, 12, jsonLength));
-		h = JSON.parse(str);		
-		h.version = 3;
-		this.indexStart = jsonLength + 12;
-		this.indexEnd = this.indexStart + h.n_nodes*48 + h.n_patches*16 + h.n_textures*8;
 		return h;
 	}
 };
@@ -610,8 +549,7 @@ Instance = function(gl) {
 	this.onLoad = function() {};
 	this.onUpdate = null;
 	this.drawBudget = drawBudget;
-	this.attributes = { position:0, normal:1, color:2, uv:3, size:4 };
-	this.samplers = { };
+	this.attributes = { 'position':0, 'normal':1, 'color':2, 'uv':3, 'size':4, 'map':0 };
 }
 
 Instance.prototype = {
@@ -693,7 +631,7 @@ Instance.prototype = {
 			var l = Math.sqrt(p[i]*p[i] + p[i+1]*p[i+1] + p[i+2]*p[i+2]);
 			p[i] /= l; p[i+1] /= l; p[i+2] /= l; p[i+3] /= l;
 		}
-
+		
 		//side is M'(1,0,0,1) - M'(-1,0,0,1) and they lie on the planes
 		var r3 = mi[3] + mi[15];
 		var r0 = (mi[0]  + mi[12 ])/r3;
@@ -724,15 +662,27 @@ Instance.prototype = {
 		if(Debug.extract == true)
 			return;
 
+		var n = t.mesh.nodesCount;
+
+		if(t.sameResolution && t.selected != null) {
+			//check if status and selected agree:
+			let allok = true;
+			for(let i = 0; i < n; i++) {
+				if(t.selected[i] && t.mesh.status[i] == 0) {
+					allok = false;
+					break;
+				}
+			}
+			if(allok && !t.visitQueue.size && !t.nblocked) return;
+		}
+
+
+		t.selected = new Uint8Array(n);
+
 		if(!t.isReady) return;
-
-		if(t.sameResolution)
-			if(!t.visitQueue.size && !t.nblocked) return;
-
-		var n = t.mesh.n_nodes;
 		t.visited  = new Uint8Array(n);
 		t.blocked  = new Uint8Array(n);
-		t.selected = new Uint8Array(n);
+
 
 		t.visitQueue = new PriorityQueue(n);
 		for(var i = 0; i < t.mesh.nroots; i++)
@@ -743,15 +693,17 @@ Instance.prototype = {
 		t.nblocked = 0;
 
 		var requested = 0;
-        while(t.visitQueue.size && t.nblocked < maxBlocked) {
+		while(t.visitQueue.size && t.nblocked < maxBlocked) {
 			var error = t.visitQueue.error[0];
 			var node = t.visitQueue.pop();
 			if ((requested < maxPending) && (t.mesh.status[node] == 0)) {
 				t.context.candidates.push({id: node, instance:t, mesh:t.mesh, frame:t.context.frame, error:error});
 				requested++;
 			}
+			//for points we don't block children.
+			let selected = t.expandNode(node, error);
+			var blocked = t.mode != "POINT" && (t.blocked[node] || !selected);
 
-			var blocked = t.blocked[node] || !t.expandNode(node, error);
 			if (blocked)
 				t.nblocked++;
 			else {
@@ -780,7 +732,7 @@ Instance.prototype = {
 	insertChildren : function (node, block) {
 		var t = this;
 		for(var i = t.mesh.nfirstpatch[node]; i < t.mesh.nfirstpatch[node+1]; ++i) {
-			var child = t.mesh.patches[i*4];
+			var child = t.mesh.patches[i*3];
 			if (child == t.mesh.sink) return;
 			if (block) t.blocked[child] = 1;
 			if (!t.visited[child])
@@ -864,13 +816,13 @@ Instance.prototype = {
 		var last_texture = -1;
 
 		t.realError = 0.0;
-		for(var n = 0; n < m.n_nodes; n++) {
+		for(var n = 0; n < m.nodesCount; n++) {
 			if(!t.selected[n]) continue;
 
 			if(t.mode != "POINT") {
 				var skip = true;
 				for(var p = m.nfirstpatch[n]; p < m.nfirstpatch[n+1]; p++) {
-					var child = m.patches[p*4];
+					var child = m.patches[p*3];
 					if(!t.selected[child]) {
 						skip = false;
 						break;
@@ -897,22 +849,28 @@ Instance.prototype = {
 			var nv = m.nvertices[n];
 			var offset = nv*12;
 
-			if(m.vertex.UV_0 && attr.uv >= 0){
-				gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset), offset += nv*8;
-				gl.enableVertexAttribArray(attr.uv);
+			if(m.vertex.texCoord) {
+				if(attr.uv >= 0) {
+					gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset);
+					gl.enableVertexAttribArray(attr.uv);
+				}
+				offset += nv*8;
 			}
-			if(m.vertex.COLOR_0 && attr.color >= 0){
-				gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset), offset += nv*4;
-				gl.enableVertexAttribArray(attr.color);
+			if(m.vertex.color) {
+				if(attr.color >= 0) {
+					gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
+					gl.enableVertexAttribArray(attr.color);
+				}
+				offset += nv*4;
 			}
-			if(m.vertex.NORMAL && attr.normal >= 0){
+			if(m.vertex.normal && attr.normal >= 0){
 				gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset);
 				gl.enableVertexAttribArray(attr.normal);
 			}
 
 			if(Debug.nodes) {
-				gl.disableVertexAttribArray(attr.color);
-				gl.disableVertexAttribArray(attr.uv);
+				gl.disableVertexAttribArray(2);
+				gl.disableVertexAttribArray(3);
 
 				var error = t.nodeError(n, true);
 				var palette = [
@@ -932,16 +890,21 @@ Instance.prototype = {
 				for( let k = 0; k < 4; k++)
 					color[k] = palette[low][k]*(1-w) + palette[low+1][k]*w;
 				gl.vertexAttrib4fv(attr.color, color);
-//				gl.vertexAttrib4fv(attr.color, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
+//				gl.vertexAttrib4fv(2, [(n*200 %255)/255.0, (n*140 %255)/255.0,(n*90 %255)/255.0, 1]);
 			}
 
 			if (Debug.draw) continue;
 
 			if(t.mode == "POINT") {
-				var pointsize = t.pointsize;
-				var error = t.nodeError(n);
-				if(!pointsize)
-					var pointsize = Math.ceil(1.2* Math.min(error, 5));
+				var pointsize;
+				if(!t.pointsize)
+					pointsize = 1.0;
+				else {
+					if(typeof t.pointsize == 'number')
+						pointsize = t.pointsize;
+					else
+						pointsize = t.pointsize();
+				}
 
 				if(typeof attr.size == 'object') { //threejs pointcloud rendering
 					gl.uniform1f(attr.size, t.pointsize);
@@ -949,23 +912,15 @@ Instance.prototype = {
 				} else
 					gl.vertexAttrib1fv(attr.size, [pointsize]);
 
-//				var fraction = (error/t.realError - 1);
-//				if(fraction > 1) fraction = 1;
-
 				var count = nv;
 				if(count != 0) {
-					if(m.vertex.UV_0) {
-
-						let texgroupid = m.patches[m.nfirstpatch[n]*4+2];
-						let group = m.groups[texgroupid];
-						if(texgroupid != -1 && texgroupid != last_texture) { //bind texture
-							
-							for(let i = 0; i < group.textures.length; i++) {
-								gl.activeTexture(gl.TEXTURE0 + i);
-								gl.bindTexture(gl.TEXTURE_2D, group.textures[i]);
-							}
+					if(m.vertex.texCoord) {
+						var texid = m.patches[m.nfirstpatch[n]*3+2];
+						if(texid != -1 && texid != last_texture) { //bind texture
+							var tex = m.texids[texid];
+							gl.activeTexture(gl.TEXTURE0 + attr.map);
+							gl.bindTexture(gl.TEXTURE_2D, tex);
 						}
-						last_texture = texgroupid;
 					}
 					gl.drawArrays(gl.POINTS, 0, count);
 					rendered += count;
@@ -978,32 +933,27 @@ Instance.prototype = {
 			var end = 0;
 			var last = m.nfirstpatch[n+1]-1;
 			for (var p = m.nfirstpatch[n]; p < m.nfirstpatch[n+1]; ++p) {
-				var child = m.patches[p*4];
+				var child = m.patches[p*3];
 
 				if(!t.selected[child]) {
-					end = m.patches[p*4+1];
+					end = m.patches[p*3+1];
 					if(p < last) //if textures we do not join. TODO: should actually check for same texture of last one.
 						continue;
 				}
 				if(end > offset) {
-					if(m.vertex.UV_0) {
-						let texgroupid = m.patches[p*4+2];
-						let group = m.groups[texgroupid];
-						if(texgroupid != -1 && texgroupid != last_texture) { //bind texture
-							let mat = m.patches[p*4 + 3];
-							mat = m.materials[mat];
-							//we need to map material texture index in group.textures to the gl_texture_0, 1, etx
-							mat.mapping.forEach((sampler, tex) => {
-								gl.activeTexture(gl.TEXTURE0 + sampler);
-								gl.bindTexture(gl.TEXTURE_2D, group.textures[tex]);
-							});
+					if(m.vertex.texCoord) {
+						var texid = m.patches[p*3+2];
+						if(texid != -1 && texid != last_texture) { //bind texture
+							var tex = m.texids[texid];
+							gl.activeTexture(gl.TEXTURE0 + attr.map);
+							gl.bindTexture(gl.TEXTURE_2D, tex);
+							last_texture = texid;
 						}
-						last_texture = texgroupid;
 					}
 					gl.drawElements(gl.TRIANGLES, (end - offset) * 3, gl.UNSIGNED_SHORT, offset * 6);
 					rendered += end - offset;
 				}
-				offset = m.patches[p*4+1];
+				offset = m.patches[p*3+1];
 			}
 		}
 
@@ -1036,10 +986,7 @@ function getContext(gl) {
 		if(g.gl == gl) c = g;
 	});
 	if(c) return c;
-
-	let version = gl.getParameter(gl.SHADING_LANGUAGE_VERSION);
-	version = parseInt(version[14]);
-	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0, version: version, maxCacheSize: maxCacheSize,
+	c = { gl:gl, meshes:[], frame:0, cacheSize:0, candidates:[], pending:0, maxCacheSize: maxCacheSize,
 		minFps: minFps, targetError: targetError, currentError: targetError, maxError: maxError, realError: 0 };
 	contexts.push(c);
 	return c;
@@ -1079,8 +1026,8 @@ function removeNode(context, node) {
 	if(Debug.verbose) console.log("Removing " + m.url + " node: " + n);
 	m.status[n] = 0;
 
-	if (m.georeq.readyState != 4) {
-		m.georeq.abort();
+	if (n in m.georeq && m.georeq[n].readyState != 4) {
+		m.georeq[n].abort();
 		context.pending--;
 	}
 
@@ -1089,17 +1036,14 @@ function removeNode(context, node) {
 	context.gl.deleteBuffer(m.ibo[n]);
 	m.vbo[n] = m.ibo[n] = null;
 
-	if(!m.vertex.UV_0) return;
-	if (m.texreq && m.texreq.readyState != 4) m.texreq.abort();
+	if(!m.vertex.texCoord) return;
+	if (n in m.texreq && m.texreq[n].readyState != 4) m.texreq.abort();
+	var tex = m.patches[m.nfirstpatch[n]*3+2]; //TODO assuming one texture per node
+	m.texref[tex]--;
 
-	let texgroup = m.patches[m.nfirstpatch[n]*4+2]; //TODO assuming one texture per node
-	let group = m.groups[texgroup];
-	group.ref--;
-
-	if(group.ref) {
-		for(let i = 0; i < group.textures.length; i++) 
-			context.gl.deleteTexture(group.textures[i]);
-		group.textures = [];
+	if(m.texref[tex] == 0 && m.texids[tex]) {
+		context.gl.deleteTexture(m.texids[tex]);
+		m.texids[tex] = null;
 	}
 }
 
@@ -1117,7 +1061,6 @@ function requestNode(context, node) {
 	node.nvert = m.nvertices[n];
 	node.nface = m.nfaces[n];
 
-//	console.log("Requesting " + m.url + " node: " + n);
 	requestNodeGeometry(context, node);
 	requestNodeTexture(context, node);
 }
@@ -1127,50 +1070,115 @@ function requestNodeGeometry(context, node) {
 	var m = node.mesh;
 
 	m.status[n]++; //pending
-	m.georeq = m.httpRequest(
-		m.noffsets[n],
-		m.noffsets[n] + m.nsizes[n],
-		function() { loadNodeGeometry(this, context, node); },
-		function() {
+
+	if(m.db) {
+		let transaction = node.mesh.db.transaction('mesh', "readwrite");
+		let request = transaction.objectStore('mesh').get(node.id);
+		request.onsuccess = (e) => { 
+			if(request.result) {
+				loadNodeGeometry({ response: request.result}, context, node);
+			} else {
+				httpRequestNodeGeometry(context, node);
+			}
+		};
+		//probably not needed
+		//transaction.commit();
+	} else
+		httpRequestNodeGeometry(context, node);
+}
+
+function httpRequestNodeGeometry(context, node) {
+	var n = node.id;
+	var m = node.mesh;
+	let request = {
+		load:function() {
+			delete m.georeq[n]; 
+			loadNodeGeometry(this, context, node); },
+		error:function() {
+			delete m.georeq[n]; 
 			if(Debug.verbose) console.log("Geometry request error!");
 			recoverNode(context, node, 0);
 		},
-		function() {
+		abort:function() {
+			delete m.georeq[n]; 
 			if(Debug.verbose) console.log("Geometry request abort!");
 			removeNode(context, node);
 		},
-		'arraybuffer'
-	);
+		type:'arraybuffer'
+	};
+
+	if(m.deepzoom) {
+		request.url = m.baseurl + n + '.nxn';
+	} else {
+		Object.assign(request, {
+			url:m.url,
+			start:m.noffsets[n],
+			end:m.noffsets[n+1],
+		});
+	}
+	m.georeq[n] = m.httpRequest(request);
 }
 
 function requestNodeTexture(context, node) {
 	var n = node.id;
 	var m = node.mesh;
 
-	if(!m.vertex.UV_0) return;
+	if(!m.vertex.texCoord) return;
 
-	var texgroup = m.patches[m.nfirstpatch[n]*4+2];
-	m.groups[texgroup].ref++;
-
-	if(m.groups[texgroup].ref > 1) //already in use.
+	var tex = m.patches[m.nfirstpatch[n]*3+2];
+	m.texref[tex]++;
+	if(m.texids[tex])
 		return;
 
 	m.status[n]++; //pending
 
-	m.texreq = m.httpRequest(
-		m.groups[texgroup].offset, 
-		m.groups[texgroup].offset + m.groups[texgroup].size, 
-		function() { loadNodeTexture(this, context, node, texgroup); },
-		function() {
+	if(m.db) {
+		let transaction = node.mesh.db.transaction('tex', "readwrite");
+		let request = transaction.objectStore('tex').get(node.id);
+		request.onsuccess = (e) => { 
+			if(request.result) {
+				loadNodeTecture({ response: request.result}, context, node);
+			} else {
+				httpRequestNodeTexture(context, node, tex);
+			}
+		};
+		//probably not needed
+		//transaction.commit();
+	} else {
+		httpRequestNodeTexture(context, node, tex);
+	}
+}
+
+function httpRequestNodeTexture(context, node, tex) {
+	var n = node.id;
+	var m = node.mesh;
+	let request = {
+		load:function() { 
+			delete m.texreq[n];
+			loadNodeTexture(this, context, node, tex);  },
+		error:function() {
 			if(Debug.verbose) console.log("Texture request error!");
+			delete m.texreq[n];
 			recoverNode(context, node, 1);
 		},
-		function() {
+		abort:function() {
 			if(Debug.verbose) console.log("Texture request abort!");
+			delete m.texreq[n];
 			removeNode(context, node);
 		},
-		'arraybuffer'
-	);
+		type:'blob'
+	};
+
+	if(m.deepzoom) {
+		request.url = m.baseurl + tex + '.jpg';
+	} else {
+		Object.assign(request, {
+			url:m.url,
+			start:m.textures[tex],
+			end:m.textures[tex+1],
+		});
+	}
+	m.texreq[n] = m.httpRequest(request);
 }
 
 function recoverNode(context, node, id) {
@@ -1194,8 +1202,6 @@ function recoverNode(context, node, id) {
 			if(Debug.verbose) console.log("Recovering geometry for " + m.url + " node: " + n);
 			break;
 		case 1:
-			var texgroup = m.patches[m.nfirstpatch[n]*4+2];
-			m.groups[texgroup].ref--;
 			requestNodeTexture(context, node);
 			if(Debug.verbose) console.log("Recovering texture for " + m.url + " node: " + n);
 			break;
@@ -1209,13 +1215,19 @@ function loadNodeGeometry(request, context, node) {
 
 	node.buffer = request.response;
 
+	if(m.db) {
+		let transaction = m.db.transaction('mesh', "readwrite");
+		transaction.objectStore('mesh').put(node.buffer, n);
+		transaction.commit();
+	}
+
 	if(!m.compressed)
 		readyNode(node);
 	else if(m.meco) {
-		var sig = { texcoords: m.vertex.UV_0, normals:m.vertex.NORMAL, colors:m.vertex.COLOR_0, indices: m.face.INDEX }
+		var sig = { texcoords: m.vertex.texCoord, normals:m.vertex.normal, colors:m.vertex.color, indices: m.face.index }
 		var patches = [];
 		for(var k = m.nfirstpatch[n]; k < m.nfirstpatch[n+1]; k++)
-			patches.push(m.patches[k*4+1]);
+			patches.push(m.patches[k*3+1]);
 		if(!meco) loadMeco();
 		meco.postRequest(sig, node, patches);
 	} else {
@@ -1225,80 +1237,53 @@ function loadNodeGeometry(request, context, node) {
 }
 
 function powerOf2(n) {
-    return n && (n & (n - 1)) === 0;
+	return n && (n & (n - 1)) === 0;
 }
 
-function loadNodeTexture(request, context, node, groupid) {
+function loadNodeTexture(request, context, node, texid) {
 	var n = node.id;
 	var m = node.mesh;
 	if(m.status[n] == 0) return;
 
-	let ntex = 1;
+	var blob = request.response;
 
-	let offset = 0;
-	let size = request.response.size;
-	let view;
-	if(m.v3) {
-		view = new DataView(request.response);
-		view.offset = 0;
-		ntex = getUint32(view); 
-	}
+	var urlCreator = window.URL || window.webkitURL;
+	var img = document.createElement('img');
+	img.onerror = function(e) { console.log("Texture loading error!"); };
+	img.src = urlCreator.createObjectURL(blob);
 
-	m.status[n] += ntex-1;
+	var gl = context.gl;
+	img.onload = function() {
+		urlCreator.revokeObjectURL(img.src);
 
-	for(let i = 0; i < ntex; i++) {
-		if(m.v3) {
-			size = getUint32(view);
-			offset = view.offset;
-			view.offset += size;
+		var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
+		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+		var tex = m.texids[texid] = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_2D, tex);
+
+//TODO some textures might be alpha only! save space
+		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+		if(!(gl instanceof WebGLRenderingContext) || (powerOf2(img.width) && powerOf2(img.height))) {
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+			gl.generateMipmap(gl.TEXTURE_2D);
+		} else {
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 		}
 
-		let blob = new Blob([new Uint8Array(request.response, offset, size)]);
+		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
 
-		let urlCreator = window.URL || window.webkitURL;
-		let img = document.createElement('img');
-		img.onerror = function(e) { console.log("Texture loading error!"); };
-		img.src = urlCreator.createObjectURL(blob);
+		m.status[n]--;
 
-		let texnumber = i;
-		let gl = context.gl;
-		img.onload = function() {
-			urlCreator.revokeObjectURL(img.src);
-
-			var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
-			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-			var tex = gl.createTexture();
-			let remap = [0, 1, 2];
-			m.groups[groupid].textures[remap[i]] = tex; 
-			gl.bindTexture(gl.TEXTURE_2D, tex);
-//TODO some textures might be alpha only! save space
-			if(context.version > 1 || (powerOf2(img.width) && powerOf2(img.height))) {
-				var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-				gl.generateMipmap(gl.TEXTURE_2D);
-
-			} else {
-				var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			}
-			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
-
-			m.status[n]--;
-
-			if(m.status[n] == 2) {
-				m.status[n]--; //ready
-				node.reqAttempt = 0;
-				node.context.pending--;
-				node.instance.onUpdate && node.instance.onUpdate();
-				updateCache(gl);
-			}
+		if(m.status[n] == 2) {
+			m.status[n]--; //ready
+			node.reqAttempt = 0;
+			node.context.pending--;
+			node.instance.onUpdate && node.instance.onUpdate();
+			updateCache(gl);
 		}
 	}
 }
@@ -1338,37 +1323,38 @@ function readyNode(node) {
 
 	if(!m.corto) {
 		indices  = new Uint8Array(node.buffer, nv*m.vsize,  nf*m.fsize);
-//TODO why vertices is not build using node.buffer?
-//suspect: might be with the byte alignmente required:
-//coords, uv, color (4 bytes), normal
 		vertices = new Uint8Array(nv*m.vsize);
 		var view = new Uint8Array(node.buffer, 0, nv*m.vsize);
 		var v = view.subarray(0, nv*12);
 		vertices.set(v);
 		var off = nv*12;
-		if(m.vertex.UV_0) {
+		if(m.vertex.texCoord) {
 			var uv = view.subarray(off, off + nv*8);
 			vertices.set(uv, off);
 			off += nv*8;
 		}
-		//unfortunately normals comes before color in nxs, but we want the reverse in the buffer
-
-		if(m.vertex.NORMAL && m.vertex.COLOR_0) {
+		if(m.vertex.normal && m.vertex.color) {
 			var no = view.subarray(off, off + nv*6);
 			var co = view.subarray(off + nv*6, off + nv*6 + nv*4);
 			vertices.set(co, off);
 			vertices.set(no, off + nv*4);
 		}
 		else {
-			if(m.vertex.NORMAL) {
+			if(m.vertex.normal) {
 				var no = view.subarray(off, off + nv*6);
 				vertices.set(no, off);
 			}
-			if(m.vertex.COLOR_0) {
+			if(m.vertex.color) {
 				var co = view.subarray(off, off + nv*4);
 				vertices.set(co, off);
 			}
 		}
+		if(n == 0) {
+			m.basev = new Float32Array(vertices.buffer, 0, nv*3);
+			m.basei = new Uint16Array(node.buffer, nv*m.vsize, nf*3); 
+		}
+
+
 	} else {
 		indices = node.model.index;
 		vertices = new ArrayBuffer(nv*m.vsize);
@@ -1389,23 +1375,27 @@ function readyNode(node) {
 			var no = new Int16Array(vertices, off, nv*3);
 			no.set(model.normal);
 		}
+
+		if(n == 0) {
+			m.basev = new Float32Array(v.buffer, 0, nv*3);
+			m.basei = indices;
+		}
+
 	}
 
 	if(nf == 0)
 		scramble(nv, v, no, co);
 
-	if(n == 1) {
-		m.basev = new Float32Array(vertices, 0, nv*3);
-		m.basei = new Uint16Array(indices, 0, nf*3);
-	}
 
 	var gl = node.context.gl;
 	var vbo = m.vbo[n] = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
 	gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+	if(nf > 0) {
 	var ibo = m.ibo[n] = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+	}
 
 	m.status[n]--;
 
@@ -1419,7 +1409,7 @@ function readyNode(node) {
 }
 
 function flush(context, mesh) {
-	for(var i = 0; i < mesh.n_nodes; i++)
+	for(var i = 0; i < mesh.nodesCount; i++)
 		removeNode(context, {mesh:mesh, id: i });
 }
 
@@ -1437,7 +1427,7 @@ function updateCache(gl) {
 		var worst = null;
 		//find node with smallest error in cache
 		context.meshes.forEach(function(m) {
-			var n = m.n_nodes;
+			var n = m.nodesCount;
 			for(i = 0; i < n; i++)
 				if(m.status[i] == 1 && (!worst ||  m.errors[i] < worst.error))
 					worst = {error: m.errors[i], frame: m.frames[i], mesh:m, id:i};

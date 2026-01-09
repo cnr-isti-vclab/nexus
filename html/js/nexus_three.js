@@ -22,18 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*import * as THREE from './three.module.js'; */
-
 function nocenter() { throw "Centering and in general applying matrix to geometry is unsupported."; }
 
-function NexusObject(url, onLoad, onUpdate, renderer, material) {
+class NexusObject extends THREE.Mesh {
+constructor(url, onLoad, onUpdate, renderer, material) {
+
+	var geometry = new THREE.BufferGeometry();
+	geometry.center = nocenter;
+	var positions = new Float32Array(3);
+	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+	super(geometry, material); //THREE.Mesh.call( this, geometry, material);
+	
 	if(onload !== null && typeof(onLoad) == 'object')
 		throw "NexusObject constructor has been changed.";
 
-	let gl = renderer.getContext();
-	let geometry = new THREE.BufferGeometry();
-
-	geometry.center = nocenter;
+	var gl = renderer.getContext();
 
 /*
 function() { 
@@ -44,33 +48,59 @@ function() {
 };
 */
 
-	let positions = new Float32Array(3);
-	geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
+	if(!material)
+		this.autoMaterial = true;
 
-	let createMaterial = (!material);
 
 	this.frustumCulled = false;
 
-	var nexus = this;
-	var instance = geometry.instance = new Nexus.Instance(gl);
+	var mesh = this;
+	var instance = this.geometry.instance = new Nexus.Instance(gl);
 	instance.open(url);
 	instance.onLoad = function() {
-		let mesh = instance.mesh;
-		var c = mesh.sphere.center;
+		var c = instance.mesh.sphere.center;
 		var center = new THREE.Vector3(c[0], c[1], c[2]);
-		var radius = mesh.sphere.radius;
+		var radius = instance.mesh.sphere.radius;
 
 		geometry.boundingSphere = new THREE.Sphere(center, radius);
-		geometry.boundingBox = nexus.computeBoundingBox();
+		geometry.boundingBox = mesh.computeBoundingBox();
 
+		if(mesh.autoMaterial)
+			mesh.material = new THREE.MeshLambertMaterial( { color: 0xffffff } );
 
-		switch(mesh.version) {
-		case 2: nexus.createMaterialsV2(createMaterial); break;
-		case 3: nexus.createMaterialsV3(createMaterial); break;
-		default: throw "Unsupported nexus version: " + instance.version;
+		if(this.mesh.vertex.normal) {
+			var normals = new Float32Array(3);
+			geometry.setAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
 		}
+		let materialType = this.mesh.vertex.normal? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
 
+		if(this.mesh.vertex.color && this.mesh.vertex.texCoord) {
+			var uv = new Float32Array(2);
+			var colors = new Float32Array(4);
+			geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
+			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
+			if(mesh.autoMaterial) {
+				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+				texture.needsUpdate = true;
+				mesh.material = new materialType( { vertexColors: THREE.VertexColors, map: texture } );
+			}
+		}
+		else if(this.mesh.vertex.color) {
+			var colors = new Float32Array(4);
+			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
+			if(mesh.autoMaterial)
+				mesh.material = new materialType({ vertexColors: THREE.VertexColors });
+		}
+		else if(this.mesh.vertex.texCoord) {
+			var uv = new Float32Array(2);
+			geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
+			if(mesh.autoMaterial) {
+				var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
+				texture.needsUpdate = true;
+				mesh.material = new materialType( { color: 0xffffff, map: texture } );
+			}
+		}
 
 		//this seems not to be needed to setup the attributes and shaders
 /*
@@ -79,67 +109,42 @@ function() {
 			geometry.setIndex(new THREE.BufferAttribute( indices, 3) );
 		}
 */
-		if(onLoad) onLoad(nexus);
+		if(onLoad) onLoad(mesh);
 	};
 	instance.onUpdate = function() { onUpdate(this) };
 
-	THREE.Mesh.call( this, geometry, this.material);
-
 	this.onAfterRender = onAfterRender;
+}
 }
 
 function onAfterRender(renderer, scene, camera, geometry, material, group) {
 	var gl = renderer.getContext();
 	var instance = geometry.instance;
 	if(!instance || !instance.isReady) return;
-	let s = new THREE.Vector2();
+	var s = new THREE.Vector2();
 	renderer.getSize(s);
 	instance.updateView([0, 0, s.width, s.height], 
 	camera.projectionMatrix.elements, 
 	this.modelViewMatrix.elements);
-	//TODO: this should be one once per material!
 
-	let program = gl.getParameter(gl.CURRENT_PROGRAM);
-	let attr = instance.attributes = {};
+	var program = gl.getParameter(gl.CURRENT_PROGRAM);
 
-	["position", "normal", "color", "uv"].forEach(a => { attr[a] = gl.getAttribLocation (program, a); });
-	["size", "scale"]                    .forEach(a => { attr[a] = gl.getUniformLocation(program, a); });
 
-//	each material has a few maps, we need to test more than one material
-//  	problem! we are only using a material (is there a way to change material?)
-//  	should we gltf brutally?
-
-	let samplers = instance.samplers = {};
-
-	["map", "bumpMap", "roughnessMap", "normalMap", "specularMap"].forEach((map) => {
-		let location = gl.getUniformLocation(program, map); 
-		samplers[map] = location === null? null : gl.getUniform(program, location);
-	});
-
-	for(let m in instance.mesh.materials) {
-		let mat = instance.mesh.materials[m];
-		if(!mat.mapping) {
-			mat.mapping = [];
-			if(mat.pbrMetallicRoughness) {
-				let pbr = mat.pbrMetallicRoughness;
-				if(pbr.baseColorTexture && samplers.map >= 0)
-					mat.mapping[pbr.baseColorTexture.index] = samplers.map;
-				if(pbr.metallicRoughnessTexture && samplers.roughnessMap >= 0)
-					mat.mapping[pbr.metallicRoughnessTexture.index] = samplers.roughnessMap;
-			}
-			if(mat.normalTexture)
-				mat.mapping[mat.normalTexture.index] = samplers.normalMap;
-			if(mat.bumpTexture)
-				mat.mapping[mat.bumpTexture.index] = samplers.bumpMap;
-			if(mat.specularTexture)
-				mat.mapping[mat.specularTexture.index] = samplers.specularMap;
-
-		}
-	}
+	var attr = instance.attributes;
+	attr.position = gl.getAttribLocation(program, "position");
+	attr.normal   = gl.getAttribLocation(program, "normal");
+	attr.color    = gl.getAttribLocation(program, "color");
+	attr.uv       = gl.getAttribLocation(program, "uv");
+	attr.size     = gl.getUniformLocation(program, "size");
+	attr.scale    = gl.getUniformLocation(program, "scale");
+	let map_location = gl.getUniformLocation(program, "map")
+	attr.map      = map_location ? gl.getUniform(program, map_location) : null;
 
 
 	//hack to detect if threejs using point or triangle shaders
-	instance.mode = attr.size ? "POINT" : "FILL";
+	if(instance.mesh.face.index)
+		instance.mode = material.isPointsMaterial? "POINT" : "FILL";
+
 	if(attr.size != -1) 
 		instance.pointsize = material.size;
 
@@ -169,6 +174,13 @@ NexusObject.prototype.dispose = function() {
 	this.geometry.dispose();
 }
 
+NexusObject.prototype.flush = function() {
+	var instance = this.geometry.instance;
+	var context = instance.context;
+	var mesh = instance.mesh;
+	Nexus.flush(context, mesh);
+}
+
 NexusObject.prototype.georef = function(url) {
 	var n = this;
 	var obj = new XMLHttpRequest();
@@ -184,133 +196,6 @@ NexusObject.prototype.georef = function(url) {
 	obj.send(null);  
 }
 
-NexusObject.prototype.createMaterialsV2 = function(createMaterial) {
-	let geometry = this.geometry;
-	let mesh = geometry.instance.mesh;
-
-	let options = {};
-
-	if(mesh.vertex.COLOR_0 && mesh.vertex.UV_0) {
-		let uv = new Float32Array(2);
-		let colors = new Float32Array(4);
-		geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
-		geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
-		if(mesh.material) {
-			let texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-			texture.needsUpdate = true;
-			mesh.material = new THREE.MeshLambertMaterial( { vertexColors: THREE.VertexColors, map: texture } );
-		}
-	}
-
-	if(mesh.vertex.COLOR_0) {
-		let colors = new Float32Array(4);
-		geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
-		options.vertexColors = THREE.VertexColors;
-	}
-
-	if(mesh.vertex.UV_0) {
-		let uv = new Float32Array(2);
-		geometry.setAttribute( 'uv', new THREE.BufferAttribute(uv, 2));
-		var texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-		texture.needsUpdate = true;
-		options.map = texture;
-	}
-
-	if(mesh.vertex.NORMAL) {
-		var normals = new Float32Array([1, 1, 1]);
-		geometry.setAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
-	}
-
-	if(createMaterial)
-		this.material = new THREE.MeshStandardMaterial(options);
-		
-}
-
-NexusObject.prototype.createMaterialsV3 = function(createMaterial) {
-	let geometry = this.geometry;
-	let mesh = geometry.instance.mesh;
-
-
-	let m = mesh.materials[0];
-
-	let type = 'standard';
-	let options = {};
-	if(m.pbrMetallicRoughness) {
-		let pbr = m.pbrMetallicRoughness
-		if(pbr.baseColorTexture) {
-			let texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-			texture.needsUpdate = true;
-			options.map = texture;
-		}
-
-		if(mesh.vertex.COLOR_0) {
-			let colors = new Float32Array(4);
-			geometry.setAttribute( 'color', new THREE.BufferAttribute(colors, 4));
-			options.vertexColors = THREE.VertexColors;
-
-		} else if(pbr.baseColorFactor)
-			options.color = new THREE.Color(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2]);
-		else
-			options.color =  new THREE.Color(1.0, 1.0, 1.0);
-
-
-		if(pbr.metallicRoughnessTexture) {
-			let texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-			texture.needsUpdate = true;
-			options.roughnessMap = options.metalnessMap = texture;
-		}
-	}
-
-	if(m.bumpTexture) {
-		let texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-		texture.needsUpdate = true;
-		options.bumpMap = texture;
-		options.bumpScale = 0.01;
-	}
-
-	if(m.normalTexture) {
-		let texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-		texture.needsUpdate = true;
-		options.normalMap = texture;
-	}
-
-	if(m.glossinessFactor) {
-		type = 'phong';
-		options.shininess = m.glossinessFactor;
-	}
-	if(m.specularTexture) {
-		type = 'phong';
-		let texture = new THREE.DataTexture( new Uint8Array([1, 1, 1]), 1, 1, THREE.RGBFormat );
-		texture.needsUpdate = true;
-		options.specularMap = texture;
-//		options.specular = new THREE.Color(1.0, 1.0, 1.0);
-	}
-	if(m.glossiness) {
-		options.shininess = m.glossiness;
-	}
-
-	if(mesh.vertex.NORMAL) {
-		var normals = new Float32Array([1, 1, 1]);
-		geometry.setAttribute( 'normal', new THREE.BufferAttribute(normals, 3));
-	} else {
-		options.flatShading = true;
-	}
-
-//TODO test these options
-//	options.vertexTangents = true;
-//	options.wireframe = true;
-
-
-	if(createMaterial) {
-		switch(type) {
-			case 'standard': this.material = new THREE.MeshStandardMaterial(options); break;
-			case 'phong':    this.material = new THREE.MeshPhongMaterial(options);    break;
-			deafault: break;
-		}
-	}
-}
-
-
 NexusObject.prototype.computeBoundingBox = function() {
 	var instance = this.geometry.instance;
 	var nexus = instance.mesh;
@@ -325,7 +210,7 @@ NexusObject.prototype.computeBoundingBox = function() {
 	var count = 0;
 	for(var i = 0; i < nexus.sink; i++) {
 		var patch = nexus.nfirstpatch[i];
-		if(nexus.patches[patch*4] != nexus.sink)
+		if(nexus.patches[patch*3] != nexus.sink)
 			continue;
 		var x = nexus.nspheres[i*5];
 		var y = nexus.nspheres[i*5+1];
@@ -349,57 +234,66 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 	var nexus = this.geometry.instance.mesh;
 	if(!nexus.sphere) return;
 
-	var sp = nexus.sphere;
-	var c = sp.center;
+	var c = nexus.sphere.center;
+	var r = nexus.sphere.radius;
 	var center = new THREE.Vector3(c[0], c[1], c[2]);
-	var sphere = new THREE.Sphere(center, sp.radius);
-	var m = new THREE.Matrix4();
-	m.getInverse(this.matrixWorld);
+	var sphere = new THREE.Sphere(center, r);
+	sphere.applyMatrix4(this.matrixWorld);
+	var m = new THREE.Matrix4().copy(this.matrixWorld).invert();
 	var ray = new THREE.Ray();
 	ray.copy(raycaster.ray).applyMatrix4(m);
 
 	var point = new THREE.Vector3(0, 0, 0);
 	var distance = -1.0;
-	var intersect = raycaster.ray.intersectSphere( sphere );
+	var intersect = raycaster.ray.intersectSphere( sphere, point );
 	if(!intersect)
 		return;
 
+	let face = {};
 	if(!nexus.sink || !nexus.basei) {
+		return;
 		//no mesh loaded, we can still use the sphere.
 		intersect.applyMatrix4(this.matrixWorld);
-		var d = intersect.distanceTo(raycaster.ray.origin);
+		let d = intersect.distanceTo(raycaster.ray.origin);
 		if(d < raycaster.near || d > raycaster.far )  
 			distance = d;
-
 	} else {
+		let vert = nexus.basev;
+		let tri = nexus.basei;
 
-		var vert = nexus.basev;
-		var face = nexus.basei;
-
-		for(var j = 0; j < nexus.basei.length; j += 3) {
-			var a = face[j];
-			var b = face[j+1];
-			var c = face[j+2];
-			var A = new THREE.Vector3(vert[a*3], vert[a*3+1], vert[a*3+2]);
-			var B = new THREE.Vector3(vert[b*3], vert[b*3+1], vert[b*3+2]);
-			var C = new THREE.Vector3(vert[c*3], vert[c*3+1], vert[c*3+2]);
+		let A = new THREE.Vector3(0, 0, 0);
+		let B = new THREE.Vector3(0, 0, 0);
+		let C = new THREE.Vector3(0, 0, 0);
+		for(let j = 0; j < nexus.basei.length; j += 3) {
+			let a = tri[j];
+			let b = tri[j+1];
+			let c = tri[j+2];
+			A.set(vert[a*3], vert[a*3+1], vert[a*3+2]);
+			B.set(vert[b*3], vert[b*3+1], vert[b*3+2]);
+			C.set(vert[c*3], vert[c*3+1], vert[c*3+2]);
 			//TODO use material to determine if using doubleface or not!
-			var hit  = ray.intersectTriangle( C, B, A, false, point ); 
+			let hit = ray.intersectTriangle( C, B, A, false, point ); 
 			if(!hit) continue;
 
+
 			//check distances in world space
-			intersect.applyMatrix4(this.matrixWorld);
-			var d = intersect.distanceTo(raycaster.ray.origin);
+			hit.applyMatrix4(this.matrixWorld);
+			let d = hit.distanceTo(raycaster.ray.origin);
 			if(d < raycaster.near || d > raycaster.far ) continue;
 			if(distance == -1.0 || d < distance) {
 				distance = d;
-				intersect = hit;
+				intersect = hit.clone();
+
+				face = { a: a, b: b, c: c,
+					normal: new THREE.Vector3(),
+				};
+				THREE.Triangle.getNormal( A, B, C, face.normal );
 			}
 		}
 	}
 
 	if(distance == -1.0) return;
-	intersects.push({ distance: distance, point: intersect, object: this} );
+	intersects.push({ distance: distance, point: intersect, face: face, object: this} );
 	return;
 
 /* Kept for reference, should we want to implement a raycasting on the higher resolution nodes 
@@ -425,6 +319,3 @@ NexusObject.prototype.raycast = function(raycaster, intersects) {
 
 	intersects.push({ distance: distance, object: this} ); */
 }
-
-/*export { NexusObject }; */
-

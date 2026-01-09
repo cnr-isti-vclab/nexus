@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>969</width>
+    <width>975</width>
     <height>702</height>
    </rect>
   </property>
@@ -225,7 +225,10 @@
          <number>0</number>
         </property>
         <property name="maximum">
-         <double>2000.000000000000000</double>
+         <double>24000.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>10.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -239,10 +242,13 @@
       <item row="4" column="1">
        <widget class="QDoubleSpinBox" name="ram">
         <property name="decimals">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="maximum">
-         <double>24000.000000000000000</double>
+         <double>48000.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>100.000000000000000</double>
         </property>
        </widget>
       </item>

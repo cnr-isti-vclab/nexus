@@ -28,11 +28,11 @@ for more details.
 
 #ifdef WIN32
 //microsoft compiler does not provide it.
-double log2( double n )
+/*double log2( double n )
 {
 	// log(n)/log(2) is log2.
 	return log( n )* 3.32192809;
-}
+}*/
 #endif
 
 extern int current_texture;

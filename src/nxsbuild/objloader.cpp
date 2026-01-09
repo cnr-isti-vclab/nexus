@@ -176,6 +176,9 @@ void ObjLoader::readMTL(QString mtl_path) {
 		str = str.simplified();
 		if (str.startsWith("newmtl", Qt::CaseInsensitive)){
 			nx::BuildMaterial material;
+			// Default to white diffuse color if not specified in MTL
+			material.color[0] = material.color[1] = material.color[2] = 1.0f;
+			material.color[3] = 1.0f;
 
 			QString mtltag = str.section(" ", 1);
 			QString txtfname;
@@ -417,6 +420,8 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 				face_[w] = rr[0] - 1;
 				vtxt_[w] = rr[1] - 1;
 				normal_[w] = rr[2] - 1;
+				if(face_[w] < 0 || vtxt_[w] < 0 || normal_[w] < 0)
+					throw QString("Relative indexes in OBJ are not supported");
 			}
 
 			for (int j = 0; j < valence - 2; j++) {

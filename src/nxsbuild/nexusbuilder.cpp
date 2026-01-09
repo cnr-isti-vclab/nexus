@@ -16,10 +16,12 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <QDebug>
-#include <QThread>
+#include <QThreadPool>
+#include <QRunnable>
 #include <QFileInfo>
 #include <QPainter>
 #include <QImage>
+#include <QDir>
 #include <QImageWriter>
 #include "vertex_cache_optimizer.h"
 
@@ -38,6 +40,12 @@ for more details.
 using namespace std;
 using namespace nx;
 using namespace json;
+
+static qint64 pad(qint64 s) {
+	const qint64 padding = NEXUS_PADDING;
+	qint64 m = (s-1) & ~(padding -1);
+	return m + padding;
+}
 
 
 
@@ -145,7 +153,7 @@ void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 		cout << "Simplifying " << timer.restart()/1000.0f << endl;
 
 		level++;
-		if(skipSimplifyLevels <= 0 && last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.7f) {
+		if(skipSimplifyLevels <= 0 && last_top_level_size != 0 && stream->size()/(float)last_top_level_size > 0.9f) {
 			cout << "Stream: " << stream->size() << " Last top level size: " << last_top_level_size << endl;
 			cout << "Larger top level, most probably to high parametrization fragmentation.\n";
 			break;

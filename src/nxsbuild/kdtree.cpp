@@ -312,9 +312,14 @@ void KDTreeSoup::splitNode(KDCell &node, KDCell &child0, KDCell &child1) {
 		int c = 0;
 		if(mask != 0)
 			c = assign(t, mask, axis, node.middle);
-
-		if(c == 0) source[n0++] = t;
-		else dest.push_back(t);
+		double w = weight(t);
+		if(c == 0) {
+			child0.weight += w;
+			source[n0++] = t;
+		} else {
+			child1.weight += w;
+			dest.push_back(t);
+		}
 	}
 	source.resize(n0);
 //	if(source.size() == 0 || dest.size() == 0)
@@ -334,9 +339,18 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 	do {
 		KDCell &node = cells[node_number];
 		if(node.isLeaf()) {
-			if(!isBlockFull(node.block)) {
+
+			double w = 0;
+			if(textures.size() && texelWeight > 0)
+				w = weight(t);
+			uint32_t node_triangles = occupancy[node.block];
+			bool too_large = node_triangles >=triangles_per_block;
+			bool too_small = node_triangles < triangles_per_block/16;
+			bool too_heavy = node.weight > max_weight;
+			if(too_small || (!too_large && !too_heavy)) {
 				Soup soup = get(node.block);
 				soup.push_back(t);
+				node.weight += w;
 				break;
 			}
 			//no space, add 1 block, split node and continue
@@ -347,6 +361,20 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 			node_number = node.children[c];
 		}
 	} while(1);
+}
+double KDTreeSoup::weight(Triangle &t) {
+	if(textures.size() == 0)
+		return 0;
+	Vertex &v0 = t.vertices[0];
+	Vertex &v1 = t.vertices[1];
+	Vertex &v2 = t.vertices[2];
+
+	//TODO deal with negative tex values (or > width/height;
+	double w = double(textures[t.tex].width);
+	double h = double(textures[t.tex].height);
+	double area = fabs(((v1.t[0] - v0.t[0])*(v2.t[1] - v0.t[1]) - (v2.t[0] - v0.t[0])*(v1.t[1] - v0.t[1])))/2.0;
+	//compute area in texture space;
+	return area*w*h*texelWeight;
 }
 
 int KDTreeSoup::assign(Triangle &t, quint32 &mask, vcg::Point3f axis, float middle) {

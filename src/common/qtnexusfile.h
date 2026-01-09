@@ -12,13 +12,12 @@ namespace nx {
 	public:
 		void setFileName(const char* uri) override;
 		bool open(OpenMode openmode) override;
-		int read(char* where, unsigned int length) override;
-		int write(char* from, unsigned int length) override;
-		int size() override;
-		void* map(unsigned int from, unsigned int size) override;
+		long long int read(char* where, size_t length) override;
+		long long int write(char* from, size_t length) override;
+		size_t size() override;
+		void* map(size_t from, size_t size) override;
 		bool unmap(void* mapped) override;
-		bool seek(unsigned int to) override;
-		std::string errorString() override;
+		bool seek(size_t to) override;
 	};
 }
 

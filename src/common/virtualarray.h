@@ -26,7 +26,6 @@ for more details.
 #include <deque>
 #include <iostream>
 
-using namespace std;
 /*
   blocks are 64 bit memory aligned!
 */

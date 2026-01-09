@@ -132,6 +132,9 @@ public:
 		return occupancy[block] == triangles_per_block;
 	}
 
+	quint32 blockUsed(quint64 block) {
+		return occupancy[block];
+	}
 
 	/*
 	Soup getSoup(quint64 n, bool prevent_unload = false);

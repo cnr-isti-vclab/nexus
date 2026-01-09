@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(vcglib)
+find_dependency(corto)
+
+include ( "${CMAKE_CURRENT_LIST_DIR}/nexusTargets.cmake" )

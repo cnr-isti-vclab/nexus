@@ -62,6 +62,9 @@ quint32 STLLoader::getTrianglesAscii(quint32 size, Triangle *buffer) {
 			if(n != 4)
 				throw QString("Invalid STL file");
 			d -= origin;
+			d[0] *= scale[0];
+			d[1] *= scale[1];
+			d[0] *= scale[2];
 			box.Add(d);
 					
 			v[0] = (float)(d[0]);
@@ -97,7 +100,7 @@ quint32 STLLoader::getTrianglesBinary(quint32 size, Triangle *buffer) {
 		Triangle &tri = buffer[i];
 		for(int t = 0; t < 3; t++)
 			for(int k = 0; k < 3; k++)
-				tri.vertices[t].v[k] = pos[t*3 + k] - origin[k];
+				tri.vertices[t].v[k] = (pos[t*3 + k] - origin[k])*scale[k];
 		tri.node = 0;
 		current_triangle++;
 		start += 50;
