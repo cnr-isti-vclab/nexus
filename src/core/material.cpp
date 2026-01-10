@@ -33,7 +33,7 @@ bool can_merge_materials(const Material& a, const Material& b) {
     
     // Base color and texture role
     if (!same_color4(a.base_color, b.base_color)) return false;
-    if (!same_texture_role(a.base_color_texture, b.base_color_texture)) return false;
+    if (!ls(a.base_color_texture, b.base_color_texture)) return false;
     
     // PBR parameters
     if (!same_parameter(a.metallic_factor, b.metallic_factor)) return false;

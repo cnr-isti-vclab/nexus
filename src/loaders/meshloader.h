@@ -40,8 +40,8 @@ namespace nx {
  *  - Adjacency is NOT computed by loader (done separately)
  */
 // Simple dispatcher: detect format from extension and call the appropriate loader.
-// Returns true on success, false on error or unsupported format.
-bool load_mesh(const std::filesystem::path& input_path, MeshFiles& mesh);
+// Throws exception on error or unsupported format.
+void load_mesh(const std::filesystem::path& input_path, MeshFiles& mesh);
 
 } // namespace nx
 

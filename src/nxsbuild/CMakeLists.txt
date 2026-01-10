@@ -7,6 +7,7 @@ set(SOURCES
 	../core/mesh.cpp
     ../loaders/meshloader.cpp
     ../loaders/objloader.cpp
+    ../loaders/objexporter.cpp
 )
 
 add_executable(nxsbuild ${SOURCES})

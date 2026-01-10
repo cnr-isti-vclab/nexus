@@ -74,6 +74,8 @@ void ObjLoader::read_mtls() {
             if (cmd == "mtllib") {
                 std::string mtl_file;
                 std::getline(iss >> std::ws, mtl_file);
+                // Strip trailing whitespace (including \r from Windows line endings)
+                mtl_file.erase(mtl_file.find_last_not_of(" \t\r\n") + 1);
                 mtl_file = resolve_texture_path(obj_path, mtl_file);
                 mtl_files.push_back(mtl_file);
             }
@@ -190,7 +192,7 @@ void ObjLoader::read_mtl(const std::string& mtl_path) {
     }
 }
 
-bool ObjLoader::load(const std::filesystem::path& input_path, MeshFiles& mesh) {
+void ObjLoader::load(const std::filesystem::path& input_path, MeshFiles& mesh) {
     std::ifstream file(input_path);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open OBJ file: " + input_path.string());
@@ -386,7 +388,6 @@ bool ObjLoader::load(const std::filesystem::path& input_path, MeshFiles& mesh) {
     }
     
     mesh.bounds = bounds;
-    return true;
 }
 
 } // namespace nx

@@ -4,13 +4,14 @@
 
 namespace nx {
 
-bool load_mesh(const std::filesystem::path& input_path, MeshFiles& mesh) {
+void load_mesh(const std::filesystem::path& input_path, MeshFiles& mesh) {
     auto ext = input_path.extension().string();
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
     if (ext == ".obj") {
         ObjLoader loader(input_path.string(), "");
-        return loader.load(input_path, mesh);
+        loader.load(input_path, mesh);
+        return;
     }
 
     // TODO: add PLY, glTF, and other loaders here when available.

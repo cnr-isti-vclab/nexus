@@ -30,7 +30,7 @@ class ObjLoader {
 public:
     ObjLoader(const std::string& filename, const std::string& mtl_path = "");
     
-    bool load(const std::filesystem::path& input_path, MeshFiles& mesh);
+    void load(const std::filesystem::path& input_path, MeshFiles& mesh);
     
 private:
     void read_mtls();
