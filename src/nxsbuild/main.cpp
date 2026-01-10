@@ -6,8 +6,10 @@
 #include <iomanip>
 
 #include "../core/mesh.h"
+#include "../core/spatial_sort.h"
 #include "../loaders/meshloader.h"
 #include "../loaders/objexporter.h"
+#include "../loaders/plyexporter.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -32,6 +34,14 @@ int main(int argc, char *argv[]) {
 
     try {
         nx::load_mesh(fs::path(input_file), mesh);
+        
+        // Sort mesh spatially for memory coherency
+        nx::spatial_sort_mesh(mesh);
+        
+        // Export PLY with colors to visualize spatial ordering
+        fs::path ply_output = fs::current_path() / "test_export_colored.ply";
+        nx::export_ply(mesh, ply_output, true);
+        std::cout << "Exported colored PLY to:" << ply_output << std::endl;
         
         // Test export
         fs::path output_file = fs::current_path() / "test_export.obj";

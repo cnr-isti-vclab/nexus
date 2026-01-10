@@ -5,9 +5,11 @@ set(SOURCES
 	main.cpp
 	../core/mapped_file.cpp
 	../core/mesh.cpp
+	../core/spatial_sort.cpp
     ../loaders/meshloader.cpp
     ../loaders/objloader.cpp
     ../loaders/objexporter.cpp
+    ../loaders/plyexporter.cpp
 )
 
 add_executable(nxsbuild ${SOURCES})
