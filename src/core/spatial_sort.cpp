@@ -7,32 +7,32 @@
 
 namespace nx {
 
-// Expand a 10-bit integer into 30 bits by inserting 2 zeros after each bit
-static uint32_t expand_bits(uint32_t v) {
-    v = (v * 0x00010001u) & 0xFF0000FFu;
-    v = (v * 0x00000101u) & 0x0F00F00Fu;
-    v = (v * 0x00000011u) & 0xC30C30C3u;
-    v = (v * 0x00000005u) & 0x49249249u;
-    return v;
+// Expand a 21-bit integer into 63 bits by inserting 2 zeros after each bit
+static uint64_t expand_bits_21(uint32_t v) {
+    uint64_t x = v & 0x1fffff;  // Only keep 21 bits
+    x = (x | x << 32) & 0x1f00000000ffffull;
+    x = (x | x << 16) & 0x1f0000ff0000ffull;
+    x = (x | x << 8)  & 0x100f00f00f00f00full;
+    x = (x | x << 4)  & 0x10c30c30c30c30c3ull;
+    x = (x | x << 2)  & 0x1249249249249249ull;
+    return x;
 }
 
 uint64_t morton_code(float x, float y, float z) {
-    // DEBUG: Sort by X only to isolate issues
     // Clamp to [0, 1] and quantize to 21 bits
     x = std::max(0.0f, std::min(1.0f, x));
     y = std::max(0.0f, std::min(1.0f, y));
     z = std::max(0.0f, std::min(1.0f, z));
     
-    uint32_t xx = static_cast<uint32_t>(x * 1023.0f); // 2^21 - 1
-    uint32_t yy = static_cast<uint32_t>(y * 1023.0f);
-    uint32_t zz = static_cast<uint32_t>(z * 1023.0f);
+    uint32_t xx = static_cast<uint32_t>(x * 2097151.0f); // 2^21 - 1
+    uint32_t yy = static_cast<uint32_t>(y * 2097151.0f);
+    uint32_t zz = static_cast<uint32_t>(z * 2097151.0f);
     
-    
-    // Interleave bits
+    // Interleave 21 bits per axis into 63-bit Morton code
     uint64_t code = 0;
-    code |= expand_bits(xx);
-    code |= expand_bits(yy) << 1;
-    code |= expand_bits(zz) << 2;
+    code |= expand_bits_21(xx);
+    code |= expand_bits_21(yy) << 1;
+    code |= expand_bits_21(zz) << 2;
     
     return code;
 }

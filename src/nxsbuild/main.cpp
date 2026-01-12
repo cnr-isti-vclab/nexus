@@ -7,6 +7,7 @@
 
 #include "../core/mesh.h"
 #include "../core/spatial_sort.h"
+#include "../core/adjacency.h"
 #include "../loaders/meshloader.h"
 #include "../loaders/objexporter.h"
 #include "../loaders/plyexporter.h"
@@ -37,6 +38,9 @@ int main(int argc, char *argv[]) {
         
         // Sort mesh spatially for memory coherency
         nx::spatial_sort_mesh(mesh);
+        
+        // Compute face-face adjacency
+        nx::compute_adjacency(mesh);
         
         // Export PLY with colors to visualize spatial ordering
         fs::path ply_output = fs::current_path() / "test_export_colored.ply";
