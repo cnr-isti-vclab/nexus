@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <vector>
 
 // Basic POD geometry types intended for out-of-core usage.
 // Keep them trivial (no constructors) to simplify mmap'ed I/O.
@@ -50,6 +51,37 @@ struct HalfedgeRecord {
     Index corner; // 0,1,2 corner within the face
 };
 
+// A Cluster groups triangles with a limited triangle count.
+// Vertices can be recovered from the triangle list when needed.
+struct Cluster {
+    Index triangle_offset;  // Offset into cluster_triangles array (indices into mesh triangles)
+    Index triangle_count;   // Number of triangles in this cluster
+};
+
+// Bounds for a cluster (for frustum and cone culling).
+// Similar to meshoptimizer's meshopt_Bounds structure.
+struct ClusterBounds {
+    // Bounding sphere
+    Vector3f center;
+    float radius;
+};
+
+// A MicroNode represents a cluster at the first level of partitioning.
+// Used to build the dual graph for macro-node clustering.
+struct MicroNode {
+    Index id;                 // Cluster index
+    Index triangle_count;     // Number of triangles in this cluster
+    Vector3f centroid;        // Spatial center
+    Aabb bounds;             // Bounding box
+};
+
+// Macro-node partition result (CSR-like adjacency structure for macro-nodes).
+// For now, stores the mapping of micro-nodes to macro-nodes.
+struct MacroPartition {
+    std::vector<Index> micro_to_macro;  // micro_to_macro[i] = macro-node ID for micro-node i
+    Index num_macro_nodes;              // Number of macro-nodes created
+};
+
 static_assert(sizeof(Vector3f) == 12, "Vector3f must stay packed");
 static_assert(sizeof(Vector2f) == 8,  "Vector2f must stay packed");
 static_assert(sizeof(Rgba8) == 4,     "Rgba8 layout changed unexpectedly");
@@ -58,6 +90,8 @@ static_assert(sizeof(Wedge)   == 24, "Wedge layout changed unexpectedly");
 static_assert(sizeof(Triangle)== 12, "Triangle layout changed unexpectedly");
 static_assert(sizeof(FaceAdjacency)== 12, "FaceAdjacency layout changed unexpectedly");
 static_assert(sizeof(HalfedgeRecord) == 16, "HalfedgeRecord layout changed unexpectedly");
+static_assert(sizeof(Cluster) == 8, "Cluster layout changed unexpectedly");
+static_assert(sizeof(ClusterBounds) == 16, "ClusterBounds layout changed unexpectedly");
 
 } // namespace nx
 

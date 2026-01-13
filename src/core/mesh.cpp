@@ -1,6 +1,35 @@
 #include "mesh.h"
+#include <random>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
+#include <filesystem>
+#include <random>
 
 namespace nx {
+
+MeshFiles::MeshFiles() {
+    // Create temporary directory with random suffix
+    namespace fs = std::filesystem;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint32_t> dis(0, 0xFFFFFFFF);
+    std::stringstream ss;
+    ss << "nxs_cache_" << std::hex << std::setfill('0') << std::setw(8) << dis(gen);
+    
+    fs::path tmp = fs::current_path() / ss.str();
+    create(tmp);
+}
+
+MeshFiles::~MeshFiles() {
+    close();
+    
+    // Remove temporary directory if we created it
+    if (dir.empty())
+        return;
+ 
+    std::filesystem::remove_all(dir);
+ }
 
 bool MeshFiles::create(const std::filesystem::path& dir_path) {
     close();
@@ -23,6 +52,9 @@ void MeshFiles::close() {
     triangles.close();
     material_ids.close();
     adjacency.close();
+    clusters.close();
+    cluster_bounds.close();
+    cluster_triangles.close();
     dir.clear();
     bounds = Aabb{{0,0,0},{0,0,0}};
 }
@@ -34,6 +66,9 @@ bool MeshFiles::mapDataFiles(MappedFile::Mode mode) {
     if (!triangles.open(pathFor("triangles.bin").string(), mode, 0)) return false;
     if (!material_ids.open(pathFor("material_ids.bin").string(), mode, 0)) return false;
     if (!adjacency.open(pathFor("adjacency.bin").string(), mode, 0)) return false;
+    if (!clusters.open(pathFor("clusters.bin").string(), mode, 0)) return false;
+    if (!cluster_bounds.open(pathFor("cluster_bounds.bin").string(), mode, 0)) return false;
+    if (!cluster_triangles.open(pathFor("cluster_triangles.bin").string(), mode, 0)) return false;
     return true;
 }
 

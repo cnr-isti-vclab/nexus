@@ -22,8 +22,18 @@ for more details.
 
 namespace nx {
 
-// Export mesh to PLY format
-// If color_by_index is true, vertices are colored by their index (useful for visualizing spatial ordering)
-void export_ply(const MeshFiles& mesh, const std::filesystem::path& output_path, bool color_by_index = false);
+// Coloring modes for PLY export visualization
+enum class ColoringMode {
+    None,           // No coloring (white vertices)
+    ByVertexIndex,  // Color each vertex by its index
+    ByCluster,      // Color each vertex by which cluster it belongs to
+    ByMacroNode,    // Color each vertex by which macro-node it belongs to (requires macro clustering)
+};
+
+// Export mesh to PLY format with optional coloring
+// coloring_mode: determines how vertices are colored for visualization
+void export_ply(const MeshFiles& mesh, 
+                const std::filesystem::path& output_path, 
+                ColoringMode coloring_mode = ColoringMode::None);
 
 } // namespace nx

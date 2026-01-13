@@ -7,6 +7,7 @@ set(SOURCES
 	../core/mesh.cpp
 	../core/spatial_sort.cpp
 	../core/adjacency.cpp
+	../core/clustering.cpp
     ../loaders/meshloader.cpp
     ../loaders/objloader.cpp
     ../loaders/objexporter.cpp
