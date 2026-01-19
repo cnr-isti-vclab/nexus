@@ -119,7 +119,14 @@ uint32_t nx::Nexus::loadImageFromData(nx::TextureGroupData& groupdata, int t) {
 	uint32_t size = 0;
 
 	TextureGroup &group = textures[t];
-	uchar *tmp = (uchar *)file->map(group.getBeginOffset(), group.getSize());
+	uchar *tmp = nullptr;
+	
+	if(header.signature.isDeepzoom()) {
+		tmp = (uchar *)file->loadDZTex(t);
+	} else {
+		tmp = (uchar *)file->map(group.getBeginOffset(), group.getSize());
+	}
+	
 	if(!tmp) {
 		cerr << "Failed mapping texture data" << endl;
 		exit(0);
@@ -155,13 +162,17 @@ uint32_t nx::Nexus::loadImageFromData(nx::TextureGroupData& groupdata, int t) {
 		size += imgsize;
 		texturedata.push_back(data);
 	}
-	file->unmap(tmp);
+	
+	if(header.signature.isDeepzoom()) {
+		file->dropDZTex((char *)tmp);
+	} else {
+		file->unmap(tmp);
+	}
 	return size;
 }
 
 void Nexus::loadIndex() {
 	NexusData::loadIndex();
-
 	loaded = true;
 }
 

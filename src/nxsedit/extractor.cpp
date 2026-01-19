@@ -16,6 +16,9 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <QTextStream>
+#include <QFile>
+#include <QFileInfo>
+#include <QDir>
 #include "extractor.h"
 
 #include "../nxszip/meshcoder.h"
@@ -25,6 +28,28 @@ for more details.
 #include <vcg/space/triangle3.h>
 using namespace std;
 using namespace nx;
+
+namespace {
+QString deepzoomFolderFromOutput(const QString &output) {
+	QFileInfo info(output);
+	QString dirPath = info.absolutePath();
+	if(dirPath.isEmpty())
+		dirPath = ".";
+	return dirPath + "/" + info.completeBaseName() + "_files";
+}
+
+QString deepzoomFilePath(const QString &folder, uint32_t index, const QString &ext) {
+	return QString("%1/%2.%3").arg(folder).arg(index).arg(ext);
+}
+
+void ensureDeepzoomFolder(const QString &folder) {
+	QDir dir;
+	if(dir.exists(folder))
+		return;
+	if(!dir.mkpath(folder))
+		throw QString("could not create deepzoom folder %1").arg(folder);
+}
+}
 
 Extractor::Extractor(NexusData *nx):
 	transform(false),
@@ -99,6 +124,13 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	file.setFileName(output);
 	if(!file.open(QIODevice::WriteOnly | QFile::Truncate))
 		throw QString("could not open file " + output + " for writing");
+
+	const bool saveAsDeepzoom = signature.isDeepzoom();
+	QString deepzoomFolder;
+	if(saveAsDeepzoom) {
+		deepzoomFolder = deepzoomFolderFromOutput(output);
+		ensureDeepzoomFolder(deepzoomFolder);
+	}
 	
 	nx::Header3 header = nexus->header;
 	header.signature = signature;
@@ -198,9 +230,25 @@ void Extractor::save(QString output, nx::Signature &signature) {
 			}
 		}
 		if(signature.isCompressed()) {
-			compress(file, signature, node, nexus->nodedata[i], &*patches.begin());
+			if(saveAsDeepzoom) {
+				QFile nodeFile(deepzoomFilePath(deepzoomFolder, n, QStringLiteral("nxn")));
+				if(!nodeFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+					throw QString("could not open node file %1 for writing").arg(nodeFile.fileName());
+				compress(nodeFile, signature, node, nexus->nodedata[i], &*patches.begin());
+				nodeFile.close();
+			} else {
+				compress(file, signature, node, nexus->nodedata[i], &*patches.begin());
+			}
 		} else {
-			file.write(memory, data_size);
+			if(saveAsDeepzoom) {
+				QFile nodeFile(deepzoomFilePath(deepzoomFolder, n, QStringLiteral("nxn")));
+				if(!nodeFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+					throw QString("could not open node file %1 for writing").arg(nodeFile.fileName());
+				nodeFile.write(memory, data_size);
+				nodeFile.close();
+			} else {
+				file.write(memory, data_size);
+			}
 		}
 		if(transform)
 			delete []memory;
@@ -211,16 +259,35 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	
 	//save textures
 	if(textures.size()) {
-		for(uint i = 0; i < textures.size()-1; i++) {
+		for(uint32_t i = 0; i < textures.size()-1; i++) {
 			TextureGroup &in = nexus->textures[i];
 			TextureGroup &out = textures[i] = in;
 			
 			quint64 start = in.getBeginOffset();
 			quint64 size = in.getSize();
-			char *memory = (char *)nexus->file->map(start, size);
+			char *memory = 0;
+			if(nexus->header.signature.isDeepzoom()) {
+				memory = nexus->file->loadDZTex(i);
+			} else {
+				memory = (char *)nexus->file->map(start, size);
+			}
 			
 			out.offset = file.pos()/NEXUS_PADDING;
-			file.write(memory, size);
+			if(saveAsDeepzoom) {
+				QFile texFile(deepzoomFilePath(deepzoomFolder, i, QStringLiteral("jpg")));
+				if(!texFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+					throw QString("could not open texture file %1 for writing").arg(texFile.fileName());
+				texFile.write(memory, size);
+				texFile.close();
+			} else {
+				file.write(memory, size);
+			}
+
+			if(nexus->header.signature.isDeepzoom()) {
+				nexus->file->dropDZTex(memory);
+			} else {
+				nexus->file->unmap(memory);
+			}
 		}
 		textures.back().offset = file.pos()/NEXUS_PADDING;
 	}

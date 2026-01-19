@@ -90,13 +90,16 @@ class Signature {
 public:
 	VertexElement vertex;
 	FaceElement face;
-	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4 };
+	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4, DEEPZOOM = 0x8 };
 	uint32_t flags = 0;
 	void setFlag(Flags f) { flags |= f; }
 	void unsetFlag(Flags f) { flags &= ~f; }
 
 	bool hasPTextures() { return (bool)(flags | PTEXTURE); }
 	bool isCompressed() { return (bool)(flags & (MECO|CORTO)); }
+	bool isDeepzoom() { return (bool)(flags & (DEEPZOOM)); }
+
+	Signature(): flags(0) {}
 };
 
 }//namespace

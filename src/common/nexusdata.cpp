@@ -173,15 +173,22 @@ uint64_t NexusData::loadRam(uint32_t n) {
 	uint64_t size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
 
 	if(!sign.isCompressed()) {
-
-		d.memory = (char *)file->map(offset, size);
+		if(sign.isDeepzoom())
+			d.memory = file->loadDZNode(n);
+		else
+			d.memory = (char *)file->map(offset, size);
 
 	} else {
 
-		char *buffer = new char[compressed_size];
-		file->seek(offset);
-		int64_t r = file->read(buffer, compressed_size);
-		assert(r == (int64_t)compressed_size);
+		char *buffer = nullptr;
+		if(sign.isDeepzoom()) {
+			buffer = file->loadDZNode(n);
+		} else {
+			buffer = new char[compressed_size];
+			file->seek(offset);
+			int64_t r = file->read(buffer, compressed_size);
+			assert(r == (int64_t)compressed_size);
+		}
 
 		d.memory = new char[size];
 
@@ -207,6 +214,10 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 			decoder.decode();
 		}
+		if(sign.isDeepzoom())
+			file->dropDZNode(buffer);
+		else
+			delete []buffer;
 
 		//Shuffle points in compressed point clouds
 		if(!sign.face.hasIndex()) {
@@ -308,10 +319,15 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(!data.vbo);
 	assert(data.memory);
 
-	if(!header.signature.isCompressed()) //not compressed.
-		file->unmap((unsigned char *)data.memory);
-	else
+	auto &sign = header.signature;
+	if(!sign.isCompressed()) {
+		if(sign.isDeepzoom())
+			file->dropDZNode(data.memory);
+		else
+			file->unmap((unsigned char *)data.memory);
+	} else {
 		delete []data.memory;
+	}
 
 	data.memory = NULL;
 
