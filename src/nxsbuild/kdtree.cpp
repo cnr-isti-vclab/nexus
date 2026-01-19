@@ -66,7 +66,7 @@ float boxFloatPrecision(const vcg::Box3f &box) {
 
 void KDTree::load(Stream *stream) {
 
-//	=textures = stream->textures;
+	materials = stream->materials;
 
 	KDCell node;
 	node.block = 0;
@@ -341,7 +341,7 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 		if(node.isLeaf()) {
 
 			double w = 0;
-			if(textures.size() && texelWeight > 0)
+			if(materials.size() && texelWeight > 0)
 				w = weight(t);
 			uint32_t node_triangles = occupancy[node.block];
 			bool too_large = node_triangles >=triangles_per_block;
@@ -363,18 +363,21 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 	} while(1);
 }
 double KDTreeSoup::weight(Triangle &t) {
-	if(textures.size() == 0)
+	// TODO: Fix texture access - textures not available in this context
+	// This functionality needs to be restored properly
+	return 0;
+
+	if(materials.size() == 0)
 		return 0;
 	Vertex &v0 = t.vertices[0];
 	Vertex &v1 = t.vertices[1];
 	Vertex &v2 = t.vertices[2];
 
 	//TODO deal with negative tex values (or > width/height;
-	double w = double(textures[t.tex].width);
-	double h = double(textures[t.tex].height);
-	double area = fabs(((v1.t[0] - v0.t[0])*(v2.t[1] - v0.t[1]) - (v2.t[0] - v0.t[0])*(v1.t[1] - v0.t[1])))/2.0;
+	nx::BuildMaterial m = materials[t.tex];
+	double area = m.n_pixels * fabs(((v1.t[0] - v0.t[0])*(v2.t[1] - v0.t[1]) - (v2.t[0] - v0.t[0])*(v1.t[1] - v0.t[1])))/2.0;
 	//compute area in texture space;
-	return area*w*h*texelWeight;
+	return area*texelWeight;
 }
 
 int KDTreeSoup::assign(Triangle &t, quint32 &mask, vcg::Point3f axis, float middle) {

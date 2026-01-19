@@ -51,17 +51,17 @@ static qint64 pad(qint64 s) {
 
 
 /*unsigned int nextPowerOf2 (unsigned int n) {
-    unsigned count = 0;
+	unsigned count = 0;
 
-    if (n && !(n & (n - 1)))
-        return n;
+	if (n && !(n & (n - 1)))
+		return n;
 
-    while( n != 0)
-    {
-        n >>= 1;
-        count += 1;
-    }
-    return 1 << count;
+	while( n != 0)
+	{
+		n >>= 1;
+		count += 1;
+	}
+	return 1 << count;
 }*/
 
 
@@ -248,289 +248,306 @@ protected:
 
 void NexusBuilder::createCloudLevel(KDTreeCloud *input, StreamCloud *output, int /*level*/) {
 
-		for(uint block = 0; block < input->nBlocks(); block++) {
-			Cloud cloud = input->get(block);
-			assert(cloud.size() < (1<<16));
-			if(cloud.size() == 0) continue;
+	for(uint block = 0; block < input->nBlocks(); block++) {
+		Cloud cloud = input->get(block);
+		assert(cloud.size() < (1<<16));
+		if(cloud.size() == 0) continue;
 
-			Mesh mesh;
-			mesh.load(cloud);
+		Mesh mesh;
+		mesh.load(cloud);
 
-			int target_points = cloud.size()*scaling;
-			std::vector<AVertex> deleted = mesh.simplifyCloud(target_points);
+		int target_points = cloud.size()*scaling;
+		std::vector<AVertex> deleted = mesh.simplifyCloud(target_points);
 
-			//save node in nexus temporary structure
-			quint32 mesh_size = mesh.serializedSize(header.signature, interleaved);
-			mesh_size = pad(mesh_size);
-			quint32 chunk = chunks.addChunk(mesh_size);
-			uchar *buffer = chunks.getChunk(chunk);
-			quint32 patch_offset = patches.size();
+		//save node in nexus temporary structure
+		quint32 mesh_size = mesh.serializedSize(header.signature, interleaved);
+		mesh_size = pad(mesh_size);
+		quint32 chunk = chunks.addChunk(mesh_size);
+		uchar *buffer = chunks.getChunk(chunk);
+		quint32 patch_offset = patches.size();
 
-			std::vector<Patch> node_patches;
-			mesh.serialize(buffer, header.signature, node_patches, interleaved);
+		std::vector<Patch> node_patches;
+		mesh.serialize(buffer, header.signature, node_patches, interleaved);
 
-			//patches will be reverted later, but the local order is important because of triangle_offset
-			std::reverse(node_patches.begin(), node_patches.end());
-			patches.insert(patches.end(), node_patches.begin(), node_patches.end());
+		//patches will be reverted later, but the local order is important because of triangle_offset
+		std::reverse(node_patches.begin(), node_patches.end());
+		patches.insert(patches.end(), node_patches.begin(), node_patches.end());
 
-			quint32 current_node = nodes.size();
-			nx::Node node = mesh.getNode();
-			node.offset = chunk; //temporaryle remember which chunk belongs to which node
-			node.size = mesh_size;
-			node.error = mesh.averageDistance();
-			node.first_patch = patch_offset;
-			nodes.push_back(node);
-			boxes.push_back(NodeBox(input, block));
+		quint32 current_node = nodes.size();
+		nx::Node node = mesh.getNode();
+		node.offset = chunk; //temporaryle remember which chunk belongs to which node
+		node.size = mesh_size;
+		node.error = mesh.averageDistance();
+		node.first_patch = patch_offset;
+		nodes.push_back(node);
+		boxes.push_back(NodeBox(input, block));
 
-			//we pick the deleted vertices from simplification and reprocess them.
+		//we pick the deleted vertices from simplification and reprocess them.
 
-			swap(mesh.vert, deleted);
-			mesh.vn = mesh.vert.size();
+		swap(mesh.vert, deleted);
+		mesh.vn = mesh.vert.size();
 
-			Splat *vertices = new Splat[mesh.vn];
-			mesh.getVertices(vertices, current_node);
+		Splat *vertices = new Splat[mesh.vn];
+		mesh.getVertices(vertices, current_node);
 
-			for(int i = 0; i < mesh.vn; i++) {
-				Splat &s = vertices[i];
-				output->pushVertex(s);
-			}
-
-			delete []vertices;
+		for(int i = 0; i < mesh.vn; i++) {
+			Splat &s = vertices[i];
+			output->pushVertex(s);
 		}
+
+		delete []vertices;
+	}
 }
 
+
+
+
+class Worker: public QRunnable {
+public:
+	int level;
+	uint block;
+	KDTreeSoup *input;
+	StreamSoup *output;
+	NexusBuilder &builder;
+
+	Worker(NexusBuilder &_builder, KDTreeSoup *in, StreamSoup *out, uint _block, int _level):
+		builder(_builder), input(in), output(out), block(_block), level(_level) {}
+
+protected:
+	void run() {
+		builder.processBlock(input, output, block, level);
+	}
+};
+
+
 void NexusBuilder::createMeshLevel(KDTreeSoup *input, StreamSoup *output, int level) {
-		atlas.buildLevel(level);
-		if(level > 0)
-			atlas.flush(level-1);
+	QElapsedTimer timer;
+	timer.start();
 
-		//const int n_threads = 3;
-		//QList<Worker *> workers;
+	atlas.buildLevel(level);
+	if(level > 0)
+		atlas.flush(level-1);
 
-		double area = 0.0;
 
-		QElapsedTimer timer;
-		timer.start();
+	QThreadPool pool;
+	if(n_threads > 0)
+		pool.setMaxThreadCount(n_threads);
 
-		int64_t io_time = 0;
-		int64_t packing_time = 0;
-		int64_t simplify_time = 0;
+	for(uint block = 0; block < input->nBlocks(); block++) {
+		Worker *worker = new Worker(*this, input, output, block, level);
+		pool.start(worker);
+	}
+	pool.waitForDone();
+}
 
-		for(uint block = 0; block < input->nBlocks(); block++) {
+void NexusBuilder::processBlock(KDTreeSoup *input, StreamSoup *output, uint block, int level) {
 
-			/*if(workers.size() > n_threads) {
-			workers.front()->wait();
-			delete workers.front();
-			workers.pop_front();
-		}
-		Worker *worker = new Worker(block, input, output, *this);
-		worker->start();
-		workers.push_back(worker);
-		//worker->wait();
-		*/
-
-			Soup soup = input->get(block);
-			assert(soup.size() < (1<<16));
-			if(soup.size() == 0) continue;
-			
-			/*sequence of operations:
+	/*sequence of operations:
 			1) load from soup
-			2) lock			
+			2) lock
 			3) if(textures) make a copy and split the seams.
 			4) compute serialize size
 			5) allocate the chunk.
 			6) if(texture) create the textures and save in temporary file. (we could skip and save right away
 			7) serialize to chunk
-			8) get node data 
-			10) simplify and compute error 
+			8) get node data
+			10) simplify and compute error
 			11) finalize the node (we need the error)
 			12) stream the triangles
 			*/
 
-			TMesh mesh;
-			TMesh tmp; //this is needed saving a mesh with vertices on seams duplicated., and for node tex coordinates to be rearranged
+	TMesh mesh;
+	TMesh tmp; //this is needed saving a mesh with vertices on seams duplicated., and for node tex coordinates to be rearranged
 
-			Mesh mesh1;
-			quint32 mesh_size;
+	Mesh mesh1;
+	quint32 mesh_size;
 
-			if(!hasTextures()) {
-				mesh1.load(soup);
+	int ntriangles = 0;
+	{
+		QMutexLocker locker(&m_input);
+		Soup soup = input->get(block);
+		assert(soup.size() < (1<<16));
+		if(soup.size() == 0) return;
 
-				input->lock(mesh1, block);
-				mesh_size = mesh1.serializedSize(header.signature, interleaved);
-				
-			} else {
-				
-				mesh.load(soup);
-				input->lock(mesh, block);
-				//we need to replicate vertices where textured seams occours
+		ntriangles = soup.size();
 
-				vcg::tri::Append<TMesh,TMesh>::MeshCopy(tmp,mesh);
-				for(int i = 0; i < tmp.face.size(); i++) {
-					tmp.face[i].node = mesh.face[i].node;
-					tmp.face[i].tex = mesh.face[i].tex;
-				}
-				tmp.splitSeams(header.signature);
-				//TODO don't exit, just bail out!
-				if(tmp.vert.size() > 60000) {
-					cerr << "Unable to properly simplify due to framented parametrization\n"
-						 << "Try to reduce the size of the nodes using -f (default is 32768)" << endl;
-					exit(0);
-				}
-
-				//save node in nexus temporary structure
-				mesh_size = tmp.serializedSize(header.signature, interleaved);
-			}
-			mesh_size = pad(mesh_size);
-			quint32 chunk = chunks.addChunk(mesh_size);
-			uchar *buffer = chunks.getChunk(chunk);
-			quint32 patch_offset = patches.size();
-			std::vector<Patch> node_patches;
-
-			float error;
-			if(!hasTextures()) {
-				mesh1.serialize(buffer, header.signature, node_patches, interleaved);
-
-			} else {
-				io_time += timer.restart();
-				TextureGroupBuild group = nodeTexCreator.process(tmp, level);
-				error = group.error;
-
-				//TODO area!!
-				//QImage nodetex = extractNodeTex(tmp, level, error, pixelXedge);
-				//area += nodetex.width()*nodetex.height();
-				TextureGroup texture;
-				texture.offset = nodeTex.size()/NEXUS_PADDING;
-				int32_t nimages = group.size();
-				nodeTex.write((char *)&nimages, 4);
-				int64_t	pos = nodeTex.size();
-				for(QImage nodetex: group) {
-					output_pixels += nodetex.width()*nodetex.height();
-					//reserve space for image size, will be overwritten.
-					nodeTex.write((char *)&texture.size, 4);
-					QImageWriter writer(&nodeTex, "jpg");
-					writer.setQuality(tex_quality);
-#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
-					writer.setOptimizedWrite(true);
-					writer.setProgressiveScanWrite(true);
-#endif
-					writer.write(nodetex);
-
-//#define SAVE_NODE_MESH
-#ifdef  SAVE_NODE_MESH
-					static int counter = 0;
-					QString texname = QString::number(counter) + ".jpg";
-					nodetex.save(texname);
-					tmp.textures.push_back(texname.toStdString());
-					tmp.saveObjTex(QString::number(counter) + ".obj", texname);
-					counter++;
-#endif
-					//No padding needed!
-					//qint64 file_end = pad(nodeTex.size());
-					int64_t image_end = nodeTex.size();
-					int32_t tex_size = image_end - pos - 4; //pos points at the dimension int now
-
-					nodeTex.seek(pos);
-					nodeTex.write((char *)&tex_size, 4);
-					nodeTex.seek(image_end);
-					pos = image_end;
-				}
-				int64_t file_end = pad(nodeTex.size());
-				nodeTex.resize(file_end);
-				nodeTex.seek(file_end);
-
-				texture.size = uint32_t(nodeTex.size() - texture.offset * NEXUS_PADDING);
-				textures.push_back(texture);
-
-				packing_time += timer.restart();
-
-				tmp.serialize(buffer, header.signature, node_patches, interleaved);
-				for(Patch &patch: node_patches) {
-					patch.texture = textures.size()-1;
-					patch.material = group.material;
-				} //last texture insertet
-
-				//VICIOUS TRICK: we could save only a texture every 2 geometry levels since the patch is contained also to a parent node.
-				//we could store the texture in the parent nodes i and have it good also for the children node.
-				//but only starting from the bottom.
-
-			}
-
-			//patches will be reverted later, but the local order is important because of triangle_offset
-			std::reverse(node_patches.begin(), node_patches.end());
-			patches.insert(patches.end(), node_patches.begin(), node_patches.end());
-
-			nx::Node node;
-			if(!hasTextures())
-				node = mesh1.getNode(); //get node data before simplification
-			else
-				node = tmp.getNode();
-
-			io_time += timer.restart();
-
-			int nface;
-			if(!hasTextures()) {
-				error = mesh1.simplify(soup.size()*scaling, Mesh::QUADRICS);
-				nface = mesh1.fn;
-			} else {
-				
-//cout << "e do not need skiplevel: qwe need to group and do not simplify increasing the number of triangles per mesh! with a max of texel per patch instead." << endl;
-				int target_faces = soup.size()*scaling;
-				//if(pixelXedge > 10) {
-				//When textures are too big for the amount of geometry we skip some level of geometry simplification.
-				//It should be automatic based on pixelXedge....
-				if(skipSimplifyLevels > 0) {
-					//cout << "Too much texture! Skipping vertex simplification" << endl;
-					target_faces = soup.size();
-				} 
-				//mesh.savePly("test.ply");
-				//exit(0);
-				mesh.simplify(target_faces, TMesh::QUADRICS);
-				nface = mesh.fn;
-			}
-			simplify_time += timer.restart();
-
-
-			quint32 current_node = nodes.size();
-
-			node.offset = chunk; //temporarily remember which chunk belongs to which node
-			node.size = mesh_size;
-			node.error = error;
-			node.first_patch = patch_offset;
-			nodes.push_back(node);
-			boxes.push_back(NodeBox(input, block));
-
-			Triangle *triangles = new Triangle[nface];
-			//streaming the output TODO be sure not use to much memory on the chunks: we are writing sequentially
-			if(!hasTextures()) {
-				mesh1.getTriangles(triangles, current_node);
-			} else {
-				mesh.getTriangles(triangles, current_node);
-			}
-			for(int i = 0; i < nface; i++) {
-				Triangle &t = triangles[i];
-				if(!t.isDegenerate())
-					output->pushTriangle(triangles[i]);
-			}
-
-			delete []triangles;
-
-			io_time += timer.restart();
-
+		if(!hasTextures()) {
+			mesh1.load(soup);
+		} else {
+			mesh.load(soup);
 		}
-		double n = input->nBlocks();
-		double io = double(io_time)/n;
-		double packing = double(packing_time)/n;
-		double simplify = double(simplify_time)/n;
+	}
 
-		cout << "Per node: packing: " << packing << "ms " << " Simplification: " << simplify << "ms " << " IO: " << io << "ms" << endl;
+	if(!hasTextures()) {
+		input->lock(mesh1, block);
+		mesh_size = mesh1.serializedSize(header.signature, interleaved);
 
-		//std::cout << "Level texture area: " << area << endl;
-		/*while(workers.size()) {
-		workers.front()->wait();
-		delete workers.front();
-		workers.pop_front();
-	}*/
+	} else {
+		input->lock(mesh, block);
+		//we need to replicate vertices where textured seams occours
+
+		vcg::tri::Append<TMesh,TMesh>::MeshCopy(tmp,mesh);
+		for(int i = 0; i < tmp.face.size(); i++) {
+			tmp.face[i].node = mesh.face[i].node;
+			tmp.face[i].tex = mesh.face[i].tex;
+		}
+		tmp.splitSeams(header.signature);
+		//TODO don't exit, just bail out!
+		if(tmp.vert.size() > 60000) {
+			cerr << "Unable to properly simplify due to framented parametrization\n"
+				 << "Try to reduce the size of the nodes using -f (default is 32768)" << endl;
+			exit(0);
+		}
+
+		//save node in nexus temporary structure
+		mesh_size = tmp.serializedSize(header.signature, interleaved);
+	}
+
+	mesh_size = pad(mesh_size);
+	uchar *buffer = new uchar[mesh_size];
+
+	std::vector<Patch> node_patches;
+	float error;
+
+	if(!hasTextures()) {
+		mesh1.serialize(buffer, header.signature, node_patches, interleaved);
+
+	} else {
+		TextureGroupBuild group = nodeTexCreator.process(tmp, level);
+		tmp.serialize(buffer, header.signature, node_patches, interleaved);
+
+		error = group.error;
+		TextureGroup texture;
+
+		{
+			QMutexLocker locker(&m_textures);
+
+			texture.offset = nodeTex.size()/NEXUS_PADDING;
+			int32_t nimages = group.size();
+			nodeTex.write((char *)&nimages, 4);
+			int64_t	pos = nodeTex.size();
+			for(QImage nodetex: group) {
+				output_pixels += nodetex.width()*nodetex.height();
+				//reserve space for image size, will be overwritten.
+				nodeTex.write((char *)&texture.size, 4);
+				QImageWriter writer(&nodeTex, "jpg");
+				writer.setQuality(tex_quality);
+	#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
+				writer.setOptimizedWrite(true);
+				writer.setProgressiveScanWrite(true);
+	#endif
+				writer.write(nodetex);
+
+				//No padding needed!
+				//qint64 file_end = pad(nodeTex.size());
+				int64_t image_end = nodeTex.size();
+				int32_t tex_size = image_end - pos - 4; //pos points at the dimension int now
+
+				nodeTex.seek(pos);
+				nodeTex.write((char *)&tex_size, 4);
+				nodeTex.seek(image_end);
+				pos = image_end;
+			}
+			int64_t file_end = pad(nodeTex.size());
+			nodeTex.resize(file_end);
+			nodeTex.seek(file_end);
+
+			texture.size = uint32_t(nodeTex.size() - texture.offset * NEXUS_PADDING);
+		}
+
+		{
+			QMutexLocker locker(&m_builder);
+			textures.push_back(texture);
+			for(Patch &patch: node_patches) {
+				patch.texture = textures.size()-1;
+				patch.material = group.material;
+			}
+		}
+	}
+
+	quint32 chunk;
+	//done serializing, move the data to the chunk.
+	{
+		QMutexLocker locker(&m_chunks);
+		chunk = chunks.addChunk(mesh_size);
+		uchar *chunk_buffer = chunks.getChunk(chunk);
+		memcpy(chunk_buffer, buffer, mesh_size);
+		chunks.dropChunk(chunk); //no neede anymore
+	}
+	delete []buffer;
+
+	nx::Node node;
+	if(!hasTextures())
+		node = mesh1.getNode(); //get node data before simplification
+	else
+		node = tmp.getNode();
+
+
+	int nface;
+	if(!hasTextures()) {
+		//TODO: this is actually needed only for the quadric initialization! But this needs code refactoring.
+		QMutexLocker locker(&m_texsimply);
+
+		error = mesh1.simplify(ntriangles*scaling, Mesh::QUADRICS);
+		nface = mesh1.fn;
+	} else {
+		//TODO: this is actually needed only for the quadric initialization! But this needs code refactoring.
+		QMutexLocker locker(&m_texsimply);
+
+		//cout << "e do not need skiplevel: qwe need to group and do not simplify increasing the number of triangles per mesh! with a max of texel per patch instead." << endl;
+		int target_faces = ntriangles*scaling;
+		//if(pixelXedge > 10) {
+		//When textures are too big for the amount of geometry we skip some level of geometry simplification.
+		//It should be automatic based on pixelXedge....
+		if(skipSimplifyLevels > 0) {
+			//cout << "Too much texture! Skipping vertex simplification" << endl;
+			target_faces = ntriangles;
+		}
+		else if(target_faces < 64) //don't simplify too much!
+			target_faces = 64;
+
+		mesh.simplify(target_faces, TMesh::QUADRICS);
+		nface = mesh.fn;
+	}
+
+
+	quint32 current_node;
+	{
+		QMutexLocker locker(&m_builder);
+
+		quint32 patch_offset = patches.size();
+		std::reverse(node_patches.begin(), node_patches.end());
+		patches.insert(patches.end(), node_patches.begin(), node_patches.end());
+
+		current_node = nodes.size();
+
+		node.offset = chunk; //temporarily remember which chunk belongs to which node
+		node.error = error;
+		node.size = mesh_size;
+		node.first_patch = patch_offset;
+
+		nodes.push_back(node);
+		boxes.push_back(NodeBox(input, block));
+	}
+
+	Triangle *triangles = new Triangle[nface];
+	//streaming the output TODO be sure not use to much memory on the chunks: we are writing sequentially
+	if(!hasTextures()) {
+		mesh1.getTriangles(triangles, current_node);
+	} else {
+		mesh.getTriangles(triangles, current_node);
+	}
+
+	{
+		QMutexLocker locker(&m_output);
+
+		for(int i = 0; i < nface; i++) {
+			Triangle &t = triangles[i];
+			if(!t.isDegenerate())
+				output->pushTriangle(triangles[i]);
+		}
+	}
+	delete []triangles;
 }
 
 void NexusBuilder::createLevel(KDTree *in, Stream *out, int level) {
@@ -691,9 +708,9 @@ void NexusBuilder::saveGLTF(QFile &file) {
 		JSON jbufferViewVertex {
 			"buffer", 0,
 			"byteOffset", node.getBeginOffset(),
-			"byteLength", node.getEndOffset() - node.getBeginOffset(),
-			"byteStride", stride,
-			"target", 34962 //element_array_buffer
+					"byteLength", node.getEndOffset() - node.getBeginOffset(),
+					"byteStride", stride,
+					"target", 34962 //element_array_buffer
 		};
 		jbufferViews.append(jbufferViewVertex);
 		current_bufferview++;
@@ -717,8 +734,8 @@ void NexusBuilder::saveGLTF(QFile &file) {
 		JSON jbufferViewFace {
 			"buffer", 0,
 			"byteOffset", node.getBeginOffset(),
-			"byteLength", node.getEndOffset() - node.getBeginOffset(),
-			"target", 34963 //element_array_index
+					"byteLength", node.getEndOffset() - node.getBeginOffset(),
+					"target", 34963 //element_array_index
 		};
 
 		jbufferViews.append(jbufferViewFace);
@@ -750,7 +767,7 @@ void NexusBuilder::saveGLTF(QFile &file) {
 
 
 
- /*= header_dump.size()  +
+	/*= header_dump.size()  +
 			nodes.size()*sizeof(Node) +
 			patches.size()*sizeof(Patch) +
 			textures.size()*sizeof(TextureGroup);
@@ -792,7 +809,7 @@ void NexusBuilder::saveGLTF(QFile &file) {
 
 		} else {
 			throw "Preserving original textures not supported anymode";
-/*			for(int i = 0; i < textures.size()-1; i++) {
+			/*			for(int i = 0; i < textures.size()-1; i++) {
 				Texture &tex = textures[i];
 				assert(tex.offset == file.pos()/NEXUS_PADDING);
 				QFile image(images[i]);
@@ -860,7 +877,7 @@ void NexusBuilder::save(QString filename, bool gltf) {
 	//unify materials, writing to header.materials.
 	std::vector<int> material_map = materials.compact(header.materials);
 	for(Patch &patch: patches)
-		patch.material = material_map[patch.material]; 
+		patch.material = material_map[patch.material];
 
 	if(gltf)
 		saveGLTF(file);
@@ -944,7 +961,7 @@ void NexusBuilder::saveNXS(QFile &file) {
 
 		} else {
 			throw "Preserving original textures not supported anymode";
-/*			for(int i = 0; i < textures.size()-1; i++) {
+			/*			for(int i = 0; i < textures.size()-1; i++) {
 				Texture &tex = textures[i];
 				assert(tex.offset == file.pos()/NEXUS_PADDING);
 				QFile image(images[i]);
@@ -1058,7 +1075,7 @@ void NexusBuilder::uniformNormals() {
 		cout << "Normal unification does not support interleaved still!" << endl;
 		return;
 	}
-	/* 
+	/*
 	level 0: for each node in the lowest level:
 			load the neighboroughs
 			find common vertices (use lock to find the vertices)
@@ -1129,8 +1146,8 @@ void NexusBuilder::uniformNormals() {
 				vcg::Point3s normals;
 				for(int l = 0; l < 3; l++)
 					normals[l] = (short)(normalf[l]*32766);
-					
-				for(uint k = start; k < last; k++) 
+
+				for(uint k = start; k < last; k++)
 					*vertices[k].normal = normals;
 				
 			} else //just copy from first one (coming from lower level due to sorting
@@ -1141,7 +1158,7 @@ void NexusBuilder::uniformNormals() {
 		}
 
 		
-/*		for(uint k = 0; k < vertices.size(); k++) {
+		/*		for(uint k = 0; k < vertices.size(); k++) {
 			NVertex &v = vertices[k];
 			if(v.point != previous) {
 				//uniform normals;

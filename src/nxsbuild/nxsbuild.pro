@@ -37,6 +37,8 @@ SOURCES += \
     kdtree.cpp \
     mesh.cpp \
     tsploader.cpp \
+	tsloader.cpp \
+	colormap.cpp \
     nexusbuilder.cpp \
     objloader.cpp \
     tmesh.cpp \
@@ -63,6 +65,8 @@ HEADERS += \
     trianglesoup.h \
     mesh.h \
     tsploader.h \
+	tsloader.h \
+	colormap.h \
     nexusbuilder.h \
     objloader.h \
     tmesh.h \

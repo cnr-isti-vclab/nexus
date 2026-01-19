@@ -42,6 +42,8 @@ public:
 	bool has_textures;
 	nx::BuildMaterials materials;
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
+	vcg::Point3d scale = vcg::Point3d(1, 1, 1);
+	QStringList colormap; //used to convert a value into a color, .ts only
 
 	Stream();
 	virtual ~Stream() {}

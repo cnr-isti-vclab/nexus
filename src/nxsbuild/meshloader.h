@@ -40,7 +40,12 @@ public:
 	virtual bool hasNormals() { return has_normals; } //call this
 	virtual bool hasTextures() { return has_textures; }
 	
+	void sanitizeTextureFilepath(QString &textureFilepath);
+	void resolveTextureFilepath(const QString &modelFilepath, QString &textureFilepath);
+	
 	vcg::Point3d origin = vcg::Point3d(0, 0, 0);
+	vcg::Point3d scale = vcg::Point3d(1, 1, 1);
+
 	vcg::Box3d box;
 	
 	std::vector<nx::BuildMaterial> materials;

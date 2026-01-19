@@ -24,7 +24,7 @@ for more details.
 
 #include <QGLWidget>
 
-
+using namespace std;
 using namespace nx;
 
 

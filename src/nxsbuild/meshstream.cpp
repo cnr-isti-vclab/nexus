@@ -22,6 +22,7 @@ for more details.
 #include "meshloader.h"
 #include "plyloader.h"
 #include "tsploader.h"
+#include "tsloader.h"
 #include "objloader.h"
 #include "stlloader.h"
 #include "gltfloader.h"
@@ -60,6 +61,14 @@ MeshLoader *Stream::getLoader(QString file, QString material) {
 
 	else if(file.endsWith(".gltf") || file.endsWith(".glb"))
 		loader = new GltfLoader(file);
+
+	else if(file.endsWith(".ts")) {
+		TsLoader *ts = new TsLoader(file);
+		loader = ts;
+		if(!colormap.isEmpty())
+			ts->useColormapFor(colormap[0], colormap[1]);
+	}
+
 
 	/*        else if(file.endsWith(".off"))
 		loader = new OffLoader(file, vertex_quantization, max_memory);*/
@@ -102,6 +111,7 @@ void Stream::load(QStringList paths, QString material) {
 
 		loader->setVertexQuantization(vertex_quantization);
 		loader->origin = origin;
+		loader->scale = scale;
 		loader->materialOffset = materials.size();
 
 		loadMesh(loader);
@@ -129,6 +139,9 @@ void Stream::load(QStringList paths, QString material) {
 	}
 	materials.unifyMaterials();
 	materials.unifyTextures();
+
+	for(auto &m: materials)
+		m.computeArea();
 
 	current_triangle = 0;
 	flush();

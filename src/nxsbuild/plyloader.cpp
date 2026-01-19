@@ -250,13 +250,13 @@ void PlyLoader::cacheVertices() {
 		Vertex &v = vertices[i];
 		pf.Read((void *)&vertex);
 		if(double_coords) {
-			v.v[0] = vertex.dv[0] - origin[0];
-			v.v[1] = vertex.dv[1] - origin[1];
-			v.v[2] = vertex.dv[2] - origin[2];
+			v.v[0] = (float)(vertex.dv[0] - origin[0])*scale[0];
+			v.v[1] = (float)(vertex.dv[1] - origin[1])*scale[1];
+			v.v[2] = (float)(vertex.dv[2] - origin[2])*scale[2];
 		} else {
-			v.v[0] = vertex.v[0] - origin[0];
-			v.v[1] = vertex.v[1] - origin[1];
-			v.v[2] = vertex.v[2] - origin[2];
+			v.v[0] = (float)(vertex.v[0] - origin[0])*scale[0];
+			v.v[1] = (float)(vertex.v[1] - origin[1])*scale[1];
+			v.v[2] = (float)(vertex.v[2] - origin[2])*scale[2];
 		}
 		if(has_colors) {
 			v.c[0] = vertex.c[0];
@@ -351,17 +351,22 @@ quint32 PlyLoader::getVertices(quint32 size, Splat *splats) {
 		Splat &v = splats[count++];
 		current_vertex++;
 
+		vcg::Point3d p;
 		if(double_coords) {
-			box.Add(vcg::Point3d(vertex.dv) - origin);
-			v.v[0] = (float)(vertex.dv[0] - origin[0]);
-			v.v[1] = (float)(vertex.dv[1] - origin[1]);
-			v.v[2] = (float)(vertex.dv[2] - origin[2]);
+			p = vcg::Point3d(vertex.dv);
 		} else {
-			box.Add(vcg::Point3d(vertex.v[0], vertex.v[1], vertex.v[2]) - origin);
-			v.v[0] = vertex.v[0] - (float)origin[0];
-			v.v[1] = vertex.v[1] - (float)origin[1];
-			v.v[2] = vertex.v[2] - (float)origin[2];
+			p = vcg::Point3d(vertex.v[0], vertex.v[1], vertex.v[2]);
 		}
+		p -= origin;
+		p[0] *= scale[0];
+		p[1] *= scale[1];
+		p[2] *= scale[2];
+		box.Add(p);
+
+		v.v[0] = (float)p[0];
+		v.v[1] = (float)p[1];
+		v.v[2] = (float)p[2];
+
 		if(has_colors) {
 			v.c[0] = vertex.c[0];
 			v.c[1] = vertex.c[1];

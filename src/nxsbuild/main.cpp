@@ -40,16 +40,21 @@ int main(int argc, char *argv[]) {
 	QLocale::setDefault(QLocale::C);
 
 	int node_size = 1<<15;
+	float texel_weight =0.05; //relative weight of texels.
+
 	int top_node_size = 4096;
 	float vertex_quantization = 0.0f;   //optionally quantize vertices position.
 	int tex_quality(92);                //default jpg texture quality
 	QString decimation("quadric");      //simplification method
 	int ram_buffer(2000);               //Mb of ram to use
+	int n_threads = 0;                  //auto!
 	float scaling(0.5);                 //simplification ratio
 	int skiplevels = 0;
 	QString output("");                 //output file
 	QString mtl;
 	QString translate;
+	QString scalate;
+	QString colormap;                   //specific for TS loader
 	bool center = false;
 
 
@@ -61,6 +66,7 @@ int main(int argc, char *argv[]) {
 	bool no_texcoords = false;
 	bool useOrigTex = false;
 	bool create_pow_two_tex = false;
+	bool deepzoom = false;
 
 	//BTREE options
 	QVariant adaptive(0.333f);
@@ -76,6 +82,7 @@ int main(int argc, char *argv[]) {
 
 	//construction options
 	opt.addOption('f', "node faces", "number of faces per patch, default 32768", &node_size);
+	opt.addOption('F', "texel-weight", "texels weight are included in node-face computation", &texel_weight);
 	opt.addOption('t', "top node faces", "number of triangles in the top node, default 4096", &top_node_size);
 	opt.addOption('d', "decimation", "decimation method [quadric, edgelen], default quadric", &decimation);
 	opt.addOption('s', "scaling", "decimation factor between levels, default 0.5", &decimation);
@@ -83,6 +90,8 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('O', "original textures", "use original textures, no repacking", &useOrigTex);
 	opt.addOption('m', "mtl file", "mtl for a single obj file", &mtl);
 	opt.addSwitch('k', "pow 2 textures", "create textures to be power of 2", &create_pow_two_tex);
+	opt.addSwitch('D', "deepzoom", "save each node and texture to a separated file\n"
+				  "Used for server which do not support http range requests (206). Will generate MANY files.", &deepzoom);
 
 	//btree options
 	opt.addOption('a', "adaptive", "split nodes adaptively [0-1], default 0.333", &adaptive);
@@ -102,8 +111,12 @@ int main(int argc, char *argv[]) {
 
 	//other options
 	opt.addOption('r', "ram", "max ram used (in MegaBytes), default 2000 (WARNING: not a hard limit, increase at your risk)", &ram_buffer);
+	opt.addOption('w', "workers", "number of workers: default = 4", &n_threads);
 	opt.addOption('T', "origin", "new origin for the model X:Y:Z", &translate);
+	opt.addOption('W', "scale", "scale vector (after origin subtraction) X:Y:Z", &scalate);
 	opt.addSwitch('G', "center", "set origin in the bounding box center", &center);
+	//ts specific options
+	opt.addOption('K', "colormap", "for .ts files: property:colormap such as temperature:viridis (or plasma, spectral)", &colormap);
 	opt.parse();
 
 	//Check parameters are correct
@@ -164,6 +177,24 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	vcg::Point3d scale(0, 0, 0);
+	if(!scalate.isEmpty()) {
+		QStringList p = scalate.split(':');
+		if(p.size() != 3) {
+			cerr << "Malformed scale parameter, expecting X:Y:Z" << endl;
+			return -1;
+		}
+
+		bool ok = false;
+		for(int i = 0; i < 3; i++) {
+			scale[i] = p[i].toDouble(&ok);
+			if(!ok) {
+				cerr << "Malformed scale parameter, expecting X:Y:Z" << endl;
+				return -1;
+			}
+		}
+	}
+
 	QElapsedTimer timer;
 	timer.start();
 
@@ -189,6 +220,14 @@ int main(int argc, char *argv[]) {
 		else
 			stream = new StreamSoup("cache_stream");
 
+		if(!colormap.isNull()) {
+			stream->colormap = colormap.split(":");
+			if(stream->colormap.size() != 2) {
+				throw QString("Format for color map is 'property:colormap'");
+			}
+			colors = true;
+		}
+
 		stream->setVertexQuantization(vertex_quantization);
 		stream->setMaxMemory(max_memory);
 		if(center) {
@@ -199,6 +238,8 @@ int main(int argc, char *argv[]) {
 			stream->origin = box.Center();
 		} else
 			stream->origin = origin;
+		if(!scalate.isEmpty())
+			stream->scale = scale;
 		
 		vcg::Point3d &o = stream->origin;
 		if(o[0] != 0.0 || o[1] != 0.0 || o[2] != 0.0) {
@@ -253,6 +294,7 @@ int main(int argc, char *argv[]) {
 		NexusBuilder builder(components);
 		builder.skipSimplifyLevels = skiplevels;
 		builder.setMaxMemory(max_memory);
+		builder.n_threads = n_threads;
 		builder.setScaling(scaling);
 		builder.useNodeTex = !useOrigTex;
 		builder.createPowTwoTex = create_pow_two_tex;
@@ -272,8 +314,11 @@ int main(int argc, char *argv[]) {
 
 		tree->setMaxMemory((1<<20)*(uint64_t)ram_buffer/2);
 		KDTreeSoup *treesoup = dynamic_cast<KDTreeSoup *>(tree);
-		if(treesoup)
+		if(treesoup) {
+			treesoup->setMaxWeight(node_size);
+			treesoup->texelWeight = texel_weight;
 			treesoup->setTrianglesPerBlock(node_size);
+		}
 
 		KDTreeCloud *treecloud = dynamic_cast<KDTreeCloud *>(tree);
 		if(treecloud)

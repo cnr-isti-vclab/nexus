@@ -20,6 +20,7 @@ for more details.
 
 #include <vcg/space/box3.h>
 #include "partition.h"
+#include "buildmaterial.h"
 
 #include <vector>
 
@@ -36,6 +37,7 @@ public:
 	float middle;
 	int children[2];     //first and second child
 	int block;             //bin where triangle are stored.
+	double weight = 0.0;
 
 	KDCell(): split(-1), middle(0), block(-1) {
 		children[0] = children[1] = -1;
@@ -49,7 +51,8 @@ public:
 	float ratio;
 	std::vector<KDCell> cells;
 	std::vector<vcg::Box3f> block_boxes;      //bounding box associated to the blocks (leaf nodes)
-	//std::vector<QString> textures;
+	std::vector<nx::BuildMaterial> materials;
+
 
 	KDTree(float adapt = 0.333);
 	virtual ~KDTree() {}
@@ -84,10 +87,15 @@ protected:
 
 class KDTreeSoup: public VirtualTriangleSoup, public KDTree {
 public:
+	double current_weight = 0;
+	double max_weight = 0;
+	float texelWeight = 0.1;   //for computing max  weight per block
 	KDTreeSoup(QString prefix, float adapt = 0.333): VirtualTriangleSoup(prefix), KDTree(adapt) {}
 	void setMaxMemory(quint64 m) { return VirtualTriangleSoup::setMaxMemory(m); }
+	void setMaxWeight(quint32 weight) { max_weight = double(weight); }
 	void clear();
 	void pushTriangle(Triangle &t);
+	double weight(Triangle &t);
 
 
 protected:

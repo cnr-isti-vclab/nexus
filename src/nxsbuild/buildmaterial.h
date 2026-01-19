@@ -15,6 +15,9 @@ public:
 	bool flipY = true;
 	std::vector<QString> textures;
 	std::map<int32_t, int8_t> countMaps();
+
+	float n_pixels; //total amount of pixels, used to compute weight in kdtrees
+	void computeArea();
 };
 
 class BuildMaterials: public std::vector<BuildMaterial> {

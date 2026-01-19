@@ -79,7 +79,7 @@ void NexusData::loadHeader() {
 	//fread(&header, sizeof(Header), 1, file);
 	int readed = file->read(buffer.data(), hint_size);
 	if(readed != hint_size) {
-		cout << file->errorString() << endl;
+		cout << "Failed to read header from file" << endl;
 
 		throw std::string("could not read header, file too short");
 	}

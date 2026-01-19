@@ -1,6 +1,9 @@
 #include "buildmaterial.h"
 
+#include <QImageReader>
+
 #include <math.h>
+
 
 using namespace std;
 using namespace nx;
@@ -57,6 +60,16 @@ map<int32_t, int8_t> BuildMaterial::countMaps() {
 	return remap;
 }
 
+void BuildMaterial::computeArea() {
+	n_pixels = 0.0f;
+	for(QString filename: textures) {
+		QImageReader test(filename);
+		if(!test.canRead())
+			throw QString("Could not load file: %1").arg(filename);
+		QSize s = test.size();
+		n_pixels += s.width()*s.height();
+	}
+}
 
 
 void BuildMaterials::unifyMaterials() {
