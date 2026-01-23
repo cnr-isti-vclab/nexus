@@ -38,12 +38,32 @@ float compute_distance(const MicroNode& a, const MicroNode& b) {
     return std::sqrt(dx*dx + dy*dy + dz*dz);
 }
 
-// Helper: Merge two AABBs
-Aabb merge_bounds(const Aabb& a, const Aabb& b) {
-    return {
-        {std::min(a.min.x, b.min.x), std::min(a.min.y, b.min.y), std::min(a.min.z, b.min.z)},
-        {std::max(a.max.x, b.max.x), std::max(a.max.y, b.max.y), std::max(a.max.z, b.max.z)}
-    };
+// Helper: Merge two bounding spheres into one encompassing sphere
+void merge_spheres(Vector3f& center_a, float& radius_a, const Vector3f& center_b, float radius_b) {
+    float dx = center_b.x - center_a.x;
+    float dy = center_b.y - center_a.y;
+    float dz = center_b.z - center_a.z;
+    float dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+    
+    // If one sphere contains the other, use the larger one
+    if (dist + radius_b <= radius_a) {
+        return; // sphere_a already contains sphere_b
+    }
+    if (dist + radius_a <= radius_b) {
+        center_a = center_b;
+        radius_a = radius_b;
+        return;
+    }
+    
+    // Compute new sphere that encompasses both
+    float new_radius = (radius_a + radius_b + dist) * 0.5f;
+    if (dist > 0.0f) {
+        float scale = (new_radius - radius_a) / dist;
+        center_a.x += dx * scale;
+        center_a.y += dy * scale;
+        center_a.z += dz * scale;
+    }
+    radius_a = new_radius;
 }
 
 // Helper: Pick K seeds using MaxMin heuristic
@@ -209,7 +229,8 @@ std::vector<PartitionCell> phase1_simultaneous_growth(
     // Build partition cells
     std::vector<PartitionCell> partition(seeds.size());
     for (Index i = 0; i < num_macro_nodes; ++i) {
-        partition[i].bounds = graph.nodes[0].bounds;
+        partition[i].center = graph.nodes[0].center;
+        partition[i].radius = 0.0f;
     }
     
     for (Index micro = 0; micro < num_micro; ++micro) {
@@ -217,7 +238,8 @@ std::vector<PartitionCell> phase1_simultaneous_growth(
         if (macro != std::numeric_limits<Index>::max()) {
             partition[macro].micro_nodes.push_back(micro);
             partition[macro].triangle_count += graph.nodes[micro].triangle_count;
-            partition[macro].bounds = merge_bounds(partition[macro].bounds, graph.nodes[micro].bounds);
+            merge_spheres(partition[macro].center, partition[macro].radius, 
+                         graph.nodes[micro].center, graph.nodes[micro].radius);
         }
     }
     
@@ -291,17 +313,13 @@ void phase2_kl_fm_refinement(
                             }
                         }
                         
-                        // Spatial gain: volume expansion penalty
-                        Aabb expanded_bounds = partition[target_macro].bounds;
-                        expanded_bounds = merge_bounds(expanded_bounds, graph.nodes[micro].bounds);
+                        // Spatial gain: radius expansion penalty (using sphere volume)
+                        Vector3f new_center = partition[target_macro].center;
+                        float new_radius = partition[target_macro].radius;
+                        merge_spheres(new_center, new_radius, graph.nodes[micro].center, graph.nodes[micro].radius);
                         
-                        float old_volume = (partition[target_macro].bounds.max.x - partition[target_macro].bounds.min.x) *
-                                          (partition[target_macro].bounds.max.y - partition[target_macro].bounds.min.y) *
-                                          (partition[target_macro].bounds.max.z - partition[target_macro].bounds.min.z);
-                        
-                        float new_volume = (expanded_bounds.max.x - expanded_bounds.min.x) *
-                                          (expanded_bounds.max.y - expanded_bounds.min.y) *
-                                          (expanded_bounds.max.z - expanded_bounds.min.z);
+                        float old_volume = partition[target_macro].radius * partition[target_macro].radius * partition[target_macro].radius;
+                        float new_volume = new_radius * new_radius * new_radius;
                         
                         float spatial_gain = -(new_volume - old_volume);
                         
@@ -396,14 +414,21 @@ void phase2_kl_fm_refinement(
     for (Index macro = 0; macro < num_macro; ++macro) {
         partition[macro].micro_nodes.clear();
         partition[macro].triangle_count = 0;
-        partition[macro].bounds = graph.nodes[0].bounds;
+        partition[macro].center = {0.0f, 0.0f, 0.0f};
+        partition[macro].radius = 0.0f;
     }
     
     for (Index micro = 0; micro < graph.nodes.size(); ++micro) {
         Index macro = assignment[micro];
         partition[macro].micro_nodes.push_back(micro);
         partition[macro].triangle_count += graph.nodes[micro].triangle_count;
-        partition[macro].bounds = merge_bounds(partition[macro].bounds, graph.nodes[micro].bounds);
+        if (partition[macro].radius == 0.0f) {
+            partition[macro].center = graph.nodes[micro].center;
+            partition[macro].radius = graph.nodes[micro].radius;
+        } else {
+            merge_spheres(partition[macro].center, partition[macro].radius,
+                         graph.nodes[micro].center, graph.nodes[micro].radius);
+        }
     }
 }
 

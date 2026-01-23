@@ -24,7 +24,8 @@ struct MacroGraph {
 struct PartitionCell {
     std::vector<Index> micro_nodes;      // Micro-node IDs in this cell
     Index triangle_count;                // Total triangles
-    Aabb bounds;                         // Union of micro-node bounds
+    Vector3f center;                     // Bounding sphere center
+    float radius;                        // Bounding sphere radius
     std::set<Index> parent_intervals;    // Parent macro-node IDs (for WebGL hierarchy)
 };
 

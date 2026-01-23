@@ -23,12 +23,6 @@ MeshFiles::MeshFiles() {
 
 MeshFiles::~MeshFiles() {
     close();
-    
-    // Remove temporary directory if we created it
-    if (dir.empty())
-        return;
- 
-    std::filesystem::remove_all(dir);
  }
 
 bool MeshFiles::create(const std::filesystem::path& dir_path) {
@@ -53,8 +47,9 @@ void MeshFiles::close() {
     material_ids.close();
     adjacency.close();
     clusters.close();
-    cluster_bounds.close();
-    cluster_triangles.close();
+
+	if(!dir.empty())
+		std::filesystem::remove_all(dir);
     dir.clear();
     bounds = Aabb{{0,0,0},{0,0,0}};
 }
@@ -67,8 +62,6 @@ bool MeshFiles::mapDataFiles(MappedFile::Mode mode) {
     if (!material_ids.open(pathFor("material_ids.bin").string(), mode, 0)) return false;
     if (!adjacency.open(pathFor("adjacency.bin").string(), mode, 0)) return false;
     if (!clusters.open(pathFor("clusters.bin").string(), mode, 0)) return false;
-    if (!cluster_bounds.open(pathFor("cluster_bounds.bin").string(), mode, 0)) return false;
-    if (!cluster_triangles.open(pathFor("cluster_triangles.bin").string(), mode, 0)) return false;
     return true;
 }
 

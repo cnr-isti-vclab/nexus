@@ -27,6 +27,7 @@ enum class ColoringMode {
     None,           // No coloring (white vertices)
     ByVertexIndex,  // Color each vertex by its index
     ByCluster,      // Color each vertex by which cluster it belongs to
+    ByMicroNode,    // Color each face by which micronode it belongs to
     ByMacroNode,    // Color each vertex by which macro-node it belongs to (requires macro clustering)
 };
 

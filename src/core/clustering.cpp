@@ -11,27 +11,12 @@
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
+#include <numeric>
 
 namespace nx {
 
 namespace {
 
-// Helper: Compute centroid of a triangle
-Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
-                                  const MappedArray<Wedge>& wedges,
-                                  const Triangle& tri) {
-    Vector3f centroid = {0, 0, 0};
-    for (int i = 0; i < 3; ++i) {
-        const Vector3f& p = positions[wedges[tri.w[i]].p];
-        centroid.x += p.x;
-        centroid.y += p.y;
-        centroid.z += p.z;
-    }
-    centroid.x /= 3.0f;
-    centroid.y /= 3.0f;
-    centroid.z /= 3.0f;
-    return centroid;
-}
 
 // Helper: Distance from point to triangle centroid
 float distance_to_triangle(const MappedArray<Vector3f>& positions,
@@ -139,23 +124,181 @@ void compute_bounding_sphere(Index triangle_offset, Index triangle_count,
     }
 }
 
+// FM Refinement - Fiduccia-Mattheyses pass with scoring and locking
+void apply_fm_refinement(MeshFiles& mesh,
+                        std::size_t max_size,
+                        std::size_t max_passes) {
+    if (mesh.clusters.size() == 0) return;
+    
+    std::size_t triangle_count = mesh.triangle_to_cluster.size();
+    
+    // Scoring weights
+    const float w_topology = 1.0f;
+    const float w_size = 0.01f;
+    const float w_distance = 0.05f;
+    
+    // FM parameters
+    const std::size_t BATCH_SIZE = 32768;
+    const std::size_t MAX_CANDIDATES = 1024;
+    
+    bool improved = true;
+    std::size_t pass = 0;
+    
+    while (improved && pass < max_passes) {
+        improved = false;
+        float pass_gain = 0.0f;
+        
+        // Process in batches
+        for (std::size_t batch_start = 0; batch_start < triangle_count; batch_start += BATCH_SIZE) {
+            std::size_t batch_end = std::min(batch_start + BATCH_SIZE, triangle_count);
+            
+            // Candidate structure for moves
+            struct Candidate {
+                Index triangle;
+                Index source_cluster;
+                Index target_cluster;
+                float score;
+            };
+            
+            std::vector<Candidate> candidates;
+            
+            // Find candidate moves in this batch
+            for (Index tri_idx = batch_start; tri_idx < batch_end; ++tri_idx) {
+                
+                Index source_cluster = mesh.triangle_to_cluster[tri_idx];
+                const Triangle& tri = mesh.triangles[tri_idx];
+                
+                // Find neighboring clusters via triangle adjacency
+                std::set<Index> neighbors;
+                const FaceAdjacency& adj = mesh.adjacency[tri_idx];
+                for (int corner = 0; corner < 3; ++corner) {
+                    Index neighbor_tri = adj.opp[corner];
+                    if (neighbor_tri != std::numeric_limits<Index>::max()) {
+                        Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
+                        if (neighbor_cluster != source_cluster) {
+                            neighbors.insert(neighbor_cluster);
+                        }
+                    }
+                }
+                
+                // Score moves to each neighboring cluster
+                for (Index target_cluster : neighbors) {
+                    
+                    // a) Topology: change in shared edges
+                    int shared_with_target = count_shared_edges_with_cluster(tri_idx, target_cluster,
+                                                                             mesh.triangle_to_cluster, mesh.adjacency);
+                    int shared_with_source = count_shared_edges_with_cluster(tri_idx, source_cluster,
+                                                                             mesh.triangle_to_cluster, mesh.adjacency);
+                    float g_topo = static_cast<float>(shared_with_target - shared_with_source);
+                    
+                    // b) Size: minimize squared distance from target size
+                    float target_size = static_cast<float>(max_size);
+                    float source_count = static_cast<float>(mesh.clusters[source_cluster].triangle_count);
+                    float target_count = static_cast<float>(mesh.clusters[target_cluster].triangle_count);
+                    
+                    // Squared distance from target before move
+                    float source_dist_before = (source_count - target_size) * (source_count - target_size);
+                    float target_dist_before = (target_count - target_size) * (target_count - target_size);
+                    
+                    // Squared distance from target after move (source loses 1, target gains 1)
+                    float source_dist_after = (source_count - 1.0f - target_size) * (source_count - 1.0f - target_size);
+                    float target_dist_after = (target_count + 1.0f - target_size) * (target_count + 1.0f - target_size);
+                    
+                    // Positive score when move reduces total distance from target
+                    float g_size = (source_dist_before + target_dist_before) - (source_dist_after + target_dist_after);
+                    
+                    // c) Distance: prefer moving toward nearby clusters
+                    Vector3f tri_centroid = compute_triangle_centroid(mesh.positions, mesh.wedges, tri);
+                    float dist_to_source = distance_to_triangle(mesh.positions, mesh.wedges, tri,
+                                                               mesh.clusters[source_cluster].center);
+                    float dist_to_target = distance_to_triangle(mesh.positions, mesh.wedges, tri,
+                                                               mesh.clusters[target_cluster].center);
+                    float g_dist = dist_to_source - dist_to_target;
+                    
+                    // Combined score
+                    float score = w_topology * g_topo + w_size * g_size - w_distance * g_dist;
+                    
+                    if (score > 0.0f) {
+                        candidates.push_back({tri_idx, source_cluster, target_cluster, score});
+                    }
+                }
+            }
+            
+            // Partially sort to get top candidates by score (descending)
+            std::size_t num_to_sort = std::min(MAX_CANDIDATES, candidates.size());
+            std::partial_sort(candidates.begin(), 
+                             candidates.begin() + num_to_sort,
+                             candidates.end(),
+                             [](const Candidate& a, const Candidate& b) { return a.score > b.score; });
+            
+            // Apply top candidates with locking mechanism
+            std::set<Index> locked_triangles;  // Prevent same triangle from being moved twice
+
+            std::size_t applied = 0;
+            for (const auto& cand : candidates) {
+                if (locked_triangles.count(cand.triangle)) continue;
+                
+                // Apply the move
+                Index old_cluster = mesh.triangle_to_cluster[cand.triangle];
+                Index new_cluster = cand.target_cluster;
+                
+                mesh.triangle_to_cluster[cand.triangle] = new_cluster;
+                mesh.clusters[old_cluster].triangle_count--;
+                mesh.clusters[new_cluster].triangle_count++;
+                
+                pass_gain += cand.score;
+                
+                // Add neighbors of moved triangle to locked set
+                // (they may now have better moves in future passes)
+                const FaceAdjacency& moved_adj = mesh.adjacency[cand.triangle];
+                for (int corner = 0; corner < 3; ++corner) {
+                    Index neighbor = moved_adj.opp[corner];
+                    if (neighbor != std::numeric_limits<Index>::max()) {
+                        locked_triangles.insert(neighbor);
+                    }
+                }
+                
+                applied++;
+                improved = true;
+            }
+        }
+        
+        // Stop if no improvement in this pass
+        if (pass_gain <= 0.0f) break;
+        
+        pass++;
+    }
+}
+
+} // anonymous namespace
+
+
 // Print histogram of cluster triangle counts
-void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* label = "") {
+void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* label) {
     if (clusters.size() == 0) return;
     
     std::cout << "\n=== Cluster Triangle Count Histogram " << label << " ===" << std::endl;
     
     std::vector<int> histogram(10, 0);  // 10 buckets
+    std::vector<size_t> triangle_counts(10, 0);  // Triangle count per bucket
+
     int min_count = std::numeric_limits<int>::max();
     int max_count = 0;
+    size_t total_triangles = 0;
+    size_t clusters_with_zero = 0;
     
     for (std::size_t i = 0; i < clusters.size(); ++i) {
         int count = clusters[i].triangle_count;
         min_count = std::min(min_count, count);
         max_count = std::max(max_count, count);
+        total_triangles += count;
+        if (count == 0) clusters_with_zero++;
     }
     
     if (min_count == std::numeric_limits<int>::max()) min_count = 0;
+    
+    std::cout << "Total clusters: " << clusters.size() << ", Total triangles: " << total_triangles 
+              << ", Clusters with 0 triangles: " << clusters_with_zero << std::endl;
     
     // Populate histogram
     for (std::size_t i = 0; i < clusters.size(); ++i) {
@@ -164,6 +307,7 @@ void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* l
             ? std::min(9, static_cast<int>((count - min_count) * 10 / (max_count - min_count + 1)))
             : 0;
         histogram[bucket]++;
+        triangle_counts[bucket] += count;
     }
     
     // Print histogram
@@ -172,59 +316,62 @@ void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* l
         int lo = min_count + (max_count - min_count) * b / 10;
         int hi = min_count + (max_count - min_count) * (b + 1) / 10;
         int freq = histogram[b];
+        size_t tri_count = triangle_counts[b];
         int bars = (max_freq > 0) ? (freq * 50 / max_freq) : 0;
         
-        std::cout << "[" << lo << "-" << hi << "]: ";
-        for (int i = 0; i < bars; ++i) std::cout << "#";
-        std::cout << " (" << freq << ")" << std::endl;
+        std::cout << "[" << lo << "-" << hi << "): ";
+        std::cout << " (" << freq << " clusters, " << tri_count << " triangles)" << std::endl;
     }
 }
 
-// FM Refinement stub - moves triangles between clusters to improve partition quality
-void apply_fm_refinement(MeshFiles& mesh,
-                        std::vector<Index>& triangle_to_cluster,
-                        std::size_t max_size,
-                        std::size_t max_passes) {
-    // TODO: Implement Fiduccia-Mattheyses refinement
-    // For now, this is a stub that preserves the current partition
+
+// Helper: Compute centroid of a triangle
+Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
+                                  const MappedArray<Wedge>& wedges,
+                                  const Triangle& tri) {
+    Vector3f centroid = {0, 0, 0};
+    for (int i = 0; i < 3; ++i) {
+        const Vector3f& p = positions[wedges[tri.w[i]].p];
+        centroid.x += p.x;
+        centroid.y += p.y;
+        centroid.z += p.z;
+    }
+    centroid.x /= 3.0f;
+    centroid.y /= 3.0f;
+    centroid.z /= 3.0f;
+    return centroid;
 }
 
 // Reorder triangles to be contiguous by cluster and update cluster metadata
-void reorder_triangles_by_cluster(std::vector<Index>& triangle_to_cluster,
-                                  MeshFiles& mesh) {
+void reorder_triangles_by_cluster(MeshFiles& mesh) {
     if (mesh.clusters.size() == 0) return;
     
-    std::size_t num_triangles = triangle_to_cluster.size();
+    std::size_t num_triangles = mesh.triangle_to_cluster.size();
     
-    // Build temporary arrays to hold reordered data
-    std::vector<Triangle> new_triangles;
-    std::vector<Index> old_to_new_triangle_idx(num_triangles);
-    std::vector<Index> new_triangle_to_cluster;
-    
-    // Reorder triangles by cluster
+    // Compute cluster offsets based on their triangle counts
+    std::vector<Index> cluster_offsets(mesh.clusters.size());
     Index current_offset = 0;
     for (std::size_t c = 0; c < mesh.clusters.size(); ++c) {
+        cluster_offsets[c] = current_offset;
         mesh.clusters[c].triangle_offset = current_offset;
-        mesh.clusters[c].triangle_count = 0;
-        
-        // Collect all triangles belonging to this cluster
-        for (Index tri_idx = 0; tri_idx < num_triangles; ++tri_idx) {
-            if (triangle_to_cluster[tri_idx] == static_cast<Index>(c)) {
-                new_triangles.push_back(mesh.triangles[tri_idx]);
-                new_triangle_to_cluster.push_back(static_cast<Index>(c));
-                old_to_new_triangle_idx[tri_idx] = current_offset + mesh.clusters[c].triangle_count;
-                mesh.clusters[c].triangle_count++;
-            }
-        }
-        
         current_offset += mesh.clusters[c].triangle_count;
     }
-    
-    // Write back reordered triangles and update mapping
-    for (std::size_t i = 0; i < new_triangles.size(); ++i) {
+
+    // Build new triangle array by scattering triangles into their cluster positions
+    std::vector<Triangle> new_triangles(num_triangles);
+
+    // Scatter triangles into their cluster bins
+    for (Index tri_idx = 0; tri_idx < num_triangles; ++tri_idx) {
+        Index cluster_id = mesh.triangle_to_cluster[tri_idx];
+        Index write_pos = cluster_offsets[cluster_id];
+        new_triangles[write_pos] = mesh.triangles[tri_idx];
+        cluster_offsets[cluster_id]++;
+    }
+
+    // Write back reordered triangles
+    for (std::size_t i = 0; i < num_triangles; ++i) {
         mesh.triangles[i] = new_triangles[i];
     }
-    triangle_to_cluster = new_triangle_to_cluster;
 }
 
 // Compute bounds for each cluster after reordering
@@ -232,19 +379,13 @@ void compute_cluster_bounds(MeshFiles& mesh) {
     std::size_t cluster_count = mesh.clusters.size();
     if (cluster_count == 0) return;
     
-    // Resize cluster_bounds if needed
-    if (mesh.cluster_bounds.size() < cluster_count) {
-        mesh.cluster_bounds.resize(cluster_bounds_bytes(cluster_count));
-    }
-    
     for (std::size_t c = 0; c < cluster_count; ++c) {
-        const Cluster& cluster = mesh.clusters[c];
+        Cluster& cluster = mesh.clusters[c];
         compute_bounding_sphere(cluster.triangle_offset, cluster.triangle_count,
-                               mesh, mesh.cluster_bounds[c].center, mesh.cluster_bounds[c].radius);
+                               mesh, cluster.center, cluster.radius);
     }
 }
 
-} // anonymous namespace
 
 std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
     if (max_triangles < 1 || max_triangles > 512) {
@@ -255,7 +396,7 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
     if (triangle_count == 0) return 0;
     
     // Triangle to cluster mapping
-    std::vector<Index> triangle_to_cluster(triangle_count, std::numeric_limits<Index>::max());
+    mesh.triangle_to_cluster.assign(triangle_count, std::numeric_limits<Index>::max());
     
     // Temporary clusters vector (will be written to mesh.clusters after reordering)
     std::vector<Cluster> temp_clusters;
@@ -272,12 +413,12 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
         Index seed;
         if (!front.empty()) {
             seed = *front.begin();
-            assert(triangle_to_cluster[seed] == std::numeric_limits<Index>::max());
+            assert(mesh.triangle_to_cluster[seed] == std::numeric_limits<Index>::max());
 
         } else {
             seed = std::numeric_limits<Index>::max();
             for (std::size_t i = 0; i < triangle_count; ++i) {
-                if (triangle_to_cluster[i] == std::numeric_limits<Index>::max()) {
+                if (mesh.triangle_to_cluster[i] == std::numeric_limits<Index>::max()) {
                     seed = static_cast<Index>(i);
                     break;
                 }
@@ -292,7 +433,7 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
         
         // Add seed triangle
         cluster_triangle_count++;
-        triangle_to_cluster[seed] = current_cluster_id;
+        mesh.triangle_to_cluster[seed] = current_cluster_id;
         triangles_processed++;
         front.erase(seed);
         
@@ -304,7 +445,7 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
         for (int corner = 0; corner < 3; ++corner) {
             Index neighbor = seed_adj.opp[corner];
             if (neighbor != std::numeric_limits<Index>::max() && 
-                triangle_to_cluster[neighbor] == std::numeric_limits<Index>::max()) {
+                mesh.triangle_to_cluster[neighbor] == std::numeric_limits<Index>::max()) {
                 boundary.insert(neighbor);
             }
         }
@@ -317,11 +458,11 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
             
             for (Index tri_idx : boundary) {
                 //we add triangles in boyundary only if they are unprocessed
-                assert(triangle_to_cluster[tri_idx] == std::numeric_limits<Index>::max());
+                assert(mesh.triangle_to_cluster[tri_idx] == std::numeric_limits<Index>::max());
                 
                 // Score: shared edges (higher is better) minus distance penalty
                 int shared = count_shared_edges_with_cluster(tri_idx, current_cluster_id, 
-                                                            triangle_to_cluster, mesh.adjacency);
+                                                            mesh.triangle_to_cluster, mesh.adjacency);
                 float distance = distance_to_triangle(mesh.positions, mesh.wedges, 
                                                      mesh.triangles[tri_idx], cluster_centroid);
                 float score = static_cast<float>(shared) - 0.05f * distance;
@@ -336,7 +477,7 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
             
             // Add the triangle
             cluster_triangle_count++;
-            triangle_to_cluster[best] = current_cluster_id;
+            mesh.triangle_to_cluster[best] = current_cluster_id;
             triangles_processed++;
             boundary.erase(best);
             front.erase(best);
@@ -353,7 +494,7 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
             for (int corner = 0; corner < 3; ++corner) {
                 Index neighbor = adj.opp[corner];
                 if (neighbor != std::numeric_limits<Index>::max() && 
-                    triangle_to_cluster[neighbor] == std::numeric_limits<Index>::max()) {
+                    mesh.triangle_to_cluster[neighbor] == std::numeric_limits<Index>::max()) {
                     boundary.insert(neighbor);
                 }
             }
@@ -363,11 +504,13 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
         Cluster cluster;
         cluster.triangle_offset = 0;  // Will be set after reordering
         cluster.triangle_count = cluster_triangle_count;
+        cluster.center = cluster_centroid;  // Store computed centroid (will be overwritten with sphere after reordering)
+        cluster.radius = 0;
         temp_clusters.push_back(cluster);
         
         // Update front: add new boundary neighbors
         for (Index tri_idx : boundary) {
-            if (triangle_to_cluster[tri_idx] == std::numeric_limits<Index>::max()) {
+            if (mesh.triangle_to_cluster[tri_idx] == std::numeric_limits<Index>::max()) {
                 front.insert(tri_idx);
             }
         }
@@ -376,7 +519,7 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
     }
     
     // Copy temp clusters to mesh storage
-    mesh.clusters.resize(clusters_bytes(temp_clusters.size()));
+	mesh.clusters.resize(temp_clusters.size());
     for (std::size_t i = 0; i < temp_clusters.size(); ++i) {
         mesh.clusters[i] = temp_clusters[i];
     }
@@ -385,22 +528,22 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
     print_cluster_histogram(mesh.clusters, "(before FM refinement)");
     
     // Apply FM refinement with proper pass-based algorithm
-    apply_fm_refinement(mesh, triangle_to_cluster, 128, 5);
+    apply_fm_refinement(mesh, 128, 10);
     
     // Print histogram after refinement
     print_cluster_histogram(mesh.clusters, "(after FM refinement)");
     
     // Reorder triangles to be contiguous by cluster
-    reorder_triangles_by_cluster(triangle_to_cluster, mesh);
+    reorder_triangles_by_cluster(mesh);
     
     // Compute bounds after reordering and FM refinement
     compute_cluster_bounds(mesh);
     
     // Write cluster data to mesh files
     mesh.clusters.resize(clusters_bytes(mesh.clusters.size()));
-    mesh.cluster_bounds.resize(cluster_bounds_bytes(mesh.cluster_bounds.size()));
     
     return mesh.clusters.size();
 }
+
 
 } // namespace nx

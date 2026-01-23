@@ -18,8 +18,7 @@ namespace nx {
  *  - triangles.bin     (Triangle array)
  *  - material_ids.bin  (Index array, per-triangle material, optional)
  *  - adjacency.bin     (FaceAdjacency array)
- *  - clusters.bin      (Cluster array)
- *  - cluster_bounds.bin (ClusterBounds array)
+ *  - clusters.bin      (Cluster array with bounds)
  *  - cluster_vertices.bin (Index array, flat vertex list for all clusters)
  *  - materials.json    (Material array as JSON)
  */
@@ -43,9 +42,13 @@ public:
     MappedArray<Triangle> triangles;      // Always present
     MappedArray<Index> material_ids;      // Optional (size 0 if single/no material)
     MappedArray<FaceAdjacency> adjacency; // Computed separately
-    MappedArray<Cluster> clusters;        // Computed by clustering
-    MappedArray<ClusterBounds> cluster_bounds;  // Bounds for each cluster
-    MappedArray<Index> cluster_triangles; // Flat array of triangle indices for all clusters
+    MappedArray<Cluster> clusters;        // Computed by clustering (includes bounds)
+    
+    // Triangle to cluster mapping (in-memory, not memory-mapped)
+    std::vector<Index> triangle_to_cluster;
+    
+    // Micronodes (in-memory, not memory-mapped)
+    std::vector<MicroNode> micronodes;
     
     // Materials stored as JSON (not memory-mapped)
     std::vector<Material> materials;
@@ -74,7 +77,6 @@ inline std::size_t triangles_bytes(Index n)    { return static_cast<std::size_t>
 inline std::size_t material_ids_bytes(Index n) { return static_cast<std::size_t>(n) * sizeof(Index); }
 inline std::size_t adjacency_bytes(Index n)    { return static_cast<std::size_t>(n) * sizeof(FaceAdjacency); }
 inline std::size_t clusters_bytes(Index n)     { return static_cast<std::size_t>(n) * sizeof(Cluster); }
-inline std::size_t cluster_bounds_bytes(Index n) { return static_cast<std::size_t>(n) * sizeof(ClusterBounds); }
 inline std::size_t cluster_triangles_bytes(Index n) { return static_cast<std::size_t>(n) * sizeof(Index); }
 
 } // namespace nx

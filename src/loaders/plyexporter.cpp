@@ -16,6 +16,7 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include "plyexporter.h"
+#include "../core/mesh_types.h"
 #include <fstream>
 #include <iostream>
 #include <cmath>
@@ -43,36 +44,6 @@ static void index_to_color(Index idx, Index total, uint8_t& r, uint8_t& g, uint8
     }
 }
 
-// Build a vertex-to-cluster mapping from triangle cluster assignments
-static std::vector<Index> build_vertex_to_cluster_map(const MeshFiles& mesh) {
-    Index num_vertices = mesh.positions.size();
-    std::vector<Index> vertex_to_cluster(num_vertices, std::numeric_limits<Index>::max());
-    
-    // Iterate through all clusters
-    for (Index cluster_idx = 0; cluster_idx < mesh.clusters.size(); ++cluster_idx) {
-        const Cluster& cluster = mesh.clusters[cluster_idx];
-        
-        // Iterate through all triangles in this cluster
-        for (Index tri_offset = cluster.triangle_offset; 
-             tri_offset < cluster.triangle_offset + cluster.triangle_count; ++tri_offset) {
-            // Get the triangle index from the cluster_triangles array
-            Index tri_idx = mesh.cluster_triangles[tri_offset];
-            const Triangle& tri = mesh.triangles[tri_idx];
-            
-            // Mark all vertices of this triangle as belonging to this cluster
-            for (int j = 0; j < 3; ++j) {
-                Index vertex_idx = mesh.wedges[tri.w[j]].p;
-                // Assign to first cluster that claims this vertex
-                if (vertex_to_cluster[vertex_idx] == std::numeric_limits<Index>::max()) {
-                    vertex_to_cluster[vertex_idx] = cluster_idx;
-                }
-            }
-        }
-    }
-    
-    return vertex_to_cluster;
-}
-
 void export_ply(const MeshFiles& mesh, 
                 const std::filesystem::path& output_path, 
                 ColoringMode coloring_mode) {
@@ -85,17 +56,15 @@ void export_ply(const MeshFiles& mesh,
     Index num_faces = mesh.triangles.size();
     
     // Validate coloring mode
-    bool has_colors = (coloring_mode != ColoringMode::None);
     if (coloring_mode == ColoringMode::ByCluster && mesh.clusters.size() == 0) {
-        std::cerr << "Warning: No clusters available for ByCluster coloring, using no coloring" << std::endl;
-        has_colors = false;
+        throw std::runtime_error("Cannot export with ByCluster coloring: no clusters available in mesh");
     }
     
-    // Pre-compute vertex-to-cluster mapping if needed
-    std::vector<Index> vertex_to_cluster;
-    if (coloring_mode == ColoringMode::ByCluster) {
-        vertex_to_cluster = build_vertex_to_cluster_map(mesh);
+    if (coloring_mode == ColoringMode::ByMicroNode && mesh.micronodes.empty()) {
+        throw std::runtime_error("Cannot export with ByMicroNode coloring: no micronodes available in mesh");
     }
+    
+    bool has_colors = (coloring_mode != ColoringMode::None);
     
     // Write PLY header
     file << "ply\n";
@@ -106,72 +75,134 @@ void export_ply(const MeshFiles& mesh,
     file << "property float y\n";
     file << "property float z\n";
     
+    file << "element face " << num_faces << "\n";
+    file << "property list uchar int vertex_indices\n";
+    
     if (has_colors) {
         file << "property uchar red\n";
         file << "property uchar green\n";
         file << "property uchar blue\n";
     }
     
-    file << "element face " << num_faces << "\n";
-    file << "property list uchar int vertex_indices\n";
     file << "end_header\n";
     
-    // Write vertices
+    // Write vertices (no colors - they'll be on faces)
     for (Index i = 0; i < num_vertices; ++i) {
         const Vector3f& p = mesh.positions[i];
-        file << p.x << " " << p.y << " " << p.z;
-        
-        if (has_colors) {
-            uint8_t r, g, b;
-            
-            switch (coloring_mode) {
-                case ColoringMode::ByVertexIndex:
-                    index_to_color(i, num_vertices, r, g, b);
-                    break;
-                    
-                case ColoringMode::ByCluster:
-                    if (vertex_to_cluster[i] != std::numeric_limits<Index>::max()) {
-                        // Pseudo-random color for each cluster
-                        uint32_t seed = vertex_to_cluster[i] * 2654435761u;
-                        seed ^= seed >> 16;
-                        seed *= 0x85ebca6b;
-                        seed ^= seed >> 13;
-                        r = static_cast<uint8_t>((seed >> 0) & 0xFF);
-                        g = static_cast<uint8_t>((seed >> 8) & 0xFF);
-                        b = static_cast<uint8_t>((seed >> 16) & 0xFF);
-                    } else {
-                        r = g = b = 128; // Gray for unassigned vertices
-                    }
-                    break;
-                    
-                case ColoringMode::ByMacroNode:
-                    // Placeholder for macro-node coloring
-                    r = g = b = 200; // Light gray placeholder
-                    break;
-                    
-                default:
-                    r = g = b = 255; // White
-            }
-            
-            file << " " << static_cast<int>(r) 
-                 << " " << static_cast<int>(g) 
-                 << " " << static_cast<int>(b);
-        }
-        
-        file << "\n";
+        file << p.x << " " << p.y << " " << p.z << "\n";
     }
     
-    // Write faces using unique position indices from wedges
-    for (Index i = 0; i < num_faces; ++i) {
-        const Triangle& tri = mesh.triangles[i];
-        
-        file << "3";
-        for (int j = 0; j < 3; ++j) {
-            Index wedge_idx = tri.w[j];
-            const Wedge& w = mesh.wedges[wedge_idx];
-            file << " " << w.p;
+    // Write faces with colors
+    if (coloring_mode == ColoringMode::ByCluster) {
+        // Iterate clusters and output their triangles with cluster colors
+        for (Index c = 0; c < mesh.clusters.size(); ++c) {
+            const Cluster& cluster = mesh.clusters[c];
+            
+            // Compute color for this cluster
+            uint32_t seed = c * 2654435761u;
+            seed ^= seed >> 16;
+            seed *= 0x85ebca6b;
+            seed ^= seed >> 13;
+            uint8_t r = static_cast<uint8_t>((seed >> 0) & 0xFF);
+            uint8_t g = static_cast<uint8_t>((seed >> 8) & 0xFF);
+            uint8_t b = static_cast<uint8_t>((seed >> 16) & 0xFF);
+            
+            // Output all triangles in this cluster with this color
+            for (Index tri_idx = cluster.triangle_offset; 
+                 tri_idx < cluster.triangle_offset + cluster.triangle_count; ++tri_idx) {
+                const Triangle& tri = mesh.triangles[tri_idx];
+                
+                file << "3";
+                for (int j = 0; j < 3; ++j) {
+                    Index wedge_idx = tri.w[j];
+                    const Wedge& w = mesh.wedges[wedge_idx];
+                    file << " " << w.p;
+                }
+                
+                file << " " << static_cast<int>(r) 
+                     << " " << static_cast<int>(g) 
+                     << " " << static_cast<int>(b) << "\n";
+            }
         }
-        file << "\n";
+    } else if (coloring_mode == ColoringMode::ByMicroNode) {
+        // Iterate micronodes and their clusters
+        for (Index mn_idx = 0; mn_idx < mesh.micronodes.size(); ++mn_idx) {
+            const MicroNode& micronode = mesh.micronodes[mn_idx];
+            
+            // Compute random base hue for this micronode
+            uint32_t seed = mn_idx * 2654435761u;
+            seed ^= seed >> 16;
+            seed *= 0x85ebca6b;
+            seed ^= seed >> 13;
+            uint8_t R = static_cast<uint8_t>((seed >> 0) & 0xFF);
+            uint8_t G = static_cast<uint8_t>((seed >> 8) & 0xFF);
+            uint8_t B = static_cast<uint8_t>((seed >> 16) & 0xFF);
+
+                        
+            // Iterate over clusters in this micronode
+            for (std::size_t local_c = 0; local_c < micronode.cluster_ids.size(); ++local_c) {
+                Index cluster_id = micronode.cluster_ids[local_c];
+                const Cluster& cluster = mesh.clusters[cluster_id];
+				float m = local_c / static_cast<float>(micronode.cluster_ids.size() - 1);
+				m = 0.5 + m*0.5;
+                uint8_t r = static_cast<uint8_t>((R*m) );
+                uint8_t g = static_cast<uint8_t>((G*m));
+                uint8_t b = static_cast<uint8_t>((B*m) );
+                
+                // Output all triangles in this cluster
+                for (Index tri_idx = cluster.triangle_offset; 
+                     tri_idx < cluster.triangle_offset + cluster.triangle_count; ++tri_idx) {
+                    const Triangle& tri = mesh.triangles[tri_idx];
+                    
+                    file << "3";
+                    for (int j = 0; j < 3; ++j) {
+                        Index wedge_idx = tri.w[j];
+                        const Wedge& w = mesh.wedges[wedge_idx];
+                        file << " " << w.p;
+                    }
+                    
+                    file << " " << static_cast<int>(r) 
+                         << " " << static_cast<int>(g) 
+                         << " " << static_cast<int>(b) << "\n";
+                }
+            }
+        }
+    } else {
+        // Iterate all faces for other coloring modes
+        for (Index tri_idx = 0; tri_idx < num_faces; ++tri_idx) {
+            const Triangle& tri = mesh.triangles[tri_idx];
+            
+            file << "3";
+            for (int j = 0; j < 3; ++j) {
+                Index wedge_idx = tri.w[j];
+                const Wedge& w = mesh.wedges[wedge_idx];
+                file << " " << w.p;
+            }
+            
+            if (coloring_mode != ColoringMode::None) {
+                uint8_t r, g, b;
+                
+                switch (coloring_mode) {
+                    case ColoringMode::ByVertexIndex:
+                        index_to_color(tri_idx, num_faces, r, g, b);
+                        break;
+                        
+                    case ColoringMode::ByMacroNode:
+                        // Placeholder for macro-node coloring
+                        r = g = b = 200; // Light gray placeholder
+                        break;
+                        
+                    default:
+                        r = g = b = 255; // White
+                }
+                
+                file << " " << static_cast<int>(r) 
+                     << " " << static_cast<int>(g) 
+                     << " " << static_cast<int>(b);
+            }
+            
+            file << "\n";
+        }
     }
     
     std::cout << "Exported " << num_vertices << " vertices and " 
@@ -179,16 +210,19 @@ void export_ply(const MeshFiles& mesh,
     
     switch (coloring_mode) {
         case ColoringMode::ByVertexIndex:
-            std::cout << "Vertices colored by index (rainbow colormap)" << std::endl;
+            std::cout << "Faces colored by triangle index (rainbow colormap)" << std::endl;
             break;
         case ColoringMode::ByCluster:
-            std::cout << "Vertices colored by cluster (" << mesh.clusters.size() << " clusters)" << std::endl;
+            std::cout << "Faces colored by cluster (" << mesh.clusters.size() << " clusters)" << std::endl;
+            break;
+        case ColoringMode::ByMicroNode:
+            std::cout << "Faces colored by micronode (" << mesh.micronodes.size() << " micronodes)" << std::endl;
             break;
         case ColoringMode::ByMacroNode:
-            std::cout << "Vertices colored by macro-node (placeholder)" << std::endl;
+            std::cout << "Faces colored by macro-node (placeholder)" << std::endl;
             break;
         case ColoringMode::None:
-            std::cout << "No vertex coloring" << std::endl;
+            std::cout << "No face coloring" << std::endl;
             break;
     }
 }

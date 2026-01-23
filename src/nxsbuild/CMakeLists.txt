@@ -8,6 +8,9 @@ set(SOURCES
 	../core/spatial_sort.cpp
 	../core/adjacency.cpp
 	../core/clustering.cpp
+	../core/clustering_metis.cpp
+	../core/micro_clustering.cpp
+	../core/micro_clustering_metis.cpp
     ../loaders/meshloader.cpp
     ../loaders/objloader.cpp
     ../loaders/objexporter.cpp
@@ -16,6 +19,13 @@ set(SOURCES
 
 add_executable(nxsbuild ${SOURCES})
 
-target_include_directories(nxsbuild PRIVATE ../core)
+# Add METIS library paths
+target_include_directories(nxsbuild PRIVATE 
+    ../core
+    /home/ponchio/local/include
+)
+
+target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
+target_link_libraries(nxsbuild PRIVATE metis GKlib)
 
 install(TARGETS nxsbuild DESTINATION bin)

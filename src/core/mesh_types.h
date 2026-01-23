@@ -52,27 +52,35 @@ struct HalfedgeRecord {
 };
 
 // A Cluster groups triangles with a limited triangle count.
-// Vertices can be recovered from the triangle list when needed.
+// Includes bounding sphere for frustum and cone culling.
+// Similar to meshoptimizer's meshopt_Bounds structure.
 struct Cluster {
     Index triangle_offset;  // Offset into cluster_triangles array (indices into mesh triangles)
     Index triangle_count;   // Number of triangles in this cluster
+    Vector3f center;        // Bounding sphere center
+    float radius;           // Bounding sphere radius
 };
 
-// Bounds for a cluster (for frustum and cone culling).
-// Similar to meshoptimizer's meshopt_Bounds structure.
-struct ClusterBounds {
-    // Bounding sphere
-    Vector3f center;
-    float radius;
-};
-
-// A MicroNode represents a cluster at the first level of partitioning.
-// Used to build the dual graph for macro-node clustering.
+// A MicroNode groups clusters at the first level of the hierarchy.
+// It contains references to the clusters that belong to it.
 struct MicroNode {
-    Index id;                 // Cluster index
-    Index triangle_count;     // Number of triangles in this cluster
-    Vector3f centroid;        // Spatial center
-    Aabb bounds;             // Bounding box
+    Index id;                           // MicroNode index
+    std::vector<Index> cluster_ids;     // Cluster indices belonging to this micronode
+    Index triangle_count;               // Total number of triangles across all clusters
+    Vector3f centroid;                  // Weighted spatial center
+    Vector3f center;                    // Bounding sphere center
+    float radius;                       // Bounding sphere radius
+};
+
+// A MacroNode groups micronodes at the second level of the hierarchy.
+// It contains references to the micronodes that belong to it.
+struct MacroNode {
+    Index id;                           // MacroNode index
+    std::vector<Index> micronode_ids;   // MicroNode indices belonging to this macronode
+    Index triangle_count;               // Total number of triangles across all micronodes
+    Vector3f centroid;                  // Weighted spatial center
+    Vector3f center;                    // Bounding sphere center
+    float radius;                       // Bounding sphere radius
 };
 
 // Macro-node partition result (CSR-like adjacency structure for macro-nodes).
@@ -90,8 +98,7 @@ static_assert(sizeof(Wedge)   == 24, "Wedge layout changed unexpectedly");
 static_assert(sizeof(Triangle)== 12, "Triangle layout changed unexpectedly");
 static_assert(sizeof(FaceAdjacency)== 12, "FaceAdjacency layout changed unexpectedly");
 static_assert(sizeof(HalfedgeRecord) == 16, "HalfedgeRecord layout changed unexpectedly");
-static_assert(sizeof(Cluster) == 8, "Cluster layout changed unexpectedly");
-static_assert(sizeof(ClusterBounds) == 16, "ClusterBounds layout changed unexpectedly");
+static_assert(sizeof(Cluster) == 24, "Cluster layout changed unexpectedly");
 
 } // namespace nx
 
