@@ -28,27 +28,27 @@ namespace nx {
 
 class ObjLoader {
 public:
-    ObjLoader(const std::string& filename, const std::string& mtl_path = "");
-    
-    void load(const std::filesystem::path& input_path, MeshFiles& mesh);
-    
+	ObjLoader(const std::string& filename, const std::string& mtl_path = "");
+
+	void load(const std::filesystem::path& input_path, MeshFiles& mesh);
+
 private:
-    void read_mtls();
-    void read_mtl(const std::string& mtl_path);
-    
-    std::string obj_path;
-    bool use_custom_mtl = false;
-    std::vector<std::string> mtl_files;
-    
-    // Temporary storage during parsing
-    std::vector<Vector3f> temp_positions;
-    std::vector<Vector3f> temp_normals;
-    std::vector<Vector2f> temp_texcoords;
-    
-    // Materials
-    std::vector<Material> materials;
-    std::unordered_map<std::string, int32_t> material_map;
-    int32_t current_material_id = -1;
+	void read_mtls();
+	void read_mtl(const std::string& mtl_path);
+
+	std::string obj_path;
+	bool use_custom_mtl = false;
+	std::vector<std::string> mtl_files;
+
+	// Temporary storage during parsing
+	std::vector<Vector3f> temp_positions;
+	std::vector<Vector3f> temp_normals;
+	std::vector<Vector2f> temp_texcoords;
+
+	// Materials
+	std::vector<Material> materials;
+	std::unordered_map<std::string, int32_t> material_map;
+	int32_t current_material_id = -1;
 };
 
 } // namespace nx

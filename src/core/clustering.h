@@ -24,8 +24,8 @@ void reorder_triangles_by_cluster(MeshFiles& mesh);
 void compute_cluster_bounds(MeshFiles& mesh);
 void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* label = "");
 Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
-                                  const MappedArray<Wedge>& wedges,
-                                  const Triangle& tri);
+								   const MappedArray<Wedge>& wedges,
+								   const Triangle& tri);
 
 } // namespace nx
 

@@ -16,7 +16,7 @@ class MeshFiles;
 // 
 // Returns a vector of MicroNode structures representing the partitions.
 std::vector<MicroNode> create_micronodes(const MeshFiles& mesh,
-                                         std::size_t clusters_per_micronode = 8);
+										 std::size_t clusters_per_micronode = 8);
 
 } // namespace nx
 

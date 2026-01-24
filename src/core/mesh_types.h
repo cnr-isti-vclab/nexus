@@ -11,6 +11,7 @@
 namespace nx {
 
 struct Vector3f { float x, y, z; };
+struct Vector3d { double x, y, z; };
 struct Vector2f { float u, v; };
 struct Rgba8 { std::uint8_t r, g, b, a; };
 

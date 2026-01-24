@@ -24,17 +24,17 @@ namespace nx {
 
 // Coloring modes for PLY export visualization
 enum class ColoringMode {
-    None,           // No coloring (white vertices)
-    ByVertexIndex,  // Color each vertex by its index
-    ByCluster,      // Color each vertex by which cluster it belongs to
-    ByMicroNode,    // Color each face by which micronode it belongs to
-    ByMacroNode,    // Color each vertex by which macro-node it belongs to (requires macro clustering)
+	None,           // No coloring (white vertices)
+	ByVertexIndex,  // Color each vertex by its index
+	ByCluster,      // Color each vertex by which cluster it belongs to
+	ByMicroNode,    // Color each face by which micronode it belongs to
+	ByMacroNode,    // Color each vertex by which macro-node it belongs to (requires macro clustering)
 };
 
 // Export mesh to PLY format with optional coloring
 // coloring_mode: determines how vertices are colored for visualization
-void export_ply(const MeshFiles& mesh, 
-                const std::filesystem::path& output_path, 
-                ColoringMode coloring_mode = ColoringMode::None);
+void export_ply(const MeshFiles& mesh,
+				const std::filesystem::path& output_path,
+				ColoringMode coloring_mode = ColoringMode::None);
 
 } // namespace nx

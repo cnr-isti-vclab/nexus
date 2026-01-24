@@ -25,48 +25,48 @@ namespace nx {
 
 class MeshFiles {
 public:
-    MeshFiles();
-    ~MeshFiles();
+	MeshFiles();
+	~MeshFiles();
 
-    MeshFiles(const MeshFiles&) = delete;
-    MeshFiles& operator=(const MeshFiles&) = delete;
-    MeshFiles(MeshFiles&&) = default;
-    MeshFiles& operator=(MeshFiles&&) = default;
+	MeshFiles(const MeshFiles&) = delete;
+	MeshFiles& operator=(const MeshFiles&) = delete;
+	MeshFiles(MeshFiles&&) = default;
+	MeshFiles& operator=(MeshFiles&&) = default;
 
-    Aabb bounds{{0,0,0}, {0,0,0}};
+	Aabb bounds{{0,0,0}, {0,0,0}};
 
-    // Exposed mapped arrays
-    MappedArray<Vector3f> positions;      // Always present
-    MappedArray<Rgba8> colors;            // Optional (size 0 if no colors)
-    MappedArray<Wedge> wedges;            // Always present
-    MappedArray<Triangle> triangles;      // Always present
-    MappedArray<Index> material_ids;      // Optional (size 0 if single/no material)
-    MappedArray<FaceAdjacency> adjacency; // Computed separately
-    MappedArray<Cluster> clusters;        // Computed by clustering (includes bounds)
-    
-    // Triangle to cluster mapping (in-memory, not memory-mapped)
-    std::vector<Index> triangle_to_cluster;
-    
-    // Micronodes (in-memory, not memory-mapped)
-    std::vector<MicroNode> micronodes;
-    
-    // Materials stored as JSON (not memory-mapped)
-    std::vector<Material> materials;
+	// Exposed mapped arrays
+	MappedArray<Vector3f> positions;      // Always present
+	MappedArray<Rgba8> colors;            // Optional (size 0 if no colors)
+	MappedArray<Wedge> wedges;            // Always present
+	MappedArray<Triangle> triangles;      // Always present
+	MappedArray<Index> material_ids;      // Optional (size 0 if single/no material)
+	MappedArray<FaceAdjacency> adjacency; // Computed separately
+	MappedArray<Cluster> clusters;        // Computed by clustering (includes bounds)
 
-    // Create empty files; callers typically resize afterwards.
-    bool create(const std::filesystem::path& dir);
+	// Triangle to cluster mapping (in-memory, not memory-mapped)
+	std::vector<Index> triangle_to_cluster;
 
-    void close();
+	// Micronodes (in-memory, not memory-mapped)
+	std::vector<MicroNode> micronodes;
 
-    bool valid() const {
-        return positions.data() && wedges.data() && triangles.data();
-    }
+	// Materials stored as JSON (not memory-mapped)
+	std::vector<Material> materials;
+
+	// Create empty files; callers typically resize afterwards.
+	bool create(const std::filesystem::path& dir);
+
+	void close();
+
+	bool valid() const {
+		return positions.data() && wedges.data() && triangles.data();
+	}
 
 private:
-    std::filesystem::path dir;
+	std::filesystem::path dir;
 
-    std::filesystem::path pathFor(const char* fname) const { return dir / fname; }
-    bool mapDataFiles(MappedFile::Mode mode);
+	std::filesystem::path pathFor(const char* fname) const { return dir / fname; }
+	bool mapDataFiles(MappedFile::Mode mode);
 };
 
 // Helpers to compute byte sizes from counts.
