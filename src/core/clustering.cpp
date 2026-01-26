@@ -423,18 +423,48 @@ void reorder_triangles_by_cluster(MeshFiles& mesh) {
 
 	// Build new triangle array by scattering triangles into their cluster positions
 	std::vector<Triangle> new_triangles(num_triangles);
+	std::vector<Index> old_to_new(num_triangles);
+	std::vector<Index> write_offsets = cluster_offsets;
 
 	// Scatter triangles into their cluster bins
 	for (Index tri_idx = 0; tri_idx < num_triangles; ++tri_idx) {
 		Index cluster_id = mesh.triangle_to_cluster[tri_idx];
-		Index write_pos = cluster_offsets[cluster_id];
+		Index write_pos = write_offsets[cluster_id];
 		new_triangles[write_pos] = mesh.triangles[tri_idx];
-		cluster_offsets[cluster_id]++;
+		old_to_new[tri_idx] = write_pos;
+		write_offsets[cluster_id]++;
 	}
 
 	// Write back reordered triangles
 	for (std::size_t i = 0; i < num_triangles; ++i) {
 		mesh.triangles[i] = new_triangles[i];
+	}
+
+	// Reorder adjacency to match new triangle order
+	std::vector<FaceAdjacency> new_adjacency(num_triangles);
+	for (Index old_idx = 0; old_idx < num_triangles; ++old_idx) {
+		Index new_idx = old_to_new[old_idx];
+		FaceAdjacency adj = mesh.adjacency[old_idx];
+		for (int corner = 0; corner < 3; ++corner) {
+			Index neighbor = adj.opp[corner];
+			if (neighbor != std::numeric_limits<Index>::max()) {
+				adj.opp[corner] = old_to_new[neighbor];
+			}
+		}
+		new_adjacency[new_idx] = adj;
+	}
+	mesh.adjacency.resize(num_triangles);
+	for (std::size_t i = 0; i < num_triangles; ++i) {
+		mesh.adjacency[i] = new_adjacency[i];
+	}
+
+	// Update triangle_to_cluster to match reordered triangles
+	mesh.triangle_to_cluster.resize(num_triangles);
+	for (std::size_t c = 0; c < mesh.clusters.size(); ++c) {
+		const Cluster& cluster = mesh.clusters[c];
+		for (Index i = 0; i < cluster.triangle_count; ++i) {
+			mesh.triangle_to_cluster[cluster.triangle_offset + i] = static_cast<Index>(c);
+		}
 	}
 }
 

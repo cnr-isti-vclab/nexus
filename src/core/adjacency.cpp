@@ -99,8 +99,8 @@ void compute_adjacency(MeshFiles& mesh) {
 			}
 		} else if (edge_count > 2) {
 			// Non-manifold: treat all as border
-			std::cout << "Warning: Non-manifold edge (" << edge_min << ", " << edge_max
-					  << ") with " << edge_count << " incident faces" << std::endl;
+			/*std::cout << "Warning: Non-manifold edge (" << edge_min << ", " << edge_max
+					  << ") with " << edge_count << " incident faces" << std::endl;*/
 		}
 		// If edge_count == 1, it's already a border (initialized to BORDER)
 

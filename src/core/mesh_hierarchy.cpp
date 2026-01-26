@@ -14,50 +14,7 @@
 
 namespace nx {
 
-void MeshHierarchy::initialize(MeshFiles&& base_mesh) {
-	nx::spatial_sort_mesh(base_mesh);
-	nx::compute_adjacency(base_mesh);
 
-	levels.push_back(std::move(base_mesh));
-}
-
-void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
-	if (levels.empty()) {
-		throw std::runtime_error("MeshHierarchy not initialized. Call initialize() first.");
-	}
-
-	// Build initial clusters and micronodes
-	std::cout << "Building initial clusters and micronodes..." << std::endl;
-	std::size_t max_triangles = params.faces_per_cluster;
-	MeshFiles &mesh = levels[0];
-
-	nx::build_clusters(mesh, max_triangles,
-					   params.use_metis ? nx::ClusteringMethod::Metis : nx::ClusteringMethod::Greedy);
-	mesh.micronodes = nx::create_micronodes_metis(mesh, params.clusters_per_node);
-
-	std::size_t level_index = 0;
-	
-	while (true) {
-		MeshFiles &current = levels.back();
-		std::cout << "\n--- Level " << level_index << " ---" << std::endl;
-		std::cout << "Micronodes: " << current.micronodes.size() << std::endl;
-		std::cout << "Triangles: " << current.triangles.size() << std::endl;
-
-		if(current.micronodes.size() == 1)
-			break;
-		
-		// Create next level mesh and process
-		MeshFiles next_level;
-		process_level(current, next_level, params.clusters_per_node);
-		
-		// Add the new level
-		levels.push_back(std::move(next_level));
-
-		level_index++;
-	}
-	
-	std::cout << "\n=== Hierarchical Simplification Complete ===" << std::endl;
-}
 
 void copyVertices(MeshFiles &source, MeshFiles &target) {
 	target.positions.resize(source.positions.size());
@@ -156,29 +113,69 @@ void compact_mesh(MeshFiles& mesh) {
 		w.p = pos_remap[w.p];
 	}
 }
+void MeshHierarchy::initialize(MeshFiles&& base_mesh) {
+	nx::spatial_sort_mesh(base_mesh);
+	nx::compute_adjacency(base_mesh);
+
+	levels.push_back(std::move(base_mesh));
+}
+
+void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
+	if (levels.empty()) {
+		throw std::runtime_error("MeshHierarchy not initialized. Call initialize() first.");
+	}
+
+	// Build initial clusters and micronodes
+	std::cout << "Building initial clusters and micronodes..." << std::endl;
+	std::size_t max_triangles = params.faces_per_cluster;
+	MeshFiles &mesh = levels[0];
+
+	nx::build_clusters(mesh, max_triangles,
+					   params.use_metis ? nx::ClusteringMethod::Metis : nx::ClusteringMethod::Greedy);
+
+	mesh.micronodes = nx::create_micronodes_metis(mesh, params.clusters_per_node);
+
+	std::size_t level_index = 0;
+	
+	while (true) {
+		MeshFiles &current = levels.back();
+		std::cout << "\n--- Level " << level_index << " ---" << std::endl;
+		std::cout << "Micronodes: " << current.micronodes.size() << std::endl;
+		std::cout << "Triangles: " << current.triangles.size() << std::endl;
+
+		if(current.micronodes.size() == 1)
+			break;
+		
+		// Create next level mesh and process
+		MeshFiles next_level;
+		process_level(current, next_level, params.clusters_per_node);
+		
+		// Add the new level
+		levels.push_back(std::move(next_level));
+
+		level_index++;
+	}
+	
+	std::cout << "\n=== Hierarchical Simplification Complete ===" << std::endl;
+}
 
 void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::size_t clusters_per_node) {
 	// Copy geometry (positions/wedges/colors/material_ids)
 	copyVertices(mesh, next_mesh);
 
 
-	create_parent_micronodes(mesh, next_mesh, clusters_per_node);
-	// Create primary and dual partitioning of micronodes
 	// This creates micronodes in next_mesh with children references and centroids
-
+	create_parent_micronodes(mesh, next_mesh, clusters_per_node);
 
 	// Now iterate on the current mesh micronodes to merge, simplify, and split
 	for (const MicroNode& micronode : mesh.micronodes) {
-		// 1) Collect its clusters into a temporary mesh
+		// 1) Collect its clusters into a temporary mesh and lock boundaries.
 		MergedMesh merged = merge_micronode_clusters(mesh, micronode);
-		
-		// 2) Lock the boundary
-		identify_boundary_vertices(merged, mesh, micronode);
-		
-		// 3) Simplify node triangles (vertex collapse moves positions in new mesh)
+
+		// 2) Simplify node triangles (vertex collapse moves positions in new mesh)
 		const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
 		simplify_mesh_clustered(merged, target_triangle_count);
-		
+
 		// TODO: update vertices and wedges in next_mesh according to merged.position_map
 		update_vertices_and_wedges(next_mesh, merged);
 
@@ -187,10 +184,10 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::si
 		// TODO: add the cluster_id to the corresponding micronodes (via children_nodes)
 		split_mesh(merged, micronode, next_mesh);
 	}
-	
+
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
-	
+
 	// Recompute adjacency for the next level
 	if (next_mesh.triangles.size() > 0) {
 		compute_adjacency(next_mesh);
@@ -204,6 +201,9 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::si
 	}
 
 }
+
+
+
 
 
 } // namespace nx

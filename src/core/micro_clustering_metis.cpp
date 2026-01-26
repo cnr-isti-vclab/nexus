@@ -657,7 +657,7 @@ float measure_micronode_overlap(const MeshFiles& mesh,
 
 	return fraction;
 }
-
+/*
 std::vector<Cluster> recluster_mesh_multiconstraint(
 	MeshFiles& mesh,
 	const std::vector<MicroNode>& primary_micronodes,
@@ -827,7 +827,8 @@ std::vector<Cluster> recluster_mesh_multiconstraint(
 	std::cout << "\n=== Reclustering Complete ===" << std::endl;
 
 	return new_clusters;
-}
+} */
+
 /*
 void build_dual_partition_and_recluster(
 	MeshFiles& mesh,
