@@ -58,9 +58,6 @@ public:
 
 	void close();
 
-	bool valid() const {
-		return positions.data() && wedges.data() && triangles.data();
-	}
 
 private:
 	std::filesystem::path dir;

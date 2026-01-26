@@ -67,6 +67,7 @@ struct Cluster {
 struct MicroNode {
     Index id;                           // MicroNode index
     std::vector<Index> cluster_ids;     // Cluster indices belonging to this micronode
+	std::vector<Index> children_nodes;  // Child micronodes ids
     Index triangle_count;               // Total number of triangles across all clusters
     Vector3f centroid;                  // Weighted spatial center
     Vector3f center;                    // Bounding sphere center

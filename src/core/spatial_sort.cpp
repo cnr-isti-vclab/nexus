@@ -1,6 +1,7 @@
 #include "spatial_sort.h"
 #include <algorithm>
 #include <iostream>
+#include <assert.h>
 
 // TODO: In the future we will use mmapped files for out-of-core sorting.
 // In that case we should sort the vertices and the indices at the same time.
@@ -204,17 +205,14 @@ std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
 }
 
 void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
-	if (remap.empty()) return;
-
+	assert(remap.size() == mesh.wedges.size());
 	std::cout << "Remapping triangle wedge indices..." << std::endl;
 
 	Index num_triangles = mesh.triangles.size();
 	for (Index i = 0; i < num_triangles; ++i) {
 		Triangle& tri = mesh.triangles[i];
 		for (int j = 0; j < 3; ++j) {
-			if (tri.w[j] < remap.size()) {
 				tri.w[j] = remap[tri.w[j]];
-			}
 		}
 	}
 
@@ -224,10 +222,6 @@ void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
 void sort_triangles_by_wedge(MeshFiles& mesh) {
 	Index num_triangles = mesh.triangles.size();
 	std::cout << "Sorting " << num_triangles << " triangles by smallest wedge index..." << std::endl;
-
-	if (num_triangles == 0) {
-		return;
-	}
 
 	// Create index array for sorting
 	std::vector<Index> indices(num_triangles);
@@ -275,7 +269,6 @@ void spatial_sort_mesh(MeshFiles& mesh) {
 	// Sort the vertices spatially and reindex
 	std::vector<Index> position_remap = spatial_sort_positions(mesh);
 	remap_wedge_positions(mesh, position_remap);
-	return;
 
 	// Sort wedges by position index and reindex triangles
 	std::vector<Index> wedge_remap = sort_wedges_by_position(mesh);

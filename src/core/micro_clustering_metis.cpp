@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -14,6 +15,128 @@ using namespace std;
 namespace nx {
 
 namespace {
+
+DualPartitionSplit split_triangles_dual_partition_impl(
+	const MeshFiles& mesh,
+	const std::vector<Index>& triangle_indices,
+	const Vector3f& primary_centroid,
+	const Vector3f& dual_centroid) {
+
+	DualPartitionSplit result;
+	if (triangle_indices.size() < 2) {
+		result.primary_triangles = triangle_indices;
+		return result;
+	}
+
+	std::unordered_map<Index, Index> tri_to_local;
+	tri_to_local.reserve(triangle_indices.size());
+	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+		tri_to_local[triangle_indices[i]] = static_cast<Index>(i);
+	}
+
+	std::size_t num_nodes = triangle_indices.size() + 2;
+	Index primary_dummy = static_cast<Index>(triangle_indices.size());
+	Index dual_dummy = static_cast<Index>(triangle_indices.size() + 1);
+
+	std::vector<idx_t> xadj;
+	std::vector<idx_t> adjncy;
+	std::vector<idx_t> adjwgt;
+
+	xadj.reserve(num_nodes + 1);
+	xadj.push_back(0);
+
+	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+		Index tri_idx = triangle_indices[i];
+		const Triangle& tri = mesh.triangles[tri_idx];
+		const FaceAdjacency& adj = mesh.adjacency[tri_idx];
+
+		for (int corner = 0; corner < 3; ++corner) {
+			Index neighbor_tri = adj.opp[corner];
+			if (neighbor_tri != std::numeric_limits<Index>::max()) {
+				auto it = tri_to_local.find(neighbor_tri);
+				if (it != tri_to_local.end()) {
+					adjncy.push_back(static_cast<idx_t>(it->second));
+					adjwgt.push_back(10);
+				}
+			}
+		}
+
+		Vector3f tri_center = {0.0f, 0.0f, 0.0f};
+		for (int v = 0; v < 3; ++v) {
+			const Vector3f& pos = mesh.positions[mesh.wedges[tri.w[v]].p];
+			tri_center.x += pos.x;
+			tri_center.y += pos.y;
+			tri_center.z += pos.z;
+		}
+		tri_center.x /= 3.0f;
+		tri_center.y /= 3.0f;
+		tri_center.z /= 3.0f;
+
+		float dx_p = tri_center.x - primary_centroid.x;
+		float dy_p = tri_center.y - primary_centroid.y;
+		float dz_p = tri_center.z - primary_centroid.z;
+		float dist_primary = std::sqrt(dx_p*dx_p + dy_p*dy_p + dz_p*dz_p);
+
+		float dx_d = tri_center.x - dual_centroid.x;
+		float dy_d = tri_center.y - dual_centroid.y;
+		float dz_d = tri_center.z - dual_centroid.z;
+		float dist_dual = std::sqrt(dx_d*dx_d + dy_d*dy_d + dz_d*dz_d);
+
+		int weight_primary = std::max(1, static_cast<int>(100.0f / (dist_primary + 1.0f)));
+		int weight_dual = std::max(1, static_cast<int>(100.0f / (dist_dual + 1.0f)));
+
+		adjncy.push_back(static_cast<idx_t>(primary_dummy));
+		adjwgt.push_back(weight_primary);
+
+		adjncy.push_back(static_cast<idx_t>(dual_dummy));
+		adjwgt.push_back(weight_dual);
+
+		xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	}
+
+	xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	xadj.push_back(static_cast<idx_t>(adjncy.size()));
+
+	idx_t nvtxs = static_cast<idx_t>(num_nodes);
+	idx_t ncon = 1;
+	idx_t nparts = 2;
+	idx_t objval;
+	std::vector<idx_t> part(num_nodes);
+
+	idx_t options[METIS_NOPTIONS];
+	METIS_SetDefaultOptions(options);
+	options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+	options[METIS_OPTION_NUMBERING] = 0;
+
+	int ret = METIS_PartGraphKway(
+		&nvtxs, &ncon,
+		xadj.data(), adjncy.data(),
+		nullptr, nullptr, adjwgt.data(),
+		&nparts, nullptr, nullptr,
+		options, &objval, part.data()
+		);
+
+	if (ret != METIS_OK) {
+		result.primary_triangles = triangle_indices;
+		return result;
+	}
+
+	Index primary_part = part[primary_dummy];
+	Index dual_part = part[dual_dummy];
+
+	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+		Index tri_idx = triangle_indices[i];
+		if (part[i] == primary_part) {
+			result.primary_triangles.push_back(tri_idx);
+		} else if (part[i] == dual_part) {
+			result.dual_triangles.push_back(tri_idx);
+		} else {
+			result.primary_triangles.push_back(tri_idx);
+		}
+	}
+
+	return result;
+}
 
 // Convert adjacency map to CSR format
 void adjacency_to_csr(const std::vector<std::map<Index, int>>& adjacency,
@@ -42,20 +165,11 @@ void adjacency_to_csr(const std::vector<std::map<Index, int>>& adjacency,
 void build_cluster_graph_weighted(const MeshFiles& mesh,
 								  std::vector<idx_t>& xadj,
 								  std::vector<idx_t>& adjncy,
-								  std::vector<idx_t>& adjwgt,
-								  const std::vector<MicroNode>* primary_micronodes = nullptr) {
+								  std::vector<idx_t>& adjwgt) {
 	std::size_t num_clusters = mesh.clusters.size();
 
 	// Build cluster-to-micronode mapping if removing internal edges
 	std::vector<Index> cluster_to_micronode;
-	if (primary_micronodes) {
-		cluster_to_micronode.resize(num_clusters, Index(-1));
-		for (std::size_t mn_id = 0; mn_id < primary_micronodes->size(); ++mn_id) {
-			for (Index cluster_id : (*primary_micronodes)[mn_id].cluster_ids) {
-				cluster_to_micronode[cluster_id] = static_cast<Index>(mn_id);
-			}
-		}
-	}
 
 	// Use map to accumulate edge weights (undirected graph, store each edge once per direction)
 	std::vector<std::map<Index, int>> adjacency(num_clusters);
@@ -70,14 +184,6 @@ void build_cluster_graph_weighted(const MeshFiles& mesh,
 			if (neighbor_tri != std::numeric_limits<Index>::max()) {
 				Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
 				if (neighbor_cluster != cluster_id) {
-					// If removing internal edges, skip edges within same micronode
-					if (primary_micronodes) {
-						Index cluster_mn = cluster_to_micronode[cluster_id];
-						Index neighbor_mn = cluster_to_micronode[neighbor_cluster];
-						if (cluster_mn == neighbor_mn) {
-							continue; // Skip internal edge
-						}
-					}
 					// Accumulate edge count (each shared triangle edge increments)
 					adjacency[cluster_id][neighbor_cluster]++;
 				}
@@ -87,6 +193,133 @@ void build_cluster_graph_weighted(const MeshFiles& mesh,
 
 	// Convert to CSR format
 	adjacency_to_csr(adjacency, xadj, adjncy, adjwgt);
+}
+
+// Build micronode adjacency graph (CSR) from a cluster adjacency graph (CSR).
+// If primary_parent_of_child is provided, edges connecting child micronodes within the same
+// primary parent are removed (used for dual partitioning).
+void build_micronode_graph_from_cluster_graph(
+	const MeshFiles& mesh,
+	const std::vector<idx_t>& cluster_xadj,
+	const std::vector<idx_t>& cluster_adjncy,
+	const std::vector<idx_t>& cluster_adjwgt,
+	std::vector<idx_t>& micronode_xadj,
+	std::vector<idx_t>& micronode_adjncy,
+	std::vector<idx_t>& micronode_adjwgt,
+	const std::vector<Index>* primary_parent_of_child = nullptr) {
+
+	std::size_t num_micronodes = mesh.micronodes.size();
+	if (num_micronodes == 0) {
+		micronode_xadj.clear();
+		micronode_adjncy.clear();
+		micronode_adjwgt.clear();
+		return;
+	}
+
+	// Build cluster -> child micronode mapping
+	std::vector<Index> cluster_to_micronode(mesh.clusters.size(), Index(-1));
+	for (std::size_t mn_id = 0; mn_id < mesh.micronodes.size(); ++mn_id) {
+		for (Index cluster_id : mesh.micronodes[mn_id].cluster_ids) {
+			cluster_to_micronode[cluster_id] = static_cast<Index>(mn_id);
+		}
+	}
+
+	// Accumulate micronode adjacency by summing cluster-edge weights
+	std::vector<std::map<Index, int>> adjacency(num_micronodes);
+	std::size_t num_clusters = mesh.clusters.size();
+	for (std::size_t c = 0; c < num_clusters; ++c) {
+		Index mn_c = cluster_to_micronode[c];
+		if (mn_c == Index(-1)) {
+			continue;
+		}
+		idx_t start = cluster_xadj[c];
+		idx_t end = cluster_xadj[c + 1];
+		for (idx_t e = start; e < end; ++e) {
+			Index neighbor_cluster = static_cast<Index>(cluster_adjncy[e]);
+			Index mn_n = cluster_to_micronode[neighbor_cluster];
+			if (mn_n == Index(-1) || mn_n == mn_c) {
+				continue;
+			}
+			if (primary_parent_of_child) {
+				if ((*primary_parent_of_child)[mn_c] == (*primary_parent_of_child)[mn_n]) {
+					continue;
+				}
+			}
+			int w = static_cast<int>(cluster_adjwgt[e]);
+			adjacency[mn_c][mn_n] += w;
+		}
+	}
+
+	adjacency_to_csr(adjacency, micronode_xadj, micronode_adjncy, micronode_adjwgt);
+}
+
+// Build parent micronodes from partition of child micronodes
+std::vector<MicroNode> build_parent_micronodes_from_partition(
+	const MeshFiles& mesh,
+	const std::vector<idx_t>& part,
+	std::size_t num_parts) {
+
+	std::size_t num_children = mesh.micronodes.size();
+	std::vector<std::vector<Index>> parent_children(num_parts);
+	for (std::size_t i = 0; i < num_children; ++i) {
+		Index parent_id = static_cast<Index>(part[i]);
+		parent_children[parent_id].push_back(static_cast<Index>(i));
+	}
+
+	std::vector<MicroNode> parents;
+	parents.reserve(num_parts);
+
+	for (std::size_t i = 0; i < num_parts; ++i) {
+		if (parent_children[i].empty()) {
+			throw std::runtime_error("Empty parent micronode!");
+		}
+
+		MicroNode parent;
+		parent.id = static_cast<Index>(i);
+		parent.children_nodes = std::move(parent_children[i]);
+		parent.triangle_count = 0;
+		parent.centroid = {0.0f, 0.0f, 0.0f};
+		float total_weight = 0.0f;
+
+		for (Index child_id : parent.children_nodes) {
+			const MicroNode& child = mesh.micronodes[child_id];
+			float weight = static_cast<float>(child.triangle_count);
+			parent.centroid.x += child.centroid.x * weight;
+			parent.centroid.y += child.centroid.y * weight;
+			parent.centroid.z += child.centroid.z * weight;
+			total_weight += weight;
+			parent.triangle_count += child.triangle_count;
+		}
+
+		if (total_weight > 0.0f) {
+			parent.centroid.x /= total_weight;
+			parent.centroid.y /= total_weight;
+			parent.centroid.z /= total_weight;
+		} else {
+			float inv_count = 1.0f / static_cast<float>(parent.children_nodes.size());
+			for (Index child_id : parent.children_nodes) {
+				const MicroNode& child = mesh.micronodes[child_id];
+				parent.centroid.x += child.centroid.x * inv_count;
+				parent.centroid.y += child.centroid.y * inv_count;
+				parent.centroid.z += child.centroid.z * inv_count;
+			}
+		}
+
+		parent.center = parent.centroid;
+		parent.radius = 0.0f;
+		for (Index child_id : parent.children_nodes) {
+			const MicroNode& child = mesh.micronodes[child_id];
+			float dx = child.center.x - parent.center.x;
+			float dy = child.center.y - parent.center.y;
+			float dz = child.center.z - parent.center.z;
+			float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+			parent.radius = std::max(parent.radius, dist + child.radius);
+		}
+
+		parents.push_back(std::move(parent));
+	}
+
+	return parents;
 }
 
 // Build MicroNode objects from partition and mesh
@@ -107,7 +340,8 @@ std::vector<MicroNode> build_micronodes_from_partition(const MeshFiles& mesh,
 	micronodes.reserve(num_parts);
 
 	for (std::size_t i = 0; i < num_parts; ++i) {
-		if (micronode_clusters[i].empty()) continue;
+		if (micronode_clusters[i].empty())
+			throw std::runtime_error("Empty micronode clusters!");
 
 		MicroNode micronode;
 		micronode.id = static_cast<Index>(i);
@@ -189,14 +423,21 @@ std::vector<idx_t> partition_graph_metis(
 		);
 
 	if (ret != METIS_OK) {
-		std::cerr << "METIS_PartGraphKway failed with code " << ret << std::endl;
-		return {};
+		throw std::runtime_error("METIS_PartGraphKway failed with code " + std::to_string(ret));
 	}
 
 	return part;
 }
 
 } // anonymous namespace
+
+DualPartitionSplit split_triangles_dual_partition(
+	const MeshFiles& mesh,
+	const std::vector<Index>& triangle_indices,
+	const Vector3f& primary_centroid,
+	const Vector3f& dual_centroid) {
+	return split_triangles_dual_partition_impl(mesh, triangle_indices, primary_centroid, dual_centroid);
+}
 
 std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 											   std::size_t clusters_per_micronode) {
@@ -220,7 +461,7 @@ std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 	std::vector<idx_t> adjncy;
 	std::vector<idx_t> adjwgt;
 
-	build_cluster_graph_weighted(mesh, xadj, adjncy, adjwgt, nullptr);
+	build_cluster_graph_weighted(mesh, xadj, adjncy, adjwgt);
 
 	std::cout << "Cluster graph edges: " << adjncy.size()
 			  << " (weighted by shared triangle edges)" << std::endl;
@@ -272,84 +513,95 @@ std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 	return micronodes;
 }
 
-std::pair<std::vector<MicroNode>, std::vector<MicroNode>> 
-create_primary_and_dual_micronodes(const MeshFiles& mesh, std::size_t clusters_per_micronode) {
 
-	std::size_t num_clusters = mesh.clusters.size();
-	std::cout << "\n=== Building Primary and Dual Micronodes using METIS ===" << std::endl;
-	std::cout << "Input: " << num_clusters << " clusters" << std::endl;
-	std::cout << "Target: " << clusters_per_micronode << " clusters per micronode" << std::endl;
+void create_parent_micronodes(MeshFiles& mesh, MeshFiles &parent,
+							  std::size_t clusters_per_micronode ) {
 
-	// Calculate number of partitions
-	std::size_t num_micronodes = (num_clusters + clusters_per_micronode - 1) / clusters_per_micronode;
-	if (num_micronodes == 0) num_micronodes = 1;
-
-	std::cout << "Target micronodes: " << num_micronodes << std::endl;
-
-	// Step 1: Build primary micronodes using full cluster graph
-	std::cout << "\n--- Step 1: Primary Micronodes ---" << std::endl;
-
-	std::vector<idx_t> xadj, adjncy, adjwgt;
-	build_cluster_graph_weighted(mesh, xadj, adjncy, adjwgt, nullptr);
-
-	if (adjncy.empty()) {
-		std::cerr << "Error: Cluster graph has no edges" << std::endl;
-		return {};
+	std::size_t num_child_micronodes = mesh.micronodes.size();
+	if (num_child_micronodes == 0) {
+		throw std::runtime_error("Error: No child micronodes to partition");
 	}
 
-	// Call METIS for primary partition
-	std::cout << "Calling METIS for primary partition..." << std::endl;
+	// Calculate number of parent micronodes (micronodes per micronode)
+	std::size_t num_parent_micronodes = (num_child_micronodes + clusters_per_micronode - 1) / clusters_per_micronode;
+	if (num_parent_micronodes == 0) num_parent_micronodes = 1;
+
+	std::cout << "Target parent micronodes: " << num_parent_micronodes << std::endl;
+
+	// Step 1: Build weighted cluster graph
+	std::vector<idx_t> cluster_xadj, cluster_adjncy, cluster_adjwgt;
+	build_cluster_graph_weighted(mesh, cluster_xadj, cluster_adjncy, cluster_adjwgt);
+
+	if (cluster_adjncy.empty()) {
+		throw std::runtime_error("Error: Cluster graph has no edges");
+	}
+
+	// Step 2: Build micronode graph from cluster graph
+	std::vector<idx_t> micronode_xadj, micronode_adjncy, micronode_adjwgt;
+	build_micronode_graph_from_cluster_graph(mesh, cluster_xadj, cluster_adjncy, cluster_adjwgt,
+									  micronode_xadj, micronode_adjncy, micronode_adjwgt, nullptr);
+
+	if (micronode_adjncy.empty()) {
+		throw std::runtime_error("Error: Micronode graph has no edges");
+	}
+
+	// Call METIS for primary partition (micronode graph)
+	std::cout << "Calling METIS for primary parent partition..." << std::endl;
 	idx_t objval_primary;
-	std::vector<idx_t> part_primary = partition_graph_metis(num_clusters, xadj, adjncy, adjwgt, num_micronodes, objval_primary);
+	std::vector<idx_t> part_primary = partition_graph_metis(
+		num_child_micronodes, micronode_xadj, micronode_adjncy, micronode_adjwgt,
+		num_parent_micronodes, objval_primary);
 
-	if (part_primary.empty()) {
-		std::cerr << "METIS failed for primary partition" << std::endl;
-		return {};
-	}
-
-	std::cout << "Primary partition edge-cut: " << objval_primary << std::endl;
-
-	// Build primary micronodes
+	// Build primary parent micronodes (children_nodes + centroids)
 	std::vector<MicroNode> primary_micronodes =
-		build_micronodes_from_partition(mesh, part_primary, num_micronodes);
+		build_parent_micronodes_from_partition(mesh, part_primary, num_parent_micronodes);
 
-	std::cout << "Created " << primary_micronodes.size() << " primary micronodes" << std::endl;
+	std::cout << "Created " << primary_micronodes.size() << " primary parent micronodes" << std::endl;
 
-	// Step 2: Build dual micronodes using external-only cluster graph
-	std::cout << "\n--- Step 2: Dual Micronodes ---" << std::endl;
+	// Step 3: Build dual parent micronodes using micronode graph with internal edges removed
+	std::cout << "\n--- Step 2: Dual Parent Micronodes ---" << std::endl;
 
-	std::vector<idx_t> xadj_ext, adjncy_ext, adjwgt_ext;
-	build_cluster_graph_weighted(mesh, xadj_ext, adjncy_ext, adjwgt_ext, &primary_micronodes);
-
-	if (adjncy_ext.empty()) {
-		std::cerr << "Warning: External cluster graph has no edges, dual = primary" << std::endl;
-		return {primary_micronodes, primary_micronodes};
+	std::vector<Index> child_to_primary_parent(num_child_micronodes, Index(-1));
+	for (std::size_t i = 0; i < num_child_micronodes; ++i) {
+		child_to_primary_parent[i] = static_cast<Index>(part_primary[i]);
 	}
 
-	std::cout << "External edges: " << adjncy_ext.size()
-			  << " (removed " << (adjncy.size() - adjncy_ext.size()) << " internal edges)" << std::endl;
+	std::vector<idx_t> micronode_xadj_ext, micronode_adjncy_ext, micronode_adjwgt_ext;
+	build_micronode_graph_from_cluster_graph(mesh, cluster_xadj, cluster_adjncy, cluster_adjwgt,
+									  micronode_xadj_ext, micronode_adjncy_ext, micronode_adjwgt_ext,
+									  &child_to_primary_parent);
 
-	// Call METIS for dual partition
-	std::cout << "Calling METIS for dual partition..." << std::endl;
+	if (micronode_adjncy_ext.empty()) {
+		throw std::runtime_error("Error: Micronode graph has no edges after removing internal edges");
+	}
+
+	std::cout << "External micronode edges: " << micronode_adjncy_ext.size() << std::endl;
+
+	// Call METIS for dual partition (micronode graph)
+	std::cout << "Calling METIS for dual parent partition..." << std::endl;
 	idx_t objval_dual;
-	std::vector<idx_t> part_dual = partition_graph_metis(num_clusters, xadj_ext, adjncy_ext, adjwgt_ext, num_micronodes, objval_dual);
+	std::vector<idx_t> part_dual = partition_graph_metis(
+		num_child_micronodes, micronode_xadj_ext, micronode_adjncy_ext, micronode_adjwgt_ext,
+		num_parent_micronodes, objval_dual);
 
-	if (part_dual.empty()) {
-		std::cerr << "METIS failed for dual partition" << std::endl;
-		return {primary_micronodes, {}};
+	// Build dual parent micronodes (children_nodes + centroids)
+	std::vector<MicroNode> dual_micronodes =
+		build_parent_micronodes_from_partition(mesh, part_dual, num_parent_micronodes);
+
+	std::cout << "Created " << dual_micronodes.size() << " dual parent micronodes" << std::endl;
+
+	std::cout << "\n=== Primary and Dual Parent Micronodes Complete ===" << std::endl;
+
+	// Create micronodes in parent mesh from primary + dual partitions
+	parent.micronodes.reserve(primary_micronodes.size() + dual_micronodes.size());
+
+	for (const MicroNode& micronode : primary_micronodes) {
+		parent.micronodes.push_back(micronode);
 	}
 
-	std::cout << "Dual partition edge-cut: " << objval_dual << std::endl;
-
-	// Build dual micronodes
-	std::vector<MicroNode> dual_micronodes =
-		build_micronodes_from_partition(mesh, part_dual, num_micronodes);
-
-	std::cout << "Created " << dual_micronodes.size() << " dual micronodes" << std::endl;
-
-	std::cout << "\n=== Primary and Dual Micronodes Complete ===" << std::endl;
-
-	return {primary_micronodes, dual_micronodes};
+	for (const MicroNode& micronode : dual_micronodes) {
+		parent.micronodes.push_back(micronode);
+	}
 }
 
 float measure_micronode_overlap(const MeshFiles& mesh,
@@ -409,8 +661,7 @@ float measure_micronode_overlap(const MeshFiles& mesh,
 std::vector<Cluster> recluster_mesh_multiconstraint(
 	MeshFiles& mesh,
 	const std::vector<MicroNode>& primary_micronodes,
-	const std::vector<MicroNode>& dual_micronodes,
-	std::size_t target_triangles_per_cluster) {
+	const std::vector<MicroNode>& dual_micronodes) {
 
 	std::cout << "\n=== Reclustering Mesh Using Micronode Centroids ===" << std::endl;
 
@@ -464,127 +715,17 @@ std::vector<Cluster> recluster_mesh_multiconstraint(
 			continue;
 		}
 
-		// Build triangle dual graph for this cluster + 2 dummy nodes
-		std::size_t num_nodes = cluster_tris.size() + 2;
-		Index primary_dummy = cluster_tris.size();
-		Index dual_dummy = cluster_tris.size() + 1;
-
-		std::vector<idx_t> xadj;
-		std::vector<idx_t> adjncy;
-		std::vector<idx_t> adjwgt;
-
-		xadj.reserve(num_nodes + 1);
-		xadj.push_back(0);
-
-		// For each triangle in the cluster
-		for (std::size_t i = 0; i < cluster_tris.size(); ++i) {
-			Index tri_idx = cluster_tris[i];
-			const Triangle& tri = mesh.triangles[tri_idx];
-			const FaceAdjacency& adj = mesh.adjacency[tri_idx];
-
-			// Add edges to neighboring triangles within same cluster
-			for (int corner = 0; corner < 3; ++corner) {
-				Index neighbor_tri = adj.opp[corner];
-				if (neighbor_tri != std::numeric_limits<Index>::max()) {
-					Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
-					if (neighbor_cluster == cluster_id && neighbor_tri > tri_idx) {
-						// Find local index of neighbor
-						auto it = std::find(cluster_tris.begin(), cluster_tris.end(), neighbor_tri);
-						if (it != cluster_tris.end()) {
-							Index local_neighbor = std::distance(cluster_tris.begin(), it);
-							adjncy.push_back(static_cast<idx_t>(local_neighbor));
-							adjwgt.push_back(10); // High weight for triangle adjacency
-						}
-					}
-				}
-			}
-
-			// Compute triangle centroid
-			Vector3f tri_center = {0.0f, 0.0f, 0.0f};
-			for (int v = 0; v < 3; ++v) {
-				const Vector3f& pos = mesh.positions[mesh.wedges[tri.w[v]].p];
-				tri_center.x += pos.x;
-				tri_center.y += pos.y;
-				tri_center.z += pos.z;
-			}
-			tri_center.x /= 3.0f;
-			tri_center.y /= 3.0f;
-			tri_center.z /= 3.0f;
-
-			// Distance to primary micronode centroid
-			float dx_p = tri_center.x - primary_centroid.x;
-			float dy_p = tri_center.y - primary_centroid.y;
-			float dz_p = tri_center.z - primary_centroid.z;
-			float dist_primary = std::sqrt(dx_p*dx_p + dy_p*dy_p + dz_p*dz_p);
-
-			// Distance to dual micronode centroid
-			float dx_d = tri_center.x - dual_centroid.x;
-			float dy_d = tri_center.y - dual_centroid.y;
-			float dz_d = tri_center.z - dual_centroid.z;
-			float dist_dual = std::sqrt(dx_d*dx_d + dy_d*dy_d + dz_d*dz_d);
-
-			// Add edges to dummy nodes with weights inversely proportional to distance
-			// Closer dummy node gets higher weight
-			int weight_primary = std::max(1, static_cast<int>(100.0f / (dist_primary + 1.0f)));
-			int weight_dual = std::max(1, static_cast<int>(100.0f / (dist_dual + 1.0f)));
-
-			adjncy.push_back(static_cast<idx_t>(primary_dummy));
-			adjwgt.push_back(weight_primary);
-
-			adjncy.push_back(static_cast<idx_t>(dual_dummy));
-			adjwgt.push_back(weight_dual);
-
-			xadj.push_back(static_cast<idx_t>(adjncy.size()));
-		}
-
-		// Dummy nodes have no edges (already connected from triangles)
-		xadj.push_back(static_cast<idx_t>(adjncy.size()));
-		xadj.push_back(static_cast<idx_t>(adjncy.size()));
-
-		// Call METIS to partition into 2 parts
-		idx_t nvtxs = static_cast<idx_t>(num_nodes);
-		idx_t ncon = 1;
-		idx_t nparts = 2;
-		idx_t objval;
-		std::vector<idx_t> part(num_nodes);
-
-		idx_t options[METIS_NOPTIONS];
-		METIS_SetDefaultOptions(options);
-		options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-		options[METIS_OPTION_NUMBERING] = 0;
-
-		int ret = METIS_PartGraphKway(
-			&nvtxs, &ncon,
-			xadj.data(), adjncy.data(),
-			nullptr, nullptr, adjwgt.data(),
-			&nparts, nullptr, nullptr,
-			options, &objval, part.data()
-			);
-
-		if (ret != METIS_OK) {
-			std::cerr << "METIS failed for cluster " << cluster_id << std::endl;
-			// Fallback: assign all to primary
-			Index primary_partition_idx = primary_mn;
-			for (Index tri_idx : cluster_tris) {
-				new_cluster_triangles[primary_partition_idx].push_back(tri_idx);
-			}
-			continue;
-		}
-
-		// Assign triangles based on which partition their dummy node belongs to
-		Index primary_part = part[primary_dummy];
-		Index dual_part = part[dual_dummy];
+		DualPartitionSplit split = split_triangles_dual_partition_impl(
+			mesh, cluster_tris, primary_centroid, dual_centroid);
 
 		Index primary_partition_idx = primary_mn;
 		Index dual_partition_idx = primary_micronodes.size() + dual_mn;
 
-		for (std::size_t i = 0; i < cluster_tris.size(); ++i) {
-			Index tri_idx = cluster_tris[i];
-			if (part[i] == primary_part) {
-				new_cluster_triangles[primary_partition_idx].push_back(tri_idx);
-			} else {
-				new_cluster_triangles[dual_partition_idx].push_back(tri_idx);
-			}
+		for (Index tri_idx : split.primary_triangles) {
+			new_cluster_triangles[primary_partition_idx].push_back(tri_idx);
+		}
+		for (Index tri_idx : split.dual_triangles) {
+			new_cluster_triangles[dual_partition_idx].push_back(tri_idx);
 		}
 	}
 
@@ -687,11 +828,10 @@ std::vector<Cluster> recluster_mesh_multiconstraint(
 
 	return new_clusters;
 }
-
+/*
 void build_dual_partition_and_recluster(
 	MeshFiles& mesh,
-	std::size_t clusters_per_micronode,
-	std::size_t target_triangles_per_cluster) {
+	std::size_t clusters_per_micronode) {
 
 	std::cout << "\n=== Building Dual Partition and Reclustering ===" << std::endl;
 
@@ -701,8 +841,6 @@ void build_dual_partition_and_recluster(
 	std::cout << "Primary micronodes: " << primary_micronodes.size() << std::endl;
 	std::cout << "Dual micronodes: " << dual_micronodes.size() << std::endl;
 
-	// Update mesh.micronodes with primary partition
-	mesh.micronodes = primary_micronodes;
 
 	// Measure primary-dual overlap
 	float overlap_fraction = measure_micronode_overlap(mesh, primary_micronodes, dual_micronodes);
@@ -711,7 +849,7 @@ void build_dual_partition_and_recluster(
 	std::cout << "\n=== Applying Multi-Constraint Reclustering ===" << std::endl;
 
 	// This function modifies mesh in-place (reorders triangles, updates clusters)
-	recluster_mesh_multiconstraint(mesh, primary_micronodes, dual_micronodes, target_triangles_per_cluster);
-}
+	recluster_mesh_multiconstraint(mesh, primary_micronodes, dual_micronodes);
+}*/
 
 } // namespace nx

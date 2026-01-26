@@ -7,22 +7,26 @@ set(SOURCES
 	merge_simplify_split.cpp
 	../core/mapped_file.cpp
 	../core/mesh.cpp
+	../core/mesh_hierarchy.cpp
+	../core/vcgmesh.cpp
 	../core/spatial_sort.cpp
 	../core/adjacency.cpp
 	../core/clustering.cpp
-	../core/clustering_metis.cpp
 	../core/micro_clustering.cpp
 	../core/micro_clustering_metis.cpp
-    ../loaders/meshloader.cpp
-    ../loaders/objloader.cpp
-    ../loaders/objexporter.cpp
-    ../loaders/plyexporter.cpp
+	../loaders/meshloader.cpp
+	../loaders/objloader.cpp
+	../loaders/objexporter.cpp
+	../loaders/plyexporter.cpp
 )
 
 set(HEADERS
 	build_parameters.h
 	merge_simplify_split.h
+	../core/mesh_types.h
 	../core/mesh.h
+	../core/mesh_hierarchy.h
+	../core/vcgmesh.h
 	../core/spatial_sort.h
 	../core/adjacency.h
 	../core/clustering.h
@@ -42,6 +46,8 @@ find_package(Qt5 COMPONENTS Core REQUIRED)
 # Add METIS library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
+    ../../vcglib
+    /usr/include/eigen3
     /home/ponchio/local/include
 )
 

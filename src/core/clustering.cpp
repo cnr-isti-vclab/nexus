@@ -12,10 +12,74 @@
 #include <cstdlib>
 #include <cassert>
 #include <numeric>
+#include <metis.h>
 
 namespace nx {
 
 namespace {
+
+std::vector<Vector3f> compute_triangle_centroids(const MeshFiles& mesh) {
+	std::size_t triangle_count = mesh.triangles.size();
+	std::vector<Vector3f> centroids(triangle_count);
+	for (std::size_t i = 0; i < triangle_count; ++i) {
+		centroids[i] = compute_triangle_centroid(mesh.positions, mesh.wedges, mesh.triangles[i]);
+	}
+	return centroids;
+}
+
+void build_triangle_adjacency_graph(const MeshFiles& mesh,
+								 const std::vector<Vector3f>& triangle_centroids,
+								 std::vector<idx_t>& xadj,
+								 std::vector<idx_t>& adjncy,
+								 std::vector<idx_t>& adjwgt) {
+	std::size_t num_triangles = mesh.triangles.size();
+
+	xadj.reserve(num_triangles + 1);
+	xadj.push_back(0);
+
+	for (std::size_t i = 0; i < num_triangles; ++i) {
+		const FaceAdjacency& adj = mesh.adjacency[i];
+		const Vector3f& centroid_i = triangle_centroids[i];
+
+		for (int corner = 0; corner < 3; ++corner) {
+			Index neighbor = adj.opp[corner];
+			if (neighbor != std::numeric_limits<Index>::max()) {
+				adjncy.push_back(static_cast<idx_t>(neighbor));
+
+				const Vector3f& centroid_j = triangle_centroids[neighbor];
+				float dx = centroid_i.x - centroid_j.x;
+				float dy = centroid_i.y - centroid_j.y;
+				float dz = centroid_i.z - centroid_j.z;
+				float distance = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+				idx_t weight = static_cast<idx_t>(std::max(1.0f, 1000.0f / (1.0f + distance)));
+				adjwgt.push_back(weight);
+			}
+		}
+		xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	}
+	assert(xadj.size() == num_triangles + 1);
+}
+
+void build_clusters_from_partition(MeshFiles& mesh, std::size_t num_partitions) {
+	std::size_t num_triangles = mesh.triangles.size();
+
+	std::vector<Index> partition_sizes(num_partitions, 0);
+	for (std::size_t i = 0; i < num_triangles; ++i) {
+		Index cluster_id = mesh.triangle_to_cluster[i];
+		partition_sizes[cluster_id]++;
+	}
+
+	mesh.clusters.resize(num_partitions);
+	for (std::size_t i = 0; i < num_partitions; ++i) {
+		Cluster cluster;
+		cluster.triangle_offset = 0;
+		cluster.triangle_count = partition_sizes[i];
+		cluster.center = {0, 0, 0};
+		cluster.radius = 0;
+		mesh.clusters[i] = cluster;
+	}
+}
 
 
 // Helper: Distance from point to triangle centroid
@@ -387,13 +451,13 @@ void compute_cluster_bounds(MeshFiles& mesh) {
 }
 
 
-std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
+void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles) {
 	if (max_triangles < 1 || max_triangles > 512) {
 		throw std::runtime_error("max_triangles must be between 1 and 512");
 	}
 
 	std::size_t triangle_count = mesh.triangles.size();
-	if (triangle_count == 0) return 0;
+	if (triangle_count == 0) return;
 
 	// Triangle to cluster mapping
 	mesh.triangle_to_cluster.assign(triangle_count, std::numeric_limits<Index>::max());
@@ -529,20 +593,98 @@ std::size_t build_clusters(MeshFiles& mesh, std::size_t max_triangles) {
 
 	// Apply FM refinement with proper pass-based algorithm
 	apply_fm_refinement(mesh, 128, 10);
+}
 
-	// Print histogram after refinement
-	print_cluster_histogram(mesh.clusters, "(after FM refinement)");
+void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
+	std::cout << "\n=== Building clusters with METIS ===" << std::endl;
 
-	// Reorder triangles to be contiguous by cluster
+	std::size_t num_triangles = mesh.triangles.size();
+	if (num_triangles == 0) {
+		throw std::runtime_error("Error: No triangles to cluster");
+	}
+
+	// Estimate number of partitions
+	std::size_t num_partitions = (num_triangles + max_triangles - 1) / max_triangles;
+	if (num_partitions < 2) num_partitions = 2;
+
+	std::cout << "Triangles: " << num_triangles << ", Max per cluster: " << max_triangles
+			  << ", Target partitions: " << num_partitions << std::endl;
+
+	std::vector<Vector3f> triangle_centroids = compute_triangle_centroids(mesh);
+
+	// Build graph in CSR format for METIS with edge weights
+	std::vector<idx_t> xadj;
+	std::vector<idx_t> adjncy;
+	std::vector<idx_t> adjwgt;
+
+	build_triangle_adjacency_graph(mesh, triangle_centroids, xadj, adjncy, adjwgt);
+
+	std::cout << "Graph edges: " << adjncy.size() << " (undirected, with spatial distance weights)" << std::endl;
+
+	if (adjncy.empty()) {
+		throw std::runtime_error("Error: Graph has no edges - mesh has no adjacency (pathological mesh)");
+	}
+
+	idx_t nvtxs = static_cast<idx_t>(num_triangles);
+	idx_t ncon = 1;
+	idx_t nparts = static_cast<idx_t>(num_partitions);
+	idx_t objval;
+
+	std::vector<idx_t> part(num_triangles);
+
+	idx_t options[METIS_NOPTIONS];
+	METIS_SetDefaultOptions(options);
+	options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+	options[METIS_OPTION_NUMBERING] = 0;
+
+	std::cout << "Calling METIS_PartGraphKway with " << nvtxs << " vertices, "
+			  << nparts << " partitions..." << std::endl;
+
+	int ret = METIS_PartGraphKway(&nvtxs, &ncon,
+		xadj.data(), adjncy.data(),
+		nullptr,
+		nullptr,
+		adjwgt.data(),
+		&nparts,
+		nullptr,
+		nullptr,
+		options,
+		&objval,
+		part.data()
+		);
+
+	if (ret != METIS_OK) {
+		throw std::runtime_error("METIS_PartGraphKway failed with code " + std::to_string(ret));
+	}
+
+	std::cout << "METIS partitioning complete. Edge-cut: " << objval << std::endl;
+
+	mesh.triangle_to_cluster.resize(num_triangles);
+	for (std::size_t i = 0; i < num_triangles; ++i) {
+		mesh.triangle_to_cluster[i] = static_cast<Index>(part[i]);
+	}
+
+	build_clusters_from_partition(mesh, num_partitions);
+
+
+	std::cout << "\nMETIS clustering complete: " << mesh.clusters.size() << " clusters created" << std::endl;
+
+
+}
+
+void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod method) {
+	switch (method) {
+		case ClusteringMethod::Greedy:
+			build_clusters_greedy(mesh, max_triangles);
+		break;
+		case ClusteringMethod::Metis:
+			build_clusters_metis(mesh, max_triangles);
+		break;
+	}
 	reorder_triangles_by_cluster(mesh);
-
-	// Compute bounds after reordering and FM refinement
 	compute_cluster_bounds(mesh);
 
-	// Write cluster data to mesh files
-	mesh.clusters.resize(clusters_bytes(mesh.clusters.size()));
-
-	return mesh.clusters.size();
+	print_cluster_histogram(mesh.clusters, "(METIS output)");
 }
 
 

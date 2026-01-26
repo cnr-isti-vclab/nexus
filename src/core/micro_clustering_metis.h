@@ -18,14 +18,24 @@ class MeshFiles;
 std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 											   std::size_t clusters_per_micronode = 8);
 
-// Build both primary and dual micronodes simultaneously using METIS partitioning.
-// Primary micronodes: Partition of full cluster graph
-// Dual micronodes: Partition of cluster graph with internal primary micronode edges removed
-// 
-// Returns pair<primary_micronodes, dual_micronodes>
-std::pair<std::vector<MicroNode>, std::vector<MicroNode>> 
-create_primary_and_dual_micronodes(const MeshFiles& mesh,
-								   std::size_t clusters_per_micronode = 8);
+// Build primary and dual parent micronodes by partitioning the micronode graph.
+// Primary parents: Partition of the micronode graph
+// Dual parents: Partition of the micronode graph with edges internal to primary parents removed
+void create_parent_micronodes(MeshFiles& mesh, MeshFiles &parent,
+							  std::size_t clusters_per_micronode = 8);
+
+struct DualPartitionSplit {
+	std::vector<Index> primary_triangles;
+	std::vector<Index> dual_triangles;
+};
+
+// Split a set of triangles between two partitions using METIS and dummy nodes.
+// The partition is guided by distances to the provided primary/dual centroids.
+DualPartitionSplit split_triangles_dual_partition(
+	const MeshFiles& mesh,
+	const std::vector<Index>& triangle_indices,
+	const Vector3f& primary_centroid,
+	const Vector3f& dual_centroid);
 
 // Measure overlap between primary and dual micronode partitions.
 // For each primary micronode, counts shared edges with each dual micronode.
@@ -46,8 +56,7 @@ float measure_micronode_overlap(const MeshFiles& mesh,
 std::vector<Cluster> recluster_mesh_multiconstraint(
 	MeshFiles& mesh,
 	const std::vector<MicroNode>& primary_micronodes,
-	const std::vector<MicroNode>& dual_micronodes,
-	std::size_t target_triangles_per_cluster = 128);
+	const std::vector<MicroNode>& dual_micronodes);
 
 // Build primary/dual micronodes and recluster the mesh in one step.
 // Combines create_primary_and_dual_micronodes, measure_micronode_overlap,
@@ -58,8 +67,7 @@ std::vector<Cluster> recluster_mesh_multiconstraint(
 // target_triangles_per_cluster: Target triangles per cluster after reclustering
 void build_dual_partition_and_recluster(
 	MeshFiles& mesh,
-	std::size_t clusters_per_micronode = 4,
-	std::size_t target_triangles_per_cluster = 128);
+	std::size_t clusters_per_micronode = 4);
 
 } // namespace nx
 

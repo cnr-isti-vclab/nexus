@@ -1,10 +1,11 @@
 #pragma once
 
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include "../core/mesh_types.h"
-
+#include "micro_clustering_metis.h"
 namespace nx {
 
 class MeshFiles;
@@ -15,6 +16,7 @@ struct MergedMesh {
 	std::vector<Wedge> wedges;
 	std::vector<Triangle> triangles;
 	std::set<Index> boundary_vertices;  // Vertices on micronode boundary
+	std::unordered_map<Index, Index> position_map; // original position -> merged position
 	Index parent_micronode_id;
 };
 
@@ -28,24 +30,42 @@ struct SplitResult {
 // Merge 4 clusters from a micronode into a single mesh
 MergedMesh merge_micronode_clusters(
 	const MeshFiles& mesh,
-	const MicroNode& micronode,
-	const std::set<Index>& external_clusters);
+	const MicroNode& micronode);
 
 // Identify and lock boundary edges (edges connecting to external clusters)
-void identify_boundary_vertices(
-	MergedMesh& merged,
+void identify_boundary_vertices(MergedMesh& merged,
 	const MeshFiles& mesh,
-	const MicroNode& micronode,
-	const std::set<Index>& external_clusters);
+	const MicroNode& micronode);
 
 // Simplify mesh to target triangle count (respecting locked boundaries)
 void simplify_mesh(
 	MergedMesh& mesh,
 	Index target_triangle_count);
 
-// Split simplified mesh into 2 clusters minimizing external edges
-SplitResult split_into_two_clusters(
-	const MergedMesh& mesh,
-	const std::set<Index>& external_cluster_boundaries);
+// Fast debug simplification: reduce triangles by simple clustering
+// (does not preserve topology; keeps existing positions/wedges).
+void simplify_mesh_clustered(
+	MergedMesh& mesh,
+	Index target_triangle_count);
 
-} // namespace nx
+// Split triangles in a merged mesh using parent centroids (METIS-based, dual partition).
+DualPartitionSplit split_triangles_dual_partition(
+	const MergedMesh& mesh,
+	const std::vector<Index>& triangle_indices,
+	const Vector3f& primary_centroid,
+	const Vector3f& dual_centroid);
+
+// Update the positions (and potentially wedges) in next_mesh using the simplified merged mesh.
+// The mapping is from original position index -> merged position index.
+void update_vertices_and_wedges(
+	MeshFiles& next_mesh,
+	const MergedMesh& merged);
+
+// Split a simplified merged mesh into two clusters using parent micronode centroids,
+// and attach the new clusters to the corresponding parent micronodes in next_mesh.
+void split_mesh(
+	const MergedMesh& merged,
+	const MicroNode& micronode,
+	MeshFiles& next_mesh);
+
+}
