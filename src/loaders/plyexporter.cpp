@@ -145,6 +145,7 @@ void export_ply(const MeshFiles& mesh,
 				const Cluster& cluster = mesh.clusters[cluster_id];
 				float m = local_c / static_cast<float>(micronode.cluster_ids.size() - 1);
 				m = 0.5 + m*0.5;
+				m = 1.0;
 				uint8_t r = static_cast<uint8_t>((R*m) );
 				uint8_t g = static_cast<uint8_t>((G*m));
 				uint8_t b = static_cast<uint8_t>((B*m) );

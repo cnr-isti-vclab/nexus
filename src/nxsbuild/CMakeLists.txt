@@ -43,12 +43,15 @@ add_executable(nxsbuild ${SOURCES} ${HEADERS})
 # Find Qt5
 find_package(Qt5 COMPONENTS Core REQUIRED)
 
-# Add METIS library paths
+# Add METIS and LEMON library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
     ../../vcglib
+	../
     /usr/include/eigen3
     /home/ponchio/local/include
+    ../../lemon-graph-1.3.1
+    ../../lemon-graph-1.3.1/build
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)

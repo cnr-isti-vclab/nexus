@@ -538,33 +538,19 @@ DualPartitionSplit split_triangles_dual_partition_impl(
 		tri_to_local[triangle_indices[i]] = static_cast<Index>(i);
 	}
 
-	std::size_t num_nodes = triangle_indices.size() + 2;
-	Index primary_dummy = static_cast<Index>(triangle_indices.size());
-	Index dual_dummy = static_cast<Index>(triangle_indices.size() + 1);
-
+	std::size_t num_nodes = triangle_indices.size();
 	std::vector<idx_t> xadj;
 	std::vector<idx_t> adjncy;
 	std::vector<idx_t> adjwgt;
-
-	xadj.reserve(num_nodes + 1);
-	xadj.push_back(0);
+	std::vector<float> dist_primary_list(triangle_indices.size());
+	std::vector<float> dist_dual_list(triangle_indices.size());
+	std::vector<float> w_primary(triangle_indices.size());
+	std::vector<float> w_dual(triangle_indices.size());
+	float avg_dist = 0.0f;
 
 	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
 		Index tri_idx = triangle_indices[i];
 		const Triangle& tri = mesh.triangles[tri_idx];
-		const FaceAdjacency& adj = adjacency[tri_idx];
-
-		for (int corner = 0; corner < 3; ++corner) {
-			Index neighbor_tri = adj.opp[corner];
-			if (neighbor_tri != std::numeric_limits<Index>::max()) {
-				auto it = tri_to_local.find(neighbor_tri);
-				if (it != tri_to_local.end()) {
-					adjncy.push_back(static_cast<idx_t>(it->second));
-					adjwgt.push_back(10);
-				}
-			}
-		}
-
 		Vector3f tri_center = {0.0f, 0.0f, 0.0f};
 		for (int v = 0; v < 3; ++v) {
 			const Vector3f& pos = mesh.positions[mesh.wedges[tri.w[v]].p];
@@ -586,20 +572,41 @@ DualPartitionSplit split_triangles_dual_partition_impl(
 		float dz_d = tri_center.z - dual_centroid.z;
 		float dist_dual = std::sqrt(dx_d*dx_d + dy_d*dy_d + dz_d*dz_d);
 
-		int weight_primary = std::max(1, static_cast<int>(100.0f / (dist_primary + 1.0f)));
-		int weight_dual = std::max(1, static_cast<int>(100.0f / (dist_dual + 1.0f)));
+		dist_primary_list[i] = dist_primary;
+		dist_dual_list[i] = dist_dual;
+		avg_dist += 0.5f * (dist_primary + dist_dual);
+	}
+	avg_dist = avg_dist / static_cast<float>(triangle_indices.size());
+	if (avg_dist <= 0.0f) avg_dist = 1.0f;
 
-		adjncy.push_back(static_cast<idx_t>(primary_dummy));
-		adjwgt.push_back(weight_primary);
-
-		adjncy.push_back(static_cast<idx_t>(dual_dummy));
-		adjwgt.push_back(weight_dual);
-
-		xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+		w_primary[i] = avg_dist / (dist_primary_list[i] + avg_dist);
+		w_dual[i] = avg_dist / (dist_dual_list[i] + avg_dist);
 	}
 
-	xadj.push_back(static_cast<idx_t>(adjncy.size()));
-	xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	xadj.reserve(num_nodes + 1);
+	xadj.push_back(0);
+
+	const int base_edge_weight = 10;
+	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+		Index tri_idx = triangle_indices[i];
+		const FaceAdjacency& adj = adjacency[tri_idx];
+
+		for (int corner = 0; corner < 3; ++corner) {
+			Index neighbor_tri = adj.opp[corner];
+			if (neighbor_tri != std::numeric_limits<Index>::max()) {
+				auto it = tri_to_local.find(neighbor_tri);
+				if (it != tri_to_local.end()) {
+					Index j = it->second;
+					float affinity = (w_primary[i] * w_primary[j]) + (w_dual[i] * w_dual[j]);
+					int w = std::max(1, static_cast<int>(base_edge_weight * affinity));
+					adjncy.push_back(static_cast<idx_t>(j));
+					adjwgt.push_back(w);
+				}
+			}
+		}
+		xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	}
 
 	idx_t nvtxs = static_cast<idx_t>(num_nodes);
 	idx_t ncon = 1;
@@ -611,6 +618,7 @@ DualPartitionSplit split_triangles_dual_partition_impl(
 	METIS_SetDefaultOptions(options);
 	options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
 	options[METIS_OPTION_NUMBERING] = 0;
+	options[METIS_OPTION_UFACTOR] = 1;
 
 	int ret = METIS_PartGraphKway(
 		&nvtxs, &ncon,
@@ -625,8 +633,37 @@ DualPartitionSplit split_triangles_dual_partition_impl(
 		return result;
 	}
 
-	Index primary_part = part[primary_dummy];
-	Index dual_part = part[dual_dummy];
+	std::size_t count0 = 0;
+	std::size_t count1 = 0;
+	float sum_p0 = 0.0f;
+	float sum_p1 = 0.0f;
+	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+		if (part[i] == 0) { sum_p0 += dist_primary_list[i]; count0++; }
+		else { sum_p1 += dist_primary_list[i]; count1++; }
+	}
+
+	if (count0 == 0 || count1 == 0) {
+		std::vector<std::pair<float, Index>> scored;
+		scored.reserve(triangle_indices.size());
+		for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
+			float delta = dist_primary_list[i] - dist_dual_list[i];
+			scored.emplace_back(delta, triangle_indices[i]);
+		}
+		std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+			return a.first < b.first;
+		});
+		std::size_t half = scored.size() / 2;
+		for (std::size_t i = 0; i < scored.size(); ++i) {
+			if (i < half) result.primary_triangles.push_back(scored[i].second);
+			else result.dual_triangles.push_back(scored[i].second);
+		}
+		return result;
+	}
+
+	float mean_p0 = sum_p0 / static_cast<float>(count0);
+	float mean_p1 = sum_p1 / static_cast<float>(count1);
+	idx_t primary_part = (mean_p0 <= mean_p1) ? 0 : 1;
+	idx_t dual_part = (primary_part == 0) ? 1 : 0;
 
 	for (std::size_t i = 0; i < triangle_indices.size(); ++i) {
 		Index tri_idx = triangle_indices[i];
@@ -789,10 +826,171 @@ void split_mesh(
 
 		parent_node.cluster_ids.push_back(cluster_id);
 		parent_node.triangle_count += triangle_count;
+		std::cout << "Cluster size: " << cluster.triangle_count << std::endl;
 	};
-
 	append_cluster(split.primary_triangles, parent_primary);
 	append_cluster(split.dual_triangles, parent_dual);
+
+}
+
+std::vector<Index> split_simplified_micronode(
+	const MergedMesh& merged,
+	MicroNode& micronode,
+	MeshFiles& next_mesh,
+	std::size_t max_triangles) {
+
+	std::vector<Index> created_clusters;
+
+	if (merged.triangles.empty()) {
+		return created_clusters;
+	}
+
+	// Build merged_pos -> original_pos mapping
+	std::vector<Index> merged_to_original(merged.positions.size(), std::numeric_limits<Index>::max());
+	for (const auto& [original_pos, merged_pos] : merged.position_map) {
+		assert(merged_pos < merged_to_original.size());
+		merged_to_original[merged_pos] = original_pos;
+	}
+
+	std::size_t num_triangles = merged.triangles.size();
+
+	// Determine number of clusters to create
+	std::size_t num_clusters = (num_triangles + max_triangles - 1) / max_triangles;
+	if (num_clusters < 1) num_clusters = 1;
+	if (num_clusters > num_triangles) num_clusters = num_triangles;
+
+	std::vector<idx_t> part(num_triangles, 0);
+
+	if (num_clusters > 1) {
+		// Build adjacency for METIS
+		std::vector<FaceAdjacency> adjacency = build_adjacency_for_merged(merged);
+
+		std::vector<idx_t> xadj;
+		std::vector<idx_t> adjncy;
+		std::vector<idx_t> adjwgt;
+
+		xadj.reserve(num_triangles + 1);
+		xadj.push_back(0);
+
+		for (std::size_t i = 0; i < num_triangles; ++i) {
+			const FaceAdjacency& adj = adjacency[i];
+			for (int corner = 0; corner < 3; ++corner) {
+				Index neighbor = adj.opp[corner];
+				if (neighbor != std::numeric_limits<Index>::max()) {
+					adjncy.push_back(static_cast<idx_t>(neighbor));
+					adjwgt.push_back(1);
+				}
+			}
+			xadj.push_back(static_cast<idx_t>(adjncy.size()));
+		}
+
+		if (!adjncy.empty()) {
+			idx_t nvtxs = static_cast<idx_t>(num_triangles);
+			idx_t ncon = 1;
+			idx_t nparts = static_cast<idx_t>(num_clusters);
+			idx_t objval;
+
+			idx_t options[METIS_NOPTIONS];
+			METIS_SetDefaultOptions(options);
+			options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+			options[METIS_OPTION_NUMBERING] = 0;
+
+			int ret = METIS_PartGraphKway(
+				&nvtxs, &ncon,
+				xadj.data(), adjncy.data(),
+				nullptr, nullptr, adjwgt.data(),
+				&nparts, nullptr, nullptr,
+				options, &objval, part.data());
+
+			if (ret != METIS_OK) {
+				// Fallback: sequential assignment
+				for (std::size_t i = 0; i < num_triangles; ++i) {
+					part[i] = static_cast<idx_t>(i * num_clusters / num_triangles);
+				}
+			}
+		} else {
+			// No adjacency, sequential assignment
+			for (std::size_t i = 0; i < num_triangles; ++i) {
+				part[i] = static_cast<idx_t>(i * num_clusters / num_triangles);
+			}
+		}
+	}
+
+	// Find actual number of partitions used
+	idx_t max_part = 0;
+	for (std::size_t i = 0; i < num_triangles; ++i) {
+		max_part = std::max(max_part, part[i]);
+	}
+	std::size_t actual_clusters = static_cast<std::size_t>(max_part) + 1;
+
+	// Group triangles by partition
+	std::vector<std::vector<Index>> cluster_triangles(actual_clusters);
+	for (std::size_t i = 0; i < num_triangles; ++i) {
+		cluster_triangles[part[i]].push_back(static_cast<Index>(i));
+	}
+
+	// Create clusters in next_mesh
+	for (std::size_t c = 0; c < actual_clusters; ++c) {
+		const std::vector<Index>& tri_indices = cluster_triangles[c];
+		if (tri_indices.empty()) continue;
+
+		Index cluster_id = static_cast<Index>(next_mesh.clusters.size());
+		Index triangle_offset = static_cast<Index>(next_mesh.triangles.size());
+		Index wedge_offset = static_cast<Index>(next_mesh.wedges.size());
+		Index triangle_count = static_cast<Index>(tri_indices.size());
+		Index wedge_count = triangle_count * 3;
+
+		next_mesh.triangles.resize(triangle_offset + triangle_count);
+		next_mesh.wedges.resize(wedge_offset + wedge_count);
+
+		Index tri_local = 0;
+		Index wedge_local = 0;
+		for (Index tri_idx : tri_indices) {
+			const Triangle& tri = merged.triangles[tri_idx];
+			Triangle new_tri{};
+			for (int k = 0; k < 3; ++k) {
+				const Wedge& mw = merged.wedges[tri.w[k]];
+				Index original_pos = ensure_mapped_position(mw.p, merged_to_original);
+				if (original_pos == std::numeric_limits<Index>::max()) {
+					throw std::runtime_error("split_simplified_micronode: missing merged->original position mapping");
+				}
+				Wedge new_wedge = mw;
+				new_wedge.p = original_pos;
+				Index new_wedge_index = wedge_offset + wedge_local;
+				next_mesh.wedges[new_wedge_index] = new_wedge;
+				new_tri.w[k] = new_wedge_index;
+				wedge_local++;
+			}
+			next_mesh.triangles[triangle_offset + tri_local] = new_tri;
+			tri_local++;
+		}
+
+		Cluster cluster{};
+		cluster.triangle_offset = triangle_offset;
+		cluster.triangle_count = triangle_count;
+		compute_cluster_bounds(next_mesh, triangle_offset, triangle_count, cluster.center, cluster.radius);
+
+		next_mesh.clusters.resize(cluster_id + 1);
+		next_mesh.clusters[cluster_id] = cluster;
+
+		if (next_mesh.triangle_to_cluster.size() < next_mesh.triangles.size()) {
+			next_mesh.triangle_to_cluster.resize(next_mesh.triangles.size());
+		}
+		for (Index t = triangle_offset; t < triangle_offset + triangle_count; ++t) {
+			next_mesh.triangle_to_cluster[t] = cluster_id;
+		}
+
+		created_clusters.push_back(cluster_id);
+	}
+
+	// Store created cluster indices in micronode.children_nodes (temporary)
+	// This will be updated later to point to actual micronode IDs
+	micronode.children_nodes.clear();
+	for (Index cluster_id : created_clusters) {
+		micronode.children_nodes.push_back(cluster_id);
+	}
+
+	return created_clusters;
 }
 
 

@@ -46,6 +46,11 @@ Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
 								   const MappedArray<Wedge>& wedges,
 								   const Triangle& tri);
 
+// Split each cluster into 4 smaller clusters and create a micronode for each group.
+// Each original cluster becomes a micronode containing its 4 child clusters.
+// max_triangles: target maximum triangles per resulting cluster
+void split_clusters(MeshFiles& mesh, std::size_t max_triangles);
+
 } // namespace nx
 
 #endif

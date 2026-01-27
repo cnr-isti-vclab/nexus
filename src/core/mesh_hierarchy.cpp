@@ -11,6 +11,7 @@
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
+#include <set>
 
 namespace nx {
 
@@ -130,10 +131,18 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	std::size_t max_triangles = params.faces_per_cluster;
 	MeshFiles &mesh = levels[0];
 
-	nx::build_clusters(mesh, max_triangles,
+	nx::build_clusters(mesh, max_triangles*4,
 					   params.use_metis ? nx::ClusteringMethod::Metis : nx::ClusteringMethod::Greedy);
+	//split each cluster in 4 clusters and create a micronode for the 4.
+	nx::split_clusters(mesh, max_triangles);
+	// Micronodes are now created by split_clusters
 
-	mesh.micronodes = nx::create_micronodes_metis(mesh, params.clusters_per_node);
+	{
+		const std::filesystem::path out_dir = std::filesystem::current_path();
+		const std::string level_tag = "level_0";
+		export_ply(mesh, out_dir / (level_tag + "_clusters.ply"), ColoringMode::ByCluster);
+		export_ply(mesh, out_dir / (level_tag + "_nodes.ply"), ColoringMode::ByMicroNode);
+	}
 
 	std::size_t level_index = 0;
 	
@@ -148,7 +157,7 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 		
 		// Create next level mesh and process
 		MeshFiles next_level;
-		process_level(current, next_level, params.clusters_per_node);
+		process_level(current, next_level, params);
 		
 		// Add the new level
 		levels.push_back(std::move(next_level));
@@ -159,16 +168,18 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	std::cout << "\n=== Hierarchical Simplification Complete ===" << std::endl;
 }
 
-void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::size_t clusters_per_node) {
+void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const BuildParameters& params) {
+	static int current_level = 1;
 	// Copy geometry (positions/wedges/colors/material_ids)
 	copyVertices(mesh, next_mesh);
 
-
+#ifdef MICRONODES_FIRST
 	// This creates micronodes in next_mesh with children references and centroids
 	create_parent_micronodes(mesh, next_mesh, clusters_per_node);
+#endif
 
 	// Now iterate on the current mesh micronodes to merge, simplify, and split
-	for (const MicroNode& micronode : mesh.micronodes) {
+	for (MicroNode& micronode : mesh.micronodes) {
 		// 1) Collect its clusters into a temporary mesh and lock boundaries.
 		MergedMesh merged = merge_micronode_clusters(mesh, micronode);
 
@@ -176,15 +187,16 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::si
 		const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
 		simplify_mesh_clustered(merged, target_triangle_count);
 
-		// TODO: update vertices and wedges in next_mesh according to merged.position_map
+		// 3) Update vertices and wedges in next_mesh according to merged.position_map
 		update_vertices_and_wedges(next_mesh, merged);
+#ifdef MICRONODES_FIRST
 
-		// TODO: split according to primary and secondary partitions.
-		// TODO: create 2 clusters from the simplified mesh
-		// TODO: add the cluster_id to the corresponding micronodes (via children_nodes)
 		split_mesh(merged, micronode, next_mesh);
+#else
+		//tempoarily keep the dependencies in micronode.children_nodes
+		split_simplified_micronode(merged, micronode, next_mesh, params.faces_per_cluster);
+#endif
 	}
-
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
 
@@ -192,14 +204,35 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::si
 	if (next_mesh.triangles.size() > 0) {
 		compute_adjacency(next_mesh);
 	}
+
+
+#ifndef MICRONODES_FIRST
+	std::vector<Index> cluster_to_micronode(next_mesh.clusters.size());
+	for(size_t n = 0; n < next_mesh.micronodes.size(); n++) {
+		MicroNode &node = next_mesh.micronodes[n];
+		for(Index c: node.cluster_ids)
+			cluster_to_micronode[c] = n;
+	}
+// Returns a vector of MicroNode structures representing the partitions.
+	next_mesh.micronodes = create_micronodes_metis(next_mesh, params.clusters_per_node);
+	for (MicroNode& micronode : mesh.micronodes) {
+		for(Index &c: micronode.children_nodes) {
+			c = cluster_to_micronode[c];
+		}
+	}
+#endif
+
+
+
+
 	// export to the ply by cluster and by node
 	{
 		const std::filesystem::path out_dir = std::filesystem::current_path();
-		const std::string level_tag = "level_" + std::to_string(next_mesh.micronodes.size());
+		const std::string level_tag = "level_" + std::to_string(current_level);
 		export_ply(next_mesh, out_dir / (level_tag + "_clusters.ply"), ColoringMode::ByCluster);
 		export_ply(next_mesh, out_dir / (level_tag + "_nodes.ply"), ColoringMode::ByMicroNode);
 	}
-
+	current_level++;
 }
 
 

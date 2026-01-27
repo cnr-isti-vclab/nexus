@@ -9,10 +9,11 @@
 #include <cmath>
 #include <iostream>
 #include <cassert>
+#include <map>
 
 namespace nx {
 
-std::size_t build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
+void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	std::cout << "\n=== Building clusters with METIS ===" << std::endl;
 
 	std::size_t num_triangles = mesh.triangles.size();
@@ -176,5 +177,6 @@ std::size_t build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 
 	return mesh.clusters.size();
 }
+
 
 } // namespace nx

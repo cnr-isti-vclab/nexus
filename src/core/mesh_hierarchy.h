@@ -23,7 +23,7 @@ public:
 	void build_hierarchy(const BuildParameters& params);
 	
 private:
-	void process_level(MeshFiles& mesh, MeshFiles& next_mesh, std::size_t clusters_per_node);
+	void process_level(MeshFiles& mesh, MeshFiles& next_mesh, const BuildParameters &params);
 	
 	std::vector<MeshFiles> levels;
 };

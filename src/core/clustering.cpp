@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <queue>
 #include <set>
+#include <map>
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
@@ -718,4 +719,255 @@ void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod
 }
 
 
+void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
+	std::cout << "\n=== Splitting clusters into 4 and creating micronodes ===" << std::endl;
+
+	std::size_t num_original_clusters = mesh.clusters.size();
+	if (num_original_clusters == 0) {
+		std::cerr << "Error: No clusters to split" << std::endl;
+		return;
+	}
+
+	std::cout << "Original clusters: " << num_original_clusters << std::endl;
+
+	// For each original cluster, we'll split it into 4 sub-clusters
+	// and create a micronode containing those 4 clusters
+
+	std::vector<Cluster> new_clusters;
+	std::vector<MicroNode> micronodes;
+	std::vector<Index> new_triangle_to_cluster(mesh.triangles.size());
+
+	new_clusters.reserve(num_original_clusters * 4);
+	micronodes.reserve(num_original_clusters);
+
+	for (std::size_t c = 0; c < num_original_clusters; ++c) {
+		const Cluster& original = mesh.clusters[c];
+		Index tri_offset = original.triangle_offset;
+		Index tri_count = original.triangle_count;
+
+		if (tri_count == 0) continue;
+
+		// Collect triangle indices for this cluster
+		std::vector<Index> cluster_triangles(tri_count);
+		for (Index i = 0; i < tri_count; ++i) {
+			cluster_triangles[i] = tri_offset + i;
+		}
+
+		// Determine number of sub-partitions (target 4, but may be fewer for small clusters)
+		std::size_t num_sub_parts = 4;
+		if (tri_count < 4) {
+			num_sub_parts = tri_count;  // One cluster per triangle if < 4
+		} else if (tri_count < max_triangles * 2) {
+			num_sub_parts = 2;  // Only split in 2 if not enough triangles
+		}
+
+		std::vector<idx_t> sub_part(tri_count, 0);
+
+		if (num_sub_parts > 1 && tri_count >= num_sub_parts) {
+			// Build local graph for triangles in this cluster
+			// Map global triangle index to local index
+			std::map<Index, idx_t> global_to_local;
+			for (Index i = 0; i < tri_count; ++i) {
+				global_to_local[cluster_triangles[i]] = static_cast<idx_t>(i);
+			}
+
+			// Build CSR adjacency for local triangles
+			std::vector<idx_t> xadj;
+			std::vector<idx_t> adjncy;
+			std::vector<idx_t> adjwgt;
+
+			xadj.reserve(tri_count + 1);
+			xadj.push_back(0);
+
+			// Compute triangle centroids for edge weights
+			std::vector<Vector3f> centroids(tri_count);
+			for (Index i = 0; i < tri_count; ++i) {
+				Index global_tri = cluster_triangles[i];
+				const Triangle& tri = mesh.triangles[global_tri];
+				Vector3f centroid = {0, 0, 0};
+				for (int j = 0; j < 3; ++j) {
+					const Vector3f& p = mesh.positions[mesh.wedges[tri.w[j]].p];
+					centroid.x += p.x;
+					centroid.y += p.y;
+					centroid.z += p.z;
+				}
+				centroid.x /= 3.0f;
+				centroid.y /= 3.0f;
+				centroid.z /= 3.0f;
+				centroids[i] = centroid;
+			}
+
+			for (Index i = 0; i < tri_count; ++i) {
+				Index global_tri = cluster_triangles[i];
+				const FaceAdjacency& adj = mesh.adjacency[global_tri];
+				const Vector3f& centroid_i = centroids[i];
+
+				for (int corner = 0; corner < 3; ++corner) {
+					Index neighbor = adj.opp[corner];
+					if (neighbor != std::numeric_limits<Index>::max()) {
+						auto it = global_to_local.find(neighbor);
+						if (it != global_to_local.end()) {
+							// Neighbor is in the same cluster
+							adjncy.push_back(it->second);
+
+							const Vector3f& centroid_j = centroids[it->second];
+							float dx = centroid_i.x - centroid_j.x;
+							float dy = centroid_i.y - centroid_j.y;
+							float dz = centroid_i.z - centroid_j.z;
+							float distance = std::sqrt(dx*dx + dy*dy + dz*dz);
+							idx_t weight = static_cast<idx_t>(std::max(1.0f, 1000.0f / (1.0f + distance)));
+							adjwgt.push_back(weight);
+						}
+					}
+				}
+				xadj.push_back(static_cast<idx_t>(adjncy.size()));
+			}
+
+			if (!adjncy.empty()) {
+				// Call METIS to partition
+				idx_t nvtxs = static_cast<idx_t>(tri_count);
+				idx_t ncon = 1;
+				idx_t nparts = static_cast<idx_t>(num_sub_parts);
+				idx_t objval;
+
+				idx_t options[METIS_NOPTIONS];
+				METIS_SetDefaultOptions(options);
+				options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+				options[METIS_OPTION_NUMBERING] = 0;
+
+				int ret = METIS_PartGraphKway(
+					&nvtxs, &ncon,
+					xadj.data(), adjncy.data(),
+					nullptr, nullptr, adjwgt.data(),
+					&nparts, nullptr, nullptr,
+					options, &objval, sub_part.data());
+
+				if (ret != METIS_OK) {
+					// Fallback: sequential assignment
+					for (Index i = 0; i < tri_count; ++i) {
+						sub_part[i] = static_cast<idx_t>(i * num_sub_parts / tri_count);
+					}
+				}
+			} else {
+				// No edges - sequential assignment
+				for (Index i = 0; i < tri_count; ++i) {
+					sub_part[i] = static_cast<idx_t>(i * num_sub_parts / tri_count);
+				}
+			}
+		}
+
+		// Count actual partitions used
+		idx_t max_part = 0;
+		for (Index i = 0; i < tri_count; ++i) {
+			max_part = std::max(max_part, sub_part[i]);
+		}
+		std::size_t actual_parts = static_cast<std::size_t>(max_part) + 1;
+
+		// Create sub-clusters and assign triangles
+		Index first_new_cluster = static_cast<Index>(new_clusters.size());
+		std::vector<Index> sub_cluster_counts(actual_parts, 0);
+
+		// Count triangles per sub-partition
+		for (Index i = 0; i < tri_count; ++i) {
+			sub_cluster_counts[sub_part[i]]++;
+		}
+
+		// Create new cluster entries
+		for (std::size_t p = 0; p < actual_parts; ++p) {
+			Cluster new_cluster;
+			new_cluster.triangle_offset = 0;  // Will be set after reordering
+			new_cluster.triangle_count = sub_cluster_counts[p];
+			new_cluster.center = {0, 0, 0};
+			new_cluster.radius = 0;
+			new_clusters.push_back(new_cluster);
+		}
+
+		// Assign triangles to new clusters
+		for (Index i = 0; i < tri_count; ++i) {
+			Index global_tri = cluster_triangles[i];
+			Index new_cluster_id = first_new_cluster + static_cast<Index>(sub_part[i]);
+			new_triangle_to_cluster[global_tri] = new_cluster_id;
+		}
+
+		// Create micronode for this original cluster
+		MicroNode micronode;
+		micronode.id = static_cast<Index>(micronodes.size());
+		micronode.triangle_count = tri_count;
+		micronode.centroid = original.center;  // Use original cluster center as initial centroid
+		micronode.center = original.center;
+		micronode.radius = original.radius;
+
+		for (std::size_t p = 0; p < actual_parts; ++p) {
+			micronode.cluster_ids.push_back(first_new_cluster + static_cast<Index>(p));
+		}
+
+		micronodes.push_back(std::move(micronode));
+	}
+
+	std::cout << "Created " << new_clusters.size() << " sub-clusters from "
+			  << num_original_clusters << " original clusters" << std::endl;
+	std::cout << "Created " << micronodes.size() << " micronodes" << std::endl;
+
+	// Replace clusters and triangle_to_cluster
+	mesh.clusters.resize(new_clusters.size());
+	for (std::size_t i = 0; i < new_clusters.size(); ++i) {
+		mesh.clusters[i] = new_clusters[i];
+	}
+	mesh.triangle_to_cluster = std::move(new_triangle_to_cluster);
+
+	// Store micronodes
+	mesh.micronodes = std::move(micronodes);
+
+	// Reorder triangles by new clusters
+	reorder_triangles_by_cluster(mesh);
+
+	// Compute bounds for new clusters
+	compute_cluster_bounds(mesh);
+
+	// Update micronode centroids and bounds based on their clusters
+	for (MicroNode& mn : mesh.micronodes) {
+		mn.centroid = {0, 0, 0};
+		mn.triangle_count = 0;
+		float total_weight = 0.0f;
+
+		for (Index cluster_id : mn.cluster_ids) {
+			const Cluster& c = mesh.clusters[cluster_id];
+			float weight = static_cast<float>(c.triangle_count);
+			mn.centroid.x += c.center.x * weight;
+			mn.centroid.y += c.center.y * weight;
+			mn.centroid.z += c.center.z * weight;
+			total_weight += weight;
+			mn.triangle_count += c.triangle_count;
+		}
+
+		if (total_weight > 0.0f) {
+			mn.centroid.x /= total_weight;
+			mn.centroid.y /= total_weight;
+			mn.centroid.z /= total_weight;
+		}
+
+		mn.center = mn.centroid;
+		mn.radius = 0.0f;
+		for (Index cluster_id : mn.cluster_ids) {
+			const Cluster& c = mesh.clusters[cluster_id];
+			float dx = c.center.x - mn.center.x;
+			float dy = c.center.y - mn.center.y;
+			float dz = c.center.z - mn.center.z;
+			float dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+			mn.radius = std::max(mn.radius, dist + c.radius);
+		}
+	}
+
+	// Print histogram of clusters per micronode
+	std::map<std::size_t, std::size_t> clusters_per_mn_hist;
+	for (const MicroNode& mn : mesh.micronodes) {
+		clusters_per_mn_hist[mn.cluster_ids.size()]++;
+	}
+	std::cout << "Clusters per micronode histogram:" << std::endl;
+	for (const auto& [n, count] : clusters_per_mn_hist) {
+		std::cout << "  " << n << " clusters: " << count << " micronodes" << std::endl;
+	}
+
+	print_cluster_histogram(mesh.clusters, "(after split)");
+}
 } // namespace nx

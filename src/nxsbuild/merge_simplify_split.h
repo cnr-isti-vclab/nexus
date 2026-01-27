@@ -68,4 +68,14 @@ void split_mesh(
 	const MicroNode& micronode,
 	MeshFiles& next_mesh);
 
+// Split a simplified merged mesh into clusters (without micronode assignment).
+// Records the created cluster indices in micronode.children_nodes (temporary storage).
+// The clusters are split based on max_triangles target.
+// Returns the indices of the newly created clusters.
+std::vector<Index> split_simplified_micronode(
+	const MergedMesh& merged,
+	MicroNode& micronode,
+	MeshFiles& next_mesh,
+	std::size_t max_triangles);
+
 }
