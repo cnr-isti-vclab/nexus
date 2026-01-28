@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <QCoreApplication>
+#include <QLocale>
 
 #include "build_parameters.h"
 #include "../core/mesh.h"
@@ -15,6 +16,8 @@ int main(int argc, char *argv[]) {
 	QCoreApplication app(argc, argv);
 	QCoreApplication::setApplicationName("nxsbuild");
 	QCoreApplication::setApplicationVersion("4.0");
+	setlocale(LC_ALL, "C");
+	QLocale::setDefault(QLocale::C);
 
 	// Parse command line parameters
 	nx::BuildParameters params;

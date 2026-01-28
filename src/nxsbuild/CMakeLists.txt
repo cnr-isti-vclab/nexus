@@ -20,6 +20,7 @@ set(SOURCES
 	../loaders/meshloader.cpp
 	../loaders/objloader.cpp
 	../loaders/objexporter.cpp
+	../loaders/plyloader.cpp
 	../loaders/plyexporter.cpp
 )
 
@@ -35,11 +36,14 @@ set(HEADERS
 	../core/clustering.h
 	../core/micro_clustering.h
 	../loaders/meshloader.h
+	../loaders/objloader.h
 	../loaders/objexporter.h
+	../loaders/plyloader.h
 	../loaders/plyexporter.h
 )
 
-add_executable(nxsbuild ${SOURCES} ${HEADERS})
+add_executable(nxsbuild ${SOURCES} ${HEADERS}
+    ../../vcglib/wrap/ply/plylib.cpp ../../vcglib/wrap/ply/plylib.h)
 
 # Apply the matching algorithm choice
 if(USE_HUNGARIAN)

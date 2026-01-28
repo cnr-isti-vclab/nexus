@@ -1,21 +1,6 @@
-/*
-Nexus
-
-Copyright(C) 2012 - Federico Ponchio
-ISTI - Italian National Research Council - Visual Computing Lab
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
-for more details.
-*/
 #include "objloader.h"
+#include "meshloader.h"
+#include "mesh.h"
 #include <filesystem>
 #include <sstream>
 #include <iostream>
@@ -28,25 +13,6 @@ namespace fs = std::filesystem;
 
 namespace nx {
 
-// Helper to sanitize and resolve texture paths
-static std::string resolve_texture_path(const std::string& model_path, std::string texture_path) {
-	// Remove quotes
-	texture_path.erase(std::remove(texture_path.begin(), texture_path.end(), '\"'), texture_path.end());
-
-	fs::path tex_path(texture_path);
-	if (tex_path.is_absolute()) {
-		return texture_path;
-	}
-
-	fs::path model_dir = fs::path(model_path).parent_path();
-	fs::path resolved = model_dir / tex_path;
-
-	if (fs::exists(resolved)) {
-		return resolved.string();
-	}
-
-	return texture_path;
-}
 
 ObjLoader::ObjLoader(const std::string& filename, const std::string& mtl_path)
 	: obj_path(filename) {
@@ -79,7 +45,7 @@ void ObjLoader::read_mtls() {
 				std::getline(iss >> std::ws, mtl_file);
 				// Strip trailing whitespace (including \r from Windows line endings)
 				mtl_file.erase(mtl_file.find_last_not_of(" \t\r\n") + 1);
-				mtl_file = resolve_texture_path(obj_path, mtl_file);
+				mtl_file = resolveTexturePath(obj_path, mtl_file);
 				mtl_files.push_back(mtl_file);
 			}
 		}
@@ -151,17 +117,17 @@ void ObjLoader::read_mtl(const std::string& mtl_path) {
 		else if (cmd == "map_Kd" || cmd == "map_Ka") {
 			std::string tex_path;
 			std::getline(iss >> std::ws, tex_path);
-			current_material.base_color_texture = resolve_texture_path(mtl_path, tex_path);
+			current_material.base_color_texture = resolveTexturePath(mtl_path, tex_path);
 		}
 		else if (cmd == "map_Ks") {
 			std::string tex_path;
 			std::getline(iss >> std::ws, tex_path);
-			current_material.specular_texture = resolve_texture_path(mtl_path, tex_path);
+			current_material.specular_texture = resolveTexturePath(mtl_path, tex_path);
 		}
 		else if (cmd == "map_Bump" || cmd == "bump") {
 			std::string tex_path;
 			std::getline(iss >> std::ws, tex_path);
-			current_material.normal_texture = resolve_texture_path(mtl_path, tex_path);
+			current_material.normal_texture = resolveTexturePath(mtl_path, tex_path);
 		}
 		else if (cmd == "Ks") {
 			float r, g, b;
@@ -195,11 +161,11 @@ void ObjLoader::read_mtl(const std::string& mtl_path) {
 	}
 }
 
-void ObjLoader::load(const std::filesystem::path& input_path, MeshFiles& mesh) {
-	std::ifstream file(input_path);
+void ObjLoader::load(MeshFiles& mesh) {
+	std::ifstream file(obj_path);
 	if (!file.is_open()) {
 		std::string reason = (errno ? std::strerror(errno) : "unknown");
-		throw std::runtime_error("Could not open OBJ file: " + input_path.string() + " (" + reason + ")");
+		throw std::runtime_error("Could not open OBJ file: " + obj_path + " (" + reason + ")");
 	}
 
 	// First pass: count and collect all vertex data
