@@ -29,6 +29,7 @@ using namespace std;
 //using namespace vcg;
 
 void VcgMesh::lockVertices() {
+	exit(0);
 	//lock border triangles
 	for(uint i = 0; i < face.size(); i++)
 		if(!face[i].IsW())

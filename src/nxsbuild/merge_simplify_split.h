@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "../core/mesh_types.h"
-#include "micro_clustering_metis.h"
 namespace nx {
 
 class MeshFiles;
@@ -15,8 +14,9 @@ struct MergedMesh {
 	std::vector<Vector3f> positions;
 	std::vector<Wedge> wedges;
 	std::vector<Triangle> triangles;
-	std::set<Index> boundary_vertices;  // Vertices on micronode boundary
+	std::vector<Index> boundary_vertices;  // Vertices on micronode boundary
 	std::unordered_map<Index, Index> position_map; // original position -> merged position
+	std::vector<Index> position_remap;//merged_position -
 	Index parent_micronode_id;
 };
 
@@ -32,10 +32,6 @@ MergedMesh merge_micronode_clusters(
 	const MeshFiles& mesh,
 	const MicroNode& micronode);
 
-// Identify and lock boundary edges (edges connecting to external clusters)
-void identify_boundary_vertices(MergedMesh& merged,
-	const MeshFiles& mesh,
-	const MicroNode& micronode);
 
 // Simplify mesh to target triangle count (respecting locked boundaries)
 void simplify_mesh(
@@ -48,31 +44,17 @@ void simplify_mesh_clustered(
 	MergedMesh& mesh,
 	Index target_triangle_count);
 
-// Split triangles in a merged mesh using parent centroids (METIS-based, dual partition).
-DualPartitionSplit split_triangles_dual_partition(
-	const MergedMesh& mesh,
-	const std::vector<Index>& triangle_indices,
-	const Vector3f& primary_centroid,
-	const Vector3f& dual_centroid);
-
 // Update the positions (and potentially wedges) in next_mesh using the simplified merged mesh.
 // The mapping is from original position index -> merged position index.
 void update_vertices_and_wedges(
 	MeshFiles& next_mesh,
 	const MergedMesh& merged);
 
-// Split a simplified merged mesh into two clusters using parent micronode centroids,
-// and attach the new clusters to the corresponding parent micronodes in next_mesh.
-void split_mesh(
-	const MergedMesh& merged,
-	const MicroNode& micronode,
-	MeshFiles& next_mesh);
-
 // Split a simplified merged mesh into clusters (without micronode assignment).
 // Records the created cluster indices in micronode.children_nodes (temporary storage).
 // The clusters are split based on max_triangles target.
 // Returns the indices of the newly created clusters.
-std::vector<Index> split_simplified_micronode(
+std::vector<Index> split_mesh(
 	const MergedMesh& merged,
 	MicroNode& micronode,
 	MeshFiles& next_mesh,

@@ -9,7 +9,6 @@ static constexpr Index BORDER = UINT32_MAX;
 
 void compute_adjacency(MeshFiles& mesh) {
 	Index num_triangles = mesh.triangles.size();
-	std::cout << "Computing adjacency for " << num_triangles << " triangles..." << std::endl;
 
 	if (num_triangles == 0) {
 		return;
@@ -39,8 +38,6 @@ void compute_adjacency(MeshFiles& mesh) {
 		}
 	}
 
-	std::cout << "Created " << halfedges.size() << " halfedges, sorting..." << std::endl;
-
 	// Sort halfedges by (min(v0,v1), max(v0,v1)) to group edge pairs together
 	std::sort(halfedges.begin(), halfedges.end(), [](const HalfedgeRecord& a, const HalfedgeRecord& b) {
 		Index a_min = std::min(a.v0, a.v1);
@@ -54,8 +51,6 @@ void compute_adjacency(MeshFiles& mesh) {
 		// Secondary sort by v0 to separate (v0,v1) from (v1,v0)
 		return a.v0 < b.v0;
 	});
-
-	std::cout << "Building adjacency array..." << std::endl;
 
 	// Resize and initialize adjacency array
 	mesh.adjacency.resize(num_triangles);
@@ -106,18 +101,6 @@ void compute_adjacency(MeshFiles& mesh) {
 
 		i = j;
 	}
-
-	// Count border edges
-	Index border_count = 0;
-	for (Index i = 0; i < num_triangles; ++i) {
-		for (int j = 0; j < 3; ++j) {
-			if (mesh.adjacency[i].opp[j] == BORDER) {
-				border_count++;
-			}
-		}
-	}
-
-	std::cout << "Adjacency complete: " << border_count << " border halfedges" << std::endl;
 }
 
 } // namespace nx

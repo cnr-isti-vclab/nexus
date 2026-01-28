@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(nxsbuild)
 
+# Option to choose matching algorithm
+option(USE_HUNGARIAN "Use Hungarian algorithm instead of LEMON for matching" OFF)
+
 set(SOURCES
 	main.cpp
 	build_parameters.cpp
@@ -13,7 +16,7 @@ set(SOURCES
 	../core/adjacency.cpp
 	../core/clustering.cpp
 	../core/micro_clustering.cpp
-	../core/micro_clustering_metis.cpp
+	../core/hungarian.cpp
 	../loaders/meshloader.cpp
 	../loaders/objloader.cpp
 	../loaders/objexporter.cpp
@@ -30,15 +33,21 @@ set(HEADERS
 	../core/spatial_sort.h
 	../core/adjacency.h
 	../core/clustering.h
-	../core/clustering_metis.h
 	../core/micro_clustering.h
-	../core/micro_clustering_metis.h
 	../loaders/meshloader.h
 	../loaders/objexporter.h
 	../loaders/plyexporter.h
 )
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS})
+
+# Apply the matching algorithm choice
+if(USE_HUNGARIAN)
+    target_compile_definitions(nxsbuild PRIVATE USE_HUNGARIAN)
+    message(STATUS "Using Hungarian algorithm for matching")
+else()
+    message(STATUS "Using LEMON library for matching")
+endif()
 
 # Find Qt5
 find_package(Qt5 COMPONENTS Core REQUIRED)

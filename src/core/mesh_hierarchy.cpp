@@ -1,11 +1,11 @@
 #include "mesh_hierarchy.h"
 #include "../nxsbuild/build_parameters.h"
-#include "../nxsbuild/merge_simplify_split.h"
-#include "clustering.h"
-#include "clustering_metis.h"
-#include "micro_clustering_metis.h"
-#include "adjacency.h"
 #include "spatial_sort.h"
+#include "adjacency.h"
+#include "clustering.h"
+#include "micro_clustering.h"
+#include "../nxsbuild/merge_simplify_split.h"
+
 #include "../loaders/plyexporter.h"
 
 #include <iostream>
@@ -21,10 +21,6 @@ void copyVertices(MeshFiles &source, MeshFiles &target) {
 	target.positions.resize(source.positions.size());
 	std::copy(source.positions.data(), source.positions.data() + source.positions.size(),
 			  target.positions.data());
-
-	target.wedges.resize(source.wedges.size());
-	std::copy(source.wedges.data(), source.wedges.data() + source.wedges.size(),
-			  target.wedges.data());
 
 	if (source.colors.size() > 0) {
 		target.colors.resize(source.colors.size());
@@ -164,19 +160,12 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 
 		level_index++;
 	}
-	
-	std::cout << "\n=== Hierarchical Simplification Complete ===" << std::endl;
 }
 
 void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const BuildParameters& params) {
 	static int current_level = 1;
 	// Copy geometry (positions/wedges/colors/material_ids)
 	copyVertices(mesh, next_mesh);
-
-#ifdef MICRONODES_FIRST
-	// This creates micronodes in next_mesh with children references and centroids
-	create_parent_micronodes(mesh, next_mesh, clusters_per_node);
-#endif
 
 	// Now iterate on the current mesh micronodes to merge, simplify, and split
 	for (MicroNode& micronode : mesh.micronodes) {
@@ -185,17 +174,14 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 
 		// 2) Simplify node triangles (vertex collapse moves positions in new mesh)
 		const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
-		simplify_mesh_clustered(merged, target_triangle_count);
+		//simplify_mesh_clustered(merged, target_triangle_count);
+		simplify_mesh(merged, target_triangle_count);
 
 		// 3) Update vertices and wedges in next_mesh according to merged.position_map
 		update_vertices_and_wedges(next_mesh, merged);
-#ifdef MICRONODES_FIRST
 
-		split_mesh(merged, micronode, next_mesh);
-#else
 		//tempoarily keep the dependencies in micronode.children_nodes
-		split_simplified_micronode(merged, micronode, next_mesh, params.faces_per_cluster);
-#endif
+		split_mesh(merged, micronode, next_mesh, params.faces_per_cluster);
 	}
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
@@ -206,7 +192,6 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 	}
 
 
-#ifndef MICRONODES_FIRST
 	std::vector<Index> cluster_to_micronode(next_mesh.clusters.size());
 	for(size_t n = 0; n < next_mesh.micronodes.size(); n++) {
 		MicroNode &node = next_mesh.micronodes[n];
@@ -220,10 +205,6 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 			c = cluster_to_micronode[c];
 		}
 	}
-#endif
-
-
-
 
 	// export to the ply by cluster and by node
 	{

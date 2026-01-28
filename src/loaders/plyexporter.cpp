@@ -106,6 +106,9 @@ void export_ply(const MeshFiles& mesh,
 			uint8_t r = static_cast<uint8_t>((seed >> 0) & 0xFF);
 			uint8_t g = static_cast<uint8_t>((seed >> 8) & 0xFF);
 			uint8_t b = static_cast<uint8_t>((seed >> 16) & 0xFF);
+			r = r/2 + 128;
+			g = g/2 + 128;
+			b = b/2 + 128;
 
 			// Output all triangles in this cluster with this color
 			for (Index tri_idx = cluster.triangle_offset;
@@ -134,21 +137,17 @@ void export_ply(const MeshFiles& mesh,
 			seed ^= seed >> 16;
 			seed *= 0x85ebca6b;
 			seed ^= seed >> 13;
-			uint8_t R = static_cast<uint8_t>((seed >> 0) & 0xFF);
-			uint8_t G = static_cast<uint8_t>((seed >> 8) & 0xFF);
-			uint8_t B = static_cast<uint8_t>((seed >> 16) & 0xFF);
-
+			uint8_t r = static_cast<uint8_t>((seed >> 0) & 0xFF);
+			uint8_t g = static_cast<uint8_t>((seed >> 8) & 0xFF);
+			uint8_t b = static_cast<uint8_t>((seed >> 16) & 0xFF);
+			r = r/2 + 128;
+			g = g/2 + 128;
+			b = b/2 + 128;
 
 			// Iterate over clusters in this micronode
 			for (std::size_t local_c = 0; local_c < micronode.cluster_ids.size(); ++local_c) {
 				Index cluster_id = micronode.cluster_ids[local_c];
 				const Cluster& cluster = mesh.clusters[cluster_id];
-				float m = local_c / static_cast<float>(micronode.cluster_ids.size() - 1);
-				m = 0.5 + m*0.5;
-				m = 1.0;
-				uint8_t r = static_cast<uint8_t>((R*m) );
-				uint8_t g = static_cast<uint8_t>((G*m));
-				uint8_t b = static_cast<uint8_t>((B*m) );
 
 				// Output all triangles in this cluster
 				for (Index tri_idx = cluster.triangle_offset;

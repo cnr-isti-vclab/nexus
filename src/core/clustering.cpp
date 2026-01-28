@@ -481,7 +481,6 @@ void compute_cluster_bounds(MeshFiles& mesh) {
 	}
 }
 
-
 void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles) {
 	if (max_triangles < 1 || max_triangles > 512) {
 		throw std::runtime_error("max_triangles must be between 1 and 512");
@@ -638,8 +637,6 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	std::size_t num_partitions = (num_triangles + max_triangles - 1) / max_triangles;
 	if (num_partitions < 2) num_partitions = 2;
 
-	std::cout << "Triangles: " << num_triangles << ", Max per cluster: " << max_triangles
-			  << ", Target partitions: " << num_partitions << std::endl;
 
 	std::vector<Vector3f> triangle_centroids = compute_triangle_centroids(mesh);
 
@@ -649,8 +646,6 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	std::vector<idx_t> adjwgt;
 
 	build_triangle_adjacency_graph(mesh, triangle_centroids, xadj, adjncy, adjwgt);
-
-	std::cout << "Graph edges: " << adjncy.size() << " (undirected, with spatial distance weights)" << std::endl;
 
 	if (adjncy.empty()) {
 		throw std::runtime_error("Error: Graph has no edges - mesh has no adjacency (pathological mesh)");
@@ -688,19 +683,12 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 		throw std::runtime_error("METIS_PartGraphKway failed with code " + std::to_string(ret));
 	}
 
-	std::cout << "METIS partitioning complete. Edge-cut: " << objval << std::endl;
-
 	mesh.triangle_to_cluster.resize(num_triangles);
 	for (std::size_t i = 0; i < num_triangles; ++i) {
 		mesh.triangle_to_cluster[i] = static_cast<Index>(part[i]);
 	}
 
 	build_clusters_from_partition(mesh, num_partitions);
-
-
-	std::cout << "\nMETIS clustering complete: " << mesh.clusters.size() << " clusters created" << std::endl;
-
-
 }
 
 void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod method) {
@@ -727,8 +715,6 @@ void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
 		std::cerr << "Error: No clusters to split" << std::endl;
 		return;
 	}
-
-	std::cout << "Original clusters: " << num_original_clusters << std::endl;
 
 	// For each original cluster, we'll split it into 4 sub-clusters
 	// and create a micronode containing those 4 clusters
@@ -843,10 +829,7 @@ void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
 					options, &objval, sub_part.data());
 
 				if (ret != METIS_OK) {
-					// Fallback: sequential assignment
-					for (Index i = 0; i < tri_count; ++i) {
-						sub_part[i] = static_cast<idx_t>(i * num_sub_parts / tri_count);
-					}
+					throw std::runtime_error("Failed splitting a cluster");
 				}
 			} else {
 				// No edges - sequential assignment
@@ -904,10 +887,6 @@ void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
 		micronodes.push_back(std::move(micronode));
 	}
 
-	std::cout << "Created " << new_clusters.size() << " sub-clusters from "
-			  << num_original_clusters << " original clusters" << std::endl;
-	std::cout << "Created " << micronodes.size() << " micronodes" << std::endl;
-
 	// Replace clusters and triangle_to_cluster
 	mesh.clusters.resize(new_clusters.size());
 	for (std::size_t i = 0; i < new_clusters.size(); ++i) {
@@ -918,10 +897,13 @@ void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
 	// Store micronodes
 	mesh.micronodes = std::move(micronodes);
 
-	// Reorder triangles by new clusters
+	//TODO we know the triangles in each micronode are consecutive we could reorder the triangles
+	//just after the split and save a second pass in memory
+	//Reorder triangles by new clusters
 	reorder_triangles_by_cluster(mesh);
 
 	// Compute bounds for new clusters
+	//TODO: same as before: do it after split and local reorder
 	compute_cluster_bounds(mesh);
 
 	// Update micronode centroids and bounds based on their clusters
@@ -957,17 +939,6 @@ void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
 			mn.radius = std::max(mn.radius, dist + c.radius);
 		}
 	}
-
-	// Print histogram of clusters per micronode
-	std::map<std::size_t, std::size_t> clusters_per_mn_hist;
-	for (const MicroNode& mn : mesh.micronodes) {
-		clusters_per_mn_hist[mn.cluster_ids.size()]++;
-	}
-	std::cout << "Clusters per micronode histogram:" << std::endl;
-	for (const auto& [n, count] : clusters_per_mn_hist) {
-		std::cout << "  " << n << " clusters: " << count << " micronodes" << std::endl;
-	}
-
-	print_cluster_histogram(mesh.clusters, "(after split)");
 }
+
 } // namespace nx

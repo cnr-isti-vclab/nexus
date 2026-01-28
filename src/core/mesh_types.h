@@ -10,7 +10,9 @@
 
 namespace nx {
 
-struct Vector3f { float x, y, z; };
+struct Vector3f { float x, y, z;
+	bool operator==(const Vector3f &v) const { return x == v.x && y == v.y && z == v.z; }
+};
 struct Vector3d { double x, y, z; };
 struct Vector2f { float u, v; };
 struct Rgba8 { std::uint8_t r, g, b, a; };

@@ -74,11 +74,6 @@ class AFace: public vcg::Face<
 		vcg::face::WedgeRealNormal3f,
 		vcg::face::WedgeTexCoord2f,
 		vcg::face::BitFlags> {
-public:
-	quint32 node;
-	bool operator<(const AFace &t) const {
-		return node < t.node;
-	}
 };
 
 class VcgMesh: public vcg::tri::TriMesh<std::vector<AVertex>, std::vector<AFace> > {

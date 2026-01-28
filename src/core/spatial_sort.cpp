@@ -132,18 +132,55 @@ std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
 
 	// Build remapping array: remap[old_index] = new_index
 	std::vector<Index> remap(num_positions);
-	std::vector<Vector3f> sorted_positions(num_positions);
 
-	for (Index new_idx = 0; new_idx < num_positions; ++new_idx) {
-		Index old_idx = pairs[new_idx].index;
-		remap[old_idx] = new_idx;
-		sorted_positions[new_idx] = mesh.positions[old_idx];
+	// Deduplicate vertices that map to the same Morton code.
+	// If two vertices have the same code, consider them identical only
+	// if their Euclidean distance is within `eps`.
+	std::vector<Vector3f> unique_positions;
+	unique_positions.reserve(num_positions);
+
+	// eps relative to spatial extent
+	float eps = std::max(1e-9f, max_dim * 1e-6f);
+	float eps2 = eps * eps;
+
+	Index unique_count = 0;
+	for (Index sorted_idx = 0; sorted_idx < num_positions; ++sorted_idx) {
+		Index old_idx = pairs[sorted_idx].index;
+		const Vector3f& p = mesh.positions[old_idx];
+
+		bool merged = false;
+		// If the Morton code is equal to previous entries, search backwards
+		// through the sorted list while the code remains equal and try to
+		// match against any previously created unique position.
+		if (sorted_idx > 0 && pairs[sorted_idx].code == pairs[sorted_idx - 1].code) {
+			uint64_t code = pairs[sorted_idx].code;
+			int64_t k = static_cast<int64_t>(sorted_idx) - 1;
+			while (k >= 0 && pairs[k].code == code) {
+				Index earlier_old = pairs[static_cast<size_t>(k)].index;
+				Index mapped = remap[earlier_old];
+				
+				const Vector3f& cand = unique_positions[mapped];
+				if(cand == p) {
+					remap[old_idx] = mapped;
+					merged = true;
+					break;
+				}
+				--k;
+			}
+		}
+
+		if (!merged) {
+			unique_positions.push_back(p);
+			remap[old_idx] = unique_count;
+			++unique_count;
+		}
 	}
 
-	// Write sorted positions back
-	std::cout << "Writing sorted positions..." << std::endl;
-	for (Index i = 0; i < num_positions; ++i) {
-		mesh.positions[i] = sorted_positions[i];
+	// Write unique positions back (shrink to unique_count)
+	std::cout << "Writing sorted (deduplicated) positions... (" << unique_count << " -> " << num_positions << ")" << std::endl;
+	mesh.positions.resize(unique_count);
+	for (Index i = 0; i < unique_count; ++i) {
+		mesh.positions[i] = unique_positions[i];
 	}
 
 	std::cout << "Spatial sort complete." << std::endl;

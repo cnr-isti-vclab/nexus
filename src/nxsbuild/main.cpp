@@ -6,10 +6,8 @@
 
 #include "build_parameters.h"
 #include "../core/mesh.h"
-#include "../core/mesh_hierarchy.h"
-#include "../core/clustering.h"
-#include "../core/micro_clustering_metis.h"
 #include "../loaders/meshloader.h"
+#include "../core/mesh_hierarchy.h"
 
 namespace fs = std::filesystem;
 

@@ -1,204 +1,456 @@
 #include "micro_clustering.h"
 #include "mesh.h"
 #include "mesh_types.h"
+#include <metis.h>
 #include <vector>
+#include <map>
+#include <set>
+#include <unordered_map>
 #include <algorithm>
 #include <limits>
 #include <cmath>
-#include <set>
-#include <numeric>
 #include <iostream>
 #include <cassert>
+#include <queue>
+#include <fstream>
+#include <filesystem>
 
+//#define USE_HUNGARIAN 1
+#ifdef USE_HUNGARIAN
+#include "hungarian.h"
+#else
+#include <lemon/list_graph.h>
+#include <lemon/matching.h>
+#endif
+
+
+using namespace std;
 namespace nx {
 
 namespace {
 
-// Helper: Count shared edges between cluster and a micronode
-int count_shared_edges_with_micronode(Index cluster_id,
-									  const std::vector<Index>& micronode_clusters,
-									  const std::vector<std::vector<Index>>& cluster_graph) {
-	int shared = 0;
+// Maximum weight matching using LEMON library or Hungarian algorithm
+// Returns pairs of matched node indices
+std::vector<std::pair<std::size_t, std::size_t>> max_weight_matching(
+	std::size_t num_nodes,
+	const std::vector<idx_t>& xadj,
+	const std::vector<idx_t>& adjncy,
+	const std::vector<idx_t>& adjwgt) {
 
-	// Count how many of this cluster's neighbors belong to the micronode
-	for (Index neighbor_cluster : cluster_graph[cluster_id]) {
-		if (std::find(micronode_clusters.begin(), micronode_clusters.end(), neighbor_cluster)
-			!= micronode_clusters.end()) {
-			shared++;
+#ifdef USE_HUNGARIAN
+	// Hungarian algorithm implementation (bipartite matching)
+	// For general graphs, we create a bipartite graph by duplicating nodes
+	// Left side: nodes 0..num_nodes-1, Right side: nodes 0..num_nodes-1
+
+	std::cout << "Using Hungarian algorithm for matching..." << std::endl;
+
+	// Find maximum edge weight for negation (to convert max-weight to min-weight)
+	idx_t max_weight = *std::max_element(adjwgt.begin(), adjwgt.end());
+
+	// Build edge list for Hungarian algorithm
+	// Convert to minimum weight problem by negating weights
+	std::vector<WeightedBipartiteEdge> edges;
+	edges.reserve(adjwgt.size());
+
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		idx_t start = xadj[i];
+		idx_t end = xadj[i + 1];
+		for (idx_t e = start; e < end; ++e) {
+			std::size_t j = static_cast<std::size_t>(adjncy[e]);
+			if (i < j) { // Add each edge once
+				// Convert max-weight to min-weight by negating (or subtracting from max)
+				int cost = static_cast<int>(max_weight - adjwgt[e]);
+				edges.emplace_back(static_cast<int>(i), static_cast<int>(j), cost);
+			}
 		}
 	}
 
-	return shared;
-}
+	// Run Hungarian algorithm
+	std::vector<int> matching = hungarianMinimumWeightPerfectMatching(static_cast<int>(num_nodes), edges);
 
-// Helper: Compute distance between cluster centers
-float compute_cluster_distance(const Cluster& c1, const Cluster& c2) {
-	float dx = c1.center.x - c2.center.x;
-	float dy = c1.center.y - c2.center.y;
-	float dz = c1.center.z - c2.center.z;
-	return std::sqrt(dx*dx + dy*dy + dz*dz);
-}
-
-// Build cluster adjacency graph: clusters connected if they share triangle edges
-std::vector<std::vector<Index>> build_cluster_graph(const MeshFiles& mesh) {
-	std::size_t num_clusters = mesh.clusters.size();
-	std::vector<std::set<Index>> neighbors(num_clusters);
-
-	// Find adjacent clusters via triangle adjacency
-	for (std::size_t tri_idx = 0; tri_idx < mesh.triangle_to_cluster.size(); ++tri_idx) {
-		Index cluster_id = mesh.triangle_to_cluster[tri_idx];
-		const FaceAdjacency& adj = mesh.adjacency[tri_idx];
-
-		for (int corner = 0; corner < 3; ++corner) {
-			Index neighbor_tri = adj.opp[corner];
-			if (neighbor_tri != std::numeric_limits<Index>::max()) {
-				Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
-				if (neighbor_cluster != cluster_id) {
-					neighbors[cluster_id].insert(neighbor_cluster);
+	// Extract matched pairs
+	std::vector<std::pair<std::size_t, std::size_t>> matched_pairs;
+	if (!matching.empty()) {
+		std::vector<bool> processed(num_nodes, false);
+		for (std::size_t i = 0; i < num_nodes; ++i) {
+			if (!processed[i] && matching[i] >= 0) {
+				std::size_t j = static_cast<std::size_t>(matching[i]);
+				if (i < j) {
+					matched_pairs.emplace_back(i, j);
+					processed[i] = true;
+					processed[j] = true;
 				}
 			}
 		}
 	}
 
-	// Convert sets to vectors
-	std::vector<std::vector<Index>> graph(num_clusters);
-	for (std::size_t c = 0; c < num_clusters; ++c) {
-		graph[c].assign(neighbors[c].begin(), neighbors[c].end());
+	return matched_pairs;
+
+#else
+	// LEMON library implementation (general graph matching)
+	using namespace lemon;
+
+	std::cout << "Using LEMON library for matching..." << std::endl;
+
+	// Create LEMON graph
+	ListGraph graph;
+	ListGraph::EdgeMap<idx_t> weight(graph);
+
+	// Add nodes
+	std::vector<ListGraph::Node> nodes(num_nodes);
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		nodes[i] = graph.addNode();
 	}
 
-	return graph;
-}
+	// Add edges with weights
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		idx_t start = xadj[i];
+		idx_t end = xadj[i + 1];
+		for (idx_t e = start; e < end; ++e) {
+			std::size_t j = static_cast<std::size_t>(adjncy[e]);
+			if (i < j) { // Add each edge once
+				ListGraph::Edge edge = graph.addEdge(nodes[i], nodes[j]);
+				weight[edge] = adjwgt[e];
+			}
+		}
+	}
 
-// Greedy micronode building with boundary minimization
-std::vector<MicroNode> build_micronodes_greedy(const MeshFiles& mesh,
-											   const std::vector<std::vector<Index>>& cluster_graph,
-											   std::size_t max_clusters) {
-	std::size_t num_clusters = mesh.clusters.size();
-	if (num_clusters == 0) return {};
+	// Run maximum weight matching
+	MaxWeightedMatching<ListGraph, ListGraph::EdgeMap<idx_t>> matching(graph, weight);
+	matching.run();
 
-	// Cluster to micronode mapping
-	std::vector<Index> cluster_to_micronode(num_clusters, std::numeric_limits<Index>::max());
-	std::vector<MicroNode> micronodes;
-
-	// Front of boundary clusters for next micronode seed selection
-	std::set<Index> front;
-
-	// Build micronodes greedily with spatial coherence
-	std::size_t clusters_processed = 0;
-
-	while (clusters_processed < num_clusters) {
-		// Pick seed: preferentially from front (spatial coherence), otherwise first unprocessed
-		Index seed = std::numeric_limits<Index>::max();
-		if (!front.empty()) {
-			seed = *front.begin();
-			assert(cluster_to_micronode[seed] == std::numeric_limits<Index>::max());
-		} else {
-			for (std::size_t i = 0; i < num_clusters; ++i) {
-				if (cluster_to_micronode[i] == std::numeric_limits<Index>::max()) {
-					seed = static_cast<Index>(i);
+	// Extract matched pairs
+	std::vector<std::pair<std::size_t, std::size_t>> matched_pairs;
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		ListGraph::Node mate_node = matching.mate(nodes[i]);
+		if (mate_node != INVALID) {
+			// Find the index of the mate node
+			for (std::size_t j = i + 1; j < num_nodes; ++j) {
+				if (nodes[j] == mate_node) {
+					matched_pairs.emplace_back(i, j);
 					break;
 				}
 			}
 		}
+	}
 
-		assert(seed != std::numeric_limits<Index>::max());
+	return matched_pairs;
+#endif
+}
 
-		// Build a new micronode starting from seed
+// Partition graph into groups of exactly target_size using two rounds of matching
+// For 4-way partition: first round pairs nodes into groups of 2, second round pairs groups into groups of 4
+std::vector<idx_t> partition_graph_exact_size(
+	std::size_t num_nodes,
+	const std::vector<idx_t>& xadj,
+	const std::vector<idx_t>& adjncy,
+	const std::vector<idx_t>& adjwgt,
+	std::size_t target_size,
+	std::size_t num_parts) {
+
+	std::vector<idx_t> part(num_nodes, idx_t(-1));
+	if (num_nodes == 0 || num_parts == 0) return part;
+
+	// For target_size == 4, we do two rounds of matching
+	// Round 1: pair nodes into groups of 2
+	// Round 2: pair groups into groups of 4
+
+	if (target_size == 4 && num_nodes >= 4) {
+		std::cout << "Using two-round matching for exact 4-way partition..." << std::endl;
+
+		// Round 1: Maximum weight matching to pair nodes (using Hungarian algorithm)
+		auto pairs_round1 = max_weight_matching(num_nodes, xadj, adjncy, adjwgt);
+
+		// Handle unmatched nodes (odd count or disconnected)
+		std::vector<char> matched_r1(num_nodes, 0);
+		for (const auto& [u, v] : pairs_round1) {
+			matched_r1[u] = 1;
+			matched_r1[v] = 1;
+		}
+
+		// Collect unmatched nodes
+		std::vector<std::size_t> unmatched;
+		for (std::size_t i = 0; i < num_nodes; ++i) {
+			if (!matched_r1[i]) {
+				unmatched.push_back(i);
+			}
+		}
+
+		// Pair unmatched nodes arbitrarily
+		for (std::size_t i = 0; i + 1 < unmatched.size(); i += 2) {
+			pairs_round1.emplace_back(unmatched[i], unmatched[i + 1]);
+		}
+
+		// If odd number of nodes, last one forms a singleton "pair"
+		std::vector<std::vector<std::size_t>> groups_r1;
+		groups_r1.reserve(pairs_round1.size() + 1);
+		for (const auto& [u, v] : pairs_round1) {
+			groups_r1.push_back({u, v});
+		}
+		if (unmatched.size() % 2 == 1) {
+			groups_r1.push_back({unmatched.back()});
+		}
+
+		// Build super-graph where each node is a group from round 1
+		// Edge weight between super-nodes = sum of edge weights between their constituent nodes
+		std::size_t num_super_nodes = groups_r1.size();
+
+		// Map original node -> super-node
+		std::vector<std::size_t> node_to_super(num_nodes);
+		for (std::size_t g = 0; g < groups_r1.size(); ++g) {
+			for (std::size_t v : groups_r1[g]) {
+				node_to_super[v] = g;
+			}
+		}
+
+		// Build super-graph adjacency
+		std::vector<std::map<std::size_t, idx_t>> super_adj(num_super_nodes);
+		for (std::size_t i = 0; i < num_nodes; ++i) {
+			std::size_t si = node_to_super[i];
+			idx_t start = xadj[i];
+			idx_t end = xadj[i + 1];
+			for (idx_t e = start; e < end; ++e) {
+				std::size_t j = static_cast<std::size_t>(adjncy[e]);
+				std::size_t sj = node_to_super[j];
+				if (si != sj) {
+					super_adj[si][sj] += adjwgt[e];
+				}
+			}
+		}
+
+		// Convert super-graph to CSR
+		std::vector<idx_t> super_xadj, super_adjncy, super_adjwgt;
+		super_xadj.reserve(num_super_nodes + 1);
+		super_xadj.push_back(0);
+		for (std::size_t i = 0; i < num_super_nodes; ++i) {
+			for (const auto& [neighbor, weight] : super_adj[i]) {
+				super_adjncy.push_back(static_cast<idx_t>(neighbor));
+				super_adjwgt.push_back(weight);
+			}
+			super_xadj.push_back(static_cast<idx_t>(super_adjncy.size()));
+		}
+
+		// Round 2: Maximum weight matching on super-graph (using Hungarian algorithm)
+		auto pairs_round2 = max_weight_matching(num_super_nodes, super_xadj, super_adjncy, super_adjwgt);
+
+		// Handle unmatched super-nodes
+		std::vector<char> matched_r2(num_super_nodes, 0);
+		for (const auto& [u, v] : pairs_round2) {
+			matched_r2[u] = 1;
+			matched_r2[v] = 1;
+		}
+
+		std::vector<std::size_t> unmatched_super;
+		for (std::size_t i = 0; i < num_super_nodes; ++i) {
+			if (!matched_r2[i]) {
+				unmatched_super.push_back(i);
+			}
+		}
+
+		// Pair unmatched super-nodes arbitrarily
+		for (std::size_t i = 0; i + 1 < unmatched_super.size(); i += 2) {
+			pairs_round2.emplace_back(unmatched_super[i], unmatched_super[i + 1]);
+		}
+
+		// Build final groups of 4 (or less for remainders)
+		std::vector<std::vector<std::size_t>> final_groups;
+		final_groups.reserve(pairs_round2.size() + 1);
+
+		for (const auto& [su, sv] : pairs_round2) {
+			std::vector<std::size_t> group;
+			for (std::size_t v : groups_r1[su]) group.push_back(v);
+			for (std::size_t v : groups_r1[sv]) group.push_back(v);
+			final_groups.push_back(std::move(group));
+		}
+
+		// Handle remaining unmatched super-nodes (singleton super-groups)
+		if (unmatched_super.size() % 2 == 1) {
+			std::size_t last_super = unmatched_super.back();
+			final_groups.push_back(groups_r1[last_super]);
+		}
+
+		//group histo:
+		std::unordered_map<std::size_t, std::size_t> histo;
+		for(auto &g: final_groups) {
+			histo[g.size()]++;
+		}
+		// Assign partition IDs
+		for (std::size_t p = 0; p < final_groups.size(); ++p) {
+			for (std::size_t v : final_groups[p]) {
+				part[v] = static_cast<idx_t>(p);
+			}
+		}
+
+		std::cout << " Final groups histogram: ";
+		for(auto &kv: histo) {
+			std::cout << kv.first << "->" << kv.second << " ";
+		}
+		std::cout << std::endl;
+
+		return part;
+	}
+
+	// Fallback for non-4 target sizes: simple sequential assignment
+	std::cout << "Fallback: sequential assignment for target_size != 4" << std::endl;
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		part[i] = static_cast<idx_t>(i / target_size);
+		if (part[i] >= static_cast<idx_t>(num_parts)) {
+			part[i] = static_cast<idx_t>(num_parts - 1);
+		}
+	}
+	return part;
+}
+// ...existing code...
+// Convert adjacency map to CSR format (weights are doubles here, will be rescaled to int range)
+void adjacency_to_csr(const std::vector<std::map<Index, double>>& adjacency,
+                      std::vector<idx_t>& xadj,
+                      std::vector<idx_t>& adjncy,
+                      std::vector<idx_t>& adjwgt) {
+    xadj.clear();
+    adjncy.clear();
+    adjwgt.clear();
+
+    std::size_t num_nodes = adjacency.size();
+
+    // Find maximum weight to scale into [0 .. 1'000'000]
+    double max_w = 0.0;
+    for (std::size_t i = 0; i < num_nodes; ++i) {
+        for (const auto& kv : adjacency[i]) {
+            double w = kv.second;
+            if (w > max_w) max_w = w;
+        }
+    }
+
+    const double TARGET_MAX = 1e6;
+    double scale = (max_w > 0.0) ? (TARGET_MAX / max_w) : 1.0;
+
+    xadj.reserve(num_nodes + 1);
+    xadj.push_back(0);
+
+    for (std::size_t i = 0; i < num_nodes; ++i) {
+        for (const auto& [neighbor, weight] : adjacency[i]) {
+            adjncy.push_back(static_cast<idx_t>(neighbor));
+            double w = weight;
+            if (w < 0.0) w = 0.0; // clamp negatives to zero (discourage pairing)
+            idx_t iw = static_cast<idx_t>(std::lround(w * scale));
+            adjwgt.push_back(iw);
+        }
+        xadj.push_back(static_cast<idx_t>(adjncy.size()));
+    }
+}
+// ...existing code...
+
+// Build cluster adjacency graph with edge weights based on shared-edge length (shorter -> larger weight)
+void build_cluster_graph_weighted(const MeshFiles& mesh,
+                                  std::vector<idx_t>& xadj,
+                                  std::vector<idx_t>& adjncy,
+                                  std::vector<idx_t>& adjwgt) {
+    std::size_t num_clusters = mesh.clusters.size();
+
+    // Use double weights and accumulate per directed pair
+    std::vector<std::map<Index, double>> adjacency(num_clusters);
+
+    // For each shared triangle edge between clusters, add weight inversely proportional to distance
+    const double EPS = 1e-6;
+    for (std::size_t tri_idx = 0; tri_idx < mesh.triangle_to_cluster.size(); ++tri_idx) {
+        Index cluster_id = mesh.triangle_to_cluster[tri_idx];
+        const FaceAdjacency& adj = mesh.adjacency[tri_idx];
+
+        for (int corner = 0; corner < 3; ++corner) {
+            Index neighbor_tri = adj.opp[corner];
+            if (neighbor_tri != std::numeric_limits<Index>::max()) {
+                Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
+                if (neighbor_cluster != cluster_id) {
+                    // Compute distance between cluster centers (shorter -> larger contribution)
+                    const Cluster& ca = mesh.clusters[cluster_id];
+                    const Cluster& cb = mesh.clusters[neighbor_cluster];
+                    double dx = static_cast<double>(ca.center.x) - static_cast<double>(cb.center.x);
+                    double dy = static_cast<double>(ca.center.y) - static_cast<double>(cb.center.y);
+                    double dz = static_cast<double>(ca.center.z) - static_cast<double>(cb.center.z);
+                    double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+                    double contrib = 1.0 / (dist + EPS);
+                    adjacency[cluster_id][neighbor_cluster] += contrib;
+                }
+            }
+        }
+    }
+
+    // set the weight to minimal to ensure the cluster won't be picked together.
+    for(const MicroNode &m: mesh.micronodes) {
+        auto &clusters = m.cluster_ids;
+        if(clusters.size() == 2) {
+            adjacency[clusters[0]][clusters[1]] = 0.0;
+            adjacency[clusters[1]][clusters[0]] = 0.0;
+        }
+    }
+
+    // Convert to CSR format (rescaled to integer range)
+    adjacency_to_csr(adjacency, xadj, adjncy, adjwgt);
+}
+
+// Build MicroNode objects from partition and mesh
+std::vector<MicroNode> build_micronodes_from_partition(const MeshFiles& mesh,
+													   const std::vector<idx_t>& part) {
+
+	//find the ACTUAL number of parts:
+	std::size_t num_parts = static_cast<std::size_t>(*std::max_element(part.begin(), part.end())) + 1;
+	std::size_t num_clusters = mesh.clusters.size();
+
+	// Group clusters by partition
+	std::vector<std::vector<Index>> micronode_clusters(num_parts);
+	for (std::size_t i = 0; i < num_clusters; ++i) {
+		Index micronode_id = static_cast<Index>(part[i]);
+		micronode_clusters[micronode_id].push_back(static_cast<Index>(i));
+	}
+
+	// Create MicroNode objects
+	std::vector<MicroNode> micronodes;
+	micronodes.reserve(num_parts);
+
+	for (std::size_t i = 0; i < num_parts; ++i) {
+		if (micronode_clusters[i].empty())
+			throw std::runtime_error("Empty micronode clusters!");
+
 		MicroNode micronode;
-		micronode.id = micronodes.size();
-		micronode.cluster_ids.clear();
+		micronode.id = static_cast<Index>(i);
+		micronode.cluster_ids = std::move(micronode_clusters[i]);
 		micronode.triangle_count = 0;
-		micronode.centroid = mesh.clusters[seed].center;
 
-		std::set<Index> boundary; // Active boundary of unprocessed adjacent clusters
+		// Compute weighted centroid
+		micronode.centroid = {0.0f, 0.0f, 0.0f};
+		float total_weight = 0.0f;
 
-		// Add seed cluster
-		micronode.cluster_ids.push_back(seed);
-		micronode.triangle_count += mesh.clusters[seed].triangle_count;
-		cluster_to_micronode[seed] = micronode.id;
-		clusters_processed++;
-		front.erase(seed);
-
-		// Initialize boundary with seed neighbors
-		for (Index neighbor : cluster_graph[seed]) {
-			if (cluster_to_micronode[neighbor] == std::numeric_limits<Index>::max()) {
-				boundary.insert(neighbor);
-			}
+		for (Index cluster_id : micronode.cluster_ids) {
+			const Cluster& c = mesh.clusters[cluster_id];
+			float weight = static_cast<float>(c.triangle_count);
+			micronode.centroid.x += c.center.x * weight;
+			micronode.centroid.y += c.center.y * weight;
+			micronode.centroid.z += c.center.z * weight;
+			total_weight += weight;
+			micronode.triangle_count += c.triangle_count;
 		}
 
-		// Greedily grow the micronode
-		while (micronode.cluster_ids.size() < max_clusters && !boundary.empty()) {
-			// Find best candidate from boundary
-			Index best = std::numeric_limits<Index>::max();
-			float best_score = -std::numeric_limits<float>::max();
-
-			for (Index cluster_id : boundary) {
-				assert(cluster_to_micronode[cluster_id] == std::numeric_limits<Index>::max());
-
-				// Score: shared edges (higher is better) minus distance penalty
-				int shared = count_shared_edges_with_micronode(cluster_id, micronode.cluster_ids, cluster_graph);
-				float distance = compute_cluster_distance(mesh.clusters[cluster_id], mesh.clusters[seed]);
-				float score = static_cast<float>(shared) - 0.05f * distance;
-
-				if (score > best_score) {
-					best_score = score;
-					best = cluster_id;
-				}
-			}
-
-			if (best == std::numeric_limits<Index>::max()) break;
-
-			// Add the cluster
-			micronode.cluster_ids.push_back(best);
-			micronode.triangle_count += mesh.clusters[best].triangle_count;
-			cluster_to_micronode[best] = micronode.id;
-			clusters_processed++;
-			boundary.erase(best);
-			front.erase(best);
-
-			// Update micronode centroid (weighted by triangle count)
-			Vector3f new_center = mesh.clusters[best].center;
-			float old_weight = static_cast<float>(micronode.triangle_count - mesh.clusters[best].triangle_count);
-			float new_weight = static_cast<float>(mesh.clusters[best].triangle_count);
-			float total_weight = old_weight + new_weight;
-
-			micronode.centroid.x = (micronode.centroid.x * old_weight + new_center.x * new_weight) / total_weight;
-			micronode.centroid.y = (micronode.centroid.y * old_weight + new_center.y * new_weight) / total_weight;
-			micronode.centroid.z = (micronode.centroid.z * old_weight + new_center.z * new_weight) / total_weight;
-
-			// Expand boundary
-			for (Index neighbor : cluster_graph[best]) {
-				if (cluster_to_micronode[neighbor] == std::numeric_limits<Index>::max()) {
-					boundary.insert(neighbor);
-				}
-			}
+		if (total_weight > 0.0f) {
+			micronode.centroid.x /= total_weight;
+			micronode.centroid.y /= total_weight;
+			micronode.centroid.z /= total_weight;
 		}
 
-		// Add remaining clusters in boundary to front for next seed selection
-		for (Index cluster_id : boundary) {
-			if (cluster_to_micronode[cluster_id] == std::numeric_limits<Index>::max()) {
-				front.insert(cluster_id);
-			}
-		}
-
-		// Compute bounding sphere from child cluster bounding spheres
-		// Use the centroid as initial center, then expand to encompass all child spheres
+		// Compute bounding sphere
 		micronode.center = micronode.centroid;
 		micronode.radius = 0.0f;
 
 		for (Index cluster_id : micronode.cluster_ids) {
-			const Cluster& cluster = mesh.clusters[cluster_id];
-			// Distance from micronode center to cluster center
-			float dx = cluster.center.x - micronode.center.x;
-			float dy = cluster.center.y - micronode.center.y;
-			float dz = cluster.center.z - micronode.center.z;
+			const Cluster& c = mesh.clusters[cluster_id];
+			float dx = c.center.x - micronode.center.x;
+			float dy = c.center.y - micronode.center.y;
+			float dz = c.center.z - micronode.center.z;
 			float dist = std::sqrt(dx*dx + dy*dy + dz*dz);
-			// Furthest point on this cluster's sphere
-			float extent = dist + cluster.radius;
+			float extent = dist + c.radius;
 			micronode.radius = std::max(micronode.radius, extent);
 		}
 
-		micronodes.push_back(micronode);
+		micronodes.push_back(std::move(micronode));
 	}
 
 	return micronodes;
@@ -206,55 +458,46 @@ std::vector<MicroNode> build_micronodes_greedy(const MeshFiles& mesh,
 
 } // anonymous namespace
 
-std::vector<MicroNode> create_micronodes(const MeshFiles& mesh,
-										 std::size_t clusters_per_micronode) {
-	if (clusters_per_micronode < 1) {
-		throw std::runtime_error("clusters_per_micronode must be at least 1");
-	}
+std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
+											   std::size_t clusters_per_micronode) {
+	std::cout << "\n=== Building micronodes ===" << std::endl;
 
 	std::size_t num_clusters = mesh.clusters.size();
-	if (num_clusters == 0) return {};
-
-	std::cout << "\n=== Building Micronodes ===" << std::endl;
-	std::cout << "Total clusters: " << num_clusters << std::endl;
-	std::cout << "Target clusters per micronode: " << clusters_per_micronode << std::endl;
-
-	// Build cluster adjacency graph
-	std::vector<std::vector<Index>> cluster_graph = build_cluster_graph(mesh);
-
-	// Debug: Print graph statistics
-	std::size_t total_edges = 0;
-	std::size_t isolated_clusters = 0;
-	for (std::size_t i = 0; i < cluster_graph.size(); ++i) {
-		total_edges += cluster_graph[i].size();
-		if (cluster_graph[i].empty()) isolated_clusters++;
-	}
-	std::cout << "Cluster graph: " << (total_edges / 2) << " edges, "
-			  << "avg degree: " << (total_edges / static_cast<float>(num_clusters))
-			  << ", isolated: " << isolated_clusters << std::endl;
-
-	// Build micronodes using greedy growth
-	std::vector<MicroNode> micronodes = build_micronodes_greedy(mesh, cluster_graph, clusters_per_micronode);
-
-	// Print statistics
-	std::size_t min_size = std::numeric_limits<std::size_t>::max();
-	std::size_t max_size = 0;
-	std::size_t total_size = 0;
-
-	for (const MicroNode& mn : micronodes) {
-		std::size_t size = mn.cluster_ids.size();
-		min_size = std::min(min_size, size);
-		max_size = std::max(max_size, size);
-		total_size += size;
+	if (num_clusters == 0) {
+		throw std::runtime_error("Error: No clusters to partition into micronodes");
 	}
 
-	if (!micronodes.empty()) {
-		float avg_size = static_cast<float>(total_size) / micronodes.size();
-		std::cout << "Created " << micronodes.size() << " micronodes" << std::endl;
-		std::cout << "  Size range: [" << min_size << ", " << max_size << "], avg: " << avg_size << std::endl;
+	// Estimate number of micronodes
+	std::size_t num_micronodes = (num_clusters + clusters_per_micronode - 1) / clusters_per_micronode;
+	if (num_micronodes < 2) num_micronodes = 2; // METIS requires at least 2 partitions
+
+	// Build weighted cluster graph
+	std::vector<idx_t> xadj;
+	std::vector<idx_t> adjncy;
+	std::vector<idx_t> adjwgt;
+
+	build_cluster_graph_weighted(mesh, xadj, adjncy, adjwgt);
+
+	if (adjncy.empty()) {
+		throw std::runtime_error("Error: Cluster graph has no edges (disconnected clusters)");
 	}
+
+	idx_t objval = 0;
+	std::vector<idx_t> part = partition_graph_exact_size(num_clusters, xadj, adjncy, adjwgt,
+														 clusters_per_micronode, num_micronodes);
+
+	if (part.empty()) {
+		throw std::runtime_error("Exact-size partitioning failed!");
+	}
+
+	// Build MicroNode structures from partition
+	std::vector<MicroNode> micronodes = build_micronodes_from_partition(mesh, part);
 
 	return micronodes;
 }
+
+
+
+
 
 } // namespace nx
