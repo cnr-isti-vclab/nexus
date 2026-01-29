@@ -31,6 +31,7 @@ class AVertex  : public vcg::Vertex<
 		AUsedTypes,
 		vcg::vertex::VFAdj,
 		vcg::vertex::Coord3f,
+		vcg::vertex::Normal3f,
 		vcg::vertex::Color4b,
 		vcg::vertex::Mark,
 		vcg::vertex::BitFlags> {
@@ -71,7 +72,7 @@ class AFace: public vcg::Face<
 		AUsedTypes,
 		vcg::face::VFAdj,
 		vcg::face::VertexRef,
-		vcg::face::WedgeRealNormal3f,
+//		vcg::face::WedgeRealNormal3f,
 		vcg::face::WedgeTexCoord2f,
 		vcg::face::BitFlags> {
 };

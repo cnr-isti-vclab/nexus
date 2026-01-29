@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 project(nxsbuild)
 
+# Require C++20
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # Option to choose matching algorithm
 option(USE_HUNGARIAN "Use Hungarian algorithm instead of LEMON for matching" OFF)
 
@@ -53,14 +58,14 @@ else()
     message(STATUS "Using LEMON library for matching")
 endif()
 
-# Find Qt5
-find_package(Qt5 COMPONENTS Core REQUIRED)
+# Find Qt6
+find_package(Qt6 COMPONENTS Core REQUIRED)
 
 # Add METIS and LEMON library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
     ../../vcglib
-	../
+    ../
     /usr/include/eigen3
     /home/ponchio/local/include
     ../../lemon-graph-1.3.1
@@ -68,6 +73,6 @@ target_include_directories(nxsbuild PRIVATE
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
-target_link_libraries(nxsbuild PRIVATE metis GKlib Qt5::Core)
+target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core)
 
 install(TARGETS nxsbuild DESTINATION bin)

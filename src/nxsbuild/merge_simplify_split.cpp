@@ -51,6 +51,7 @@ MergedMesh merge_micronode_clusters(
 			const Triangle& tri = mesh.triangles[t];
 			Triangle new_tri{};
 
+			size_t p[3];
 			for (int j = 0; j < 3; ++j) {
 				Index original_wedge = tri.w[j];
 				auto wedge_it = wedge_map.find(original_wedge);
@@ -68,19 +69,22 @@ MergedMesh merge_micronode_clusters(
 					} else {
 						new_pos = pos_it->second;
 					}
-
-					Wedge new_wedge = w;
-					new_wedge.p = new_pos;
+					Wedge new_wedge;
+					new_wedge = w;
+					p[j] = new_wedge.p = new_pos;
 					Index new_wedge_index = static_cast<Index>(merged.wedges.size());
 					merged.wedges.push_back(new_wedge);
 					wedge_map[original_wedge] = new_wedge_index;
 					new_tri.w[j] = new_wedge_index;
 				} else {
 					new_tri.w[j] = wedge_it->second;
+					p[j] = merged.wedges[wedge_it->second].p;
 				}
 			}
-
-			merged.triangles.push_back(new_tri);
+			//remove degenerate triangles
+			if(new_tri.w[0] != new_tri.w[1] && new_tri.w[0] != new_tri.w[2] && new_tri.w[1] != new_tri.w[2] )
+				if(p[0] != p[1] && p[0] != p[2] && p[1] != p[2])
+					merged.triangles.push_back(new_tri);
 
 			assert(mesh.triangle_to_cluster[t] == cluster_id);
 
@@ -108,6 +112,12 @@ MergedMesh merge_micronode_clusters(
 			}
 		}
 	}
+	// Deduplicate boundary vertices
+	if (!merged.boundary_vertices.empty()) {
+		std::sort(merged.boundary_vertices.begin(), merged.boundary_vertices.end());
+		merged.boundary_vertices.erase(std::unique(merged.boundary_vertices.begin(), merged.boundary_vertices.end()),
+									   merged.boundary_vertices.end());
+	}
 
 	return merged;
 }
@@ -134,7 +144,7 @@ void simplify_mesh(
 		for (Index i = 0; i < mesh.triangles.size(); ++i) {
 			debug_mesh.triangles[i] = mesh.triangles[i];
 		}
-		export_obj(debug_mesh, "debug_clustered.obj");
+		export_obj(debug_mesh, "debug_before.obj");
 	}
 
 
@@ -161,16 +171,16 @@ void simplify_mesh(
 			const Wedge& w = mesh.wedges[tri.w[k]];
 
 			face.V(k) = &legacy_mesh.vert[w.p];
-			//TODO: in nexus we need to lock the faces also, make sure it's needed.
-			//if(!face.V(k)->IsW())
-			//	face.ClearW();
 
-			face.WN(k) = vcg::Point3f(w.n.x, w.n.y, w.n.z);
+			AVertex* v = face.V(k);
+			v->N() = vcg::Point3f(w.n.x, w.n.y, w.n.z);
+			//face.WN(k) = vcg::Point3f(w.n.x, w.n.y, w.n.z);
 			face.WT(k).U() = w.t.u;
 			face.WT(k).V() = w.t.v;
 		}
 	}
-
+	//vcg::tri::UpdateNormal<VcgMesh>::PerWedgeCrease(legacy_mesh, 60*M_PI/180);
+	vcg::tri::UpdateNormal<VcgMesh>::PerVertex(legacy_mesh);
 	legacy_mesh.quadricInit();
 	legacy_mesh.simplify(target_triangle_count, VcgMesh::QUADRICS);
 
@@ -211,6 +221,21 @@ void simplify_mesh(
 	for(Index &i: mesh.boundary_vertices)
 		i = vertex_remap[i];
 
+	// Remove invalid and duplicate boundary indices
+	if (!mesh.boundary_vertices.empty()) {
+		// erase invalid markers (could be max value)
+		mesh.boundary_vertices.erase(
+			std::remove_if(mesh.boundary_vertices.begin(), mesh.boundary_vertices.end(),
+						   [](Index v){ return v == std::numeric_limits<Index>::max(); }),
+			mesh.boundary_vertices.end());
+
+		if (!mesh.boundary_vertices.empty()) {
+			std::sort(mesh.boundary_vertices.begin(), mesh.boundary_vertices.end());
+			mesh.boundary_vertices.erase(std::unique(mesh.boundary_vertices.begin(), mesh.boundary_vertices.end()),
+										 mesh.boundary_vertices.end());
+		}
+	}
+
 
 	mesh.wedges.clear();
 	mesh.triangles.clear();
@@ -229,16 +254,27 @@ void simplify_mesh(
 
 			Wedge w;
 			w.p = new_pos;
-			const vcg::Point3f& wn = f.WN(k);
-			w.n.x = wn[0];
-			w.n.y = wn[1];
-			w.n.z = wn[2];
+			w.n.x = v->N()[0];
+			w.n.y = v->N()[1];
+			w.n.z = v->N()[2];
 			w.t.u = f.WT(k).U();
 			w.t.v = f.WT(k).V();
-			w.n.x = w.n.y = w.n.z = w.t.u = w.t.v = 0;
+			w.t.u = w.t.v = 0;
 			Index wedge_index = static_cast<Index>(mesh.wedges.size());
 			mesh.wedges.push_back(w);
 			tri.w[k] = wedge_index;
+
+			/* DEBUG CHECK for dragon.ply only
+			if(k > 1) {
+				const AVertex* ov = f.cV(k-1);
+				std::size_t ovidx = static_cast<std::size_t>(ov - vbase);
+				Index old_pos = vertex_remap[ovidx];
+				Vector3f p = mesh.positions[new_pos];
+				Vector3f op = mesh.positions[old_pos];
+				if(fabs(p.x- op.x) > 0.05 || fabs(p.y - op.y) > 0.05 || fabs(p.z - op.z) > 0.05)
+					throw "porcatrottola";
+			}
+*/
 		}
 		mesh.triangles.push_back(tri);
 	}
@@ -299,6 +335,126 @@ void simplify_mesh(
 				}
 			}
 		}
+	}
+	if(0){
+		MeshFiles debug_mesh;
+		debug_mesh.positions.resize(mesh.positions.size());
+		for (Index i = 0; i < mesh.positions.size(); ++i) {
+			debug_mesh.positions[i] = mesh.positions[i];
+		}
+		debug_mesh.wedges.resize(mesh.wedges.size());
+		for (Index i = 0; i < mesh.wedges.size(); ++i) {
+			debug_mesh.wedges[i] = mesh.wedges[i];
+		}
+		debug_mesh.triangles.resize(mesh.triangles.size());
+		for (Index i = 0; i < mesh.triangles.size(); ++i) {
+			debug_mesh.triangles[i] = mesh.triangles[i];
+		}
+		export_obj(debug_mesh, "debug_after.obj");
+	}
+}
+
+void simplify_mesh_edge(
+	MergedMesh& mesh,
+	Index target_triangle_count) {
+	if (mesh.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
+		return;
+	}
+	std::vector<uint8_t> boundary_flag(mesh.positions.size(), 0);
+	for (Index v : mesh.boundary_vertices) {
+		boundary_flag[v] = 1;
+	}
+	struct Edge {
+		Index v0, v1;
+		float length;
+		Edge() {}
+		Edge(Index p0, Index p1, float l): v0(p0), v1(p1), length(l) {}
+	};
+
+	size_t n_triangles = mesh.triangles.size();
+	std::vector<Edge> edges;
+	while(n_triangles > target_triangle_count) {
+		edges.clear();
+		std::vector<Index> remap(mesh.positions.size());
+		for(Index i = 0; i < remap.size(); i++)
+			remap[i] = i;
+
+		for (const Triangle& tri : mesh.triangles) {
+			Index p0 = mesh.wedges[tri.w[0]].p;
+			Index p1 = mesh.wedges[tri.w[1]].p;
+			Index p2 = mesh.wedges[tri.w[2]].p;
+			const Vector3f& a = mesh.positions[p0];
+			const Vector3f& b = mesh.positions[p1];
+			const Vector3f& c = mesh.positions[p2];
+			float dx01 = a.x - b.x; float dy01 = a.y - b.y; float dz01 = a.z - b.z;
+			float dx12 = b.x - c.x; float dy12 = b.y - c.y; float dz12 = b.z - c.z;
+			float dx20 = c.x - a.x; float dy20 = c.y - a.y; float dz20 = c.z - a.z;
+
+			if(p1 > p0 && !boundary_flag[p0] && !boundary_flag[p1])
+				edges.push_back(Edge(p0, p1, std::sqrt(dx01*dx01 + dy01*dy01 + dz01*dz01)));
+			if(p2 > p1 && !boundary_flag[p1] && !boundary_flag[p2])
+				edges.push_back(Edge(p1, p2, std::sqrt(dx12*dx12 + dy12*dy12 + dz12*dz12)));
+			if(p2 > p0 && !boundary_flag[p0] && !boundary_flag[p2])
+				edges.push_back(Edge(p0, p2, std::sqrt(dx20*dx20 + dy20*dy20 + dz20*dz20)));
+		}
+		std::sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) { return a.length < b.length; });
+		// Decide how many shortest edges to try collapsing this iteration.
+		size_t remaining = (n_triangles > static_cast<size_t>(target_triangle_count)) ? (n_triangles - static_cast<size_t>(target_triangle_count)) : 0;
+		if (edges.empty() || remaining == 0) break;
+		size_t want = std::max((size_t)1, edges.size() / 10);
+		size_t num_to_collapse = std::min(std::min(want, remaining), edges.size());
+		edges.resize(num_to_collapse);
+		std::vector<bool> lock(mesh.positions.size(), false);
+		size_t collapsed_count = 0;
+		for(const Edge &e: edges) {
+			if(lock[e.v0] || lock[e.v1])
+				continue;
+			lock[e.v0] = lock[e.v1] = true;
+			Vector3f &p0 = mesh.positions[e.v0];
+			const Vector3f &p1 = mesh.positions[e.v1];
+
+			Vector3f p;
+			p.x = (p0.x + p1.x)/2.0f;
+			p.y = (p0.y + p1.y)/2.0f;
+			p.z = (p0.z + p1.z)/2.0f;
+			p0 = p;
+			remap[e.v1] = e.v0;
+			++collapsed_count;
+		}
+
+		if (collapsed_count == 0) break;
+
+		// Find root representative for remapped positions (path compression)
+		auto find_root = [&](Index v) {
+			Index r = v;
+			while (remap[r] != r) r = remap[r];
+			// compress
+			Index x = v;
+			while (remap[x] != r) {
+				Index next = remap[x];
+				remap[x] = r;
+				x = next;
+			}
+			return r;
+		};
+
+		// Apply remapping to wedges so triangles refer to representative vertices
+		for (Wedge &w : mesh.wedges) {
+			w.p = find_root(w.p);
+		}
+
+		// Remove degenerate triangles (collapsed to fewer than 3 distinct positions)
+		std::vector<Triangle> new_tris;
+		new_tris.reserve(mesh.triangles.size());
+		for (const Triangle &tri : mesh.triangles) {
+			Index p0 = mesh.wedges[tri.w[0]].p;
+			Index p1 = mesh.wedges[tri.w[1]].p;
+			Index p2 = mesh.wedges[tri.w[2]].p;
+			if (p0 == p1 || p1 == p2 || p0 == p2) continue;
+			new_tris.push_back(tri);
+		}
+		mesh.triangles.swap(new_tris);
+		n_triangles = mesh.triangles.size();
 	}
 }
 
@@ -410,7 +566,7 @@ void simplify_mesh_clustered(
 
 	// Remap wedges to representative positions
 	for (Wedge& w : mesh.wedges) {
-			w.p = pos_to_rep[w.p];
+		w.p = pos_to_rep[w.p];
 	}
 
 	// Remove degenerate triangles (collapsed after remap)
@@ -446,9 +602,10 @@ void update_vertices_and_wedges(
 	}
 
 	for (const auto& [original_pos, merged_pos] : merged.position_map) {
-		if (original_pos < next_mesh.positions.size() && merged_pos < merged.positions.size()) {
-			next_mesh.positions[original_pos] = merged.positions[merged_pos];
-		}
+		next_mesh.positions[original_pos] = merged.positions[merged_pos];
+	}
+	for(Index b: merged.boundary_vertices) {
+		Index i = merged.position_remap[b];
 	}
 
 	for (Index i = 0; i < next_mesh.wedges.size(); ++i) {
@@ -619,13 +776,52 @@ std::vector<Index> split_mesh(
 		xadj.reserve(num_triangles + 1);
 		xadj.push_back(0);
 
+		// Precompute triangle centroids for distance calculations
+		std::vector<Vector3f> tri_centroids(num_triangles);
+		for (std::size_t ti = 0; ti < num_triangles; ++ti) {
+			const Triangle& tri = merged.triangles[ti];
+			Vector3f c{0.0f, 0.0f, 0.0f};
+			for (int k = 0; k < 3; ++k) {
+				Index pidx = merged.wedges[tri.w[k]].p;
+				const Vector3f& pp = merged.positions[pidx];
+				c.x += pp.x; c.y += pp.y; c.z += pp.z;
+			}
+			c.x /= 3.0f; c.y /= 3.0f; c.z /= 3.0f;
+			tri_centroids[ti] = c;
+		}
+
 		for (std::size_t i = 0; i < num_triangles; ++i) {
 			const FaceAdjacency& adj = adjacency[i];
 			for (int corner = 0; corner < 3; ++corner) {
 				Index neighbor = adj.opp[corner];
 				if (neighbor != std::numeric_limits<Index>::max()) {
 					adjncy.push_back(static_cast<idx_t>(neighbor));
-					adjwgt.push_back(1);
+
+					// Compute edge length (shared edge between this triangle and neighbor)
+					Index p0 = merged.wedges[merged.triangles[i].w[corner]].p;
+					Index p1 = merged.wedges[merged.triangles[i].w[(corner + 1) % 3]].p;
+					const Vector3f &pa = merged.positions[p0];
+					const Vector3f &pb = merged.positions[p1];
+					double dx = static_cast<double>(pa.x) - static_cast<double>(pb.x);
+					double dy = static_cast<double>(pa.y) - static_cast<double>(pb.y);
+					double dz = static_cast<double>(pa.z) - static_cast<double>(pb.z);
+					double edge_len = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+					// Distance between triangle centroids
+					const Vector3f &ca = tri_centroids[i];
+					const Vector3f &cb = tri_centroids[neighbor];
+					double dcx = static_cast<double>(ca.x) - static_cast<double>(cb.x);
+					double dcy = static_cast<double>(ca.y) - static_cast<double>(cb.y);
+					double dcz = static_cast<double>(ca.z) - static_cast<double>(cb.z);
+					double cent_dist = std::sqrt(dcx*dcx + dcy*dcy + dcz*dcz);
+
+					double raw_w = 0.0;
+					if (cent_dist > 1e-12) raw_w = (edge_len / cent_dist) * 100.0;
+					else raw_w = edge_len * 100.0; // fallback when centroids coincide
+
+					idx_t iw = static_cast<idx_t>(std::lround(raw_w));
+					if (iw < 1) iw = 1;
+					adjwgt.push_back(iw);
 				}
 			}
 			xadj.push_back(static_cast<idx_t>(adjncy.size()));

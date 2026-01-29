@@ -120,12 +120,18 @@ float VcgMesh::randomSimplify(quint16 /*target_faces*/) {
 
 void VcgMesh::quadricInit() {
 	vcg::tri::UpdateTopology<VcgMesh>::VertexFace(*this);
+
 	qparams = new vcg::tri::TriEdgeCollapseQuadricParameter();
 	qparams->NormalCheck = true;
 	qparams->QualityQuadric = true;
 	deciSession = new vcg::LocalOptimization<VcgMesh>(*this, qparams);
 
-	deciSession->Init<TriEdgeCollapse>();
+	{
+		// static mutex guards this initialization across all threads/instances
+		static std::mutex quadric_init_mutex;
+		std::lock_guard<std::mutex> lock(quadric_init_mutex);
+		deciSession->Init<TriEdgeCollapse>();
+	}
 }
 
 float VcgMesh::quadricSimplify(quint16 target) {

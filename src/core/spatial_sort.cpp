@@ -102,13 +102,23 @@ std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
 	if (num_positions == 0) {
 		return std::vector<Index>();
 	}
+	Aabb &bounds = mesh.bounds;
+	bounds.max = bounds.min = mesh.positions[0];
+	for (Index i = 0; i < num_positions; ++i) {
+		const Vector3f& p = mesh.positions[i];
+		bounds.max.x = std::max(bounds.max.x, p.x);
+		bounds.max.y = std::max(bounds.max.y, p.y);
+		bounds.max.z = std::max(bounds.max.z, p.z);
+		bounds.min.x = std::min(bounds.min.x, p.x);
+		bounds.min.y = std::min(bounds.min.y, p.y);
+		bounds.min.z = std::min(bounds.min.z, p.z);
+	}
 
 	// Normalize positions to [0, 1]
 	float size_x = mesh.bounds.max.x - mesh.bounds.min.x;
 	float size_y = mesh.bounds.max.y - mesh.bounds.min.y;
 	float size_z = mesh.bounds.max.z - mesh.bounds.min.z;
 	float max_dim = std::max({size_x, size_y, size_z});
-	if (max_dim < 1e-6f) max_dim = 1.0f;
 
 	// Compute Morton codes for all positions
 	std::vector<MortonPair> pairs;
@@ -154,7 +164,7 @@ std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
 		// match against any previously created unique position.
 		if (sorted_idx > 0 && pairs[sorted_idx].code == pairs[sorted_idx - 1].code) {
 			uint64_t code = pairs[sorted_idx].code;
-			int64_t k = static_cast<int64_t>(sorted_idx) - 1;
+			Index k = static_cast<int64_t>(sorted_idx) - 1;
 			while (k >= 0 && pairs[k].code == code) {
 				Index earlier_old = pairs[static_cast<size_t>(k)].index;
 				Index mapped = remap[earlier_old];

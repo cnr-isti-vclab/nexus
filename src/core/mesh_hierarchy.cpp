@@ -7,11 +7,13 @@
 #include "../nxsbuild/merge_simplify_split.h"
 
 #include "../loaders/plyexporter.h"
+#include "../core/thread_pool.h"
 
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
 #include <set>
+#include <mutex>
 
 namespace nx {
 
@@ -21,7 +23,6 @@ void copyVertices(MeshFiles &source, MeshFiles &target) {
 	target.positions.resize(source.positions.size());
 	std::copy(source.positions.data(), source.positions.data() + source.positions.size(),
 			  target.positions.data());
-
 	if (source.colors.size() > 0) {
 		target.colors.resize(source.colors.size());
 		std::copy(source.colors.data(), source.colors.data() + source.colors.size(),
@@ -127,8 +128,8 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	std::size_t max_triangles = params.faces_per_cluster;
 	MeshFiles &mesh = levels[0];
 
-	nx::build_clusters(mesh, max_triangles*4,
-					   params.use_metis ? nx::ClusteringMethod::Metis : nx::ClusteringMethod::Greedy);
+	nx::build_clusters(mesh, max_triangles*params.clusters_per_node,
+					   params.use_greedy ? nx::ClusteringMethod::Greedy : nx::ClusteringMethod::Metis);
 	//split each cluster in 4 clusters and create a micronode for the 4.
 	nx::split_clusters(mesh, max_triangles);
 	// Micronodes are now created by split_clusters
@@ -167,22 +168,36 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 	// Copy geometry (positions/wedges/colors/material_ids)
 	copyVertices(mesh, next_mesh);
 
+	std::mutex next_mesh_lock;
+	dp::thread_pool pool;
+
 	// Now iterate on the current mesh micronodes to merge, simplify, and split
 	for (MicroNode& micronode : mesh.micronodes) {
-		// 1) Collect its clusters into a temporary mesh and lock boundaries.
-		MergedMesh merged = merge_micronode_clusters(mesh, micronode);
 
-		// 2) Simplify node triangles (vertex collapse moves positions in new mesh)
-		const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
-		//simplify_mesh_clustered(merged, target_triangle_count);
-		simplify_mesh(merged, target_triangle_count);
 
-		// 3) Update vertices and wedges in next_mesh according to merged.position_map
-		update_vertices_and_wedges(next_mesh, merged);
+		// add tasks, in this case without caring about results of individual tasks
+		pool.enqueue_detach([this, &mesh, &next_mesh, &params, &next_mesh_lock](MicroNode &micronode) {
+			// 1) Collect its clusters into a temporary mesh and lock boundaries.
+			MergedMesh merged = merge_micronode_clusters(mesh, micronode);
 
-		//tempoarily keep the dependencies in micronode.children_nodes
-		split_mesh(merged, micronode, next_mesh, params.faces_per_cluster);
+			// 2) Simplify node triangles (vertex collapse moves positions in new mesh)
+			const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
+			//simplify_mesh_clustered(merged, target_triangle_count);
+			simplify_mesh(merged, target_triangle_count);
+
+			{
+				const std::lock_guard<std::mutex> lock(next_mesh_lock);
+				// 3) Update vertices and wedges in next_mesh according to merged.position_map
+				update_vertices_and_wedges(next_mesh, merged);
+
+				//tempoarily keep the dependencies in micronode.children_nodes
+				split_mesh(merged, micronode, next_mesh, params.faces_per_cluster);
+			}
+
+		}, micronode);
 	}
+	pool.wait_for_tasks();
+
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
 
@@ -199,7 +214,7 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 			cluster_to_micronode[c] = n;
 	}
 // Returns a vector of MicroNode structures representing the partitions.
-	next_mesh.micronodes = create_micronodes_metis(next_mesh, params.clusters_per_node);
+	next_mesh.micronodes = create_micronodes_metis(next_mesh, params.clusters_per_node, params.faces_per_cluster);
 	for (MicroNode& micronode : mesh.micronodes) {
 		for(Index &c: micronode.children_nodes) {
 			c = cluster_to_micronode[c];

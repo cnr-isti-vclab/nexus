@@ -303,89 +303,106 @@ std::vector<idx_t> partition_graph_exact_size(
 // ...existing code...
 // Convert adjacency map to CSR format (weights are doubles here, will be rescaled to int range)
 void adjacency_to_csr(const std::vector<std::map<Index, double>>& adjacency,
-                      std::vector<idx_t>& xadj,
-                      std::vector<idx_t>& adjncy,
-                      std::vector<idx_t>& adjwgt) {
-    xadj.clear();
-    adjncy.clear();
-    adjwgt.clear();
+					  std::vector<idx_t>& xadj,
+					  std::vector<idx_t>& adjncy,
+					  std::vector<idx_t>& adjwgt) {
+	xadj.clear();
+	adjncy.clear();
+	adjwgt.clear();
 
-    std::size_t num_nodes = adjacency.size();
+	std::size_t num_nodes = adjacency.size();
 
-    // Find maximum weight to scale into [0 .. 1'000'000]
-    double max_w = 0.0;
-    for (std::size_t i = 0; i < num_nodes; ++i) {
-        for (const auto& kv : adjacency[i]) {
-            double w = kv.second;
-            if (w > max_w) max_w = w;
-        }
-    }
+	// Find maximum weight to scale into [0 .. 1'000'000]
+	double max_w = 0.0;
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		for (const auto& kv : adjacency[i]) {
+			double w = kv.second;
+			if (w > max_w) max_w = w;
+		}
+	}
 
-    const double TARGET_MAX = 1e6;
-    double scale = (max_w > 0.0) ? (TARGET_MAX / max_w) : 1.0;
+	const double TARGET_MAX = 1e6;
+	double scale = (max_w > 0.0) ? (TARGET_MAX / max_w) : 1.0;
 
-    xadj.reserve(num_nodes + 1);
-    xadj.push_back(0);
+	xadj.reserve(num_nodes + 1);
+	xadj.push_back(0);
 
-    for (std::size_t i = 0; i < num_nodes; ++i) {
-        for (const auto& [neighbor, weight] : adjacency[i]) {
-            adjncy.push_back(static_cast<idx_t>(neighbor));
-            double w = weight;
-            if (w < 0.0) w = 0.0; // clamp negatives to zero (discourage pairing)
-            idx_t iw = static_cast<idx_t>(std::lround(w * scale));
-            adjwgt.push_back(iw);
-        }
-        xadj.push_back(static_cast<idx_t>(adjncy.size()));
-    }
+	for (std::size_t i = 0; i < num_nodes; ++i) {
+		for (const auto& [neighbor, weight] : adjacency[i]) {
+			adjncy.push_back(static_cast<idx_t>(neighbor));
+			double w = weight;
+			if (w < 0.0) w = 0.0; // clamp negatives to zero (discourage pairing)
+			idx_t iw = static_cast<idx_t>(std::lround(w * scale));
+			adjwgt.push_back(iw);
+		}
+		xadj.push_back(static_cast<idx_t>(adjncy.size()));
+	}
 }
 // ...existing code...
 
 // Build cluster adjacency graph with edge weights based on shared-edge length (shorter -> larger weight)
 void build_cluster_graph_weighted(const MeshFiles& mesh,
-                                  std::vector<idx_t>& xadj,
-                                  std::vector<idx_t>& adjncy,
-                                  std::vector<idx_t>& adjwgt) {
-    std::size_t num_clusters = mesh.clusters.size();
+								  std::vector<idx_t>& xadj,
+								  std::vector<idx_t>& adjncy,
+								  std::vector<idx_t>& adjwgt,
+								  std::vector<idx_t>& vwgt) {
+	std::size_t num_clusters = mesh.clusters.size();
 
-    // Use double weights and accumulate per directed pair
-    std::vector<std::map<Index, double>> adjacency(num_clusters);
+	// Use double weights and accumulate per directed pair
+	std::vector<std::map<Index, double>> adjacency(num_clusters);
 
-    // For each shared triangle edge between clusters, add weight inversely proportional to distance
-    const double EPS = 1e-6;
-    for (std::size_t tri_idx = 0; tri_idx < mesh.triangle_to_cluster.size(); ++tri_idx) {
-        Index cluster_id = mesh.triangle_to_cluster[tri_idx];
-        const FaceAdjacency& adj = mesh.adjacency[tri_idx];
+	// Prepare vertex weights: number of triangles per cluster
+	vwgt.clear();
+	vwgt.reserve(num_clusters);
+	for (std::size_t ci = 0; ci < num_clusters; ++ci) {
+		idx_t w = static_cast<idx_t>(mesh.clusters[ci].triangle_count);
+		if (w < 1) w = 1; // ensure positive weight
+		vwgt.push_back(w);
+	}
 
-        for (int corner = 0; corner < 3; ++corner) {
-            Index neighbor_tri = adj.opp[corner];
-            if (neighbor_tri != std::numeric_limits<Index>::max()) {
-                Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
-                if (neighbor_cluster != cluster_id) {
-                    // Compute distance between cluster centers (shorter -> larger contribution)
-                    const Cluster& ca = mesh.clusters[cluster_id];
-                    const Cluster& cb = mesh.clusters[neighbor_cluster];
-                    double dx = static_cast<double>(ca.center.x) - static_cast<double>(cb.center.x);
-                    double dy = static_cast<double>(ca.center.y) - static_cast<double>(cb.center.y);
-                    double dz = static_cast<double>(ca.center.z) - static_cast<double>(cb.center.z);
-                    double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
-                    double contrib = 1.0 / (dist + EPS);
-                    adjacency[cluster_id][neighbor_cluster] += contrib;
-                }
-            }
-        }
-    }
+	const double EPS = 1e-6;
+	for (std::size_t tri_idx = 0; tri_idx < mesh.triangle_to_cluster.size(); ++tri_idx) {
+		Index cluster_id = mesh.triangle_to_cluster[tri_idx];
+		const FaceAdjacency& adj = mesh.adjacency[tri_idx];
 
-    // set the weight to minimal to ensure the cluster won't be picked together.
-    for(const MicroNode &m: mesh.micronodes) {
-        auto &clusters = m.cluster_ids;
-        if(clusters.size() == 2) {
-            adjacency[clusters[0]][clusters[1]] = 0.0;
-            adjacency[clusters[1]][clusters[0]] = 0.0;
-        }
-    }
+		const Triangle &tri = mesh.triangles[tri_idx];
 
-    // Convert to CSR format (rescaled to integer range)
-    adjacency_to_csr(adjacency, xadj, adjncy, adjwgt);
+		for (int corner = 0; corner < 3; ++corner) {
+			Index neighbor_tri = adj.opp[corner];
+			if (neighbor_tri != std::numeric_limits<Index>::max()) {
+				Index neighbor_cluster = mesh.triangle_to_cluster[neighbor_tri];
+				if (neighbor_cluster != cluster_id) {
+					// Compute distance between cluster centers (shorter -> larger contribution)
+					const Cluster& ca = mesh.clusters[cluster_id];
+					const Cluster& cb = mesh.clusters[neighbor_cluster];
+					double dx = static_cast<double>(ca.center.x) - static_cast<double>(cb.center.x);
+					double dy = static_cast<double>(ca.center.y) - static_cast<double>(cb.center.y);
+					double dz = static_cast<double>(ca.center.z) - static_cast<double>(cb.center.z);
+					double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+					double contrib = 1.0 / (dist + EPS);
+					//double contrib = 1;
+					adjacency[cluster_id][neighbor_cluster] += contrib;
+				}
+			}
+		}
+	}
+	for(size_t i = 0; i < mesh.clusters.size(); i++) {
+
+	}
+
+	// set the weight to minimal to ensure the cluster won't be picked together.
+	for(const MicroNode &m: mesh.micronodes) {
+		auto &clusters = m.cluster_ids;
+		for(Index cluster: clusters) {
+			for(auto& [id, weight]: adjacency[cluster]) {
+				if(std::find(m.cluster_ids.begin(), m.cluster_ids.end(), id) != m.cluster_ids.end())
+					weight /= 1;
+			}
+		}
+	}
+
+	// Convert to CSR format (rescaled to integer range)
+	adjacency_to_csr(adjacency, xadj, adjncy, adjwgt);
 }
 
 // Build MicroNode objects from partition and mesh
@@ -456,10 +473,54 @@ std::vector<MicroNode> build_micronodes_from_partition(const MeshFiles& mesh,
 	return micronodes;
 }
 
+// Call METIS to partition graph into specified number of parts
+// Returns partition assignment for each node, and sets objval to edge-cut
+std::vector<idx_t> partition_graph_metis(
+	std::size_t num_nodes,
+	const std::vector<idx_t>& xadj,
+	const std::vector<idx_t>& adjncy,
+	const std::vector<idx_t>& adjwgt,
+	const std::vector<idx_t>& vwgt,
+	std::size_t num_partitions) {
+
+	idx_t nvtxs = static_cast<idx_t>(num_nodes);
+	idx_t ncon = 1;
+	idx_t nparts = static_cast<idx_t>(num_partitions);
+
+	std::vector<idx_t> part(num_nodes);
+
+	idx_t options[METIS_NOPTIONS];
+	METIS_SetDefaultOptions(options);
+	options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+	options[METIS_OPTION_NUMBERING] = 0;
+
+	int objval;
+	int ret = METIS_PartGraphKway(
+		&nvtxs, &ncon,
+		const_cast<idx_t*>(xadj.data()),
+		const_cast<idx_t*>(adjncy.data()),
+		const_cast<idx_t*>(vwgt.data()), nullptr,
+		const_cast<idx_t*>(adjwgt.data()),
+		&nparts,
+		nullptr, nullptr,
+		options,
+		&objval,
+		part.data()
+		);
+
+	if (ret != METIS_OK) {
+		std::cerr << "METIS_PartGraphKway failed with code " << ret << std::endl;
+		return {};
+	}
+	return part;
+}
+
 } // anonymous namespace
 
+
 std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
-											   std::size_t clusters_per_micronode) {
+											   std::size_t clusters_per_micronode,
+											   std::size_t triangles_per_cluster) {
 	std::cout << "\n=== Building micronodes ===" << std::endl;
 
 	std::size_t num_clusters = mesh.clusters.size();
@@ -469,22 +530,23 @@ std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 
 	// Estimate number of micronodes
 	std::size_t num_micronodes = (num_clusters + clusters_per_micronode - 1) / clusters_per_micronode;
-	if (num_micronodes < 2) num_micronodes = 2; // METIS requires at least 2 partitions
 
 	// Build weighted cluster graph
 	std::vector<idx_t> xadj;
 	std::vector<idx_t> adjncy;
 	std::vector<idx_t> adjwgt;
+	std::vector<idx_t> vwgt;
 
-	build_cluster_graph_weighted(mesh, xadj, adjncy, adjwgt);
+	build_cluster_graph_weighted(mesh, xadj, adjncy, adjwgt, vwgt);
 
 	if (adjncy.empty()) {
 		throw std::runtime_error("Error: Cluster graph has no edges (disconnected clusters)");
 	}
 
 	idx_t objval = 0;
-	std::vector<idx_t> part = partition_graph_exact_size(num_clusters, xadj, adjncy, adjwgt,
-														 clusters_per_micronode, num_micronodes);
+	std::vector<idx_t> part = partition_graph_metis(num_clusters, xadj, adjncy, adjwgt,
+													vwgt,
+													num_micronodes);
 
 	if (part.empty()) {
 		throw std::runtime_error("Exact-size partitioning failed!");

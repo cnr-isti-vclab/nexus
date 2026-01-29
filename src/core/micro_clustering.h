@@ -16,7 +16,8 @@ class MeshFiles;
 //
 // Returns a vector of MicroNode structures representing the partitions.
 std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
-											   std::size_t clusters_per_micronode = 4);
+											   std::size_t clusters_per_micronode,
+											   std::size_t faces_per_cluster);
 
 
 

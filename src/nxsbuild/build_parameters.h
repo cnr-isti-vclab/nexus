@@ -34,14 +34,14 @@ public:
 	QString mtl;                     // MTL file for OBJ
 
 	// Construction options
-	int faces_per_cluster = 1 << 8;
-	int clusters_per_node = 4;
+	int faces_per_cluster = 1 << 7;
+	int clusters_per_node = 8;
 	int macro_node_faces = 1 << 15; // Faces per macro-node (32768)
 	float texel_weight = 0.05f;      // Relative weight of texels
 	float scaling = 0.5f;            // Decimation factor between levels
 
 	// Clustering algorithm selection
-	bool use_metis = true;           // Use METIS for triangle clustering
+	bool use_greedy = false;           // Use METIS for triangle clustering
 
 	// Texture format
 	TextureFormat texture_format = TextureFormat::JPEG; // Texture compression format

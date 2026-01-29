@@ -16,7 +16,7 @@ struct MergedMesh {
 	std::vector<Triangle> triangles;
 	std::vector<Index> boundary_vertices;  // Vertices on micronode boundary
 	std::unordered_map<Index, Index> position_map; // original position -> merged position
-	std::vector<Index> position_remap;//merged_position -
+	std::vector<Index> position_remap;//merged_position -> original position
 	Index parent_micronode_id;
 };
 
@@ -44,6 +44,11 @@ void simplify_mesh_clustered(
 	MergedMesh& mesh,
 	Index target_triangle_count);
 
+void simplify_mesh_edge(
+	MergedMesh& mesh,
+	Index target_triangle_count);
+
+	
 // Update the positions (and potentially wedges) in next_mesh using the simplified merged mesh.
 // The mapping is from original position index -> merged position index.
 void update_vertices_and_wedges(

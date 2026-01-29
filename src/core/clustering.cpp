@@ -708,7 +708,7 @@ void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod
 
 
 void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
-	std::cout << "\n=== Splitting clusters into 4 and creating micronodes ===" << std::endl;
+	std::cout << "\n=== Splitting clusters into N and creating micronodes ===" << std::endl;
 
 	std::size_t num_original_clusters = mesh.clusters.size();
 	if (num_original_clusters == 0) {

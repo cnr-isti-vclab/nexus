@@ -18,14 +18,14 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	parser.addOption({{"m", "mtl"}, "MTL file (for .obj)", "file", ""});
 
 	// Construction options
-	parser.addOption({{"f", "faces"}, "Number of faces per cluster [256]", "n", "256"});
-	parser.addOption({{"p", "clusters"}, "Number of clusters per node [4]", "n", "4"});
+	parser.addOption({{"f", "faces"}, "Number of faces per cluster [256]", "n", "128"});
+	parser.addOption({{"p", "clusters"}, "Number of clusters per node [4]", "n", "8"});
 	parser.addOption({{"F", "macro-faces"}, "Number of faces per macro-node [32768]", "n", "32768"});
 	parser.addOption({{"w", "texel-weight"}, "Relative weight for texels [0.05]", "f", "0.05"});
 	parser.addOption({{"s", "scaling"}, "Decimation factor [0.5]", "f", "0.5"});
 
 	// Clustering algorithm
-	parser.addOption({"metis", "Use METIS for triangle clustering"});
+	parser.addOption({"greedy", "Use greedy algorithm for triangle clustering"});
 
 	// Compression options
 	parser.addOption({{"q", "vertex-quantization"}, "Vertex quantization [0]", "f", "0"});
@@ -88,7 +88,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	texel_weight = parser.value("texel-weight").toFloat();
 	scaling = parser.value("scaling").toFloat();
 
-	use_metis = parser.isSet("metis");
+	use_greedy = parser.isSet("greedy");
 
 	// Parse texture format
 	QString formatStr = parser.value("texture-format").toLower();
@@ -271,7 +271,7 @@ void BuildParameters::print() const {
 	}
 	std::cout << " (quality: " << texture_quality << ")\n";
 
-	if (use_metis) std::cout << "  Using METIS clustering\n";
+	if (use_greedy) std::cout << "  Using greedy clustering\n";
 	std::cout << "  Threads: " << num_threads << "\n";
 	std::cout << "  Translate: (" << translate.x << ", " << translate.y << ", " << translate.z << ")\n";
 	std::cout << "  Scale: (" << scale.x << ", " << scale.y << ", " << scale.z << ")\n";
