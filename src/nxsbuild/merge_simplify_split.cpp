@@ -122,12 +122,34 @@ MergedMesh merge_micronode_clusters(
 	return merged;
 }
 
-void simplify_mesh(
+
+float meshError(MergedMesh& mesh) {
+	double length = 0;
+	for (const Triangle& tri : mesh.triangles) {
+		Index p0 = mesh.wedges[tri.w[0]].p;
+		Index p1 = mesh.wedges[tri.w[1]].p;
+		Index p2 = mesh.wedges[tri.w[2]].p;
+		const Vector3f& a = mesh.positions[p0];
+		const Vector3f& b = mesh.positions[p1];
+		const Vector3f& c = mesh.positions[p2];
+		float dx01 = a.x - b.x; float dy01 = a.y - b.y; float dz01 = a.z - b.z;
+		float dx12 = b.x - c.x; float dy12 = b.y - c.y; float dz12 = b.z - c.z;
+		float dx20 = c.x - a.x; float dy20 = c.y - a.y; float dz20 = c.z - a.z;
+		length += (dx01*dx01 + dy01*dy01 + dz01*dz01);
+		length += (dx12*dx12 + dy12*dy12 + dz12*dz12);
+		length += (dx20*dx20 + dy20*dy20 + dz20*dz20);
+	}
+	length = std::sqrt(length)/mesh.triangles.size()*3;
+	return length;
+}
+
+
+float simplify_mesh(
 	MergedMesh& mesh,
 	Index target_triangle_count) {
 
 	if (mesh.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
-		return;
+		return 0;
 	}
 
 	if(0){
@@ -352,13 +374,15 @@ void simplify_mesh(
 		}
 		export_obj(debug_mesh, "debug_after.obj");
 	}
+	return meshError(mesh);
 }
 
-void simplify_mesh_edge(
+
+float simplify_mesh_edge(
 	MergedMesh& mesh,
 	Index target_triangle_count) {
 	if (mesh.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
-		return;
+		return 0;
 	}
 	std::vector<uint8_t> boundary_flag(mesh.positions.size(), 0);
 	for (Index v : mesh.boundary_vertices) {
@@ -397,7 +421,9 @@ void simplify_mesh_edge(
 			if(p2 > p0 && !boundary_flag[p0] && !boundary_flag[p2])
 				edges.push_back(Edge(p0, p2, std::sqrt(dx20*dx20 + dy20*dy20 + dz20*dz20)));
 		}
+
 		std::sort(edges.begin(), edges.end(), [](const Edge &a, const Edge &b) { return a.length < b.length; });
+
 		// Decide how many shortest edges to try collapsing this iteration.
 		size_t remaining = (n_triangles > static_cast<size_t>(target_triangle_count)) ? (n_triangles - static_cast<size_t>(target_triangle_count)) : 0;
 		if (edges.empty() || remaining == 0) break;
@@ -456,136 +482,7 @@ void simplify_mesh_edge(
 		mesh.triangles.swap(new_tris);
 		n_triangles = mesh.triangles.size();
 	}
-}
-
-void simplify_mesh_clustered(
-	MergedMesh& mesh,
-	Index target_triangle_count) {
-	if (mesh.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
-		return;
-	}
-
-
-	std::vector<uint8_t> boundary_flag(mesh.positions.size(), 0);
-	for (Index v : mesh.boundary_vertices) {
-		boundary_flag[v] = 1;
-	}
-
-	// Compute bounding box of positions
-	Vector3f min_pt{ std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
-	Vector3f max_pt{ std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest() };
-	for (const Vector3f& p : mesh.positions) {
-		min_pt.x = std::min(min_pt.x, p.x);
-		min_pt.y = std::min(min_pt.y, p.y);
-		min_pt.z = std::min(min_pt.z, p.z);
-		max_pt.x = std::max(max_pt.x, p.x);
-		max_pt.y = std::max(max_pt.y, p.y);
-		max_pt.z = std::max(max_pt.z, p.z);
-	}
-
-	// Estimate average edge length
-	float total_edge_len = 0.0f;
-	std::size_t edge_count = 0;
-	for (const Triangle& tri : mesh.triangles) {
-		Index p0 = mesh.wedges[tri.w[0]].p;
-		Index p1 = mesh.wedges[tri.w[1]].p;
-		Index p2 = mesh.wedges[tri.w[2]].p;
-		const Vector3f& a = mesh.positions[p0];
-		const Vector3f& b = mesh.positions[p1];
-		const Vector3f& c = mesh.positions[p2];
-		float dx01 = a.x - b.x; float dy01 = a.y - b.y; float dz01 = a.z - b.z;
-		float dx12 = b.x - c.x; float dy12 = b.y - c.y; float dz12 = b.z - c.z;
-		float dx20 = c.x - a.x; float dy20 = c.y - a.y; float dz20 = c.z - a.z;
-		total_edge_len += std::sqrt(dx01*dx01 + dy01*dy01 + dz01*dz01);
-		total_edge_len += std::sqrt(dx12*dx12 + dy12*dy12 + dz12*dz12);
-		total_edge_len += std::sqrt(dx20*dx20 + dy20*dy20 + dz20*dz20);
-		edge_count += 3;
-	}
-	float avg_edge_len = (edge_count > 0) ? (total_edge_len / static_cast<float>(edge_count)) : 0.0f;
-	if (avg_edge_len <= 0.0f) {
-		// Degenerate; just take a prefix
-		mesh.triangles.resize(target_triangle_count);
-		return;
-	}
-
-	// Use average edge length as clustering cell size
-	float cell_size = avg_edge_len*1.41;
-
-	auto cell_key = [&](const Vector3f& p) -> std::uint64_t {
-		std::uint32_t ix = static_cast<std::uint32_t>((p.x - min_pt.x) / cell_size);
-		std::uint32_t iy = static_cast<std::uint32_t>((p.y - min_pt.y) / cell_size);
-		std::uint32_t iz = static_cast<std::uint32_t>((p.z - min_pt.z) / cell_size);
-		return (static_cast<std::uint64_t>(ix) << 42) |
-			   (static_cast<std::uint64_t>(iy) << 21) |
-			   (static_cast<std::uint64_t>(iz));
-	};
-
-
-	struct ClusterAccum {
-		Vector3f sum{0.0f, 0.0f, 0.0f};
-		Index count = 0;
-		Index rep = std::numeric_limits<Index>::max();
-	};
-
-	std::unordered_map<std::uint64_t, ClusterAccum> clusters;
-	clusters.reserve(mesh.positions.size());
-	std::vector<Index> pos_to_rep(mesh.positions.size(), std::numeric_limits<Index>::max());
-
-	for (Index i = 0; i < mesh.positions.size(); ++i) {
-		const Vector3f& p = mesh.positions[i];
-		if (boundary_flag[i]) {
-			pos_to_rep[i] = i;
-			clusters[i].rep = i;
-			clusters[i].sum = p;
-			clusters[i].count = 1;
-			continue;
-		}
-		std::uint64_t key = cell_key(p);
-		auto& acc = clusters[key];
-		if (acc.rep == std::numeric_limits<Index>::max()) {
-			acc.rep = i;
-		}
-		acc.sum.x += p.x;
-		acc.sum.y += p.y;
-		acc.sum.z += p.z;
-		acc.count += 1;
-		pos_to_rep[i] = acc.rep;
-	}
-
-	// Update representative positions to cluster centers
-	for (auto& [key, acc] : clusters) {
-		if (boundary_flag[acc.rep]) {
-			continue;
-		}
-		Vector3f center;
-		center.x = acc.sum.x / static_cast<float>(acc.count);
-		center.y = acc.sum.y / static_cast<float>(acc.count);
-		center.z = acc.sum.z / static_cast<float>(acc.count);
-		mesh.positions[acc.rep] = center;
-	}
-
-	// Remap wedges to representative positions
-	for (Wedge& w : mesh.wedges) {
-		w.p = pos_to_rep[w.p];
-	}
-
-	// Remove degenerate triangles (collapsed after remap)
-	std::vector<Triangle> new_tris;
-	new_tris.reserve(mesh.triangles.size());
-	for (const Triangle& tri : mesh.triangles) {
-		Index p0 = mesh.wedges[tri.w[0]].p;
-		Index p1 = mesh.wedges[tri.w[1]].p;
-		Index p2 = mesh.wedges[tri.w[2]].p;
-		if (p0 == p1 || p1 == p2 || p0 == p2) {
-			continue;
-		}
-		new_tris.push_back(tri);
-	}
-	mesh.triangles.swap(new_tris);
-
-	std::cout << "  [simplify_mesh_clustered] Reduced to "
-			  << mesh.triangles.size() << " triangles after clustering positions from" << new_tris.size() << std::endl;
-
+	return meshError(mesh);
 }
 
 void update_vertices_and_wedges(
@@ -745,13 +642,11 @@ Index ensure_mapped_position(Index merged_pos, const std::vector<Index>& merged_
 	return std::numeric_limits<Index>::max();
 }
 
-std::vector<Index> split_mesh(
+void split_mesh(
 	const MergedMesh& merged,
-	MicroNode& micronode,
+	Index micro_id,
 	MeshFiles& next_mesh,
 	std::size_t max_triangles) {
-
-	std::vector<Index> created_clusters;
 
 	// Build merged_pos -> original_pos mapping
 	const std::vector<Index> &merged_to_original = merged.position_remap;
@@ -887,7 +782,6 @@ std::vector<Index> split_mesh(
 		w.p = merged.position_remap[w.p];
 		next_mesh.wedges[wedge_offset + i] = w;
 	}
-	MicroNode parent;
 
 	// Create clusters in next_mesh
 	for (std::size_t c = 0; c < actual_clusters; ++c) {
@@ -911,6 +805,7 @@ std::vector<Index> split_mesh(
 		Cluster cluster{};
 		cluster.triangle_offset = triangle_offset;
 		cluster.triangle_count = triangle_count;
+		cluster.node = micro_id;
 
 		compute_cluster_bounds(next_mesh, triangle_offset, triangle_count, cluster.center, cluster.radius);
 
@@ -923,21 +818,7 @@ std::vector<Index> split_mesh(
 		for (Index t = triangle_offset; t < triangle_offset + triangle_count; ++t) {
 			next_mesh.triangle_to_cluster[t] = cluster_id;
 		}
-
-		created_clusters.push_back(cluster_id);
-		parent.cluster_ids.push_back(cluster_id);
 	}
-	//we store the informatiin that these 2 cluster come from the same micronode in a new micronode.
-	next_mesh.micronodes.push_back(parent);
-
-	// Store created cluster indices in micronode.children_nodes (temporary)
-	// This will be updated later to point to actual micronode IDs
-	micronode.children_nodes.clear();
-	for (Index cluster_id : created_clusters) {
-		micronode.children_nodes.push_back(cluster_id);
-	}
-
-	return created_clusters;
 }
 
 

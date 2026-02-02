@@ -34,17 +34,11 @@ MergedMesh merge_micronode_clusters(
 
 
 // Simplify mesh to target triangle count (respecting locked boundaries)
-void simplify_mesh(
+float simplify_mesh(
 	MergedMesh& mesh,
 	Index target_triangle_count);
 
-// Fast debug simplification: reduce triangles by simple clustering
-// (does not preserve topology; keeps existing positions/wedges).
-void simplify_mesh_clustered(
-	MergedMesh& mesh,
-	Index target_triangle_count);
-
-void simplify_mesh_edge(
+float simplify_mesh_edge(
 	MergedMesh& mesh,
 	Index target_triangle_count);
 
@@ -59,9 +53,8 @@ void update_vertices_and_wedges(
 // Records the created cluster indices in micronode.children_nodes (temporary storage).
 // The clusters are split based on max_triangles target.
 // Returns the indices of the newly created clusters.
-std::vector<Index> split_mesh(
-	const MergedMesh& merged,
-	MicroNode& micronode,
+void split_mesh(const MergedMesh& merged,
+	Index micro_id,
 	MeshFiles& next_mesh,
 	std::size_t max_triangles);
 

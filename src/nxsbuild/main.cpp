@@ -9,6 +9,7 @@
 #include "../core/mesh.h"
 #include "../loaders/meshloader.h"
 #include "../core/mesh_hierarchy.h"
+#include "export_nxs.h"
 
 namespace fs = std::filesystem;
 
@@ -49,15 +50,14 @@ int main(int argc, char *argv[]) {
 		std::cout << "Building mesh hierarchy..." << std::endl;
 		hierarchy.build_hierarchy(params);
 
-		// TODO: Export hierarchy to NXS format
-
+		nx::ExportNxs exporter;
+		exporter.export_nxs(hierarchy, "test.nxs");
 
 	} catch (const std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;
 		return 1;
 	}
 
-	std::cout << "Nexus v4 builder initialized." << std::endl;
 	return 0;
 }
 

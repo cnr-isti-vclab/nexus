@@ -17,6 +17,8 @@ struct BuildParameters;
  */
 class MeshHierarchy {
 public:
+	std::vector<MeshFiles> levels;
+
 	MeshHierarchy() = default;
 	
 	void initialize(MeshFiles&& base_mesh);
@@ -25,7 +27,6 @@ public:
 private:
 	void process_level(MeshFiles& mesh, MeshFiles& next_mesh, const BuildParameters &params);
 	
-	std::vector<MeshFiles> levels;
 };
 
 } // namespace nx

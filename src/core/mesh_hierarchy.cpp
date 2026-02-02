@@ -172,18 +172,22 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 	dp::thread_pool pool;
 
 	// Now iterate on the current mesh micronodes to merge, simplify, and split
-	for (MicroNode& micronode : mesh.micronodes) {
+	for(Index micro_id = 0; micro_id < mesh.micronodes.size(); micro_id++) {
 
 
 		// add tasks, in this case without caring about results of individual tasks
-		pool.enqueue_detach([this, &mesh, &next_mesh, &params, &next_mesh_lock](MicroNode &micronode) {
+		pool.enqueue_detach([this, &mesh, &next_mesh, &params, &next_mesh_lock](Index micro_id) {
+			MicroNode& micronode = mesh.micronodes[micro_id];
+
 			// 1) Collect its clusters into a temporary mesh and lock boundaries.
 			MergedMesh merged = merge_micronode_clusters(mesh, micronode);
 
+
 			// 2) Simplify node triangles (vertex collapse moves positions in new mesh)
 			const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
-			//simplify_mesh_clustered(merged, target_triangle_count);
-			simplify_mesh(merged, target_triangle_count);
+			//simplify_mesh_edge(merged, target_triangle_count);
+			micronode.error = simplify_mesh(merged, target_triangle_count);
+			std::cout << "Error: " << micronode.error << std::endl;
 
 			{
 				const std::lock_guard<std::mutex> lock(next_mesh_lock);
@@ -191,12 +195,17 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 				update_vertices_and_wedges(next_mesh, merged);
 
 				//tempoarily keep the dependencies in micronode.children_nodes
-				split_mesh(merged, micronode, next_mesh, params.faces_per_cluster);
+				split_mesh(merged, micro_id, next_mesh, params.faces_per_cluster);
 			}
 
-		}, micronode);
+		}, micro_id);
 	}
 	pool.wait_for_tasks();
+
+	for(Index micro_id = 0; micro_id < mesh.micronodes.size(); micro_id++) {
+		MicroNode& micronode = mesh.micronodes[micro_id];
+		std::cout << "Error: " << micronode.error << std::endl;
+	}
 
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
@@ -206,20 +215,11 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 		compute_adjacency(next_mesh);
 	}
 
+	//TODO sort clusters  (including triangles) by center to improve locality?
 
-	std::vector<Index> cluster_to_micronode(next_mesh.clusters.size());
-	for(size_t n = 0; n < next_mesh.micronodes.size(); n++) {
-		MicroNode &node = next_mesh.micronodes[n];
-		for(Index c: node.cluster_ids)
-			cluster_to_micronode[c] = n;
-	}
+
 // Returns a vector of MicroNode structures representing the partitions.
 	next_mesh.micronodes = create_micronodes_metis(next_mesh, params.clusters_per_node, params.faces_per_cluster);
-	for (MicroNode& micronode : mesh.micronodes) {
-		for(Index &c: micronode.children_nodes) {
-			c = cluster_to_micronode[c];
-		}
-	}
 
 	// export to the ply by cluster and by node
 	{

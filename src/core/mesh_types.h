@@ -62,6 +62,7 @@ struct Cluster {
     Index triangle_count;   // Number of triangles in this cluster
     Vector3f center;        // Bounding sphere center
     float radius;           // Bounding sphere radius
+	Index node = 0xFFFFFFFF;// Stores the node it was created from.
 };
 
 // A MicroNode groups clusters at the first level of the hierarchy.
@@ -69,11 +70,12 @@ struct Cluster {
 struct MicroNode {
     Index id;                           // MicroNode index
     std::vector<Index> cluster_ids;     // Cluster indices belonging to this micronode
-	std::vector<Index> children_nodes;  // Child micronodes ids
     Index triangle_count;               // Total number of triangles across all clusters
+	Index vertex_count;
     Vector3f centroid;                  // Weighted spatial center
     Vector3f center;                    // Bounding sphere center
     float radius;                       // Bounding sphere radius
+	float error;
 };
 
 // A MacroNode groups micronodes at the second level of the hierarchy.
@@ -102,7 +104,7 @@ static_assert(sizeof(Wedge)   == 24, "Wedge layout changed unexpectedly");
 static_assert(sizeof(Triangle)== 12, "Triangle layout changed unexpectedly");
 static_assert(sizeof(FaceAdjacency)== 12, "FaceAdjacency layout changed unexpectedly");
 static_assert(sizeof(HalfedgeRecord) == 16, "HalfedgeRecord layout changed unexpectedly");
-static_assert(sizeof(Cluster) == 24, "Cluster layout changed unexpectedly");
+static_assert(sizeof(Cluster) == 28, "Cluster layout changed unexpectedly");
 
 } // namespace nx
 

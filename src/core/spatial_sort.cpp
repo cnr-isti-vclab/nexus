@@ -3,8 +3,6 @@
 #include <iostream>
 #include <assert.h>
 
-// TODO: In the future we will use mmapped files for out-of-core sorting.
-// In that case we should sort the vertices and the indices at the same time.
 
 namespace nx {
 
@@ -20,11 +18,7 @@ static uint64_t expand_bits_21(uint32_t v) {
 }
 
 uint64_t morton_code(float x, float y, float z) {
-	// Clamp to [0, 1] and quantize to 21 bits
-	x = std::max(0.0f, std::min(1.0f, x));
-	y = std::max(0.0f, std::min(1.0f, y));
-	z = std::max(0.0f, std::min(1.0f, z));
-
+	//Assumes x, y 0 are in the interval[0, 1] and quantize to 21 bits
 	uint32_t xx = static_cast<uint32_t>(x * 2097151.0f); // 2^21 - 1
 	uint32_t yy = static_cast<uint32_t>(y * 2097151.0f);
 	uint32_t zz = static_cast<uint32_t>(z * 2097151.0f);
@@ -52,8 +46,8 @@ struct MortonPair {
 static void merge_ranges(
 	std::vector<MortonPair>& pairs,
 	size_t left, size_t mid, size_t right,
-	std::vector<MortonPair>& temp)
-{
+	std::vector<MortonPair>& temp) {
+
 	size_t i = left;
 	size_t j = mid;
 	size_t k = 0;
@@ -262,8 +256,6 @@ void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
 				tri.w[j] = remap[tri.w[j]];
 		}
 	}
-
-	std::cout << "Triangle wedge remapping complete." << std::endl;
 }
 
 void sort_triangles_by_wedge(MeshFiles& mesh) {

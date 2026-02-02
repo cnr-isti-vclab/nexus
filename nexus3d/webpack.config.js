@@ -16,6 +16,7 @@ module.exports = {
 
   devServer: {
     static: './dist',
+    port: 8081, // Change this to any number, e.g., 8081, 9000, etc.
     client: {
       overlay: false
     }

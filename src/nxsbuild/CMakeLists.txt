@@ -13,6 +13,7 @@ set(SOURCES
 	main.cpp
 	build_parameters.cpp
 	merge_simplify_split.cpp
+	export_nxs.cpp
 	../core/mapped_file.cpp
 	../core/mesh.cpp
 	../core/mesh_hierarchy.cpp
@@ -36,6 +37,7 @@ set(HEADERS
 	../core/mesh.h
 	../core/mesh_hierarchy.h
 	../core/vcgmesh.h
+	export_nxs.h
 	../core/spatial_sort.h
 	../core/adjacency.h
 	../core/clustering.h

@@ -4,9 +4,20 @@
 #include <vector>
 
 namespace nx {
+/* TODO: for very large meshes
+ * use radix sort + k-way merge for out of code
+ * if remap array is too big, we store [old, new] and sort it out of core.
+ * sort wedges by old index (out of core), then update (this means remap and wedges run in parallel)
+ * resort wedges by new index.
+ * some thing for the triangles.
+ */
 
-// TODO: In the future we will use mmapped files for out-of-core sorting.
-// In that case we should sort in place the vertices and the indices at the same time.
+// 1. Sort positions by Z-order curve
+// 2. Sort wedges by position index
+// 3. Sort triangles by smallest wedge index
+void spatial_sort_mesh(MeshFiles& mesh);
+
+//INTERNAL FUNCTION:
 
 // Compute Morton code (Z-order) for a 3D point in normalized [0,1]^3 space
 uint64_t morton_code(float x, float y, float z);
@@ -28,11 +39,6 @@ void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap);
 // Sort triangles by their smallest wedge index
 void sort_triangles_by_wedge(MeshFiles& mesh);
 
-// Complete spatial sorting pipeline:
-// 1. Sort positions by Z-order curve
-// 2. Sort wedges by position index
-// 3. Sort triangles by smallest wedge index
-void spatial_sort_mesh(MeshFiles& mesh);
 
 void spatial_sort_triangles(MeshFiles& mesh);
 

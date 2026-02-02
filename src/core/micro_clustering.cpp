@@ -470,6 +470,16 @@ std::vector<MicroNode> build_micronodes_from_partition(const MeshFiles& mesh,
 		micronodes.push_back(std::move(micronode));
 	}
 
+	
+
+	// Sort micronodes by first cluster id (clusters are expected to be ordered)
+	std::sort(micronodes.begin(), micronodes.end(), [](const MicroNode& a, const MicroNode& b) {
+		return a.cluster_ids.front() < b.cluster_ids.front();
+	});
+	for (Index i = 0; i < micronodes.size(); ++i) {
+		micronodes[i].id = i;
+	}
+
 	return micronodes;
 }
 
@@ -530,7 +540,12 @@ std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 
 	// Estimate number of micronodes
 	std::size_t num_micronodes = (num_clusters + clusters_per_micronode - 1) / clusters_per_micronode;
+	if (num_micronodes <= 1) {
+		std::vector<idx_t> part(num_clusters, 0);
+		return build_micronodes_from_partition(mesh, part);
+	}
 
+	
 	// Build weighted cluster graph
 	std::vector<idx_t> xadj;
 	std::vector<idx_t> adjncy;
