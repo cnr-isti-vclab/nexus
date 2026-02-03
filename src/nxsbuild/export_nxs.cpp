@@ -74,7 +74,6 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 		for(size_t m = 0; m < mesh.micronodes.size(); m++) {
 			MicroNode &micronode = mesh.micronodes[m];
 			exportMicronode(level, mesh, micronode, out);
-
 		}
 	}
 
@@ -86,6 +85,10 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	sink.offset = ftell(out)/NEXUS_PADDING;
 	sink.first_patch = patches.size();
 	nodes.push_back(sink);
+
+	assert(nodes.size() == header.n_nodes);
+
+
 
 	saturateNodes();
 	printDag(hierarchy);
@@ -174,7 +177,7 @@ void ExportNxs::exportMicronode(int level, MeshFiles &mesh, MicroNode &micronode
 	int count = 0;
 	for(Index c: micronode.cluster_ids) {
 		const Cluster &cluster = mesh.clusters[c];
-		n_triangles += cluster.triangle_offset;
+		n_triangles += cluster.triangle_count;
 		size_t end = cluster.triangle_offset + cluster.triangle_count;
 		for(size_t t = cluster.triangle_offset; t < end; t++) {
 			const Triangle &tri = mesh.triangles[t];

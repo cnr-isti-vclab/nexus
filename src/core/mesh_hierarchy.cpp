@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <set>
 #include <mutex>
+#include <cmath>
 
 namespace nx {
 
@@ -111,9 +112,61 @@ void compact_mesh(MeshFiles& mesh) {
 		w.p = pos_remap[w.p];
 	}
 }
+
+void recompute_wedge_normals(MeshFiles& mesh) {
+	if (mesh.wedges.size() == 0 || mesh.triangles.size() == 0) {
+		return;
+	}
+
+	std::vector<Vector3f> accum(mesh.wedges.size(), {0.0f, 0.0f, 0.0f});
+
+	for (size_t i = 0; i < mesh.triangles.size(); ++i) {
+		const Triangle &tri = mesh.triangles[i];
+		Index w0 = tri.w[0];
+		Index w1 = tri.w[1];
+		Index w2 = tri.w[2];
+		if (w0 >= mesh.wedges.size() || w1 >= mesh.wedges.size() || w2 >= mesh.wedges.size()) {
+			continue;
+		}
+		const Vector3f &p0 = mesh.positions[mesh.wedges[w0].p];
+		const Vector3f &p1 = mesh.positions[mesh.wedges[w1].p];
+		const Vector3f &p2 = mesh.positions[mesh.wedges[w2].p];
+
+		float ux = p1.x - p0.x;
+		float uy = p1.y - p0.y;
+		float uz = p1.z - p0.z;
+		float vx = p2.x - p0.x;
+		float vy = p2.y - p0.y;
+		float vz = p2.z - p0.z;
+
+		Vector3f n;
+		n.x = uy * vz - uz * vy;
+		n.y = uz * vx - ux * vz;
+		n.z = ux * vy - uy * vx;
+
+		accum[w0].x += n.x; accum[w0].y += n.y; accum[w0].z += n.z;
+		accum[w1].x += n.x; accum[w1].y += n.y; accum[w1].z += n.z;
+		accum[w2].x += n.x; accum[w2].y += n.y; accum[w2].z += n.z;
+	}
+
+	for (size_t i = 0; i < mesh.wedges.size(); ++i) {
+		Vector3f &n = accum[i];
+		float len = std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
+		if (len > 0.0f) {
+			n.x /= len;
+			n.y /= len;
+			n.z /= len;
+		} else {
+			n.x = n.y = n.z = 0.0f;
+		}
+		mesh.wedges[i].n = n;
+	}
+}
 void MeshHierarchy::initialize(MeshFiles&& base_mesh) {
 	nx::spatial_sort_mesh(base_mesh);
 	nx::compute_adjacency(base_mesh);
+	recompute_wedge_normals(base_mesh);
+
 
 	levels.push_back(std::move(base_mesh));
 }
@@ -187,7 +240,6 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 			const Index target_triangle_count = std::max<Index>(1, merged.triangles.size() / 2);
 			//simplify_mesh_edge(merged, target_triangle_count);
 			micronode.error = simplify_mesh(merged, target_triangle_count);
-			std::cout << "Error: " << micronode.error << std::endl;
 
 			{
 				const std::lock_guard<std::mutex> lock(next_mesh_lock);
@@ -202,17 +254,14 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 	}
 	pool.wait_for_tasks();
 
-	for(Index micro_id = 0; micro_id < mesh.micronodes.size(); micro_id++) {
-		MicroNode& micronode = mesh.micronodes[micro_id];
-		std::cout << "Error: " << micronode.error << std::endl;
-	}
-
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
+	recompute_wedge_normals(next_mesh);
 
 	// Recompute adjacency for the next level
 	if (next_mesh.triangles.size() > 0) {
 		compute_adjacency(next_mesh);
+		
 	}
 
 	//TODO sort clusters  (including triangles) by center to improve locality?
