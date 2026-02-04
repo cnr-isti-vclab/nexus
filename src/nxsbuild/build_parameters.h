@@ -4,6 +4,7 @@
 #include <QStringList>
 #include <QVariant>
 
+#include "../core/log.h"
 #include "../core/mesh_types.h"
 
 namespace nx {
@@ -64,6 +65,7 @@ public:
 
 	// Performance options
 	int num_threads = 0;             // Number of worker threads
+	Verbosity verbosity = Verbosity::Default; // Logging verbosity
 
 	/**
      * @brief Default constructor with default values

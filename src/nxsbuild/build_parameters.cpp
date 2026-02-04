@@ -48,6 +48,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 
 	// Performance options
 	parser.addOption({{"j", "threads"}, "Number of threads [4]", "n", "4"});
+	parser.addOption({{"v", "verbosity"}, "Logging verbosity: silent|default|verbose", "level", "default"});
 
 	// Add positional arguments
 	parser.addPositionalArgument("inputs", "Input mesh file(s)", "<input files>");
@@ -153,6 +154,18 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	colormap = parser.value("colormap");
 
 	num_threads = parser.value("threads").toInt();
+	QString verbosityStr = parser.value("verbosity").toLower();
+	if (verbosityStr == "silent") {
+		verbosity = Verbosity::Silent;
+	} else if (verbosityStr == "default") {
+		verbosity = Verbosity::Default;
+	} else if (verbosityStr == "verbose") {
+		verbosity = Verbosity::Verbose;
+	} else {
+		std::cerr << "Warning: unknown verbosity '" << verbosityStr.toStdString()
+				  << "', using default\n";
+		verbosity = Verbosity::Default;
+	}
 
 	// Get positional arguments (input files)
 	inputs = parser.positionalArguments();
@@ -242,6 +255,7 @@ void BuildParameters::printUsage() {
 
 	std::cout << "Performance options:\n";
 	std::cout << "  -j, --threads <n>         Number of threads [4]\n\n";
+	std::cout << "  -v, --verbosity <level>   Logging verbosity (silent|default|verbose)\n\n";
 
 	std::cout << "Input/Output:\n";
 	std::cout << "  -o, --output <file>       Output file (.nxs)\n";
@@ -249,33 +263,33 @@ void BuildParameters::printUsage() {
 }
 
 void BuildParameters::print() const {
-	std::cout << "\nBuild Parameters:\n";
-	std::cout << "  Input files: " << inputs.size() << " file(s)\n";
-	std::cout << "  Output: " << output.toStdString() << "\n";
-	std::cout << "  Faces per cluster: " << faces_per_cluster << "\n";
-	std::cout << "  Clusters per node: " << clusters_per_node << "\n";
-	std::cout << "  Faces per macro-node: " << macro_node_faces << "\n";
-	std::cout << "  Scaling: " << scaling << "\n";
-	std::cout << "  Texel weight: " << texel_weight << "\n";
+	nx::log << "\nBuild Parameters:\n";
+	nx::log << "  Input files: " << inputs.size() << " file(s)\n";
+	nx::log << "  Output: " << output.toStdString() << "\n";
+	nx::log << "  Faces per cluster: " << faces_per_cluster << "\n";
+	nx::log << "  Clusters per node: " << clusters_per_node << "\n";
+	nx::log << "  Faces per macro-node: " << macro_node_faces << "\n";
+	nx::log << "  Scaling: " << scaling << "\n";
+	nx::log << "  Texel weight: " << texel_weight << "\n";
 
 	// Print texture format
-	std::cout << "  Texture format: ";
+	nx::log << "  Texture format: ";
 	switch (texture_format) {
-	case TextureFormat::JPEG: std::cout << "JPEG"; break;
-	case TextureFormat::PNG: std::cout << "PNG"; break;
-	case TextureFormat::WebP: std::cout << "WebP"; break;
-	case TextureFormat::Basis: std::cout << "Basis Universal"; break;
-	case TextureFormat::BC7: std::cout << "BC7"; break;
-	case TextureFormat::ASTC: std::cout << "ASTC"; break;
-	case TextureFormat::ETC2: std::cout << "ETC2"; break;
+	case TextureFormat::JPEG: nx::log << "JPEG"; break;
+	case TextureFormat::PNG: nx::log << "PNG"; break;
+	case TextureFormat::WebP: nx::log << "WebP"; break;
+	case TextureFormat::Basis: nx::log << "Basis Universal"; break;
+	case TextureFormat::BC7: nx::log << "BC7"; break;
+	case TextureFormat::ASTC: nx::log << "ASTC"; break;
+	case TextureFormat::ETC2: nx::log << "ETC2"; break;
 	}
-	std::cout << " (quality: " << texture_quality << ")\n";
+	nx::log << " (quality: " << texture_quality << ")\n";
 
-	if (use_greedy) std::cout << "  Using greedy clustering\n";
-	std::cout << "  Threads: " << num_threads << "\n";
-	std::cout << "  Translate: (" << translate.x << ", " << translate.y << ", " << translate.z << ")\n";
-	std::cout << "  Scale: (" << scale.x << ", " << scale.y << ", " << scale.z << ")\n";
-	std::cout << "\n";
+	if (use_greedy) nx::log << "  Using greedy clustering\n";
+	nx::log << "  Threads: " << num_threads << "\n";
+	nx::log << "  Translate: (" << translate.x << ", " << translate.y << ", " << translate.z << ")\n";
+	nx::log << "  Scale: (" << scale.x << ", " << scale.y << ", " << scale.z << ")\n";
+	nx::log << "\n";
 }
 
 void BuildParameters::expandDirectoryInputs() {

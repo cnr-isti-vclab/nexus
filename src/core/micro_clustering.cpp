@@ -1,6 +1,8 @@
 #include "micro_clustering.h"
 #include "mesh.h"
 #include "mesh_types.h"
+#include "../core/log.h"
+
 #include <metis.h>
 #include <vector>
 #include <map>
@@ -42,7 +44,7 @@ std::vector<std::pair<std::size_t, std::size_t>> max_weight_matching(
 	// For general graphs, we create a bipartite graph by duplicating nodes
 	// Left side: nodes 0..num_nodes-1, Right side: nodes 0..num_nodes-1
 
-	std::cout << "Using Hungarian algorithm for matching..." << std::endl;
+	nx::debug << "Using Hungarian algorithm for matching..." << std::endl;
 
 	// Find maximum edge weight for negation (to convert max-weight to min-weight)
 	idx_t max_weight = *std::max_element(adjwgt.begin(), adjwgt.end());
@@ -90,7 +92,7 @@ std::vector<std::pair<std::size_t, std::size_t>> max_weight_matching(
 	// LEMON library implementation (general graph matching)
 	using namespace lemon;
 
-	std::cout << "Using LEMON library for matching..." << std::endl;
+	nx::debug << "Using LEMON library for matching..." << std::endl;
 
 	// Create LEMON graph
 	ListGraph graph;
@@ -156,7 +158,7 @@ std::vector<idx_t> partition_graph_exact_size(
 	// Round 2: pair groups into groups of 4
 
 	if (target_size == 4 && num_nodes >= 4) {
-		std::cout << "Using two-round matching for exact 4-way partition..." << std::endl;
+		nx::debug << "Using two-round matching for exact 4-way partition..." << std::endl;
 
 		// Round 1: Maximum weight matching to pair nodes (using Hungarian algorithm)
 		auto pairs_round1 = max_weight_matching(num_nodes, xadj, adjncy, adjwgt);
@@ -281,17 +283,17 @@ std::vector<idx_t> partition_graph_exact_size(
 			}
 		}
 
-		std::cout << " Final groups histogram: ";
+		nx::debug << " Final groups histogram: ";
 		for(auto &kv: histo) {
-			std::cout << kv.first << "->" << kv.second << " ";
+			nx::debug << kv.first << "->" << kv.second << " ";
 		}
-		std::cout << std::endl;
+		nx::log << std::endl;
 
 		return part;
 	}
 
 	// Fallback for non-4 target sizes: simple sequential assignment
-	std::cout << "Fallback: sequential assignment for target_size != 4" << std::endl;
+	nx::debug << "Fallback: sequential assignment for target_size != 4" << std::endl;
 	for (std::size_t i = 0; i < num_nodes; ++i) {
 		part[i] = static_cast<idx_t>(i / target_size);
 		if (part[i] >= static_cast<idx_t>(num_parts)) {
@@ -531,7 +533,7 @@ std::vector<idx_t> partition_graph_metis(
 std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
 											   std::size_t clusters_per_micronode,
 											   std::size_t triangles_per_cluster) {
-	std::cout << "\n=== Building micronodes ===" << std::endl;
+	nx::debug << "\n=== Building micronodes ===" << std::endl;
 
 	std::size_t num_clusters = mesh.clusters.size();
 	if (num_clusters == 0) {

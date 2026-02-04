@@ -14,6 +14,7 @@
 #include <cassert>
 #include <numeric>
 #include <metis.h>
+#include "../core/log.h"
 
 namespace nx {
 
@@ -342,7 +343,7 @@ void apply_fm_refinement(MeshFiles& mesh,
 void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* label) {
 	if (clusters.size() == 0) return;
 
-	std::cout << "\n=== Cluster Triangle Count Histogram " << label << " ===" << std::endl;
+	nx::debug << "\n=== Cluster Triangle Count Histogram " << label << " ===" << std::endl;
 
 	std::vector<int> histogram(10, 0);  // 10 buckets
 	std::vector<size_t> triangle_counts(10, 0);  // Triangle count per bucket
@@ -362,7 +363,7 @@ void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* l
 
 	if (min_count == std::numeric_limits<int>::max()) min_count = 0;
 
-	std::cout << "Total clusters: " << clusters.size() << ", Total triangles: " << total_triangles
+	nx::debug << "Total clusters: " << clusters.size() << ", Total triangles: " << total_triangles
 			  << ", Clusters with 0 triangles: " << clusters_with_zero << std::endl;
 
 	// Populate histogram
@@ -384,8 +385,8 @@ void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* l
 		size_t tri_count = triangle_counts[b];
 		int bars = (max_freq > 0) ? (freq * 50 / max_freq) : 0;
 
-		std::cout << "[" << lo << "-" << hi << "): ";
-		std::cout << " (" << freq << " clusters, " << tri_count << " triangles)" << std::endl;
+		nx::debug << "[" << lo << "-" << hi << "): ";
+		nx::debug << " (" << freq << " clusters, " << tri_count << " triangles)" << std::endl;
 	}
 }
 
@@ -626,7 +627,7 @@ void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles) {
 }
 
 void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
-	std::cout << "\n=== Building clusters with METIS ===" << std::endl;
+	nx::debug << "\n=== Building clusters with METIS ===" << std::endl;
 
 	std::size_t num_triangles = mesh.triangles.size();
 	if (num_triangles == 0) {
@@ -663,7 +664,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
 	options[METIS_OPTION_NUMBERING] = 0;
 
-	std::cout << "Calling METIS_PartGraphKway with " << nvtxs << " vertices, "
+	nx::debug << "Calling METIS_PartGraphKway with " << nvtxs << " vertices, "
 			  << nparts << " partitions..." << std::endl;
 
 	int ret = METIS_PartGraphKway(&nvtxs, &ncon,
@@ -708,7 +709,7 @@ void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod
 
 
 void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
-	std::cout << "\n=== Splitting clusters into N and creating micronodes ===" << std::endl;
+	nx::debug << "\n=== Splitting clusters into N and creating micronodes ===" << std::endl;
 
 	std::size_t num_original_clusters = mesh.clusters.size();
 	if (num_original_clusters == 0) {

@@ -10,11 +10,12 @@
 #include <iostream>
 #include <cassert>
 #include <map>
+#include "../core/log.h"
 
 namespace nx {
 
 void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
-	std::cout << "\n=== Building clusters with METIS ===" << std::endl;
+	nx::debug << "\n=== Building clusters with METIS ===" << std::endl;
 
 	std::size_t num_triangles = mesh.triangles.size();
 	if (num_triangles == 0) {
@@ -26,7 +27,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	std::size_t num_partitions = (num_triangles + max_triangles - 1) / max_triangles;
 	if (num_partitions < 2) num_partitions = 2; // METIS requires at least 2 partitions
 
-	std::cout << "Triangles: " << num_triangles << ", Max per cluster: " << max_triangles
+	nx::debug << "Triangles: " << num_triangles << ", Max per cluster: " << max_triangles
 			  << ", Target partitions: " << num_partitions << std::endl;
 
 	// Compute triangle centroids for distance-based edge weights
@@ -82,7 +83,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 		xadj.push_back(static_cast<idx_t>(adjncy.size()));
 	}
 
-	std::cout << "Graph edges: " << adjncy.size() << " (undirected, with spatial distance weights)" << std::endl;
+	nx::debug << "Graph edges: " << adjncy.size() << " (undirected, with spatial distance weights)" << std::endl;
 
 	// Validate graph structure
 	if (xadj.size() != num_triangles + 1) {
@@ -111,7 +112,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	options[METIS_OPTION_NUMBERING] = 0;                // C-style numbering
 
 	// Call METIS partitioning
-	std::cout << "Calling METIS_PartGraphKway with " << nvtxs << " vertices, "
+	nx::debug << "Calling METIS_PartGraphKway with " << nvtxs << " vertices, "
 			  << nparts << " partitions..." << std::endl;
 
 	int ret = METIS_PartGraphKway(
@@ -135,7 +136,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 		return 0;
 	}
 
-	std::cout << "METIS partitioning complete. Edge-cut: " << objval << std::endl;
+	nx::debug << "METIS partitioning complete. Edge-cut: " << objval << std::endl;
 
 	// Store partition assignments
 	mesh.triangle_to_cluster.resize(num_triangles);
@@ -173,7 +174,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	// Compute bounds
 	compute_cluster_bounds(mesh);
 
-	std::cout << "\nMETIS clustering complete: " << mesh.clusters.size() << " clusters created" << std::endl;
+	nx::debug << "\nMETIS clustering complete: " << mesh.clusters.size() << " clusters created" << std::endl;
 
 	return mesh.clusters.size();
 }

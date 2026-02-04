@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <assert.h>
+#include "../core/log.h"
 
 
 namespace nx {
@@ -91,7 +92,7 @@ static void merge_sort(std::vector<MortonPair>& pairs) {
 
 std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
 	Index num_positions = mesh.positions.size();
-	std::cout << "Spatial sorting " << num_positions << " positions..." << std::endl;
+	nx::debug << "Spatial sorting " << num_positions << " positions..." << std::endl;
 
 	if (num_positions == 0) {
 		return std::vector<Index>();
@@ -181,20 +182,20 @@ std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
 	}
 
 	// Write unique positions back (shrink to unique_count)
-	std::cout << "Writing sorted (deduplicated) positions... (" << unique_count << " -> " << num_positions << ")" << std::endl;
+	nx::debug << "Writing sorted (deduplicated) positions... (" << unique_count << " -> " << num_positions << ")" << std::endl;
 	mesh.positions.resize(unique_count);
 	for (Index i = 0; i < unique_count; ++i) {
 		mesh.positions[i] = unique_positions[i];
 	}
 
-	std::cout << "Spatial sort complete." << std::endl;
+	nx::debug << "Spatial sort complete." << std::endl;
 	return remap;
 }
 
 void remap_wedge_positions(MeshFiles& mesh, const std::vector<Index>& remap) {
 	if (remap.empty()) return;
 
-	std::cout << "Remapping wedge positions..." << std::endl;
+	nx::debug << "Remapping wedge positions..." << std::endl;
 
 	Index num_wedges = mesh.wedges.size();
 	for (Index i = 0; i < num_wedges; ++i) {
@@ -204,12 +205,12 @@ void remap_wedge_positions(MeshFiles& mesh, const std::vector<Index>& remap) {
 		}
 	}
 
-	std::cout << "Remapping complete." << std::endl;
+	nx::debug << "Remapping complete." << std::endl;
 }
 
 std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
 	Index num_wedges = mesh.wedges.size();
-	std::cout << "Sorting " << num_wedges << " wedges by position index..." << std::endl;
+	nx::debug << "Sorting " << num_wedges << " wedges by position index..." << std::endl;
 
 	if (num_wedges == 0) {
 		return std::vector<Index>();
@@ -241,13 +242,13 @@ std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
 		mesh.wedges[i] = sorted_wedges[i];
 	}
 
-	std::cout << "Wedge sorting complete." << std::endl;
+	nx::debug << "Wedge sorting complete." << std::endl;
 	return remap;
 }
 
 void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
 	assert(remap.size() == mesh.wedges.size());
-	std::cout << "Remapping triangle wedge indices..." << std::endl;
+	nx::debug << "Remapping triangle wedge indices..." << std::endl;
 
 	Index num_triangles = mesh.triangles.size();
 	for (Index i = 0; i < num_triangles; ++i) {
@@ -260,7 +261,7 @@ void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
 
 void sort_triangles_by_wedge(MeshFiles& mesh) {
 	Index num_triangles = mesh.triangles.size();
-	std::cout << "Sorting " << num_triangles << " triangles by smallest wedge index..." << std::endl;
+	nx::debug << "Sorting " << num_triangles << " triangles by smallest wedge index..." << std::endl;
 
 	// Create index array for sorting
 	std::vector<Index> indices(num_triangles);
@@ -301,13 +302,15 @@ void sort_triangles_by_wedge(MeshFiles& mesh) {
 		}
 	}
 
-	std::cout << "Triangle sorting complete." << std::endl;
+	nx::debug << "Triangle sorting complete." << std::endl;
 }
 
 void spatial_sort_mesh(MeshFiles& mesh) {
 	// Sort the vertices spatially and reindex
 	std::vector<Index> position_remap = spatial_sort_positions(mesh);
 	remap_wedge_positions(mesh, position_remap);
+
+
 
 	// Sort wedges by position index and reindex triangles
 	std::vector<Index> wedge_remap = sort_wedges_by_position(mesh);

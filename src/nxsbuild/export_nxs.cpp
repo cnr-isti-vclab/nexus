@@ -1,8 +1,8 @@
 #include "export_nxs.h"
 #include "../core/mesh_hierarchy.h"
 #include "../common/dag.h"
+#include "../core/log.h"
 #include <fstream>
-#include <iostream>
 #include <set>
 #include <map>
 #include <stdio.h>
@@ -111,14 +111,14 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 }
 
 void ExportNxs::printDag(MeshHierarchy &hierarchy) {
-	std::cout << "DAG (levels 0.." << (hierarchy.levels.size() ? (hierarchy.levels.size() - 1) : 0) << ")"
+	nx::debug << "DAG (levels 0.." << (hierarchy.levels.size() ? (hierarchy.levels.size() - 1) : 0) << ")"
 			  << std::endl;
 
-	std::cout << "Nodes: " << nodes.size() << ", Patches: " << patches.size() << std::endl;
+	nx::debug << "Nodes: " << nodes.size() << ", Patches: " << patches.size() << std::endl;
 
 	for (size_t i = 0; i < nodes.size()-1; ++i) {
 		nx::Node &node = nodes[i];
-		std::cout << "Node " << i
+		nx::debug << "Node " << i
 				  << " nvert=" << node.nvert
 				  << " nface=" << node.nface
 				  << " error=" << node.error
@@ -128,7 +128,7 @@ void ExportNxs::printDag(MeshHierarchy &hierarchy) {
 
 		for (uint32_t p = node.first_patch; p < node.last_patch(); ++p) {
 			const nx::Patch &patch = patches[p];
-			std::cout << "  Patch " << p
+			nx::debug << "  Patch " << p
 					  << " -> node " << patch.node
 					  << std::endl;
 		}
@@ -136,31 +136,31 @@ void ExportNxs::printDag(MeshHierarchy &hierarchy) {
 }
 
 void ExportNxs::printDagHierarchy(MeshHierarchy &hierarchy) {
-	std::cout << "DAG (hierarchy micronodes/clusters)" << std::endl;
+	nx::debug << "DAG (hierarchy micronodes/clusters)" << std::endl;
 	for (int level = hierarchy.levels.size()- 1; level >= 0; --level) {
 		MeshFiles &mesh = hierarchy.levels[level];
-		std::cout << "Level " << level
+		nx::debug << "Level " << level
 				  << " | micronodes=" << mesh.micronodes.size()
 				  << " | clusters=" << mesh.clusters.size()
 				  << std::endl;
 
 		for (size_t m = 0; m < mesh.micronodes.size(); ++m) {
 			MicroNode &mn = mesh.micronodes[m];
-			std::cout << "  Node " << m
+			nx::debug << "  Node " << m
 					  << " nvert=" << mn.vertex_count
 					  << " nface=" << mn.triangle_count
 					  << " error=" << mn.error
 					  << std::endl;
-			std::cout << "    patches=[";
+			nx::debug << "    patches=[";
 			for (size_t i = 0; i < mn.cluster_ids.size(); ++i) {
 				Index cid = mn.cluster_ids[i];
 				Cluster &cluster = mesh.clusters[cid];
-				std::cout << cid << " -> " << cluster.node;
-				if (i + 1 < mn.cluster_ids.size()) std::cout << ", ";
+				nx::debug << cid << " -> " << cluster.node;
+				if (i + 1 < mn.cluster_ids.size()) nx::debug << ", ";
 			}
-			std::cout << "]";
+			nx::debug << "]";
 
-			std::cout << std::endl;
+			nx::debug << std::endl;
 		}
 	}
 }

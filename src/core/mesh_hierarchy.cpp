@@ -15,6 +15,7 @@
 #include <set>
 #include <mutex>
 #include <cmath>
+#include "../core/log.h"
 
 namespace nx {
 
@@ -177,7 +178,7 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	}
 
 	// Build initial clusters and micronodes
-	std::cout << "Building initial clusters and micronodes..." << std::endl;
+	nx::log << "Building initial clusters and micronodes..." << std::endl;
 	std::size_t max_triangles = params.faces_per_cluster;
 	MeshFiles &mesh = levels[0];
 
@@ -187,7 +188,7 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	nx::split_clusters(mesh, max_triangles);
 	// Micronodes are now created by split_clusters
 
-	{
+	if(0) {
 		const std::filesystem::path out_dir = std::filesystem::current_path();
 		const std::string level_tag = "level_0";
 		export_ply(mesh, out_dir / (level_tag + "_clusters.ply"), ColoringMode::ByCluster);
@@ -198,9 +199,9 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	
 	while (true) {
 		MeshFiles &current = levels.back();
-		std::cout << "\n--- Level " << level_index << " ---" << std::endl;
-		std::cout << "Micronodes: " << current.micronodes.size() << std::endl;
-		std::cout << "Triangles: " << current.triangles.size() << std::endl;
+		nx::log << "\n--- Level " << level_index << " ---" << std::endl;
+		nx::log << "Micronodes: " << current.micronodes.size() << std::endl;
+		nx::log << "Triangles: " << current.triangles.size() << std::endl;
 
 		if(current.micronodes.size() == 1)
 			break;
