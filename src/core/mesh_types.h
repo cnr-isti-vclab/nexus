@@ -31,9 +31,9 @@ using Index = std::uint32_t;
 // A Wedge combines a reference to a spatial position with unique attributes
 // (Normal, Texture Coordinate) for that specific corner of a triangle.
 struct Wedge {
-    Index p;      // Index of the position (vertex coordinates)
-    Vector3f n;   // Normal vector
-    Vector2f t;   // Texture coordinates (UV)
+	Index p;      // Index of the position (vertex coordinates)
+	Vector3f n;   // Normal vector
+	Vector2f t;   // Texture coordinates (UV)
 };
 
 struct Triangle {

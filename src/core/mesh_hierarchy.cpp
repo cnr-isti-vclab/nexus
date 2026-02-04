@@ -114,21 +114,16 @@ void compact_mesh(MeshFiles& mesh) {
 	}
 }
 
-void recompute_wedge_normals(MeshFiles& mesh) {
-	if (mesh.wedges.size() == 0 || mesh.triangles.size() == 0) {
-		return;
-	}
-
-	std::vector<Vector3f> accum(mesh.wedges.size(), {0.0f, 0.0f, 0.0f});
+//TODO this should identify creases, compute normals and reunify wedges.
+void recompute_normals(MeshFiles& mesh) {
+	std::vector<Vector3f> accum(mesh.positions.size(), {0.0f, 0.0f, 0.0f});
 
 	for (size_t i = 0; i < mesh.triangles.size(); ++i) {
 		const Triangle &tri = mesh.triangles[i];
 		Index w0 = tri.w[0];
 		Index w1 = tri.w[1];
 		Index w2 = tri.w[2];
-		if (w0 >= mesh.wedges.size() || w1 >= mesh.wedges.size() || w2 >= mesh.wedges.size()) {
-			continue;
-		}
+
 		const Vector3f &p0 = mesh.positions[mesh.wedges[w0].p];
 		const Vector3f &p1 = mesh.positions[mesh.wedges[w1].p];
 		const Vector3f &p2 = mesh.positions[mesh.wedges[w2].p];
@@ -145,13 +140,16 @@ void recompute_wedge_normals(MeshFiles& mesh) {
 		n.y = uz * vx - ux * vz;
 		n.z = ux * vy - uy * vx;
 
-		accum[w0].x += n.x; accum[w0].y += n.y; accum[w0].z += n.z;
-		accum[w1].x += n.x; accum[w1].y += n.y; accum[w1].z += n.z;
-		accum[w2].x += n.x; accum[w2].y += n.y; accum[w2].z += n.z;
+		Index v0 = mesh.wedges[w0].p;
+		Index v1 = mesh.wedges[w1].p;
+		Index v2 = mesh.wedges[w2].p;
+
+		accum[v0].x += n.x; accum[v0].y += n.y; accum[v0].z += n.z;
+		accum[v1].x += n.x; accum[v1].y += n.y; accum[v1].z += n.z;
+		accum[v2].x += n.x; accum[v2].y += n.y; accum[v2].z += n.z;
 	}
 
-	for (size_t i = 0; i < mesh.wedges.size(); ++i) {
-		Vector3f &n = accum[i];
+	for(Vector3f &n: accum) {
 		float len = std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
 		if (len > 0.0f) {
 			n.x /= len;
@@ -160,14 +158,17 @@ void recompute_wedge_normals(MeshFiles& mesh) {
 		} else {
 			n.x = n.y = n.z = 0.0f;
 		}
-		mesh.wedges[i].n = n;
+	}
+	for (size_t i = 0; i < mesh.wedges.size(); ++i) {
+		Wedge &w = mesh.wedges[i];
+		w.n = accum[w.p];
 	}
 }
+
 void MeshHierarchy::initialize(MeshFiles&& base_mesh) {
 	nx::spatial_sort_mesh(base_mesh);
 	nx::compute_adjacency(base_mesh);
-	//recompute_wedge_normals(base_mesh);
-
+	recompute_normals(base_mesh);
 
 	levels.push_back(std::move(base_mesh));
 }
@@ -257,7 +258,7 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);
-	recompute_wedge_normals(next_mesh);
+	recompute_normals(next_mesh);
 
 	// Recompute adjacency for the next level
 	if (next_mesh.triangles.size() > 0) {
@@ -272,7 +273,7 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 	next_mesh.micronodes = create_micronodes_metis(next_mesh, params.clusters_per_node, params.faces_per_cluster);
 
 	// export to the ply by cluster and by node
-	{
+	if(0){
 		const std::filesystem::path out_dir = std::filesystem::current_path();
 		const std::string level_tag = "level_" + std::to_string(current_level);
 		export_ply(next_mesh, out_dir / (level_tag + "_clusters.ply"), ColoringMode::ByCluster);
