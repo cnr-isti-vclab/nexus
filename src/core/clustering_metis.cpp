@@ -10,7 +10,7 @@
 #include <iostream>
 #include <cassert>
 #include <map>
-#include "../core/log.h"
+#include "../common/log.h"
 
 namespace nx {
 

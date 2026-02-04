@@ -246,8 +246,68 @@ std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
 	return remap;
 }
 
+static std::vector<Index> unify_wedges_by_position_and_attributes(
+	MeshFiles& mesh,
+	float normal_eps,
+	float tex_eps) {
+	Index num_wedges = mesh.wedges.size();
+
+	nx::debug << "Unifying wedges by position/attributes..." << std::endl;
+
+	const float normal_eps2 = normal_eps * normal_eps;
+	const float tex_eps2 = tex_eps * tex_eps;
+
+	std::vector<Index> remap(num_wedges);
+	std::vector<Wedge> unified;
+	unified.reserve(num_wedges);
+
+	Index start = 0;
+	while (start < num_wedges) {
+		Index p = mesh.wedges[start].p;
+		Index end = start + 1;
+		while (end < num_wedges && mesh.wedges[end].p == p) {
+			++end;
+		}
+
+		Index group_base = static_cast<Index>(unified.size());
+		for (Index i = start; i < end; ++i) {
+			const Wedge& w = mesh.wedges[i];
+			bool merged = false;
+
+			for (Index j = group_base; j < unified.size(); ++j) {
+				const Wedge& u = unified[j];
+				float ndx = w.n.x - u.n.x;
+				float ndy = w.n.y - u.n.y;
+				float ndz = w.n.z - u.n.z;
+				float td0 = w.t.u - u.t.u;
+				float td1 = w.t.v - u.t.v;
+				float n2 = ndx * ndx + ndy * ndy + ndz * ndz;
+				float t2 = td0 * td0 + td1 * td1;
+				if (n2 <= normal_eps2 && t2 <= tex_eps2) {
+					remap[i] = j;
+					merged = true;
+					break;
+				}
+			}
+
+			if (!merged) {
+				remap[i] = static_cast<Index>(unified.size());
+				unified.push_back(w);
+			}
+		}
+
+		start = end;
+	}
+
+	mesh.wedges.resize(unified.size());
+	for(size_t i = 0; i < unified.size(); i++)
+		mesh.wedges[i] = unified[i];
+
+	nx::debug << "Wedge unification complete: " << num_wedges << " -> " << mesh.wedges.size() << std::endl;
+	return remap;
+}
+
 void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
-	assert(remap.size() == mesh.wedges.size());
 	nx::debug << "Remapping triangle wedge indices..." << std::endl;
 
 	Index num_triangles = mesh.triangles.size();
@@ -309,12 +369,13 @@ void spatial_sort_mesh(MeshFiles& mesh) {
 	// Sort the vertices spatially and reindex
 	std::vector<Index> position_remap = spatial_sort_positions(mesh);
 	remap_wedge_positions(mesh, position_remap);
-
-
-
+	
 	// Sort wedges by position index and reindex triangles
-	std::vector<Index> wedge_remap = sort_wedges_by_position(mesh);
-	remap_triangle_wedges(mesh, wedge_remap);
+	std::vector<Index> wedge_sort_remap = sort_wedges_by_position(mesh);
+	remap_triangle_wedges(mesh, wedge_sort_remap);
+
+	std::vector<Index> wedge_unify_remap = unify_wedges_by_position_and_attributes(mesh, 1e-3f, 1e-5f);
+	remap_triangle_wedges(mesh, wedge_unify_remap);
 
 	// Sort triangles by smallest wedge index
 	sort_triangles_by_wedge(mesh);

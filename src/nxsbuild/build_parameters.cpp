@@ -48,7 +48,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 
 	// Performance options
 	parser.addOption({{"j", "threads"}, "Number of threads [4]", "n", "4"});
-	parser.addOption({{"v", "verbosity"}, "Logging verbosity: silent|default|verbose", "level", "default"});
+	parser.addOption({{"V", "verbosity"}, "Logging verbosity: silent|default|verbose", "level", "default"});
 
 	// Add positional arguments
 	parser.addPositionalArgument("inputs", "Input mesh file(s)", "<input files>");

@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 		hierarchy.initialize(std::move(mesh));
 
 		// Build the complete hierarchy
-		std::cout << "Building mesh hierarchy..." << std::endl;
+		nx::log << "Building mesh hierarchy..." << std::endl;
 		hierarchy.build_hierarchy(params);
 
 		nx::ExportNxs exporter;

@@ -166,7 +166,7 @@ void recompute_wedge_normals(MeshFiles& mesh) {
 void MeshHierarchy::initialize(MeshFiles&& base_mesh) {
 	nx::spatial_sort_mesh(base_mesh);
 	nx::compute_adjacency(base_mesh);
-	recompute_wedge_normals(base_mesh);
+	//recompute_wedge_normals(base_mesh);
 
 
 	levels.push_back(std::move(base_mesh));
