@@ -8,7 +8,8 @@
 
 #include "../loaders/plyexporter.h"
 #include "../core/thread_pool.h"
-
+#include "../texture/parametrization.h"
+#include "../loaders/objexporter.h"
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
@@ -252,9 +253,27 @@ void MeshHierarchy::process_level(MeshFiles& mesh, MeshFiles& next_mesh, const B
 				split_mesh(merged, micro_id, next_mesh, params.faces_per_cluster);
 			}
 
+			if(1){
+				create_parametrization(merged);
+				MeshFiles debug_mesh;
+				debug_mesh.positions.resize(merged.positions.size());
+				for (Index i = 0; i < merged.positions.size(); ++i) {
+					debug_mesh.positions[i] = merged.positions[i];
+				}
+				debug_mesh.wedges.resize(merged.wedges.size());
+				for (Index i = 0; i < merged.wedges.size(); ++i) {
+					debug_mesh.wedges[i] = merged.wedges[i];
+				}
+				debug_mesh.triangles.resize(merged.triangles.size());
+				for (Index i = 0; i < merged.triangles.size(); ++i) {
+					debug_mesh.triangles[i] = merged.triangles[i];
+				}
+				export_obj(debug_mesh, "debug_clustered.obj");
+			}
 		}, micro_id);
+		pool.wait_for_tasks();
+
 	}
-	pool.wait_for_tasks();
 
 	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
 	compact_mesh(next_mesh);

@@ -14,6 +14,10 @@ set(SOURCES
 	build_parameters.cpp
 	merge_simplify_split.cpp
 	export_nxs.cpp
+	../texture/parametrization.cpp
+	../texture/xatlas.cpp
+	../texture/pyramid.cpp
+	../texture/texture.cpp
 	../core/mapped_file.cpp
 	../core/mesh.cpp
 	../core/mesh_hierarchy.cpp
@@ -33,11 +37,15 @@ set(SOURCES
 set(HEADERS
 	build_parameters.h
 	merge_simplify_split.h
+	export_nxs.h
+	../texture/parametrization.h
+	../texture/xatlas.h
+	../texture/pyramid.h
+	../texture/texture.h
 	../core/mesh_types.h
 	../core/mesh.h
 	../core/mesh_hierarchy.h
 	../core/vcgmesh.h
-	export_nxs.h
 	../core/spatial_sort.h
 	../core/adjacency.h
 	../core/clustering.h
@@ -50,7 +58,9 @@ set(HEADERS
 )
 
 add_executable(nxsbuild ${SOURCES} ${HEADERS}
-    ../../vcglib/wrap/ply/plylib.cpp ../../vcglib/wrap/ply/plylib.h)
+    ../../vcglib/wrap/ply/plylib.cpp ../../vcglib/wrap/ply/plylib.h
+    ../core/adjacency.cpp ../core/material.cpp ../core/material.h
+    ../texture/jpeg_decoder.cpp ../texture/jpeg_decoder.h)
 
 # Apply the matching algorithm choice
 if(USE_HUNGARIAN)
@@ -61,8 +71,8 @@ else()
 endif()
 
 # Find Qt6
-find_package(Qt6 COMPONENTS Core REQUIRED)
-
+find_package(Qt6 COMPONENTS Core Gui REQUIRED)
+find_package(JPEG REQUIRED)
 # Add METIS and LEMON library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
@@ -72,9 +82,10 @@ target_include_directories(nxsbuild PRIVATE
     /home/ponchio/local/include
     ../../lemon-graph-1.3.1
     ../../lemon-graph-1.3.1/build
+    ${JPEG_INCLUDE_DIR}
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
-target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core)
+target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core ${JPEG_LIBRARIES})
 
 install(TARGETS nxsbuild DESTINATION bin)

@@ -256,6 +256,9 @@ void ObjLoader::load(MeshFiles& mesh) {
 		mesh.material_ids.resize(triangle_count);
 		mesh.materials = materials;
 	}
+	for(Material &material: mesh.materials) {
+		material.initPyramids(mesh.dir);
+	}
 
 	// Copy positions
 	for (Index i = 0; i < position_count; ++i) {

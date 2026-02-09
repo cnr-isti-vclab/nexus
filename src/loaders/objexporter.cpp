@@ -20,8 +20,37 @@ for more details.
 #include <sstream>
 #include <unordered_map>
 #include <iostream>
+#include <vector>
 
 namespace nx {
+
+namespace {
+
+bool write_checkerboard_ppm(const std::filesystem::path& texture_path, int size = 512, int squares = 8) {
+	std::ofstream texture_file(texture_path, std::ios::binary);
+	if (!texture_file.is_open()) {
+		return false;
+	}
+	texture_file << "P6\n" << size << " " << size << "\n255\n";
+	const int square_size = size / squares;
+	std::vector<unsigned char> row(static_cast<std::size_t>(size) * 3);
+	for (int y = 0; y < size; ++y) {
+		for (int x = 0; x < size; ++x) {
+			int sx = x / square_size;
+			int sy = y / square_size;
+			bool white = ((sx + sy) % 2) == 0;
+			unsigned char c = white ? 255 : 128;
+			std::size_t idx = static_cast<std::size_t>(x) * 3;
+			row[idx + 0] = c;
+			row[idx + 1] = c;
+			row[idx + 2] = c;
+		}
+		texture_file.write(reinterpret_cast<const char*>(row.data()), static_cast<std::streamsize>(row.size()));
+	}
+	return true;
+}
+
+} // namespace
 
 void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path) {
 	std::ofstream file(output_path);
@@ -56,7 +85,8 @@ void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path)
 	file << "\n";
 
 	// Write materials if present
-	bool has_materials = !mesh.materials.empty();
+	bool use_checkerboard = mesh.materials.empty();
+	bool has_materials = !mesh.materials.empty() || use_checkerboard;
 	std::string mtl_filename;
 
 	if (has_materials) {
@@ -67,6 +97,19 @@ void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path)
 		std::filesystem::path mtl_path = output_path.parent_path() / mtl_filename;
 		std::ofstream mtl_file(mtl_path);
 		if (mtl_file.is_open()) {
+			if (use_checkerboard) {
+				std::string texture_filename = output_path.stem().string() + "_checker.ppm";
+				mtl_file << "newmtl checkerboard\n";
+				mtl_file << "Kd 1 1 1\n";
+				mtl_file << "Ka 0 0 0\n";
+				mtl_file << "Ks 0 0 0\n";
+				mtl_file << "d 1.0\n";
+				mtl_file << "map_Kd " << texture_filename << "\n\n";
+
+				std::filesystem::path texture_path = output_path.parent_path() / texture_filename;
+				write_checkerboard_ppm(texture_path);
+			}
+
 			for (size_t i = 0; i < mesh.materials.size(); ++i) {
 				const Material& mat = mesh.materials[i];
 				mtl_file << "newmtl material_" << i << "\n";
@@ -99,6 +142,10 @@ void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path)
 
 	// Write faces
 	int32_t current_material = -1;
+	if (use_checkerboard) {
+		file << "usemtl checkerboard\n";
+		current_material = 0;
+	}
 	for (Index i = 0; i < mesh.triangles.size() && i < 10000; ++i) {
 		const Triangle& tri = mesh.triangles[i];
 

@@ -3,10 +3,12 @@
 
 #include <string>
 #include <filesystem>
+#include <map>
 
 #include "mesh_types.h"
 #include "mapped_file.h"
 #include "material.h"
+#include "../texture/pyramid.h"
 
 namespace nx {
 
@@ -50,8 +52,12 @@ public:
 	// Micronodes (in-memory, not memory-mapped)
 	std::vector<MicroNode> micronodes;
 
+	std::vector<MacroNode> macronodes;
+
 	// Materials stored as JSON (not memory-mapped)
 	std::vector<Material> materials;
+
+	std::map<uint32_t, Pyramid> textures;
 
 	// Create empty files; callers typically resize afterwards.
 	bool create(const std::filesystem::path& dir);
@@ -59,8 +65,8 @@ public:
 	void close();
 
 
-private:
 	std::filesystem::path dir;
+private:
 
 	std::filesystem::path pathFor(const char* fname) const { return dir / fname; }
 	bool mapDataFiles(MappedFile::Mode mode);

@@ -33,7 +33,7 @@ bool can_merge_materials(const Material& a, const Material& b) {
     
     // Base color and texture role
     if (!same_color4(a.base_color, b.base_color)) return false;
-    if (!ls(a.base_color_texture, b.base_color_texture)) return false;
+	if (!same_texture_role(a.base_color_texture, b.base_color_texture)) return false;
     
     // PBR parameters
     if (!same_parameter(a.metallic_factor, b.metallic_factor)) return false;
@@ -63,6 +63,143 @@ bool can_merge_materials(const Material& a, const Material& b) {
     if (a.double_sided != b.double_sided) return false;
     
     return true;
+}
+
+Material::Material(const Material& other)
+    : type(other.type),
+      base_color_texture(other.base_color_texture),
+      metallic_factor(other.metallic_factor),
+      roughness_factor(other.roughness_factor),
+      metallic_roughness_texture(other.metallic_roughness_texture),
+      specular_texture(other.specular_texture),
+      shininess(other.shininess),
+      normal_texture(other.normal_texture),
+      normal_scale(other.normal_scale),
+      occlusion_texture(other.occlusion_texture),
+      occlusion_strength(other.occlusion_strength),
+      emissive_texture(other.emissive_texture),
+      double_sided(other.double_sided),
+      name(other.name) {
+    std::copy(other.base_color, other.base_color + 4, base_color);
+    std::copy(other.specular, other.specular + 3, specular);
+    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
+    base_color_map = nullptr;
+    metallic_roughness_map = nullptr;
+    emissive_id_map = nullptr;
+}
+
+Material& Material::operator=(const Material& other) {
+    if (this == &other) {
+        return *this;
+    }
+    destroyPyramids();
+    type = other.type;
+    base_color_texture = other.base_color_texture;
+    metallic_factor = other.metallic_factor;
+    roughness_factor = other.roughness_factor;
+    metallic_roughness_texture = other.metallic_roughness_texture;
+    specular_texture = other.specular_texture;
+    shininess = other.shininess;
+    normal_texture = other.normal_texture;
+    normal_scale = other.normal_scale;
+    occlusion_texture = other.occlusion_texture;
+    occlusion_strength = other.occlusion_strength;
+    emissive_texture = other.emissive_texture;
+    double_sided = other.double_sided;
+    name = other.name;
+    std::copy(other.base_color, other.base_color + 4, base_color);
+    std::copy(other.specular, other.specular + 3, specular);
+    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
+    base_color_map = nullptr;
+    metallic_roughness_map = nullptr;
+    emissive_id_map = nullptr;
+    return *this;
+}
+
+Material::Material(Material&& other) noexcept
+    : type(other.type),
+      base_color_texture(std::move(other.base_color_texture)),
+      metallic_factor(other.metallic_factor),
+      roughness_factor(other.roughness_factor),
+      metallic_roughness_texture(std::move(other.metallic_roughness_texture)),
+      specular_texture(std::move(other.specular_texture)),
+      shininess(other.shininess),
+      normal_texture(std::move(other.normal_texture)),
+      normal_scale(other.normal_scale),
+      occlusion_texture(std::move(other.occlusion_texture)),
+      occlusion_strength(other.occlusion_strength),
+      emissive_texture(std::move(other.emissive_texture)),
+      double_sided(other.double_sided),
+      name(std::move(other.name)),
+      base_color_map(other.base_color_map),
+      metallic_roughness_map(other.metallic_roughness_map),
+      emissive_id_map(other.emissive_id_map) {
+    std::copy(other.base_color, other.base_color + 4, base_color);
+    std::copy(other.specular, other.specular + 3, specular);
+    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
+    other.base_color_map = nullptr;
+    other.metallic_roughness_map = nullptr;
+    other.emissive_id_map = nullptr;
+}
+
+Material& Material::operator=(Material&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+    destroyPyramids();
+    type = other.type;
+    base_color_texture = std::move(other.base_color_texture);
+    metallic_factor = other.metallic_factor;
+    roughness_factor = other.roughness_factor;
+    metallic_roughness_texture = std::move(other.metallic_roughness_texture);
+    specular_texture = std::move(other.specular_texture);
+    shininess = other.shininess;
+    normal_texture = std::move(other.normal_texture);
+    normal_scale = other.normal_scale;
+    occlusion_texture = std::move(other.occlusion_texture);
+    occlusion_strength = other.occlusion_strength;
+    emissive_texture = std::move(other.emissive_texture);
+    double_sided = other.double_sided;
+    name = std::move(other.name);
+    std::copy(other.base_color, other.base_color + 4, base_color);
+    std::copy(other.specular, other.specular + 3, specular);
+    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
+    base_color_map = other.base_color_map;
+    metallic_roughness_map = other.metallic_roughness_map;
+    emissive_id_map = other.emissive_id_map;
+    other.base_color_map = nullptr;
+    other.metallic_roughness_map = nullptr;
+    other.emissive_id_map = nullptr;
+    return *this;
+}
+
+Material::~Material() {
+    destroyPyramids();
+}
+
+void Material::destroyPyramids() {
+    delete base_color_map;
+    delete metallic_roughness_map;
+    delete emissive_id_map;
+    base_color_map = nullptr;
+    metallic_roughness_map = nullptr;
+    emissive_id_map = nullptr;
+}
+
+void Material::initPyramids(const std::string& cache_dir) {
+    destroyPyramids();
+    if(!base_color_texture.empty()) {
+        base_color_map = new Pyramid();
+        base_color_map->build(base_color_texture, cache_dir);
+    }
+    if(!metallic_roughness_texture.empty()) {
+        metallic_roughness_map = new Pyramid();
+        metallic_roughness_map->build(metallic_roughness_texture, cache_dir);
+    }
+    if(!emissive_texture.empty()) {
+        emissive_id_map = new Pyramid();
+        emissive_id_map->build(emissive_texture, cache_dir);
+    }
 }
 
 } // namespace nx
