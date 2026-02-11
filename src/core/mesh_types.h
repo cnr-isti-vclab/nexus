@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <vector>
+#include <limits>
 
 // Basic POD geometry types intended for out-of-core usage.
 // Keep them trivial (no constructors) to simplify mmap'ed I/O.
@@ -27,13 +28,14 @@ public:
 
 // Indices are 32-bit for now (fits ~4B elements).
 using Index = std::uint32_t;
+constexpr Index NONE = std::numeric_limits<Index>::max();
 
 // A Wedge combines a reference to a spatial position with unique attributes
 // (Normal, Texture Coordinate) for that specific corner of a triangle.
 struct Wedge {
-	Index p;      // Index of the position (vertex coordinates)
-	Vector3f n;   // Normal vector
-	Vector2f t;   // Texture coordinates (UV)
+	Index p = NONE;      // Index of the position (vertex coordinates)
+	Index n = NONE;      // Index of the normal
+	Index t = NONE;      // Index of the texture coordinates
 };
 
 struct Triangle {
@@ -78,6 +80,13 @@ struct MicroNode {
 	float error;
 };
 
+//the material defines how many components and which textures are stored here.
+struct NodeTexture {
+	size_t offset; // Offset into the texels array in MeshFiles
+	int width;
+	int height;
+};
+
 // A MacroNode groups micronodes at the second level of the hierarchy.
 // It contains references to the micronodes that belong to it.
 struct MacroNode {
@@ -100,7 +109,7 @@ static_assert(sizeof(Vector3f) == 12, "Vector3f must stay packed");
 static_assert(sizeof(Vector2f) == 8,  "Vector2f must stay packed");
 static_assert(sizeof(Rgba8) == 4,     "Rgba8 layout changed unexpectedly");
 static_assert(sizeof(Aabb) == 24,     "Aabb layout changed unexpectedly");
-static_assert(sizeof(Wedge)   == 24, "Wedge layout changed unexpectedly");
+static_assert(sizeof(Wedge)   == 12, "Wedge layout changed unexpectedly");
 static_assert(sizeof(Triangle)== 12, "Triangle layout changed unexpectedly");
 static_assert(sizeof(FaceAdjacency)== 12, "FaceAdjacency layout changed unexpectedly");
 static_assert(sizeof(HalfedgeRecord) == 16, "HalfedgeRecord layout changed unexpectedly");

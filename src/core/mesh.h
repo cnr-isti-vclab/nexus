@@ -8,7 +8,6 @@
 #include "mesh_types.h"
 #include "mapped_file.h"
 #include "material.h"
-#include "../texture/pyramid.h"
 
 namespace nx {
 
@@ -25,8 +24,33 @@ namespace nx {
  *  - materials.json    (Material array as JSON)
  */
 
+class Mesh {
+    enum class Component : uint32_t {
+        None        = 0,
+        Position    = 1 << 0,
+        Normal      = 1 << 1,
+        Color       = 1 << 2,
+        TexCoords   = 1 << 3,
+    };
+
+    bool hasComponent(Component comp) const {
+        return (components & static_cast<uint32_t>(comp)) != 0;
+    }
+
+    void addComponent(Component comp) {
+        components |= static_cast<uint32_t>(comp);
+    }
+
+private:
+    uint32_t components = static_cast<uint32_t>(Component::None);
+}
+
 class MeshFiles {
 public:
+	bool has_colors = false;
+	bool has_normals = true;
+	bool has_textures = false;
+
 	MeshFiles();
 	~MeshFiles();
 
@@ -40,9 +64,14 @@ public:
 	// Exposed mapped arrays
 	MappedArray<Vector3f> positions;      // Always present
 	MappedArray<Rgba8> colors;            // Optional (size 0 if no colors)
+	MappedArray<Vector3f> normals;            // Optional (size 0 if no colors)
+	MappedArray<Vector2f> texcoords;            // Optional (size 0 if no colors)
+
 	MappedArray<Wedge> wedges;            // Always present
+
 	MappedArray<Triangle> triangles;      // Always present
 	MappedArray<Index> material_ids;      // Optional (size 0 if single/no material)
+
 	MappedArray<FaceAdjacency> adjacency; // Computed separately
 	MappedArray<Cluster> clusters;        // Computed by clustering (includes bounds)
 
@@ -51,13 +80,14 @@ public:
 
 	// Micronodes (in-memory, not memory-mapped)
 	std::vector<MicroNode> micronodes;
+	std::vector<NodeTexture> node_textures; // Texture info for each micronode
 
 	std::vector<MacroNode> macronodes;
-
+	
 	// Materials stored as JSON (not memory-mapped)
 	std::vector<Material> materials;
 
-	std::map<uint32_t, Pyramid> textures;
+	MappedArray<uint8_t>texels; //store textures for each micronode.
 
 	// Create empty files; callers typically resize afterwards.
 	bool create(const std::filesystem::path& dir);

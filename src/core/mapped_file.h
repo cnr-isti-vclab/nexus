@@ -88,6 +88,9 @@ public:
 	bool resize(size_t count) {
 		return _file.resize(count * sizeof(T));
 	}
+	bool grow(size_t count) {
+		return _file.resize(count*sizeof(T) + _file.size());
+	}
 
 	void close() { _file.close(); }
 

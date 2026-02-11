@@ -197,10 +197,10 @@ void ObjLoader::load(MeshFiles& mesh) {
 		}
 	}
 
-	// Reserve temp storage
-	temp_positions.reserve(position_count);
-	temp_normals.reserve(normal_count);
-	temp_texcoords.reserve(texcoord_count);
+	// allocate storage
+	mesh.positions.resize(position_count);
+	mesh.normals.resize(normal_count);
+	mesh.texcoords.resize(texcoord_count);
 
 	// Second pass: load all vertex attributes
 	file.clear();
@@ -208,6 +208,10 @@ void ObjLoader::load(MeshFiles& mesh) {
 
 	Aabb bounds;
 	bool first_vertex = true;
+
+	Index current_p = 0;
+	Index current_n = 0;
+	Index current_t = 0;
 
 	while (std::getline(file, line)) {
 		if (line.empty()) continue;
@@ -231,25 +235,20 @@ void ObjLoader::load(MeshFiles& mesh) {
 				bounds.max.z = std::max(bounds.max.z, p.z);
 			}
 
-			temp_positions.push_back(p);
+			mesh.positions[current_p++] = p;
 		}
 		else if (cmd == "vn") {
 			Vector3f n;
 			iss >> n.x >> n.y >> n.z;
-			temp_normals.push_back(n);
+			mesh.normals[current_n++] = n;
 		}
 		else if (cmd == "vt") {
 			Vector2f t;
 			iss >> t.u >> t.v;
-			temp_texcoords.push_back(t);
+			mesh.texcoords[current_t++] = t;
 		}
 	}
 
-	// Resize mesh arrays
-	Index wedge_count = triangle_count * 3;
-	mesh.positions.resize(position_count);
-	mesh.wedges.resize(wedge_count);
-	mesh.triangles.resize(triangle_count);
 
 	bool has_materials = !materials.empty();
 	if (has_materials) {
@@ -260,14 +259,14 @@ void ObjLoader::load(MeshFiles& mesh) {
 		material.initPyramids(mesh.dir);
 	}
 
-	// Copy positions
-	for (Index i = 0; i < position_count; ++i) {
-		mesh.positions[i] = temp_positions[i];
-	}
-
 	// Third pass: build wedges and triangles
 	file.clear();
 	file.seekg(0);
+
+	// Resize mesh arrays
+	Index wedge_count = triangle_count * 3;
+	mesh.wedges.resize(wedge_count);
+	mesh.triangles.resize(triangle_count);
 
 	Index current_wedge = 0;
 	Index current_triangle = 0;
@@ -325,26 +324,24 @@ void ObjLoader::load(MeshFiles& mesh) {
 
 					// Position (1-based in OBJ, convert to 0-based)
 					Index pos_idx = (idx[0] > 0) ? idx[0] - 1 : position_count + idx[0];
+					if(pos_idx >= position_count)
+						throw std::runtime_error("Position index larger then the number of v in obj");
 					wedge.p = pos_idx;
 
 					// Texcoord
-					if (idx[1] != 0 && !temp_texcoords.empty()) {
+					if (idx[1] != 0) {
 						Index tc_idx = (idx[1] > 0) ? idx[1] - 1 : texcoord_count + idx[1];
-						if (tc_idx < texcoord_count) {
-							wedge.t = temp_texcoords[tc_idx];
-						}
-					} else {
-						wedge.t = {0.0f, 0.0f};
+						if(tc_idx >= texcoord_count)
+							throw std::runtime_error("Texture index larger then the number of vt in obj");
+						wedge.t = tc_idx;
 					}
 
 					// Normal
-					if (idx[2] != 0 && !temp_normals.empty()) {
+					if (idx[2] != 0) {
 						Index n_idx = (idx[2] > 0) ? idx[2] - 1 : normal_count + idx[2];
-						if (n_idx < normal_count) {
-							wedge.n = temp_normals[n_idx];
-						}
-					} else {
-						wedge.n = {0.0f, 0.0f, 0.0f};
+						if(n_idx >= normal_count)
+							throw std::runtime_error("Normal index larger then the number of vn in obj");
+						wedge.n = n_idx;
 					}
 
 					mesh.triangles[current_triangle].w[j] = current_wedge;

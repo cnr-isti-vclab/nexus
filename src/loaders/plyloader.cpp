@@ -220,6 +220,10 @@ void PlyLoader::load(MeshFiles& mesh) {
 	mesh.positions.resize(n_vertices);
 	if(has_colors)
 		mesh.colors.resize(n_vertices);
+	if(has_normals)
+		mesh.normals.resize(n_vertices);
+	if(has_textures)
+		mesh.texcoords.resize(n_vertices);
 	mesh.wedges.resize(n_vertices);
 
 	pf.SetCurElement(vertices_element);
@@ -242,9 +246,10 @@ void PlyLoader::load(MeshFiles& mesh) {
 			p.z = (float)(vertex.v[2] - origin.z)*scale.z;
 		}
 		if(has_normals) {
-			w.n.x = vertex.n[0];
-			w.n.y = vertex.n[1];
-			w.n.z = vertex.n[2];
+			Vector3f &n = mesh.normals[i];
+			n.x = vertex.n[0];
+			n.y = vertex.n[1];
+			n.z = vertex.n[2];
 		}
 		if(has_colors) {
 			Rgba8 &c = mesh.colors[i];
@@ -254,8 +259,9 @@ void PlyLoader::load(MeshFiles& mesh) {
 			c.a = vertex.c[3];
 		}
 		if(has_textures) {
-			w.t.u = vertex.t[0];
-			w.t.v = vertex.t[1];
+			Vector2f &t = mesh.texcoords[i];
+			t.u = vertex.t[0];
+			t.v = vertex.t[1];
 		}
 	}
 

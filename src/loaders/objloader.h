@@ -28,12 +28,6 @@ private:
 	bool use_custom_mtl = false;
 	std::vector<std::string> mtl_files;
 
-	// Temporary storage during parsing
-	std::vector<Vector3f> temp_positions;
-	std::vector<Vector3f> temp_normals;
-	std::vector<Vector2f> temp_texcoords;
-
-
 	int32_t current_material_id = -1;
 };
 

@@ -18,6 +18,7 @@ set(SOURCES
 	../texture/xatlas.cpp
 	../texture/pyramid.cpp
 	../texture/texture.cpp
+	../texture/rasterizer.cpp
 	../core/mapped_file.cpp
 	../core/mesh.cpp
 	../core/mesh_hierarchy.cpp
@@ -42,6 +43,7 @@ set(HEADERS
 	../texture/xatlas.h
 	../texture/pyramid.h
 	../texture/texture.h
+	../texture/rasterizer.h
 	../core/mesh_types.h
 	../core/mesh.h
 	../core/mesh_hierarchy.h

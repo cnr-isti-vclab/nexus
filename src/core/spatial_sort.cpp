@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <assert.h>
+#include <limits>
 #include "../core/log.h"
 
 
@@ -247,15 +248,10 @@ std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
 }
 
 static std::vector<Index> unify_wedges_by_position_and_attributes(
-	MeshFiles& mesh,
-	float normal_eps,
-	float tex_eps) {
+	MeshFiles& mesh) {
 	Index num_wedges = mesh.wedges.size();
 
 	nx::debug << "Unifying wedges by position/attributes..." << std::endl;
-
-	const float normal_eps2 = normal_eps * normal_eps;
-	const float tex_eps2 = tex_eps * tex_eps;
 
 	std::vector<Index> remap(num_wedges);
 	std::vector<Wedge> unified;
@@ -276,14 +272,7 @@ static std::vector<Index> unify_wedges_by_position_and_attributes(
 
 			for (Index j = group_base; j < unified.size(); ++j) {
 				const Wedge& u = unified[j];
-				float ndx = w.n.x - u.n.x;
-				float ndy = w.n.y - u.n.y;
-				float ndz = w.n.z - u.n.z;
-				float td0 = w.t.u - u.t.u;
-				float td1 = w.t.v - u.t.v;
-				float n2 = ndx * ndx + ndy * ndy + ndz * ndz;
-				float t2 = td0 * td0 + td1 * td1;
-				if (n2 <= normal_eps2 && t2 <= tex_eps2) {
+				if (w.n == u.n && w.t == u.t) {
 					remap[i] = j;
 					merged = true;
 					break;
@@ -316,6 +305,68 @@ void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
 		for (int j = 0; j < 3; ++j) {
 				tri.w[j] = remap[tri.w[j]];
 		}
+	}
+}
+
+void sort_normals_by_wedge(MeshFiles& mesh) {
+	if(!mesh.has_normals || mesh.normals.size() == 0)
+		return;
+
+	Index num_wedges = mesh.wedges.size();
+	Index num_normals = mesh.normals.size();
+
+	std::vector<Index> remap(num_normals, NONE);
+	std::vector<Vector3f> sorted;
+	sorted.reserve(num_normals);
+
+	for (Index i = 0; i < num_wedges; ++i) {
+		Wedge& w = mesh.wedges[i];
+		Index nidx = w.n;
+		assert(w.n != NONE);
+		
+		Index& mapped = remap[nidx];
+		if (mapped == NONE) {
+			mapped = static_cast<Index>(sorted.size());
+			sorted.push_back(mesh.normals[nidx]);
+		}
+		w.n = mapped;
+	}
+
+	mesh.normals.resize(sorted.size());
+	for (Index i = 0; i < sorted.size(); ++i) {
+		mesh.normals[i] = sorted[i];
+	}
+}
+void sort_textures_by_wedge(MeshFiles& mesh) {
+	if(!mesh.has_textures || mesh.texcoords.size())
+		return;
+
+	Index num_wedges = mesh.wedges.size();
+	Index num_textures = mesh.texcoords.size();
+
+
+	std::vector<Index> remap(num_textures, NONE);
+	std::vector<Vector2f> sorted;
+	sorted.reserve(num_textures);
+
+	for (Index i = 0; i < num_wedges; ++i) {
+		Wedge& w = mesh.wedges[i];
+		Index tidx = w.t;
+		if (tidx >= num_textures) {
+			w.t = 0;
+			continue;
+		}
+		Index& mapped = remap[tidx];
+		if (mapped == NONE) {
+			mapped = static_cast<Index>(sorted.size());
+			sorted.push_back(mesh.texcoords[tidx]);
+		}
+		w.t = mapped;
+	}
+
+	mesh.texcoords.resize(sorted.size());
+	for (Index i = 0; i < sorted.size(); ++i) {
+		mesh.texcoords[i] = sorted[i];
 	}
 }
 
@@ -372,9 +423,13 @@ void spatial_sort_mesh(MeshFiles& mesh) {
 	
 	// Sort wedges by position index and reindex triangles
 	std::vector<Index> wedge_sort_remap = sort_wedges_by_position(mesh);
+
+	sort_normals_by_wedge(mesh);
+	sort_textures_by_wedge(mesh);
+	
 	remap_triangle_wedges(mesh, wedge_sort_remap);
 
-	std::vector<Index> wedge_unify_remap = unify_wedges_by_position_and_attributes(mesh, 1e-3f, 1e-5f);
+	std::vector<Index> wedge_unify_remap = unify_wedges_by_position_and_attributes(mesh);
 	remap_triangle_wedges(mesh, wedge_unify_remap);
 
 	// Sort triangles by smallest wedge index

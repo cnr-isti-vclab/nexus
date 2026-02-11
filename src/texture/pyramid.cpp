@@ -10,6 +10,7 @@
 #include <iostream>
 #include <filesystem>
 #include <random>
+#include <algorithm>
 
 #include <tiffio.h>
 
@@ -375,6 +376,69 @@ void Pyramid::exportPyramid(const std::string &output_dir) const {
 			file.write(reinterpret_cast<const char*>(scanline.data()), static_cast<std::streamsize>(scanline.size()));
 		}
 	}
+}
+
+Vector3f Pyramid::sample(float u, float v, int level) const {
+	if (levels.empty() || !data.data()) {
+		return {0.0f, 0.0f, 0.0f};
+	}
+	if (level < 0) level = 0;
+	if (level >= static_cast<int>(levels.size()))
+		level = static_cast<int>(levels.size()) - 1;
+	const PyrLevel& lvl = levels[level];
+	if (lvl.width <= 0 || lvl.height <= 0) {
+		return {0.0f, 0.0f, 0.0f};
+	}
+	const float clamp_u = std::clamp(u, 0.0f, 1.0f);
+	const float clamp_v = std::clamp(v, 0.0f, 1.0f);
+	const float fx = clamp_u * (lvl.width - 1);
+	const float fy = clamp_v * (lvl.height - 1);
+	int x0 = static_cast<int>(std::floor(fx));
+	int y0 = static_cast<int>(std::floor(fy));
+	int x1 = std::min(x0 + 1, lvl.width - 1);
+	int y1 = std::min(y0 + 1, lvl.height - 1);
+	float tx = fx - static_cast<float>(x0);
+	float ty = fy - static_cast<float>(y0);
+
+	auto fetch = [&](int px, int py) {
+		int tile_col = px / tileside;
+		int tile_row = py / tileside;
+		int in_tile_x = px - tile_col * tileside;
+		int in_tile_y = py - tile_row * tileside;
+		if (tile_col < 0 || tile_row < 0 || tile_col >= lvl.cols || tile_row >= lvl.rows) {
+			return Vector3f{0.0f, 0.0f, 0.0f};
+		}
+		const int tile_bytes = tileside * tileside * ncomponents;
+		const std::size_t tile_index = static_cast<std::size_t>(tile_row) * lvl.cols + tile_col;
+		const uint8_t* tile = lvl.start + tile_index * tile_bytes;
+		const uint8_t* src = tile + (in_tile_y * tileside + in_tile_x) * ncomponents;
+		float r = src[0] / 255.0f;
+		float g = (ncomponents > 1) ? src[1] / 255.0f : r;
+		float b = (ncomponents > 2) ? src[2] / 255.0f : r;
+		return Vector3f{r, g, b};
+	};
+
+	Vector3f c00 = fetch(x0, y0);
+	Vector3f c10 = fetch(x1, y0);
+	Vector3f c01 = fetch(x0, y1);
+	Vector3f c11 = fetch(x1, y1);
+
+	Vector3f c0{
+		c00.x + (c10.x - c00.x) * tx,
+		c00.y + (c10.y - c00.y) * tx,
+		c00.z + (c10.z - c00.z) * tx
+	};
+	Vector3f c1{
+		c01.x + (c11.x - c01.x) * tx,
+		c01.y + (c11.y - c01.y) * tx,
+		c01.z + (c11.z - c01.z) * tx
+	};
+
+	return {
+		c0.x + (c1.x - c0.x) * ty,
+		c0.y + (c1.y - c0.y) * ty,
+		c0.z + (c1.z - c0.z) * ty
+	};
 }
 
 }

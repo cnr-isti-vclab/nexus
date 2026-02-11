@@ -7,6 +7,7 @@
 #include <array>
 
 #include "../core/mapped_file.h"
+#include "../core/mesh_types.h"
 #include <QString>
 
 namespace nx {
@@ -79,6 +80,7 @@ public:
 
 	bool build(const std::string &filename, const std::string &cache_dir, int tile_size = 254);
 	void exportPyramid(const std::string &output_dir) const;
+	Vector3f sample(float u, float v, int level = 0) const;
 
 private:
 	MappedArray<uint8_t> data;

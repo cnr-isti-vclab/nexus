@@ -26,6 +26,7 @@ public:
 	
 private:
 	void process_level(MeshFiles& mesh, MeshFiles& next_mesh, const BuildParameters &params);
+	void reparametrize_clusters(MeshFiles& mesh, const BuildParameters& params);
 	
 };
 

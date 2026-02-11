@@ -42,6 +42,8 @@ bool MeshFiles::create(const std::filesystem::path& dir_path) {
 void MeshFiles::close() {
 	positions.close();
 	colors.close();
+	normals.close();
+	texcoords.close();
 	wedges.close();
 	triangles.close();
 	material_ids.close();
@@ -57,6 +59,9 @@ void MeshFiles::close() {
 bool MeshFiles::mapDataFiles(MappedFile::Mode mode) {
 	if (!positions.open(pathFor("positions.bin").string(), mode, 0)) return false;
 	if (!colors.open(pathFor("colors.bin").string(), mode, 0)) return false;
+	if (!normals.open(pathFor("normals.bin").string(), mode, 0)) return false;
+	if (!texcoords.open(pathFor("textures.bin").string(), mode, 0)) return false;
+
 	if (!wedges.open(pathFor("wedges.bin").string(), mode, 0)) return false;
 	if (!triangles.open(pathFor("triangles.bin").string(), mode, 0)) return false;
 	if (!material_ids.open(pathFor("material_ids.bin").string(), mode, 0)) return false;

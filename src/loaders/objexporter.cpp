@@ -70,17 +70,17 @@ void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path)
 	}
 	file << "\n";
 
-	// Write texcoords directly from wedges
-	for (Index i = 0; i < mesh.wedges.size(); ++i) {
-		const Wedge& w = mesh.wedges[i];
-		file << "vt " << w.t.u << " " << w.t.v << "\n";
+	// Write texcoords
+	for (Index i = 0; i < mesh.texcoords.size(); ++i) {
+		const Vector2f &t = mesh.texcoords[i];
+		file << "vt " << t.u << " " << t.v << "\n";
 	}
 	file << "\n";
 
-	// Write normals directly from wedges
-	for (Index i = 0; i < mesh.wedges.size(); ++i) {
-		const Wedge& w = mesh.wedges[i];
-		file << "vn " << w.n.x << " " << w.n.y << " " << w.n.z << "\n";
+	// Write normals
+	for (Index i = 0; i < mesh.normals.size(); ++i) {
+		const Vector3f &n = mesh.normals[i];
+		file << "vn " << n.x << " " << n.y << " " << n.z << "\n";
 	}
 	file << "\n";
 
@@ -160,14 +160,22 @@ void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path)
 			}
 		}
 
-		file << "f";
+		file << "f ";
 		for (int j = 0; j < 3; ++j) {
 			Index wedge_idx = tri.w[j];
 			const Wedge& w = mesh.wedges[wedge_idx];
 
 			// Position index (1-based), texcoord index, normal index
 			// All reference the wedge arrays directly
-			file << " " << (w.p + 1) << "/" << (wedge_idx + 1) << "/" << (wedge_idx + 1);
+			if(mesh.normals.size() && mesh.texcoords.size())
+				file << (w.p + 1) << "/" << (w.t + 1) << "/" << (w.n + 1);
+			else if(mesh.normals.size() && mesh.texcoords.size() == 0)
+				file << (w.p + 1) << "//" << (w.n + 1);
+			else if(mesh.normals.size() == 0 && mesh.texcoords.size())
+				file << (w.p + 1) << "/" << (w.t + 1);
+			else
+				file << (w.p + 1);
+
 		}
 		file << "\n";
 	}

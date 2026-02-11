@@ -42,9 +42,9 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	//if(components & NORMALS)
 	signature.vertex.setComponent(VertexElement::NORM, Attribute(Attribute::SHORT, 3));
 	/*if(components & COLORS)
-		signature.vertex.setComponent(VertexElement::COLOR, Attribute(Attribute::BYTE, 4));
-	if(components & TEXTURES)
-		signature.vertex.setComponent(FaceElement::TEX, Attribute(Attribute::FLOAT, 2));*/
+		signature.vertex.setComponent(VertexElement::COLOR, Attribute(Attribute::BYTE, 4)); */
+	if(hierarchy.levels[0].has_textures)
+		signature.vertex.setComponent(FaceElement::TEX, Attribute(Attribute::FLOAT, 2));
 
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 	header.version = 2;
@@ -194,14 +194,25 @@ void ExportNxs::exportMicronode(int level, MeshFiles &mesh, MicroNode &micronode
 	char *buffer = new char[size];
 
 	Vector3f *vertices = (Vector3f *)buffer;
+	Vector2f *texcoords = nullptr;
 	int16_t *normals = (int16_t *)(buffer + 12*n_wedges);
+
+	if(mesh.has_textures) {
+		texcoords = (Vector2f *)buffer + 12*n_wedges;
+		normals += 8*n_wedges;
+	}
+
 	//write the wedges
 	for(const auto [old_index, new_index]: wedges_ids) {
 		const Wedge &wedge = mesh.wedges[old_index];
 		vertices[new_index] = mesh.positions[wedge.p];
-		normals[new_index*3 + 0] = int16_t(wedge.n.x*32767);
-		normals[new_index*3 + 1] = int16_t(wedge.n.y*32767);
-		normals[new_index*3 + 2] = int16_t(wedge.n.z*32767);
+		Vector3f n{0, 0, 0};
+		if(mesh.has_normals && wedge.n != NONE) {
+			n = mesh.normals[wedge.n];
+		}
+		normals[new_index*3 + 0] = int16_t(n.x*32767);
+		normals[new_index*3 + 1] = int16_t(n.y*32767);
+		normals[new_index*3 + 2] = int16_t(n.z*32767);
 	}
 
 	uint16_t *triangles = (uint16_t *)(buffer + 18*n_wedges);
@@ -209,13 +220,13 @@ void ExportNxs::exportMicronode(int level, MeshFiles &mesh, MicroNode &micronode
 	for(Index c = 0; c < micronode.cluster_ids.size(); c++) {
 		const Cluster &cluster = mesh.clusters[micronode.cluster_ids[c]];
 		nx::Patch patch;
-		if(cluster.node == 0xFFFFFFFF) {
-			patch.node = 0xFFFFFFFF; //first level, sync node
+		if(cluster.node == NONE) {
+			patch.node = NONE; //first level, sync node
 			assert(level == 0);
 		} else {
 			patch.node = cluster.node + level_node_offset[level-1];
 		}
-		patch.texture = 0xffffffff;
+		patch.texture = NONE;
 
 		size_t end = cluster.triangle_offset + cluster.triangle_count;
 		for(size_t t = cluster.triangle_offset; t < end; t++) {
@@ -245,8 +256,6 @@ void ExportNxs::exportMicronode(int level, MeshFiles &mesh, MicroNode &micronode
 
 	//TODO we might want to optimize the node by cache coherence (or compress!)
 }
-
-
 
 
 void ExportNxs::saturateNodes() {

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../core/mesh_types.h"
+#include "../core/material.h"
 namespace nx {
 
 class MeshFiles;
@@ -12,12 +13,21 @@ class MeshFiles;
 // Step 3: Merge clusters within a micronode into a temporary mesh
 struct MergedMesh {
 	std::vector<Vector3f> positions;
-	std::vector<Wedge> wedges;
+	std::vector<Rgba8>    colors;
+	std::vector<Vector3f> normals;
+	std::vector<Vector2f> texcoords;
+
+	std::vector<Wedge>    wedges;
 	std::vector<Triangle> triangles;
-	std::vector<Index> boundary_vertices;  // Vertices on micronode boundary
+	std::vector<Index>    boundary_vertices;          // Vertices on micronode boundary
+
 	std::unordered_map<Index, Index> position_map; // original position -> merged position
-	std::vector<Index> position_remap;//merged_position -> original position
+	std::vector<Index>               position_remap;             //merged_position -> original position
+
+	std::vector<Index> material_ids;               // Optional (size 0 if single/no material)
 	Index parent_micronode_id;
+
+	std::vector<TileMap> tilemap; //materials
 };
 
 // Step 6: Result of splitting a simplified mesh
@@ -27,16 +37,18 @@ struct SplitResult {
 	Index cluster_1_count;
 };
 
+MergedMesh merge_micronode_clusters_for_simplification(const MeshFiles& mesh,
+													   const MicroNode& micronode);
+
+
+
 // Merge 4 clusters from a micronode into a single mesh
-MergedMesh merge_micronode_clusters(
-	const MeshFiles& mesh,
-	const MicroNode& micronode);
+MergedMesh merge_micronode_clusters(const MeshFiles& mesh,
+									const MicroNode& micronode);
 
 
 // Simplify mesh to target triangle count (respecting locked boundaries)
-float simplify_mesh(
-	MergedMesh& mesh,
-	Index target_triangle_count);
+float simplify_mesh(MergedMesh &mesh, Index target_triangle_count);
 
 float simplify_mesh_edge(
 	MergedMesh& mesh,

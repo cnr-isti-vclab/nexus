@@ -19,20 +19,21 @@
 
 namespace nx {
 
-MergedMesh merge_micronode_clusters(
+
+//here we keep only posuitions and triangles, we do not care about normals or textures (recomputed)
+MergedMesh merge_micronode_clusters_for_simplification(
 	const MeshFiles& mesh,
 	const MicroNode& micronode) {
 
 	MergedMesh merged;
 	merged.parent_micronode_id = micronode.id;
 
+	//this is needed to find boundary vertices.
 	std::unordered_set<Index> micronode_clusters;
 	micronode_clusters.reserve(micronode.cluster_ids.size());
 	for (Index cluster_id : micronode.cluster_ids) {
 		micronode_clusters.insert(cluster_id);
 	}
-
-	std::unordered_map<Index, Index> wedge_map;
 
 	std::size_t total_triangles = 0;
 	for (Index cluster_id : micronode.cluster_ids) {
@@ -49,44 +50,34 @@ MergedMesh merge_micronode_clusters(
 
 		for (Index t = start; t < end; ++t) {
 			const Triangle& tri = mesh.triangles[t];
-			Triangle new_tri{};
-
+			Triangle new_tri;
 			size_t p[3];
 			for (int j = 0; j < 3; ++j) {
 				Index original_wedge = tri.w[j];
-				auto wedge_it = wedge_map.find(original_wedge);
-				if (wedge_it == wedge_map.end()) {
-					const Wedge& w = mesh.wedges[original_wedge];
-					Index original_pos = w.p;
+				Index original_pos = mesh.wedges[original_wedge].p;
 
-					Index new_pos = 0;
-					auto pos_it = merged.position_map.find(original_pos);
-					if (pos_it == merged.position_map.end()) {
-						new_pos = static_cast<Index>(merged.positions.size());
-						merged.positions.push_back(mesh.positions[original_pos]);
-						merged.position_map[original_pos] = new_pos;
-						merged.position_remap.push_back(original_pos);
-					} else {
-						new_pos = pos_it->second;
+				Index new_pos = 0;
+				auto pos_it = merged.position_map.find(original_pos);
+				if (pos_it == merged.position_map.end()) {
+					new_pos = static_cast<Index>(merged.positions.size());
+					merged.positions.push_back(mesh.positions[original_pos]);
+					merged.position_map[original_pos] = new_pos;
+					merged.position_remap.push_back(original_pos);
+					if(mesh.has_colors) {
+						merged.colors.push_back(mesh.colors[original_pos]);
 					}
-					Wedge new_wedge;
-					new_wedge = w;
-					p[j] = new_wedge.p = new_pos;
-					Index new_wedge_index = static_cast<Index>(merged.wedges.size());
-					merged.wedges.push_back(new_wedge);
-					wedge_map[original_wedge] = new_wedge_index;
-					new_tri.w[j] = new_wedge_index;
+					Wedge w = { new_pos, NONE, NONE};
+					merged.wedges.push_back(w);
 				} else {
-					new_tri.w[j] = wedge_it->second;
-					p[j] = merged.wedges[wedge_it->second].p;
+					new_pos = pos_it->second;
 				}
+				p[j] = new_tri.w[j] = new_pos;
 			}
-			//remove degenerate triangles
-			if(new_tri.w[0] != new_tri.w[1] && new_tri.w[0] != new_tri.w[2] && new_tri.w[1] != new_tri.w[2] )
-				if(p[0] != p[1] && p[0] != p[2] && p[1] != p[2])
-					merged.triangles.push_back(new_tri);
+			assert(new_tri.w[0] != new_tri.w[1] && new_tri.w[0] != new_tri.w[2] && new_tri.w[1] != new_tri.w[2] );
+			assert(p[0] != p[1] && p[0] != p[2] && p[1] != p[2]);
 
-			assert(mesh.triangle_to_cluster[t] == cluster_id);
+			merged.triangles.push_back(new_tri);
+			merged.material_ids.push_back(mesh.material_ids[t]);
 
 			const FaceAdjacency& adj = mesh.adjacency[t];
 			for (int corner = 0; corner < 3; ++corner) {
@@ -118,9 +109,116 @@ MergedMesh merge_micronode_clusters(
 		merged.boundary_vertices.erase(std::unique(merged.boundary_vertices.begin(), merged.boundary_vertices.end()),
 									   merged.boundary_vertices.end());
 	}
-
 	return merged;
 }
+
+//this function is called in the initial reparametrization AND for geometric reprojection of textures.
+//we need to keep to keep the normals and the textures
+
+MergedMesh merge_micronode_clusters(
+	const MeshFiles& mesh,
+	const MicroNode& micronode) {
+
+	MergedMesh merged;
+	merged.parent_micronode_id = micronode.id;
+
+	std::size_t total_triangles = 0;
+	for (Index cluster_id : micronode.cluster_ids) {
+		const Cluster& cluster = mesh.clusters[cluster_id];
+		total_triangles += cluster.triangle_count;
+	}
+	merged.triangles.reserve(total_triangles);
+
+	//map global wedge index to local wedge index.
+	std::unordered_map<Index, Index> wedge_map;
+	std::unordered_map<Index, Index> position_map;
+	std::unordered_map<Index, Index> texture_map;
+	std::unordered_map<Index, Index> normal_map;
+
+
+	for (Index cluster_id : micronode.cluster_ids) {
+		const Cluster& cluster = mesh.clusters[cluster_id];
+		Index start = cluster.triangle_offset;
+		Index end = cluster.triangle_offset + cluster.triangle_count;
+
+		for (Index t = start; t < end; ++t) {
+			const Triangle& tri = mesh.triangles[t];
+			Triangle new_tri{};
+
+			size_t p[3];
+			for (int j = 0; j < 3; ++j) {
+				Index original_wedge = tri.w[j];
+				auto wedge_it = wedge_map.find(original_wedge);
+				if (wedge_it == wedge_map.end()) {
+					const Wedge& w = mesh.wedges[original_wedge];
+
+					Index new_pos = 0;
+					{
+						Index original_pos = w.p;
+						auto pos_it = position_map.find(original_pos);
+						if (pos_it == position_map.end()) {
+							new_pos = static_cast<Index>(merged.positions.size());
+							merged.positions.push_back(mesh.positions[original_pos]);
+							position_map[original_pos] = new_pos;
+							merged.position_remap.push_back(original_pos);
+						} else {
+							new_pos = pos_it->second;
+						}
+					}
+
+					Index new_nor = NONE;
+					if(mesh.has_normals) {
+						Index original_nor = w.n;
+
+						auto nor_it = normal_map.find(original_nor);
+						if (nor_it == normal_map.end()) {
+							new_nor = static_cast<Index>(merged.normals.size());
+							merged.normals.push_back(mesh.normals[original_nor]);
+							normal_map[original_nor] = new_nor;
+						} else {
+							new_nor = nor_it->second;
+						}
+					}
+					Index new_tex = 0;
+					if(mesh.has_textures) {
+						Index original_tex = w.t;
+
+						auto tex_it = texture_map.find(original_tex);
+						if (tex_it == texture_map.end()) {
+							new_tex = static_cast<Index>(merged.texcoords.size());
+							merged.texcoords.push_back(mesh.texcoords[original_tex]);
+							texture_map[original_tex] = new_tex;
+						} else {
+							new_tex = tex_it->second;
+						}
+					}
+					Wedge new_wedge;
+					p[j] = new_wedge.p = new_pos;
+					new_wedge.n = new_nor;
+					new_wedge.t = new_tex;
+
+					Index new_wedge_index = static_cast<Index>(merged.wedges.size());
+					merged.wedges.push_back(new_wedge);
+					wedge_map[original_wedge] = new_wedge_index;
+					new_tri.w[j] = new_wedge_index;
+				} else {
+					new_tri.w[j] = wedge_it->second;
+					p[j] = merged.wedges[wedge_it->second].p;
+				}
+			}
+			//remove degenerate triangles
+			assert(new_tri.w[0] != new_tri.w[1] && new_tri.w[0] != new_tri.w[2] && new_tri.w[1] != new_tri.w[2] );
+			assert(p[0] != p[1] && p[0] != p[2] && p[1] != p[2]);
+
+			merged.triangles.push_back(new_tri);
+			merged.material_ids.push_back(mesh.material_ids[t]);
+
+			assert(mesh.triangle_to_cluster[t] == cluster_id);
+		}
+	}
+	return merged;
+}
+
 
 
 float meshError(MergedMesh& mesh) {
@@ -145,60 +243,61 @@ float meshError(MergedMesh& mesh) {
 
 
 float simplify_mesh(
-	MergedMesh& mesh,
+	MergedMesh& merged,
 	Index target_triangle_count) {
 
-	if (mesh.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
+	if (merged.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
 		return 0;
 	}
 
 	if(0){
 		MeshFiles debug_mesh;
-		debug_mesh.positions.resize(mesh.positions.size());
-		for (Index i = 0; i < mesh.positions.size(); ++i) {
-			debug_mesh.positions[i] = mesh.positions[i];
+		debug_mesh.positions.resize(merged.positions.size());
+		for (Index i = 0; i < merged.positions.size(); ++i) {
+			debug_mesh.positions[i] = merged.positions[i];
 		}
-		debug_mesh.wedges.resize(mesh.wedges.size());
-		for (Index i = 0; i < mesh.wedges.size(); ++i) {
-			debug_mesh.wedges[i] = mesh.wedges[i];
+		debug_mesh.wedges.resize(merged.wedges.size());
+		for (Index i = 0; i < merged.wedges.size(); ++i) {
+			debug_mesh.wedges[i] = merged.wedges[i];
 		}
-		debug_mesh.triangles.resize(mesh.triangles.size());
-		for (Index i = 0; i < mesh.triangles.size(); ++i) {
-			debug_mesh.triangles[i] = mesh.triangles[i];
+		debug_mesh.triangles.resize(merged.triangles.size());
+		for (Index i = 0; i < merged.triangles.size(); ++i) {
+			debug_mesh.triangles[i] = merged.triangles[i];
 		}
 		export_obj(debug_mesh, "debug_before.obj");
 	}
 
 
 	VcgMesh legacy_mesh;
-	vcg::tri::Allocator<VcgMesh>::AddVertices(legacy_mesh, mesh.positions.size() * 3);
-	vcg::tri::Allocator<VcgMesh>::AddFaces(legacy_mesh, mesh.triangles.size());
+	vcg::tri::Allocator<VcgMesh>::AddVertices(legacy_mesh, merged.positions.size() * 3);
+	vcg::tri::Allocator<VcgMesh>::AddFaces(legacy_mesh, merged.triangles.size());
 
-	for (std::size_t i = 0; i < mesh.positions.size(); ++i) {
+	for (std::size_t i = 0; i < merged.positions.size(); ++i) {
 		AVertex &v = legacy_mesh.vert[i];
-		const Vector3f& p = mesh.positions[i];
+		const Vector3f& p = merged.positions[i];
 		v.P() = vcg::Point3f(p.x, p.y, p.z);
 		v.C() = vcg::Color4b(255, 255, 255, 255);
 	}
 
 	// Lock boundary vertices directly
-	for(size_t b: mesh.boundary_vertices) {
+	for (Index b : merged.boundary_vertices) {
 		legacy_mesh.vert[b].ClearW();
 	}
 
-	for (std::size_t i = 0; i < mesh.triangles.size(); ++i) {
-		const Triangle& tri = mesh.triangles[i];
+	for (std::size_t i = 0; i < merged.triangles.size(); ++i) {
+		const Triangle& tri = merged.triangles[i];
 		AFace& face = legacy_mesh.face[i];
 		for (int k = 0; k < 3; ++k) {
-			const Wedge& w = mesh.wedges[tri.w[k]];
+			const Wedge& w = merged.wedges[tri.w[k]];
 
 			face.V(k) = &legacy_mesh.vert[w.p];
 
 			AVertex* v = face.V(k);
-			v->N() = vcg::Point3f(w.n.x, w.n.y, w.n.z);
-			//face.WN(k) = vcg::Point3f(w.n.x, w.n.y, w.n.z);
-			face.WT(k).U() = w.t.u;
-			face.WT(k).V() = w.t.v;
+			const Vector3f &n = merged.normals[w.n];
+			v->N() = vcg::Point3f(n.x, n.y, n.z);
+			const Vector2f &t = merged.texcoords[w.t];
+			face.WT(k).U() = t.u;
+			face.WT(k).V() = t.v;
 		}
 	}
 	//vcg::tri::UpdateNormal<VcgMesh>::PerWedgeCrease(legacy_mesh, 60*M_PI/180);
@@ -206,8 +305,9 @@ float simplify_mesh(
 	legacy_mesh.quadricInit();
 	legacy_mesh.simplify(target_triangle_count, VcgMesh::QUADRICS);
 
+
 	//Compact positions and keep track of remapping
-	std::vector<Index> vertex_remap(mesh.positions.size(), std::numeric_limits<Index>::max());
+	std::vector<Index> vertex_remap(merged.positions.size(), NONE);
 
 	for(size_t i = 0; i < legacy_mesh.vert.size(); i++) {
 		AVertex &v = legacy_mesh.vert[i];
@@ -234,83 +334,73 @@ float simplify_mesh(
 		}
 		vcg::Point3f &p = v.P();
 		vertex_remap[i] = count;
-		mesh.position_remap[count] = mesh.position_remap[i];
-		mesh.positions[count++] = { p[0], p[1], p[2]};
+		merged.position_remap[count] = merged.position_remap[i];
+		merged.positions[count++] = { p[0], p[1], p[2]};
 	}
-	mesh.positions.resize(count);
+	merged.positions.resize(count);
+
 
 	//remap boundary vertices (for no good reason).
-	for(Index &i: mesh.boundary_vertices)
+	for(Index &i: merged.boundary_vertices)
 		i = vertex_remap[i];
 
 	// Remove invalid and duplicate boundary indices
-	if (!mesh.boundary_vertices.empty()) {
+	if (!merged.boundary_vertices.empty()) {
 		// erase invalid markers (could be max value)
-		mesh.boundary_vertices.erase(
-			std::remove_if(mesh.boundary_vertices.begin(), mesh.boundary_vertices.end(),
+		merged.boundary_vertices.erase(
+			std::remove_if(merged.boundary_vertices.begin(), merged.boundary_vertices.end(),
 						   [](Index v){ return v == std::numeric_limits<Index>::max(); }),
-			mesh.boundary_vertices.end());
+			merged.boundary_vertices.end());
 
-		if (!mesh.boundary_vertices.empty()) {
-			std::sort(mesh.boundary_vertices.begin(), mesh.boundary_vertices.end());
-			mesh.boundary_vertices.erase(std::unique(mesh.boundary_vertices.begin(), mesh.boundary_vertices.end()),
-										 mesh.boundary_vertices.end());
+		if (!merged.boundary_vertices.empty()) {
+			std::sort(merged.boundary_vertices.begin(), merged.boundary_vertices.end());
+			merged.boundary_vertices.erase(std::unique(merged.boundary_vertices.begin(), merged.boundary_vertices.end()),
+										 merged.boundary_vertices.end());
 		}
 	}
 
-
-	mesh.wedges.clear();
-	mesh.triangles.clear();
+	merged.texcoords.clear();
+	merged.wedges.clear();
+	merged.triangles.clear();
 
 	for (std::size_t i = 0; i < legacy_mesh.face.size(); ++i) {
 		AFace& f = legacy_mesh.face[i];
 		if (f.IsD()) {
 			continue;
 		}
+
 		Triangle tri{};
 		for (int k = 0; k < 3; ++k) {
 			const AVertex* v = f.cV(k);
 			std::size_t vidx = static_cast<std::size_t>(v - vbase);
 			Index new_pos = vertex_remap[vidx];
-			assert(new_pos != std::numeric_limits<Index>::max());
+			assert(new_pos != NONE);
 
-			Wedge w;
+			Wedge w{};
 			w.p = new_pos;
-			w.n.x = v->N()[0];
-			w.n.y = v->N()[1];
-			w.n.z = v->N()[2];
-			w.t.u = f.WT(k).U();
-			w.t.v = f.WT(k).V();
-			w.t.u = w.t.v = 0;
-			Index wedge_index = static_cast<Index>(mesh.wedges.size());
-			mesh.wedges.push_back(w);
-			tri.w[k] = wedge_index;
+			w.n = NONE;
+			Vector2f texcoord{f.WT(k).U(), f.WT(k).V()};
+			w.t = static_cast<Index>(merged.texcoords.size());
+			merged.texcoords.push_back(texcoord);
 
-			/* DEBUG CHECK for dragon.ply only
-			if(k > 1) {
-				const AVertex* ov = f.cV(k-1);
-				std::size_t ovidx = static_cast<std::size_t>(ov - vbase);
-				Index old_pos = vertex_remap[ovidx];
-				Vector3f p = mesh.positions[new_pos];
-				Vector3f op = mesh.positions[old_pos];
-				if(fabs(p.x- op.x) > 0.05 || fabs(p.y - op.y) > 0.05 || fabs(p.z - op.z) > 0.05)
-					throw "porcatrottola";
-			}
-*/
+			tri.w[k] = static_cast<Index>(merged.wedges.size());
+			merged.wedges.push_back(w);
 		}
-		mesh.triangles.push_back(tri);
+
+		merged.triangles.push_back(tri);
 	}
 
-	// Compact wedges: sort by (position, normal, texcoord) and merge duplicates
+	// Compact wedges: sort by (position, texcoord) and merge duplicates
 	{
-		const Index old_count = static_cast<Index>(mesh.wedges.size());
-		using Key = std::tuple<Index, float, float, float, float, float>;
+		const Index old_count = static_cast<Index>(merged.wedges.size());
+		using Key = std::tuple<Index, float, float>;
 		std::vector<std::pair<Key, Index>> entries;
 		entries.reserve(old_count);
 
 		for (Index wi = 0; wi < old_count; ++wi) {
-			const Wedge& w = mesh.wedges[wi];
-			Key k = std::make_tuple(w.p, w.n.x, w.n.y, w.n.z, w.t.u, w.t.v);
+			const Wedge& w = merged.wedges[wi];
+			const Vector2f& t = merged.texcoords[w.t];
+			Key k = std::make_tuple(w.p, t.u, t.v);
 			entries.emplace_back(k, wi);
 		}
 
@@ -329,7 +419,7 @@ float simplify_mesh(
 			Index old_idx = ent.second;
 			if (!has_prev || key != prev_key) {
 				// create new compacted wedge from old
-				compacted.push_back(mesh.wedges[old_idx]);
+				compacted.push_back(merged.wedges[old_idx]);
 				Index new_idx = static_cast<Index>(compacted.size()) - 1;
 				remap[old_idx] = new_idx;
 				prev_key = key;
@@ -340,14 +430,11 @@ float simplify_mesh(
 			}
 		}
 
-		// For any entries that were duplicates but not contiguous (shouldn't happen), ensure remap filled:
-		// (but above handles all duplicates because entries contains all wedges)
-
 		// Replace wedges with compacted list
-		mesh.wedges = std::move(compacted);
+		merged.wedges = std::move(compacted);
 
 		// Update triangle wedge indices
-		for (Triangle& tri : mesh.triangles) {
+		for (Triangle& tri : merged.triangles) {
 			for (int k = 0; k < 3; ++k) {
 				Index old_w = tri.w[k];
 				if (old_w < remap.size()) {
@@ -360,21 +447,21 @@ float simplify_mesh(
 	}
 	if(0){
 		MeshFiles debug_mesh;
-		debug_mesh.positions.resize(mesh.positions.size());
-		for (Index i = 0; i < mesh.positions.size(); ++i) {
-			debug_mesh.positions[i] = mesh.positions[i];
+		debug_mesh.positions.resize(merged.positions.size());
+		for (Index i = 0; i < merged.positions.size(); ++i) {
+			debug_mesh.positions[i] = merged.positions[i];
 		}
-		debug_mesh.wedges.resize(mesh.wedges.size());
-		for (Index i = 0; i < mesh.wedges.size(); ++i) {
-			debug_mesh.wedges[i] = mesh.wedges[i];
+		debug_mesh.wedges.resize(merged.wedges.size());
+		for (Index i = 0; i < merged.wedges.size(); ++i) {
+			debug_mesh.wedges[i] = merged.wedges[i];
 		}
-		debug_mesh.triangles.resize(mesh.triangles.size());
-		for (Index i = 0; i < mesh.triangles.size(); ++i) {
-			debug_mesh.triangles[i] = mesh.triangles[i];
+		debug_mesh.triangles.resize(merged.triangles.size());
+		for (Index i = 0; i < merged.triangles.size(); ++i) {
+			debug_mesh.triangles[i] = merged.triangles[i];
 		}
 		export_obj(debug_mesh, "debug_after.obj");
 	}
-	return meshError(mesh);
+	return meshError(merged);
 }
 
 
@@ -485,41 +572,10 @@ float simplify_mesh_edge(
 	return meshError(mesh);
 }
 
-void update_vertices_and_wedges(
-	MeshFiles& next_mesh,
-	const MergedMesh& merged) {
+//only boundary positions needs to be shared: normals get recomputed, textures
+//are not shared because of the seam
+void update_vertices_and_wedges(MeshFiles& next_mesh, const MergedMesh& merged) {
 
-
-	std::unordered_map<Index, const Wedge*> merged_wedge_for_pos;
-	merged_wedge_for_pos.reserve(merged.wedges.size());
-	for (const Wedge& w : merged.wedges) {
-		if (merged_wedge_for_pos.find(w.p) == merged_wedge_for_pos.end()) {
-			merged_wedge_for_pos[w.p] = &w;
-		}
-	}
-
-	for (const auto& [original_pos, merged_pos] : merged.position_map) {
-		next_mesh.positions[original_pos] = merged.positions[merged_pos];
-	}
-	for(Index b: merged.boundary_vertices) {
-		Index i = merged.position_remap[b];
-	}
-
-	for (Index i = 0; i < next_mesh.wedges.size(); ++i) {
-		Wedge& w = next_mesh.wedges[i];
-		auto it = merged.position_map.find(w.p);
-		if (it == merged.position_map.end()) {
-			continue;
-		}
-		Index merged_pos = it->second;
-		auto mw_it = merged_wedge_for_pos.find(merged_pos);
-		if (mw_it == merged_wedge_for_pos.end()) {
-			continue;
-		}
-		const Wedge* mw = mw_it->second;
-		w.n = mw->n;
-		w.t = mw->t;
-	}
 }
 
 
@@ -641,6 +697,7 @@ Index ensure_mapped_position(Index merged_pos, const std::vector<Index>& merged_
 	}
 	return std::numeric_limits<Index>::max();
 }
+
 
 void split_mesh(
 	const MergedMesh& merged,
@@ -767,21 +824,30 @@ void split_mesh(
 		cluster_triangles[part[i]].push_back(static_cast<Index>(i));
 	}
 
-	//update positions
+	//Update positions:
 	for(size_t i = 0; i < merged.position_remap.size(); i++) {
-		size_t original_pos = merged.position_remap[i];
-		next_mesh.positions[original_pos] = merged.positions[i];
+		Index global_id = merged.position_remap[i];
+		next_mesh.positions[global_id] = merged.positions[i];
+	}
+	//ignore normals
+
+	//add texcoords
+	size_t tex_offset = next_mesh.texcoords.size();
+	next_mesh.texcoords.grow(merged.texcoords.size());
+	for(Index i = 0; i < merged.texcoords.size(); i++) {
+		next_mesh.texcoords[tex_offset + i] = merged.texcoords[i];
 	}
 
-	//TODO: this might be possibly problematic as wedges are not shared across miceronodes
-	//update wedges
-	Index wedge_offset = next_mesh.wedges.size();
-	next_mesh.wedges.resize(wedge_offset + merged.wedges.size());
-	for(int i = 0; i < merged.wedges.size(); i++) {
+	//add wedges
+	size_t wedge_offset = next_mesh.wedges.size();
+	next_mesh.wedges.grow(merged.wedges.size());
+	for(Index i = 0; i < merged.wedges.size(); i++) {
 		Wedge w = merged.wedges[i];
 		w.p = merged.position_remap[w.p];
+		w.t += tex_offset;
 		next_mesh.wedges[wedge_offset + i] = w;
 	}
+
 
 	// Create clusters in next_mesh
 	for (std::size_t c = 0; c < actual_clusters; ++c) {

@@ -72,8 +72,6 @@ class AFace: public vcg::Face<
 		AUsedTypes,
 		vcg::face::VFAdj,
 		vcg::face::VertexRef,
-//		vcg::face::WedgeRealNormal3f,
-		vcg::face::WedgeTexCoord2f,
 		vcg::face::BitFlags> {
 };
 

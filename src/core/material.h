@@ -42,15 +42,18 @@ struct Material {
 		float metallic_factor = 1.0f;   // 0.0 = dielectric, 1.0 = metal
 	float roughness_factor = 1.0f;  // 0.0 = smooth, 1.0 = rough
 	std::string metallic_roughness_texture; // G=roughness, B=metallic
-		Pyramid* metallic_roughness_map = nullptr;
+	Pyramid* metallic_roughness_map = nullptr;
 
 	// Specular (Phong Ks) - for legacy materials; ignored in pure PBR
 	float specular[3] = {0.0f, 0.0f, 0.0f};
 	std::string specular_texture;
+	Pyramid* specular_map = nullptr;
 	float shininess = 0.0f; // Phong Ns; convert to roughness if needed
 
 	// Normal mapping
 	std::string normal_texture;
+	Pyramid* normal_map = nullptr;
+
 	float normal_scale = 1.0f;
 
 	// Occlusion
@@ -92,6 +95,15 @@ struct Material {
 	static float shininess_to_roughness(float ns) {
 		return (ns > 0.0f) ? sqrt(2.0f / (ns + 2.0f)) : 1.0f;
 	}
+};
+
+class TileMap {
+	int width, height;
+	uint8_t *color_map = nullptr;
+	uint8_t *metallic_map = nullptr;
+	uint8_t *specular_map = nullptr;
+	uint8_t *emissive_map = nullptr;
+	uint8_t *normal_map = nullptr;
 };
 
 } // namespace nx
