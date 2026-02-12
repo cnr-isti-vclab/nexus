@@ -74,10 +74,10 @@ void Rasterizer::SetPixel(unsigned int x, unsigned int y, Index material_id, con
 
     const Material& material = (*materials)[material_id];
     Vector3f color{material.base_color[0], material.base_color[1], material.base_color[2]};
-    if(material.base_color_map) {
+    if(texture_cache && !material.base_color_texture.empty()) {
         const float u = std::clamp(uv.u, 0.0f, 1.0f);
         const float v = std::clamp(uv.v, 0.0f, 1.0f);
-        Vector3f tex = material.base_color_map->sample(u, v, 0);
+        Vector3f tex = texture_cache->sample(material.base_color_texture, {u, v}, 0);
         color.x *= tex.x;
         color.y *= tex.y;
         color.z *= tex.z;
@@ -256,13 +256,15 @@ Rasterizer::DrawLine(Index material_id,
 void Rasterizer::RasterizeTriangles(const std::vector<Vector2f>& positions,
     const std::vector<Vector2f>& uvs,
     const std::vector<Index>& material_ids,
-    const std::vector<Material>& materials_in) {
+    const std::vector<Material>& materials_in,
+    TextureCache* texture_cache_in) {
     assert(positions.size() == uvs.size());
     assert(positions.size() % 3 == 0);
     assert(material_ids.size() == positions.size() / 3);
     assert(static_cast<size_t>(width * height) <= target.size());
 
     materials = &materials_in;
+    texture_cache = texture_cache_in;
     const size_t triangle_count = material_ids.size();
     for(size_t i = 0; i < triangle_count; ++i) {
         const Vector2f& p0 = positions[i * 3 + 0];
@@ -276,6 +278,7 @@ void Rasterizer::RasterizeTriangles(const std::vector<Vector2f>& positions,
         DrawTriangle(material_id, p0.u, p0.v, uv0, p1.u, p1.v, uv1, p2.u, p2.v, uv2);
     }
     materials = nullptr;
+    texture_cache = nullptr;
 }
 
 }

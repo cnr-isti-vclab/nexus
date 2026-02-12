@@ -44,7 +44,7 @@ static void index_to_color(Index idx, Index total, uint8_t& r, uint8_t& g, uint8
 	}
 }
 
-void export_ply(const MeshFiles& mesh,
+void export_ply(const MappedMesh& mesh,
 				const std::filesystem::path& output_path,
 				ColoringMode coloring_mode) {
 	std::ofstream file(output_path);

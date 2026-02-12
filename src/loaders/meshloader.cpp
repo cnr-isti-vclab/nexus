@@ -8,7 +8,7 @@ namespace fs = std::filesystem;
 
 namespace nx {
 
-void load_mesh(const std::filesystem::path& input_path, MeshFiles& mesh) {
+void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh) {
 	auto ext = input_path.extension().string();
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 

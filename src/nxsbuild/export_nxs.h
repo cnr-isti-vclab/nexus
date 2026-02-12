@@ -8,7 +8,7 @@
 namespace nx {
 
 class MeshHierarchy;
-class MeshFiles;
+class MappedMesh;
 class MicroNode;
 
 
@@ -29,7 +29,7 @@ private:
 	void computeGlobalIndexing(MeshHierarchy &hierarchy);
 	//fill children_nodes
 
-	void exportMicronode(int level, MeshFiles &mesh, MicroNode &micronode, FILE *out);
+	void exportMicronode(int level, MappedMesh &mesh, MicroNode &micronode, FILE *out);
 	void saturateNodes();
 	void saturateNode(uint32_t n);
 	void printDag(MeshHierarchy &hierarchy);

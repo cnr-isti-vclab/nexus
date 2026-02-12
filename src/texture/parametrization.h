@@ -29,10 +29,11 @@ struct ParametrizationOptions {
 // Generates a new UV parametrization for a merged mesh using xatlas.
 // If out_texcoords is provided, it will be filled with the generated UVs indexed by wedge.t.
 // Returns true on success, false on failure (mesh is left with best-effort UVs).
-bool create_parametrization(MergedMesh& mesh,
+bool create_parametrization(NodeMesh& mesh,
 	const ParametrizationOptions& options = {},
 	std::vector<Vector2f>* out_texcoords = nullptr);
 
-TileMap rasterize(std::vector<Material> &materials, MergedMesh &source, MergedMesh &destination, int tex_res);
+TileMap rasterize(std::vector<Material> &materials, NodeMesh &source, NodeMesh &destination, int tex_res);
+void reparametrize_clusters(MappedMesh& mesh);
 
 } // namespace nx

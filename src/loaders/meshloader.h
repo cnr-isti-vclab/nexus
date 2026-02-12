@@ -10,13 +10,13 @@
 
 namespace nx {
 
-class MeshFiles;
+class MappedMesh;
 /**
  * Base class for mesh loaders (OBJ, PLY, glTF, etc.)
- * Populates a MeshFiles structure with indexed geometry backed by mmapped files.
+ * Populates a MappedMesh structure with indexed geometry backed by mmapped files.
  */
 
-void load_mesh(const std::filesystem::path& input_path, MeshFiles& mesh);
+void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh);
 
 // Helper to sanitize and resolve texture paths
 std::string resolveTexturePath(const std::string& model_path, std::string texture_path);

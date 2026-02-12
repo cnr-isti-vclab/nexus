@@ -17,7 +17,7 @@ for more details.
 */
 #pragma once
 
-#include "../core/mesh.h"
+#include "../core/mappedmesh.h"
 #include <filesystem>
 
 namespace nx {
@@ -33,7 +33,7 @@ enum class ColoringMode {
 
 // Export mesh to PLY format with optional coloring
 // coloring_mode: determines how vertices are colored for visualization
-void export_ply(const MeshFiles& mesh,
+void export_ply(const MappedMesh& mesh,
 				const std::filesystem::path& output_path,
 				ColoringMode coloring_mode = ColoringMode::None);
 

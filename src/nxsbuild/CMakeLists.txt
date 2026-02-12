@@ -19,8 +19,11 @@ set(SOURCES
 	../texture/pyramid.cpp
 	../texture/texture.cpp
 	../texture/rasterizer.cpp
+	../texture/texture_cache.cpp
 	../core/mapped_file.cpp
-	../core/mesh.cpp
+	../core/basemesh.cpp
+	../core/mappedmesh.cpp
+	../core/nodemesh.cpp
 	../core/mesh_hierarchy.cpp
 	../core/vcgmesh.cpp
 	../core/spatial_sort.cpp
@@ -44,8 +47,11 @@ set(HEADERS
 	../texture/pyramid.h
 	../texture/texture.h
 	../texture/rasterizer.h
+	../texture/texture_cache.h
 	../core/mesh_types.h
-	../core/mesh.h
+	../core/basemesh.h
+	../core/mappedmesh.h
+	../core/nodemesh.h
 	../core/mesh_hierarchy.h
 	../core/vcgmesh.h
 	../core/spatial_sort.h

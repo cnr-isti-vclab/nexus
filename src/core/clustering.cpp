@@ -1,5 +1,5 @@
 #include "clustering.h"
-#include "mesh.h"
+#include "mappedmesh.h"
 #include "mesh_types.h"
 #include <vector>
 #include <algorithm>
@@ -20,7 +20,7 @@ namespace nx {
 
 namespace {
 
-std::vector<Vector3f> compute_triangle_centroids(const MeshFiles& mesh) {
+std::vector<Vector3f> compute_triangle_centroids(const MappedMesh& mesh) {
 	std::size_t triangle_count = mesh.triangles.size();
 	std::vector<Vector3f> centroids(triangle_count);
 	for (std::size_t i = 0; i < triangle_count; ++i) {
@@ -29,7 +29,7 @@ std::vector<Vector3f> compute_triangle_centroids(const MeshFiles& mesh) {
 	return centroids;
 }
 
-void build_triangle_adjacency_graph(const MeshFiles& mesh,
+void build_triangle_adjacency_graph(const MappedMesh& mesh,
 								 const std::vector<Vector3f>& triangle_centroids,
 								 std::vector<idx_t>& xadj,
 								 std::vector<idx_t>& adjncy,
@@ -63,7 +63,7 @@ void build_triangle_adjacency_graph(const MeshFiles& mesh,
 	assert(xadj.size() == num_triangles + 1);
 }
 
-void build_clusters_from_partition(MeshFiles& mesh, std::size_t num_partitions) {
+void build_clusters_from_partition(MappedMesh& mesh, std::size_t num_partitions) {
 	std::size_t num_triangles = mesh.triangles.size();
 
 	std::vector<Index> partition_sizes(num_partitions, 0);
@@ -135,7 +135,7 @@ Index find_seed_from_front(const std::set<Index>& front, const std::vector<bool>
 
 // Compute bounding sphere from contiguous cluster triangles using Ritter's algorithm
 void compute_bounding_sphere(Index triangle_offset, Index triangle_count,
-							 const MeshFiles& mesh,
+							 const MappedMesh& mesh,
 							 Vector3f& center, float& radius) {
 	if (triangle_count == 0) {
 		center = {0, 0, 0};
@@ -191,7 +191,7 @@ void compute_bounding_sphere(Index triangle_offset, Index triangle_count,
 }
 
 // FM Refinement - Fiduccia-Mattheyses pass with scoring and locking
-void apply_fm_refinement(MeshFiles& mesh,
+void apply_fm_refinement(MappedMesh& mesh,
 						 std::size_t max_size,
 						 std::size_t max_passes) {
 	if (mesh.clusters.size() == 0) return;
@@ -409,7 +409,7 @@ Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
 }
 
 // Reorder triangles to be contiguous by cluster and update cluster metadata
-void reorder_triangles_by_cluster(MeshFiles& mesh) {
+void reorder_triangles_by_cluster(MappedMesh& mesh) {
 	if (mesh.clusters.size() == 0) return;
 
 	std::size_t num_triangles = mesh.triangle_to_cluster.size();
@@ -471,7 +471,7 @@ void reorder_triangles_by_cluster(MeshFiles& mesh) {
 }
 
 // Compute bounds for each cluster after reordering
-void compute_cluster_bounds(MeshFiles& mesh) {
+void compute_cluster_bounds(MappedMesh& mesh) {
 	std::size_t cluster_count = mesh.clusters.size();
 	if (cluster_count == 0) return;
 
@@ -482,7 +482,7 @@ void compute_cluster_bounds(MeshFiles& mesh) {
 	}
 }
 
-void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles) {
+void build_clusters_greedy(MappedMesh& mesh, std::size_t max_triangles) {
 	if (max_triangles < 1 || max_triangles > 512) {
 		throw std::runtime_error("max_triangles must be between 1 and 512");
 	}
@@ -626,7 +626,7 @@ void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles) {
 	apply_fm_refinement(mesh, 128, 10);
 }
 
-void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
+void build_clusters_metis(MappedMesh& mesh, std::size_t max_triangles) {
 	nx::debug << "\n=== Building clusters with METIS ===" << std::endl;
 
 	std::size_t num_triangles = mesh.triangles.size();
@@ -692,7 +692,7 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	build_clusters_from_partition(mesh, num_partitions);
 }
 
-void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod method) {
+void build_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMethod method) {
 	switch (method) {
 		case ClusteringMethod::Greedy:
 			build_clusters_greedy(mesh, max_triangles);
@@ -708,7 +708,7 @@ void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod
 }
 
 
-void split_clusters(MeshFiles& mesh, std::size_t max_triangles) {
+void split_clusters(MappedMesh& mesh, std::size_t max_triangles) {
 	nx::debug << "\n=== Splitting clusters into N and creating micronodes ===" << std::endl;
 
 	std::size_t num_original_clusters = mesh.clusters.size();

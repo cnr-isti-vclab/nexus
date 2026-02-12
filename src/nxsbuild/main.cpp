@@ -6,7 +6,7 @@
 #include <QLocale>
 
 #include "build_parameters.h"
-#include "../core/mesh.h"
+#include "../core/mappedmesh.h"
 #include "../loaders/meshloader.h"
 #include "../core/mesh_hierarchy.h"
 #include "export_nxs.h"
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
 	try {
 		// Load the base mesh
-		nx::MeshFiles mesh;
+		nx::MappedMesh mesh;
 		nx::load_mesh(fs::path(input_file), mesh);
 
 		// Initialize hierarchy with the preprocessed base mesh

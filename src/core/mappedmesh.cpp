@@ -1,4 +1,5 @@
-#include "mesh.h"
+#include "mappedmesh.h"
+
 #include <random>
 #include <sstream>
 #include <iomanip>
@@ -6,9 +7,10 @@
 #include <filesystem>
 #include <random>
 
+
 namespace nx {
 
-MeshFiles::MeshFiles() {
+MappedMesh::MappedMesh() {
 	// Create temporary directory with random suffix
 	namespace fs = std::filesystem;
 	std::random_device rd;
@@ -21,11 +23,11 @@ MeshFiles::MeshFiles() {
 	create(tmp);
 }
 
-MeshFiles::~MeshFiles() {
+MappedMesh::~MappedMesh() {
 	close();
 }
 
-bool MeshFiles::create(const std::filesystem::path& dir_path) {
+bool MappedMesh::create(const std::filesystem::path& dir_path) {
 	close();
 	std::filesystem::create_directories(dir_path);
 	dir = dir_path;
@@ -39,7 +41,7 @@ bool MeshFiles::create(const std::filesystem::path& dir_path) {
 	return true;
 }
 
-void MeshFiles::close() {
+void MappedMesh::close() {
 	positions.close();
 	colors.close();
 	normals.close();
@@ -56,7 +58,7 @@ void MeshFiles::close() {
 	bounds = Aabb{{0,0,0},{0,0,0}};
 }
 
-bool MeshFiles::mapDataFiles(MappedFile::Mode mode) {
+bool MappedMesh::mapDataFiles(MappedFile::Mode mode) {
 	if (!positions.open(pathFor("positions.bin").string(), mode, 0)) return false;
 	if (!colors.open(pathFor("colors.bin").string(), mode, 0)) return false;
 	if (!normals.open(pathFor("normals.bin").string(), mode, 0)) return false;
@@ -70,4 +72,4 @@ bool MeshFiles::mapDataFiles(MappedFile::Mode mode) {
 	return true;
 }
 
-} // namespace nx
+}

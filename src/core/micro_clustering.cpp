@@ -1,6 +1,5 @@
 #include "micro_clustering.h"
-#include "mesh.h"
-#include "mesh_types.h"
+#include "mappedmesh.h"
 #include "../core/log.h"
 
 #include <metis.h>
@@ -343,7 +342,7 @@ void adjacency_to_csr(const std::vector<std::map<Index, double>>& adjacency,
 // ...existing code...
 
 // Build cluster adjacency graph with edge weights based on shared-edge length (shorter -> larger weight)
-void build_cluster_graph_weighted(const MeshFiles& mesh,
+void build_cluster_graph_weighted(const MappedMesh& mesh,
 								  std::vector<idx_t>& xadj,
 								  std::vector<idx_t>& adjncy,
 								  std::vector<idx_t>& adjwgt,
@@ -408,7 +407,7 @@ void build_cluster_graph_weighted(const MeshFiles& mesh,
 }
 
 // Build MicroNode objects from partition and mesh
-std::vector<MicroNode> build_micronodes_from_partition(const MeshFiles& mesh,
+std::vector<MicroNode> build_micronodes_from_partition(const MappedMesh& mesh,
 													   const std::vector<idx_t>& part) {
 
 	//find the ACTUAL number of parts:
@@ -530,7 +529,7 @@ std::vector<idx_t> partition_graph_metis(
 } // anonymous namespace
 
 
-std::vector<MicroNode> create_micronodes_metis(const MeshFiles& mesh,
+std::vector<MicroNode> create_micronodes_metis(const MappedMesh& mesh,
 											   std::size_t clusters_per_micronode,
 											   std::size_t triangles_per_cluster) {
 	nx::debug << "\n=== Building micronodes ===" << std::endl;

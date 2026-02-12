@@ -1,6 +1,6 @@
 #include "objloader.h"
 #include "meshloader.h"
-#include "mesh.h"
+#include "mappedmesh.h"
 #include <filesystem>
 #include <sstream>
 #include <iostream>
@@ -161,7 +161,7 @@ void ObjLoader::read_mtl(const std::string& mtl_path) {
 	}
 }
 
-void ObjLoader::load(MeshFiles& mesh) {
+void ObjLoader::load(MappedMesh& mesh) {
 	std::ifstream file(obj_path);
 	if (!file.is_open()) {
 		std::string reason = (errno ? std::strerror(errno) : "unknown");
@@ -254,9 +254,6 @@ void ObjLoader::load(MeshFiles& mesh) {
 	if (has_materials) {
 		mesh.material_ids.resize(triangle_count);
 		mesh.materials = materials;
-	}
-	for(Material &material: mesh.materials) {
-		material.initPyramids(mesh.dir);
 	}
 
 	// Third pass: build wedges and triangles

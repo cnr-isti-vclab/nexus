@@ -30,6 +30,7 @@
 
 #include "../core/material.h"
 #include "../core/mesh_types.h"
+#include "texture_cache.h"
 
 namespace nx {
 
@@ -57,6 +58,7 @@ protected:
     int width;
     int height;
     const std::vector<Material>* materials = nullptr;
+    TextureCache* texture_cache = nullptr;
     Rasterizer(std::vector<Vector3f>& buffer, int w, int h): target(buffer), width(w), height(h) {}
 
     void DrawSpan(const Span &span, int y, Index material_id);
@@ -79,7 +81,8 @@ public:
     void RasterizeTriangles(const std::vector<Vector2f>& positions,
         const std::vector<Vector2f>& uvs,
         const std::vector<Index>& material_ids,
-        const std::vector<Material>& materials);
+        const std::vector<Material>& materials,
+        TextureCache* texture_cache);
 };
 
 }

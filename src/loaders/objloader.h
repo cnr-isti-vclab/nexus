@@ -12,13 +12,13 @@
 
 namespace nx {
 
-class MeshFiles;
+class MappedMesh;
 
 class ObjLoader: public MeshLoader {
 public:
 	ObjLoader(const std::string& filename, const std::string& mtl_path = "");
 
-	void load(MeshFiles& mesh);
+	void load(MappedMesh& mesh);
 
 private:
 	void read_mtls();

@@ -12,11 +12,11 @@ enum class ClusteringMethod {
 	Metis
 };
 
-class MeshFiles;
+class MappedMesh;
 
 
 // Build clusters using the selected method (greedy or METIS).
-void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod method);
+void build_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMethod method);
 
 //TODO: we need to measure the quality of clustering (border length, compactness, etc)
 
@@ -27,7 +27,7 @@ void build_clusters(MeshFiles& mesh, std::size_t max_triangles, ClusteringMethod
 // 
 // Returns the number of clusters created.
 // Clusters with bounds are written to mesh.clusters.
-void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles);
+void build_clusters_greedy(MappedMesh& mesh, std::size_t max_triangles);
 
 
 // Build clusters from triangles using METIS graph partitioning.
@@ -37,10 +37,10 @@ void build_clusters_greedy(MeshFiles& mesh, std::size_t max_triangles);
 // 
 // Returns the number of clusters created.
 // Clusters with bounds are written to mesh.clusters.
-void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles);
+void build_clusters_metis(MappedMesh& mesh, std::size_t max_triangles);
 
-void reorder_triangles_by_cluster(MeshFiles& mesh);
-void compute_cluster_bounds(MeshFiles& mesh);
+void reorder_triangles_by_cluster(MappedMesh& mesh);
+void compute_cluster_bounds(MappedMesh& mesh);
 void print_cluster_histogram(const MappedArray<Cluster>& clusters, const char* label = "");
 Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
 								   const MappedArray<Wedge>& wedges,
@@ -49,7 +49,7 @@ Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
 // Split each cluster into 4 smaller clusters and create a micronode for each group.
 // Each original cluster becomes a micronode containing its 4 child clusters.
 // max_triangles: target maximum triangles per resulting cluster
-void split_clusters(MeshFiles& mesh, std::size_t max_triangles);
+void split_clusters(MappedMesh& mesh, std::size_t max_triangles);
 
 } // namespace nx
 

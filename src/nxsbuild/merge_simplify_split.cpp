@@ -13,7 +13,7 @@
 
 #include <metis.h>
 
-#include "../core/mesh.h"
+#include "../core/mappedmesh.h"
 #include "../core/vcgmesh.h"
 #include "../loaders/objexporter.h"
 
@@ -21,11 +21,11 @@ namespace nx {
 
 
 //here we keep only posuitions and triangles, we do not care about normals or textures (recomputed)
-MergedMesh merge_micronode_clusters_for_simplification(
-	const MeshFiles& mesh,
+NodeMesh merge_micronode_clusters_for_simplification(
+	const MappedMesh& mesh,
 	const MicroNode& micronode) {
 
-	MergedMesh merged;
+	NodeMesh merged;
 	merged.parent_micronode_id = micronode.id;
 
 	//this is needed to find boundary vertices.
@@ -115,11 +115,11 @@ MergedMesh merge_micronode_clusters_for_simplification(
 //this function is called in the initial reparametrization AND for geometric reprojection of textures.
 //we need to keep to keep the normals and the textures
 
-MergedMesh merge_micronode_clusters(
-	const MeshFiles& mesh,
+NodeMesh merge_micronode_clusters(
+	const MappedMesh& mesh,
 	const MicroNode& micronode) {
 
-	MergedMesh merged;
+	NodeMesh merged;
 	merged.parent_micronode_id = micronode.id;
 
 	std::size_t total_triangles = 0;
@@ -221,7 +221,7 @@ MergedMesh merge_micronode_clusters(
 
 
 
-float meshError(MergedMesh& mesh) {
+float meshError(NodeMesh& mesh) {
 	double length = 0;
 	for (const Triangle& tri : mesh.triangles) {
 		Index p0 = mesh.wedges[tri.w[0]].p;
@@ -243,7 +243,7 @@ float meshError(MergedMesh& mesh) {
 
 
 float simplify_mesh(
-	MergedMesh& merged,
+	NodeMesh& merged,
 	Index target_triangle_count) {
 
 	if (merged.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
@@ -251,7 +251,7 @@ float simplify_mesh(
 	}
 
 	if(0){
-		MeshFiles debug_mesh;
+		MappedMesh debug_mesh;
 		debug_mesh.positions.resize(merged.positions.size());
 		for (Index i = 0; i < merged.positions.size(); ++i) {
 			debug_mesh.positions[i] = merged.positions[i];
@@ -446,7 +446,7 @@ float simplify_mesh(
 		}
 	}
 	if(0){
-		MeshFiles debug_mesh;
+		MappedMesh debug_mesh;
 		debug_mesh.positions.resize(merged.positions.size());
 		for (Index i = 0; i < merged.positions.size(); ++i) {
 			debug_mesh.positions[i] = merged.positions[i];
@@ -466,7 +466,7 @@ float simplify_mesh(
 
 
 float simplify_mesh_edge(
-	MergedMesh& mesh,
+	NodeMesh& mesh,
 	Index target_triangle_count) {
 	if (mesh.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
 		return 0;
@@ -574,13 +574,13 @@ float simplify_mesh_edge(
 
 //only boundary positions needs to be shared: normals get recomputed, textures
 //are not shared because of the seam
-void update_vertices_and_wedges(MeshFiles& next_mesh, const MergedMesh& merged) {
+void update_vertices_and_wedges(MappedMesh& next_mesh, const NodeMesh& merged) {
 
 }
 
 
 
-std::vector<FaceAdjacency> build_adjacency_for_merged(const MergedMesh& mesh) {
+std::vector<FaceAdjacency> build_adjacency_for_merged(const NodeMesh& mesh) {
 	static constexpr Index BORDER = std::numeric_limits<Index>::max();
 
 	Index num_triangles = static_cast<Index>(mesh.triangles.size());
@@ -654,7 +654,7 @@ std::vector<FaceAdjacency> build_adjacency_for_merged(const MergedMesh& mesh) {
 
 
 void compute_cluster_bounds(
-	const MeshFiles& mesh,
+	const MappedMesh& mesh,
 	Index triangle_offset,
 	Index triangle_count,
 	Vector3f& center,
@@ -700,9 +700,9 @@ Index ensure_mapped_position(Index merged_pos, const std::vector<Index>& merged_
 
 
 void split_mesh(
-	const MergedMesh& merged,
+	const NodeMesh& merged,
 	Index micro_id,
-	MeshFiles& next_mesh,
+	MappedMesh& next_mesh,
 	std::size_t max_triangles) {
 
 	// Build merged_pos -> original_pos mapping

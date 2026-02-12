@@ -7,7 +7,7 @@ namespace nx {
 // Border marker
 static constexpr Index BORDER = UINT32_MAX;
 
-void compute_adjacency(MeshFiles& mesh) {
+void compute_adjacency(MappedMesh& mesh) {
 	Index num_triangles = mesh.triangles.size();
 
 	if (num_triangles == 0) {

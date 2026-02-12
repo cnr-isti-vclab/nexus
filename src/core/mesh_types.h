@@ -56,6 +56,8 @@ struct HalfedgeRecord {
     Index corner; // 0,1,2 corner within the face
 };
 
+
+
 // A Cluster groups triangles with a limited triangle count.
 // Includes bounding sphere for frustum and cone culling.
 // Similar to meshoptimizer's meshopt_Bounds structure.
@@ -82,10 +84,17 @@ struct MicroNode {
 
 //the material defines how many components and which textures are stored here.
 struct NodeTexture {
-	size_t offset; // Offset into the texels array in MeshFiles
-	int width;
-	int height;
+    size_t offset = 0; // Offset into the texels array in MeshFiles
+    int width = 0;
+    int height = 0;
+    int components = 3;
+    int tile_size = 0;
+    int mip_count = 1;
 };
+
+inline std::size_t node_texture_bytes(const NodeTexture& t) {
+    return static_cast<std::size_t>(t.width) * static_cast<std::size_t>(t.height) * static_cast<std::size_t>(t.components);
+}
 
 // A MacroNode groups micronodes at the second level of the hierarchy.
 // It contains references to the micronodes that belong to it.

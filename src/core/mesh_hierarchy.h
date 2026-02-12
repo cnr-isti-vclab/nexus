@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <memory>
-#include "mesh.h"
+#include "mappedmesh.h"
 
 namespace nx {
 
@@ -17,17 +17,15 @@ struct BuildParameters;
  */
 class MeshHierarchy {
 public:
-	std::vector<MeshFiles> levels;
+	std::vector<MappedMesh> levels;
 
 	MeshHierarchy() = default;
 	
-	void initialize(MeshFiles&& base_mesh);
+	void initialize(MappedMesh&& base_mesh);
 	void build_hierarchy(const BuildParameters& params);
 	
 private:
-	void process_level(MeshFiles& mesh, MeshFiles& next_mesh, const BuildParameters &params);
-	void reparametrize_clusters(MeshFiles& mesh, const BuildParameters& params);
-	
+	void process_level(MappedMesh& mesh, MappedMesh& next_mesh, const BuildParameters &params);
 };
 
 } // namespace nx

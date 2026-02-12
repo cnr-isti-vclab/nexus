@@ -4,31 +4,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../core/mesh_types.h"
+#include "../core/nodemesh.h"
 #include "../core/material.h"
 namespace nx {
 
-class MeshFiles;
+class MappedMesh;
 
-// Step 3: Merge clusters within a micronode into a temporary mesh
-struct MergedMesh {
-	std::vector<Vector3f> positions;
-	std::vector<Rgba8>    colors;
-	std::vector<Vector3f> normals;
-	std::vector<Vector2f> texcoords;
-
-	std::vector<Wedge>    wedges;
-	std::vector<Triangle> triangles;
-	std::vector<Index>    boundary_vertices;          // Vertices on micronode boundary
-
-	std::unordered_map<Index, Index> position_map; // original position -> merged position
-	std::vector<Index>               position_remap;             //merged_position -> original position
-
-	std::vector<Index> material_ids;               // Optional (size 0 if single/no material)
-	Index parent_micronode_id;
-
-	std::vector<TileMap> tilemap; //materials
-};
 
 // Step 6: Result of splitting a simplified mesh
 struct SplitResult {
@@ -37,37 +18,37 @@ struct SplitResult {
 	Index cluster_1_count;
 };
 
-MergedMesh merge_micronode_clusters_for_simplification(const MeshFiles& mesh,
+NodeMesh merge_micronode_clusters_for_simplification(const MappedMesh& mesh,
 													   const MicroNode& micronode);
 
 
 
 // Merge 4 clusters from a micronode into a single mesh
-MergedMesh merge_micronode_clusters(const MeshFiles& mesh,
+NodeMesh merge_micronode_clusters(const MappedMesh& mesh,
 									const MicroNode& micronode);
 
 
 // Simplify mesh to target triangle count (respecting locked boundaries)
-float simplify_mesh(MergedMesh &mesh, Index target_triangle_count);
+float simplify_mesh(NodeMesh &mesh, Index target_triangle_count);
 
 float simplify_mesh_edge(
-	MergedMesh& mesh,
+	NodeMesh& mesh,
 	Index target_triangle_count);
 
 	
 // Update the positions (and potentially wedges) in next_mesh using the simplified merged mesh.
 // The mapping is from original position index -> merged position index.
 void update_vertices_and_wedges(
-	MeshFiles& next_mesh,
-	const MergedMesh& merged);
+	MappedMesh& next_mesh,
+	const NodeMesh& merged);
 
 // Split a simplified merged mesh into clusters (without micronode assignment).
 // Records the created cluster indices in micronode.children_nodes (temporary storage).
 // The clusters are split based on max_triangles target.
 // Returns the indices of the newly created clusters.
-void split_mesh(const MergedMesh& merged,
+void split_mesh(const NodeMesh& merged,
 	Index micro_id,
-	MeshFiles& next_mesh,
+	MappedMesh& next_mesh,
 	std::size_t max_triangles);
 
 }

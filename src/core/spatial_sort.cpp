@@ -91,7 +91,7 @@ static void merge_sort(std::vector<MortonPair>& pairs) {
 	}
 }
 
-std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
+std::vector<Index> spatial_sort_positions(MappedMesh& mesh) {
 	Index num_positions = mesh.positions.size();
 	nx::debug << "Spatial sorting " << num_positions << " positions..." << std::endl;
 
@@ -193,7 +193,7 @@ std::vector<Index> spatial_sort_positions(MeshFiles& mesh) {
 	return remap;
 }
 
-void remap_wedge_positions(MeshFiles& mesh, const std::vector<Index>& remap) {
+void remap_wedge_positions(MappedMesh& mesh, const std::vector<Index>& remap) {
 	if (remap.empty()) return;
 
 	nx::debug << "Remapping wedge positions..." << std::endl;
@@ -209,7 +209,7 @@ void remap_wedge_positions(MeshFiles& mesh, const std::vector<Index>& remap) {
 	nx::debug << "Remapping complete." << std::endl;
 }
 
-std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
+std::vector<Index> sort_wedges_by_position(MappedMesh& mesh) {
 	Index num_wedges = mesh.wedges.size();
 	nx::debug << "Sorting " << num_wedges << " wedges by position index..." << std::endl;
 
@@ -248,7 +248,7 @@ std::vector<Index> sort_wedges_by_position(MeshFiles& mesh) {
 }
 
 static std::vector<Index> unify_wedges_by_position_and_attributes(
-	MeshFiles& mesh) {
+	MappedMesh& mesh) {
 	Index num_wedges = mesh.wedges.size();
 
 	nx::debug << "Unifying wedges by position/attributes..." << std::endl;
@@ -296,7 +296,7 @@ static std::vector<Index> unify_wedges_by_position_and_attributes(
 	return remap;
 }
 
-void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
+void remap_triangle_wedges(MappedMesh& mesh, const std::vector<Index>& remap) {
 	nx::debug << "Remapping triangle wedge indices..." << std::endl;
 
 	Index num_triangles = mesh.triangles.size();
@@ -308,7 +308,7 @@ void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap) {
 	}
 }
 
-void sort_normals_by_wedge(MeshFiles& mesh) {
+void sort_normals_by_wedge(MappedMesh& mesh) {
 	if(!mesh.has_normals || mesh.normals.size() == 0)
 		return;
 
@@ -337,7 +337,7 @@ void sort_normals_by_wedge(MeshFiles& mesh) {
 		mesh.normals[i] = sorted[i];
 	}
 }
-void sort_textures_by_wedge(MeshFiles& mesh) {
+void sort_textures_by_wedge(MappedMesh& mesh) {
 	if(!mesh.has_textures || mesh.texcoords.size())
 		return;
 
@@ -370,7 +370,7 @@ void sort_textures_by_wedge(MeshFiles& mesh) {
 	}
 }
 
-void sort_triangles_by_wedge(MeshFiles& mesh) {
+void sort_triangles_by_wedge(MappedMesh& mesh) {
 	Index num_triangles = mesh.triangles.size();
 	nx::debug << "Sorting " << num_triangles << " triangles by smallest wedge index..." << std::endl;
 
@@ -416,7 +416,7 @@ void sort_triangles_by_wedge(MeshFiles& mesh) {
 	nx::debug << "Triangle sorting complete." << std::endl;
 }
 
-void spatial_sort_mesh(MeshFiles& mesh) {
+void spatial_sort_mesh(MappedMesh& mesh) {
 	// Sort the vertices spatially and reindex
 	std::vector<Index> position_remap = spatial_sort_positions(mesh);
 	remap_wedge_positions(mesh, position_remap);

@@ -1,13 +1,7 @@
-#ifndef NX_MESH_H
-#define NX_MESH_H
+#ifndef NX_MAPPEDMESH_H
+#define NX_MAPPEDMESH_H
 
-#include <string>
-#include <filesystem>
-#include <map>
-
-#include "mesh_types.h"
-#include "mapped_file.h"
-#include "material.h"
+#include "basemesh.h"
 
 namespace nx {
 
@@ -24,40 +18,19 @@ namespace nx {
  *  - materials.json    (Material array as JSON)
  */
 
-class Mesh {
-    enum class Component : uint32_t {
-        None        = 0,
-        Position    = 1 << 0,
-        Normal      = 1 << 1,
-        Color       = 1 << 2,
-        TexCoords   = 1 << 3,
-    };
-
-    bool hasComponent(Component comp) const {
-        return (components & static_cast<uint32_t>(comp)) != 0;
-    }
-
-    void addComponent(Component comp) {
-        components |= static_cast<uint32_t>(comp);
-    }
-
-private:
-    uint32_t components = static_cast<uint32_t>(Component::None);
-}
-
-class MeshFiles {
+class MappedMesh {
 public:
 	bool has_colors = false;
 	bool has_normals = true;
 	bool has_textures = false;
 
-	MeshFiles();
-	~MeshFiles();
+	MappedMesh();
+	~MappedMesh();
 
-	MeshFiles(const MeshFiles&) = delete;
-	MeshFiles& operator=(const MeshFiles&) = delete;
-	MeshFiles(MeshFiles&&) = default;
-	MeshFiles& operator=(MeshFiles&&) = default;
+	MappedMesh(const MappedMesh&) = delete;
+	MappedMesh& operator=(const MappedMesh&) = delete;
+	MappedMesh(MappedMesh&&) = default;
+	MappedMesh& operator=(MappedMesh&&) = default;
 
 	Aabb bounds{{0,0,0}, {0,0,0}};
 
@@ -83,8 +56,7 @@ public:
 	std::vector<NodeTexture> node_textures; // Texture info for each micronode
 
 	std::vector<MacroNode> macronodes;
-	
-	// Materials stored as JSON (not memory-mapped)
+
 	std::vector<Material> materials;
 
 	MappedArray<uint8_t>texels; //store textures for each micronode.
@@ -102,6 +74,8 @@ private:
 	bool mapDataFiles(MappedFile::Mode mode);
 };
 
+
+
 // Helpers to compute byte sizes from counts.
 inline std::size_t positions_bytes(Index n)    { return static_cast<std::size_t>(n) * sizeof(Vector3f); }
 inline std::size_t colors_bytes(Index n)       { return static_cast<std::size_t>(n) * sizeof(Rgba8); }
@@ -112,6 +86,5 @@ inline std::size_t adjacency_bytes(Index n)    { return static_cast<std::size_t>
 inline std::size_t clusters_bytes(Index n)     { return static_cast<std::size_t>(n) * sizeof(Cluster); }
 inline std::size_t cluster_triangles_bytes(Index n) { return static_cast<std::size_t>(n) * sizeof(Index); }
 
-} // namespace nx
-
-#endif // NX_MESH_H
+}
+#endif // NX_MAPPEDMESH_H

@@ -7,14 +7,14 @@
 #include "meshloader.h"
 
 namespace nx {
-class MeshFiles;
+class MappedMesh;
 
 class PlyLoader: public MeshLoader {
 public:
 	PlyLoader(const std::string& filename);
 	~PlyLoader();
 
-	void load(MeshFiles& mesh);
+	void load(MappedMesh& mesh);
 
 	std::vector<Material> materials;
 

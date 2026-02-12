@@ -57,7 +57,7 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	//count nodes and patchs.
 	for(int level = hierarchy.levels.size()-1; level >= 0; level--) {
 		level_node_offset[level] = header.n_nodes;
-		const MeshFiles &mesh = hierarchy.levels[level];
+		const MappedMesh &mesh = hierarchy.levels[level];
 		header.n_nodes += mesh.micronodes.size();
 		header.n_patches += mesh.clusters.size();
 	}
@@ -70,7 +70,7 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 
 	//write the nodes to disk
 	for(int level = hierarchy.levels.size()-1; level >= 0; level--) {
-		MeshFiles &mesh = hierarchy.levels[level];
+		MappedMesh &mesh = hierarchy.levels[level];
 		for(size_t m = 0; m < mesh.micronodes.size(); m++) {
 			MicroNode &micronode = mesh.micronodes[m];
 			exportMicronode(level, mesh, micronode, out);
@@ -138,7 +138,7 @@ void ExportNxs::printDag(MeshHierarchy &hierarchy) {
 void ExportNxs::printDagHierarchy(MeshHierarchy &hierarchy) {
 	nx::debug << "DAG (hierarchy micronodes/clusters)" << std::endl;
 	for (int level = hierarchy.levels.size()- 1; level >= 0; --level) {
-		MeshFiles &mesh = hierarchy.levels[level];
+		MappedMesh &mesh = hierarchy.levels[level];
 		nx::debug << "Level " << level
 				  << " | micronodes=" << mesh.micronodes.size()
 				  << " | clusters=" << mesh.clusters.size()
@@ -167,7 +167,7 @@ void ExportNxs::printDagHierarchy(MeshHierarchy &hierarchy) {
 
 
 
-void ExportNxs::exportMicronode(int level, MeshFiles &mesh, MicroNode &micronode, FILE *out) {
+void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronode, FILE *out) {
 	nx::Node node;
 	node.first_patch = patches.size();
 

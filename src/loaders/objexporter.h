@@ -18,13 +18,13 @@ for more details.
 #ifndef NX_OBJEXPORTER_H
 #define NX_OBJEXPORTER_H
 
-#include "../core/mesh.h"
+#include "../core/mappedmesh.h"
 #include <filesystem>
 
 namespace nx {
 
-// Export MeshFiles to OBJ format (for testing/validation)
-void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path);
+// Export MappedMesh to OBJ format (for testing/validation)
+void export_obj(const MappedMesh& mesh, const std::filesystem::path& output_path);
 
 } // namespace nx
 

@@ -83,16 +83,12 @@ Material::Material(const Material& other)
     std::copy(other.base_color, other.base_color + 4, base_color);
     std::copy(other.specular, other.specular + 3, specular);
     std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-    base_color_map = nullptr;
-    metallic_roughness_map = nullptr;
-    emissive_id_map = nullptr;
 }
 
 Material& Material::operator=(const Material& other) {
     if (this == &other) {
         return *this;
     }
-    destroyPyramids();
     type = other.type;
     base_color_texture = other.base_color_texture;
     metallic_factor = other.metallic_factor;
@@ -110,9 +106,6 @@ Material& Material::operator=(const Material& other) {
     std::copy(other.base_color, other.base_color + 4, base_color);
     std::copy(other.specular, other.specular + 3, specular);
     std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-    base_color_map = nullptr;
-    metallic_roughness_map = nullptr;
-    emissive_id_map = nullptr;
     return *this;
 }
 
@@ -130,23 +123,16 @@ Material::Material(Material&& other) noexcept
       occlusion_strength(other.occlusion_strength),
       emissive_texture(std::move(other.emissive_texture)),
       double_sided(other.double_sided),
-      name(std::move(other.name)),
-      base_color_map(other.base_color_map),
-      metallic_roughness_map(other.metallic_roughness_map),
-      emissive_id_map(other.emissive_id_map) {
+      name(std::move(other.name)) {
     std::copy(other.base_color, other.base_color + 4, base_color);
     std::copy(other.specular, other.specular + 3, specular);
     std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-    other.base_color_map = nullptr;
-    other.metallic_roughness_map = nullptr;
-    other.emissive_id_map = nullptr;
 }
 
 Material& Material::operator=(Material&& other) noexcept {
     if (this == &other) {
         return *this;
     }
-    destroyPyramids();
     type = other.type;
     base_color_texture = std::move(other.base_color_texture);
     metallic_factor = other.metallic_factor;
@@ -164,42 +150,9 @@ Material& Material::operator=(Material&& other) noexcept {
     std::copy(other.base_color, other.base_color + 4, base_color);
     std::copy(other.specular, other.specular + 3, specular);
     std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-    base_color_map = other.base_color_map;
-    metallic_roughness_map = other.metallic_roughness_map;
-    emissive_id_map = other.emissive_id_map;
-    other.base_color_map = nullptr;
-    other.metallic_roughness_map = nullptr;
-    other.emissive_id_map = nullptr;
     return *this;
 }
 
-Material::~Material() {
-    destroyPyramids();
-}
-
-void Material::destroyPyramids() {
-    delete base_color_map;
-    delete metallic_roughness_map;
-    delete emissive_id_map;
-    base_color_map = nullptr;
-    metallic_roughness_map = nullptr;
-    emissive_id_map = nullptr;
-}
-
-void Material::initPyramids(const std::string& cache_dir) {
-    destroyPyramids();
-    if(!base_color_texture.empty()) {
-        base_color_map = new Pyramid();
-        base_color_map->build(base_color_texture, cache_dir);
-    }
-    if(!metallic_roughness_texture.empty()) {
-        metallic_roughness_map = new Pyramid();
-        metallic_roughness_map->build(metallic_roughness_texture, cache_dir);
-    }
-    if(!emissive_texture.empty()) {
-        emissive_id_map = new Pyramid();
-        emissive_id_map->build(emissive_texture, cache_dir);
-    }
-}
+Material::~Material() = default;
 
 } // namespace nx

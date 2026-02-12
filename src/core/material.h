@@ -5,7 +5,6 @@
 #include <string>
 #include <filesystem>
 #include <math.h>
-#include "../texture/pyramid.h"
 
 namespace nx {
 
@@ -30,29 +29,26 @@ enum class MaterialType : uint8_t {
  * Texture packing (glTF):
  *   - metallic_roughness_texture: R=occlusion, G=roughness, B=metallic
  */
+
 struct Material {
 	MaterialType type = MaterialType::PBR;
 
 	// Base color / diffuse (Kd in Phong) - RGBA
 	float base_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 	std::string base_color_texture;
-	Pyramid* base_color_map = nullptr;
 
-		// Metallic-roughness (PBR)
-		float metallic_factor = 1.0f;   // 0.0 = dielectric, 1.0 = metal
+	// Metallic-roughness (PBR)
+	float metallic_factor = 1.0f;   // 0.0 = dielectric, 1.0 = metal
 	float roughness_factor = 1.0f;  // 0.0 = smooth, 1.0 = rough
 	std::string metallic_roughness_texture; // G=roughness, B=metallic
-	Pyramid* metallic_roughness_map = nullptr;
 
 	// Specular (Phong Ks) - for legacy materials; ignored in pure PBR
 	float specular[3] = {0.0f, 0.0f, 0.0f};
 	std::string specular_texture;
-	Pyramid* specular_map = nullptr;
 	float shininess = 0.0f; // Phong Ns; convert to roughness if needed
 
 	// Normal mapping
 	std::string normal_texture;
-	Pyramid* normal_map = nullptr;
 
 	float normal_scale = 1.0f;
 
@@ -63,7 +59,6 @@ struct Material {
 	// Emissive - RGB
 	float emissive_factor[3] = {0.0f, 0.0f, 0.0f};
 	std::string emissive_texture;
-	Pyramid* emissive_id_map = nullptr;
 
 	// Rendering flags
 	bool double_sided = false;
@@ -77,9 +72,6 @@ struct Material {
 	Material(Material&& other) noexcept;
 	Material& operator=(Material&& other) noexcept;
 	~Material();
-
-	void initPyramids(const std::string& cache_dir);
-	void destroyPyramids();
 
 	// Helpers
 	bool has_base_color_texture() const { return !base_color_texture.empty(); }

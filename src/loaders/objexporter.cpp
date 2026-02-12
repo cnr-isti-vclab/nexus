@@ -52,7 +52,7 @@ bool write_checkerboard_ppm(const std::filesystem::path& texture_path, int size 
 
 } // namespace
 
-void export_obj(const MeshFiles& mesh, const std::filesystem::path& output_path) {
+void export_obj(const MappedMesh& mesh, const std::filesystem::path& output_path) {
 	std::ofstream file(output_path);
 	if (!file.is_open()) {
 		throw std::runtime_error("Could not create OBJ file: " + output_path.string());

@@ -1,6 +1,6 @@
 #include "plyloader.h"
 #include "meshloader.h"
-#include "mesh.h"
+#include "mappedmesh.h"
 #include <math.h>
 using namespace vcg;
 using namespace vcg::ply;
@@ -216,7 +216,7 @@ void PlyLoader::init() {
 
 }
 
-void PlyLoader::load(MeshFiles& mesh) {
+void PlyLoader::load(MappedMesh& mesh) {
 	mesh.positions.resize(n_vertices);
 	if(has_colors)
 		mesh.colors.resize(n_vertices);

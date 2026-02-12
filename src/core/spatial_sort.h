@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mesh.h"
+#include "mappedmesh.h"
 #include <vector>
 
 namespace nx {
@@ -15,7 +15,7 @@ namespace nx {
 // 1. Sort positions by Z-order curve
 // 2. Sort wedges by position index
 // 3. Sort triangles by smallest wedge index
-void spatial_sort_mesh(MeshFiles& mesh);
+void spatial_sort_mesh(MappedMesh& mesh);
 
 //INTERNAL FUNCTION:
 
@@ -24,26 +24,26 @@ uint64_t morton_code(float x, float y, float z);
 
 // Sort positions using Z-order space-filling curve
 // Returns a remapping array where remap[old_index] = new_index
-std::vector<Index> spatial_sort_positions(MeshFiles& mesh);
+std::vector<Index> spatial_sort_positions(MappedMesh& mesh);
 
 // Apply remapping to wedge position indices
-void remap_wedge_positions(MeshFiles& mesh, const std::vector<Index>& remap);
+void remap_wedge_positions(MappedMesh& mesh, const std::vector<Index>& remap);
 
 // Sort wedges by their position index
 // Returns a remapping array where remap[old_wedge_index] = new_wedge_index
-std::vector<Index> sort_wedges_by_position(MeshFiles& mesh);
+std::vector<Index> sort_wedges_by_position(MappedMesh& mesh);
 
-void sort_normals_by_wedge(MeshFiles& mesh, const std::vector<Index>& remap);
-void sort_textures_by_wedge(MeshFiles& mesh, const std::vector<Index>& remap);
+void sort_normals_by_wedge(MappedMesh& mesh, const std::vector<Index>& remap);
+void sort_textures_by_wedge(MappedMesh& mesh, const std::vector<Index>& remap);
 
 
 // Apply remapping to triangle wedge indices
-void remap_triangle_wedges(MeshFiles& mesh, const std::vector<Index>& remap);
+void remap_triangle_wedges(MappedMesh& mesh, const std::vector<Index>& remap);
 
 // Sort triangles by their smallest wedge index
-void sort_triangles_by_wedge(MeshFiles& mesh);
+void sort_triangles_by_wedge(MappedMesh& mesh);
 
 
-void spatial_sort_triangles(MeshFiles& mesh);
+void spatial_sort_triangles(MappedMesh& mesh);
 
 } // namespace nx
