@@ -56,7 +56,13 @@ _Cache.prototype = {
     setTargetError:  function(error) { this.targetError = error; },
     
     loadCorto: function() {
-        let corto = new Worker(this.cortopath + '/corto.em.js');
+        let workerPath = this.cortopath + 'corto.worker.js'; 
+        try {
+            workerPath = new URL('./corto.worker.js', import.meta.url).href;
+        } catch (e) {
+            //reverrt to es if import.meta.url is not available
+        }
+        let corto = new Worker(workerPath);
         corto.requests = {};
         corto.count = 0;
         corto.postRequest = function(node) {

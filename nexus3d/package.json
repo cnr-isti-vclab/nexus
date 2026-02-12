@@ -32,13 +32,16 @@
   "dependencies": {
     "three": "^0.181.0"
   },
-  "files": [
-    "build/nexus3D.min.js",
-    "build/nexus3D.js",
-    "dist/corto.em.js",
-    "LICENSE",
-    "package.json",
-    "README.md",
-    "src"
-  ]
+"files": [
+  "build/nexus3D.js",
+  "build/nexus3D.min.js",
+  "build/corto.worker.js"
+],
+"exports": {
+  ".": {
+    "import": "./build/nexus3D.js",
+    "require": "./build/nexus3D.min.js"
+  },
+  "./worker": "./build/corto.worker.js"
+}
 }
