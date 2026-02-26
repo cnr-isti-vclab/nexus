@@ -16,7 +16,7 @@ class MappedMesh;
  * Populates a MappedMesh structure with indexed geometry backed by mmapped files.
  */
 
-void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh);
+void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh, std::vector<Material> &_materials);
 
 // Helper to sanitize and resolve texture paths
 std::string resolveTexturePath(const std::string& model_path, std::string texture_path);

@@ -18,7 +18,7 @@ class ObjLoader: public MeshLoader {
 public:
 	ObjLoader(const std::string& filename, const std::string& mtl_path = "");
 
-	void load(MappedMesh& mesh);
+	void load(MappedMesh& mesh, std::vector<Material> &materials);
 
 private:
 	void read_mtls();

@@ -219,13 +219,13 @@ void TileRow::nextRow() {
 	overlapping.clear();
 }
 
-bool Pyramid::build(const std::string &input, const std::string &cache_dir, int tile_size) {
+void Pyramid::build(const std::string &input, const std::string &cache_dir, int tile_size) {
 	tileside = tile_size;
 
-	return buildTiledImages(input, cache_dir);
+	buildTiledImages(input, cache_dir);
 }
 
-bool Pyramid::buildTiledImages(const std::string &input, const string &cache_dir) {
+void Pyramid::buildTiledImages(const std::string &input, const string &cache_dir) {
 	std::filesystem::path cache_root(cache_dir);
 	std::filesystem::path input_path(input);
 	std::string stem = input_path.stem().string();
@@ -259,8 +259,6 @@ bool Pyramid::buildTiledImages(const std::string &input, const string &cache_dir
 
 	flushLevels(rows);
 	exportPyramid(cache_dir);
-
-	return true;
 }
 
 int Pyramid::nLevels() {
@@ -382,7 +380,7 @@ Vector3f Pyramid::sample(float u, float v, int level) const {
 	if (levels.empty() || !data.data()) {
 		return {0.0f, 0.0f, 0.0f};
 	}
-	if (level < 0) level = 0;
+	if (level < 0) level = levels.size() -1;
 	if (level >= static_cast<int>(levels.size()))
 		level = static_cast<int>(levels.size()) - 1;
 	const PyrLevel& lvl = levels[level];
@@ -390,7 +388,7 @@ Vector3f Pyramid::sample(float u, float v, int level) const {
 		return {0.0f, 0.0f, 0.0f};
 	}
 	const float clamp_u = std::clamp(u, 0.0f, 1.0f);
-	const float clamp_v = std::clamp(v, 0.0f, 1.0f);
+	const float clamp_v = 1.0f - std::clamp(v, 0.0f, 1.0f);
 	const float fx = clamp_u * (lvl.width - 1);
 	const float fy = clamp_v * (lvl.height - 1);
 	int x0 = static_cast<int>(std::floor(fx));

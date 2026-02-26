@@ -26,6 +26,7 @@
 #ifndef __RASTERIZER_H__
 #define __RASTERIZER_H__
 
+#include <array>
 #include <vector>
 
 #include "../core/material.h"
@@ -54,17 +55,18 @@ public:
 
 class Rasterizer {
 protected:
-    std::vector<Vector3f>& target;
-    int width;
-    int height;
-    const std::vector<Material>* materials = nullptr;
-    TextureCache* texture_cache = nullptr;
-    Rasterizer(std::vector<Vector3f>& buffer, int w, int h): target(buffer), width(w), height(h) {}
+	int width;
+	int height;
+	const std::vector<Material>* materials = nullptr;
+	TextureCache* texture_cache = nullptr;
+	TileMap* tilemap = nullptr;
 
-    void DrawSpan(const Span &span, int y, Index material_id);
-    void DrawSpansBetweenEdges(const Edge &e1, const Edge &e2, Index material_id);
+	void DrawSpan(const Span &span, int y, Index material_id);
+	void DrawSpansBetweenEdges(const Edge &e1, const Edge &e2, Index material_id);
 
 public:
+	Rasterizer(int w, int h): width(w), height(h) {}
+
     void SetPixel(unsigned int x, unsigned int y, Index material_id, const Vector2f& uv);
     void SetPixel(int x, int y, Index material_id, const Vector2f& uv);
     void SetPixel(float x, float y, Index material_id, const Vector2f& uv);
@@ -78,11 +80,12 @@ public:
         float x1, float y1, const Vector2f& uv1,
         float x2, float y2, const Vector2f& uv2);
 
-    void RasterizeTriangles(const std::vector<Vector2f>& positions,
-        const std::vector<Vector2f>& uvs,
-        const std::vector<Index>& material_ids,
+    void rasterizeTriangles(const std::vector<Vector2f>& positions,
+		const std::vector<Vector2f>& uvs,
+		const std::vector<Index>& material_ids,
         const std::vector<Material>& materials,
-        TextureCache* texture_cache);
+		TextureCache* texture_cache,
+        TileMap* tilemap);
 };
 
 }

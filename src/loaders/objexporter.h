@@ -19,12 +19,18 @@ for more details.
 #define NX_OBJEXPORTER_H
 
 #include "../core/mappedmesh.h"
+#include "../core/nodemesh.h"
+#include "../core/material.h"
 #include <filesystem>
+#include <vector>
 
 namespace nx {
 
 // Export MappedMesh to OBJ format (for testing/validation)
-void export_obj(const MappedMesh& mesh, const std::filesystem::path& output_path);
+void export_obj(const MappedMesh& mesh, const std::vector<Material>& materials, const std::filesystem::path& output_path);
+
+// Export NodeMesh + TileMap to OBJ/MTL + PNG textures.
+void export_iobj(const NodeMesh& mesh, const std::vector<Material>& materials, const std::filesystem::path& output_path);
 
 } // namespace nx
 

@@ -23,7 +23,7 @@ struct NodeMesh {
 	std::vector<Index> material_ids;                  // Optional (size 0 if single/no material)
 	Index parent_micronode_id;
 
-	std::vector<TileMap> tilemap; //materials
+	TileMap tilemap; //material. just one
 };
 
 }

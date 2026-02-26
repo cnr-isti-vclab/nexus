@@ -8,11 +8,6 @@
 
 namespace nx {
 
-/**
- * @brief A simple wrapper around memory mapped files.
- * 
- * This class abstracts the OS specific mmap/CreateFileMapping calls.
- */
 
 class MappedFile {
 public:
@@ -33,18 +28,11 @@ public:
 	MappedFile(MappedFile&& other) noexcept;
 	MappedFile& operator=(MappedFile&& other) noexcept;
 
-	/**
-     * @brief Open or create a file and map it into memory.
-     * @param filename Path to the file.
-     * @param mode Open mode.
-     * @param size Size in bytes. Required for READ_WRITE/TEMPORARY new files, or to resize.
-     *             If 0 for READ_ONLY, uses existing file size.
-	 */
 	bool open(const std::string& filename, Mode mode, size_t size = 0);
-
+	bool open(const std::string& folder, const std::string& prefix, Mode mode, size_t size = 0);
+	static std::string makeTempPath(const std::string& folder, const std::string& prefix);
 	void close();
 
-	// Resize the underlying file (and remap it).
 	// Pointers obtained via data() become invalid!
 	bool resize(size_t new_size);
 

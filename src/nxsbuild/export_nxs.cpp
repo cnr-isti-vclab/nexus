@@ -43,7 +43,7 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	signature.vertex.setComponent(VertexElement::NORM, Attribute(Attribute::SHORT, 3));
 	/*if(components & COLORS)
 		signature.vertex.setComponent(VertexElement::COLOR, Attribute(Attribute::BYTE, 4)); */
-	if(hierarchy.levels[0].has_textures)
+	if(hierarchy.levels[0]->has_textures)
 		signature.vertex.setComponent(FaceElement::TEX, Attribute(Attribute::FLOAT, 2));
 
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
@@ -57,10 +57,12 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	//count nodes and patchs.
 	for(int level = hierarchy.levels.size()-1; level >= 0; level--) {
 		level_node_offset[level] = header.n_nodes;
-		const MappedMesh &mesh = hierarchy.levels[level];
+		const MappedMesh &mesh = *hierarchy.levels[level];
 		header.n_nodes += mesh.micronodes.size();
 		header.n_patches += mesh.clusters.size();
 	}
+	if(signature.vertex.hasTextures())
+		header.n_textures = header.n_nodes;
 	header.n_nodes++; //sink
 
 	//temporarily write nodes, we will come back after we have the numbers.
@@ -70,7 +72,7 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 
 	//write the nodes to disk
 	for(int level = hierarchy.levels.size()-1; level >= 0; level--) {
-		MappedMesh &mesh = hierarchy.levels[level];
+		MappedMesh &mesh = *hierarchy.levels[level];
 		for(size_t m = 0; m < mesh.micronodes.size(); m++) {
 			MicroNode &micronode = mesh.micronodes[m];
 			exportMicronode(level, mesh, micronode, out);
@@ -95,8 +97,8 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	//printDagHierarchy(hierarchy);
 
 	//finish header:
-	header.nvert = hierarchy.levels[0].wedges.size();
-	header.nface = hierarchy.levels[0].triangles.size();
+	header.nvert = hierarchy.levels[0]->wedges.size();
+	header.nface = hierarchy.levels[0]->triangles.size();
 	header.n_nodes = nodes.size();
 	header.n_patches = patches.size();
 	vcg::Point3f center(nodes[0].sphere.Center());
@@ -138,7 +140,7 @@ void ExportNxs::printDag(MeshHierarchy &hierarchy) {
 void ExportNxs::printDagHierarchy(MeshHierarchy &hierarchy) {
 	nx::debug << "DAG (hierarchy micronodes/clusters)" << std::endl;
 	for (int level = hierarchy.levels.size()- 1; level >= 0; --level) {
-		MappedMesh &mesh = hierarchy.levels[level];
+		MappedMesh &mesh = *hierarchy.levels[level];
 		nx::debug << "Level " << level
 				  << " | micronodes=" << mesh.micronodes.size()
 				  << " | clusters=" << mesh.clusters.size()
@@ -171,8 +173,7 @@ void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronod
 	nx::Node node;
 	node.first_patch = patches.size();
 
-	//TODO wedges should have been unified. it seems not.
-	std::map<Index, Index> wedges_ids;
+	std::map<Index, Index> wedges_ids; //this are the local wedges.
 	size_t n_triangles = 0;
 	int count = 0;
 	for(Index c: micronode.cluster_ids) {
@@ -180,6 +181,7 @@ void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronod
 		n_triangles += cluster.triangle_count;
 		size_t end = cluster.triangle_offset + cluster.triangle_count;
 		for(size_t t = cluster.triangle_offset; t < end; t++) {
+			assert(t < mesh.triangles.size());
 			const Triangle &tri = mesh.triangles[t];
 			for(int k = 0; k < 3; k++) {
 				if(!wedges_ids.count(tri.w[k]))
@@ -213,6 +215,12 @@ void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronod
 		normals[new_index*3 + 0] = int16_t(n.x*32767);
 		normals[new_index*3 + 1] = int16_t(n.y*32767);
 		normals[new_index*3 + 2] = int16_t(n.z*32767);
+		if(mesh.has_textures) {
+			Vector2f t = mesh.texcoords[wedge.t];
+			texcoords[new_index*3 + 0] = t.u;
+			texcoords[new_index*3 + 1] = t.v;
+
+		}
 	}
 
 	uint16_t *triangles = (uint16_t *)(buffer + 18*n_wedges);
@@ -253,7 +261,6 @@ void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronod
 	nodes.push_back(node);
 
 	fwrite(buffer, 1, size, out);
-
 	//TODO we might want to optimize the node by cache coherence (or compress!)
 }
 

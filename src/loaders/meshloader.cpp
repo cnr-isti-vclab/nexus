@@ -8,16 +8,16 @@ namespace fs = std::filesystem;
 
 namespace nx {
 
-void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh) {
+void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh, std::vector<Material> &materials) {
 	auto ext = input_path.extension().string();
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
 	if (ext == ".obj") {
 		ObjLoader loader(input_path.string(), "");
-		loader.load(mesh);
+		loader.load(mesh, materials);
 	} else if(ext == ".ply") {
 		PlyLoader loader(input_path.string());
-		loader.load(mesh);
+		loader.load(mesh, materials);
 	} else
 		throw std::runtime_error("unsupported mesh format: " + ext);
 

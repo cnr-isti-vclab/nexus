@@ -78,9 +78,9 @@ public:
 	int width, height;
 	int quality; //0 100 jpeg quality
 
-	bool build(const std::string &filename, const std::string &cache_dir, int tile_size = 254);
+	void build(const std::string &filename, const std::string &cache_dir, int tile_size = 254);
 	void exportPyramid(const std::string &output_dir) const;
-	Vector3f sample(float u, float v, int level = 0) const;
+	Vector3f sample(float u, float v, int level = -1) const;
 
 private:
 	MappedArray<uint8_t> data;
@@ -89,10 +89,9 @@ private:
 	std::vector<int> widths;
 	std::string cache_path;
 
-
 	int nLevels();
 	std::vector<TileRow> initRows();
-	bool buildTiledImages(const std::string &input, const std::string &cache_dir);
+	void buildTiledImages(const std::string &input, const std::string &cache_dir);
 	void flushLevels(std::vector<TileRow> &rows);
 };
 

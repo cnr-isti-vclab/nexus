@@ -7,6 +7,8 @@
 
 namespace nx {
 
+class TextureCache;
+
 struct ParametrizationOptions {
 	uint32_t padding = 2;
 	float texels_per_unit = 1.0f;
@@ -30,10 +32,13 @@ struct ParametrizationOptions {
 // If out_texcoords is provided, it will be filled with the generated UVs indexed by wedge.t.
 // Returns true on success, false on failure (mesh is left with best-effort UVs).
 bool create_parametrization(NodeMesh& mesh,
-	const ParametrizationOptions& options = {},
-	std::vector<Vector2f>* out_texcoords = nullptr);
+	const ParametrizationOptions& options = {});
 
-TileMap rasterize(std::vector<Material> &materials, NodeMesh &source, NodeMesh &destination, int tex_res);
-void reparametrize_clusters(MappedMesh& mesh);
+void rasterize_initial(TextureCache& texture_cache, const std::vector<Material>& materials, NodeMesh &source, NodeMesh &destination, int tex_res);
+void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &materials);
+void reparametrize_clusters(MappedMesh& mesh,
+	MappedMesh& next_mesh,
+	const std::vector<Material::TextureSlot>& active_slots,
+	const std::vector<Material>& materials);
 
 } // namespace nx

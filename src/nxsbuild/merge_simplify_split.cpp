@@ -152,7 +152,7 @@ NodeMesh merge_micronode_clusters(
 				if (wedge_it == wedge_map.end()) {
 					const Wedge& w = mesh.wedges[original_wedge];
 
-					Index new_pos = 0;
+					Index new_pos = NONE;
 					{
 						Index original_pos = w.p;
 						auto pos_it = position_map.find(original_pos);
@@ -167,8 +167,9 @@ NodeMesh merge_micronode_clusters(
 					}
 
 					Index new_nor = NONE;
-					if(mesh.has_normals) {
+					if(mesh.has_normals && mesh.normals.size() > 0) {
 						Index original_nor = w.n;
+						assert(w.n != NONE);
 
 						auto nor_it = normal_map.find(original_nor);
 						if (nor_it == normal_map.end()) {
@@ -180,7 +181,7 @@ NodeMesh merge_micronode_clusters(
 						}
 					}
 					Index new_tex = 0;
-					if(mesh.has_textures) {
+					if(mesh.has_textures && mesh.texcoords.size() > 0) {
 						Index original_tex = w.t;
 
 						auto tex_it = texture_map.find(original_tex);
@@ -195,6 +196,7 @@ NodeMesh merge_micronode_clusters(
 					Wedge new_wedge;
 					p[j] = new_wedge.p = new_pos;
 					new_wedge.n = new_nor;
+					assert(new_pos == new_nor);
 					new_wedge.t = new_tex;
 
 					Index new_wedge_index = static_cast<Index>(merged.wedges.size());
@@ -264,7 +266,7 @@ float simplify_mesh(
 		for (Index i = 0; i < merged.triangles.size(); ++i) {
 			debug_mesh.triangles[i] = merged.triangles[i];
 		}
-		export_obj(debug_mesh, "debug_before.obj");
+		export_obj(debug_mesh, {}, "debug_before.obj");
 	}
 
 
@@ -289,15 +291,7 @@ float simplify_mesh(
 		AFace& face = legacy_mesh.face[i];
 		for (int k = 0; k < 3; ++k) {
 			const Wedge& w = merged.wedges[tri.w[k]];
-
 			face.V(k) = &legacy_mesh.vert[w.p];
-
-			AVertex* v = face.V(k);
-			const Vector3f &n = merged.normals[w.n];
-			v->N() = vcg::Point3f(n.x, n.y, n.z);
-			const Vector2f &t = merged.texcoords[w.t];
-			face.WT(k).U() = t.u;
-			face.WT(k).V() = t.v;
 		}
 	}
 	//vcg::tri::UpdateNormal<VcgMesh>::PerWedgeCrease(legacy_mesh, 60*M_PI/180);
@@ -359,8 +353,15 @@ float simplify_mesh(
 		}
 	}
 
-	merged.texcoords.clear();
-	merged.wedges.clear();
+	//now we don't deal with textures, so wedges == positions
+	merged.wedges.resize(merged.positions.size());
+	for(size_t i = 0; i < merged.wedges.size(); i++) {
+		auto &w = merged.wedges[i];
+		w.p =  i;
+		w.n = NONE;
+		w.t = NONE;
+	}
+
 	merged.triangles.clear();
 
 	for (std::size_t i = 0; i < legacy_mesh.face.size(); ++i) {
@@ -369,82 +370,19 @@ float simplify_mesh(
 			continue;
 		}
 
-		Triangle tri{};
+		Triangle tri;
 		for (int k = 0; k < 3; ++k) {
 			const AVertex* v = f.cV(k);
 			std::size_t vidx = static_cast<std::size_t>(v - vbase);
 			Index new_pos = vertex_remap[vidx];
 			assert(new_pos != NONE);
 
-			Wedge w{};
-			w.p = new_pos;
-			w.n = NONE;
-			Vector2f texcoord{f.WT(k).U(), f.WT(k).V()};
-			w.t = static_cast<Index>(merged.texcoords.size());
-			merged.texcoords.push_back(texcoord);
-
-			tri.w[k] = static_cast<Index>(merged.wedges.size());
-			merged.wedges.push_back(w);
+			tri.w[k] = new_pos;
 		}
 
 		merged.triangles.push_back(tri);
 	}
 
-	// Compact wedges: sort by (position, texcoord) and merge duplicates
-	{
-		const Index old_count = static_cast<Index>(merged.wedges.size());
-		using Key = std::tuple<Index, float, float>;
-		std::vector<std::pair<Key, Index>> entries;
-		entries.reserve(old_count);
-
-		for (Index wi = 0; wi < old_count; ++wi) {
-			const Wedge& w = merged.wedges[wi];
-			const Vector2f& t = merged.texcoords[w.t];
-			Key k = std::make_tuple(w.p, t.u, t.v);
-			entries.emplace_back(k, wi);
-		}
-
-		std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
-			return a.first < b.first;
-		});
-
-		std::vector<Index> remap(old_count, std::numeric_limits<Index>::max());
-		std::vector<Wedge> compacted;
-		compacted.reserve(entries.size());
-
-		Key prev_key;
-		bool has_prev = false;
-		for (const auto& ent : entries) {
-			const Key& key = ent.first;
-			Index old_idx = ent.second;
-			if (!has_prev || key != prev_key) {
-				// create new compacted wedge from old
-				compacted.push_back(merged.wedges[old_idx]);
-				Index new_idx = static_cast<Index>(compacted.size()) - 1;
-				remap[old_idx] = new_idx;
-				prev_key = key;
-				has_prev = true;
-			} else {
-				// reuse last compacted index
-				remap[old_idx] = static_cast<Index>(compacted.size()) - 1;
-			}
-		}
-
-		// Replace wedges with compacted list
-		merged.wedges = std::move(compacted);
-
-		// Update triangle wedge indices
-		for (Triangle& tri : merged.triangles) {
-			for (int k = 0; k < 3; ++k) {
-				Index old_w = tri.w[k];
-				if (old_w < remap.size()) {
-					tri.w[k] = remap[old_w];
-				} else {
-					tri.w[k] = std::numeric_limits<Index>::max();
-				}
-			}
-		}
-	}
 	if(0){
 		MappedMesh debug_mesh;
 		debug_mesh.positions.resize(merged.positions.size());
@@ -459,7 +397,7 @@ float simplify_mesh(
 		for (Index i = 0; i < merged.triangles.size(); ++i) {
 			debug_mesh.triangles[i] = merged.triangles[i];
 		}
-		export_obj(debug_mesh, "debug_after.obj");
+		export_obj(debug_mesh, {}, "debug_after.obj");
 	}
 	return meshError(merged);
 }
@@ -829,14 +767,16 @@ void split_mesh(
 		Index global_id = merged.position_remap[i];
 		next_mesh.positions[global_id] = merged.positions[i];
 	}
-	//ignore normals
+	//ignore normals and textures as simplification works only on geometry.
 
 	//add texcoords
+	/*
 	size_t tex_offset = next_mesh.texcoords.size();
 	next_mesh.texcoords.grow(merged.texcoords.size());
 	for(Index i = 0; i < merged.texcoords.size(); i++) {
 		next_mesh.texcoords[tex_offset + i] = merged.texcoords[i];
 	}
+	*/
 
 	//add wedges
 	size_t wedge_offset = next_mesh.wedges.size();
@@ -844,7 +784,7 @@ void split_mesh(
 	for(Index i = 0; i < merged.wedges.size(); i++) {
 		Wedge w = merged.wedges[i];
 		w.p = merged.position_remap[w.p];
-		w.t += tex_offset;
+		//w.t += tex_offset;
 		next_mesh.wedges[wedge_offset + i] = w;
 	}
 

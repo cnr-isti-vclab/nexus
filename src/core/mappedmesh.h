@@ -2,6 +2,7 @@
 #define NX_MAPPEDMESH_H
 
 #include "basemesh.h"
+#include <mutex>
 
 namespace nx {
 
@@ -27,11 +28,7 @@ public:
 	MappedMesh();
 	~MappedMesh();
 
-	MappedMesh(const MappedMesh&) = delete;
-	MappedMesh& operator=(const MappedMesh&) = delete;
-	MappedMesh(MappedMesh&&) = default;
-	MappedMesh& operator=(MappedMesh&&) = default;
-
+	std::mutex lock;
 	Aabb bounds{{0,0,0}, {0,0,0}};
 
 	// Exposed mapped arrays
@@ -56,8 +53,6 @@ public:
 	std::vector<NodeTexture> node_textures; // Texture info for each micronode
 
 	std::vector<MacroNode> macronodes;
-
-	std::vector<Material> materials;
 
 	MappedArray<uint8_t>texels; //store textures for each micronode.
 

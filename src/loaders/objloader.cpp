@@ -161,7 +161,7 @@ void ObjLoader::read_mtl(const std::string& mtl_path) {
 	}
 }
 
-void ObjLoader::load(MappedMesh& mesh) {
+void ObjLoader::load(MappedMesh& mesh, std::vector<Material> &_materials) {
 	std::ifstream file(obj_path);
 	if (!file.is_open()) {
 		std::string reason = (errno ? std::strerror(errno) : "unknown");
@@ -253,7 +253,6 @@ void ObjLoader::load(MappedMesh& mesh) {
 	bool has_materials = !materials.empty();
 	if (has_materials) {
 		mesh.material_ids.resize(triangle_count);
-		mesh.materials = materials;
 	}
 
 	// Third pass: build wedges and triangles
@@ -354,7 +353,9 @@ void ObjLoader::load(MappedMesh& mesh) {
 		}
 	}
 
+	mesh.has_textures = mesh.texcoords.size() > 0;
 	mesh.bounds = bounds;
+	_materials = materials;
 }
 
 } // namespace nx

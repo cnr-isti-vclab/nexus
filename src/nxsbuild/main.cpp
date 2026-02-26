@@ -7,8 +7,9 @@
 
 #include "build_parameters.h"
 #include "../core/mappedmesh.h"
-#include "../loaders/meshloader.h"
+#include "../core/material.h"
 #include "../core/mesh_hierarchy.h"
+#include "../loaders/meshloader.h"
 #include "export_nxs.h"
 
 namespace fs = std::filesystem;
@@ -39,12 +40,13 @@ int main(int argc, char *argv[]) {
 
 	try {
 		// Load the base mesh
-		nx::MappedMesh mesh;
-		nx::load_mesh(fs::path(input_file), mesh);
+		nx::MappedMesh *mesh = new nx::MappedMesh();
+		std::vector<nx::Material> materials;
+		nx::load_mesh(fs::path(input_file), *mesh, materials);
 
 		// Initialize hierarchy with the preprocessed base mesh
 		nx::MeshHierarchy hierarchy;
-		hierarchy.initialize(std::move(mesh));
+		hierarchy.initialize(mesh, materials);
 
 		// Build the complete hierarchy
 		nx::log << "Building mesh hierarchy..." << std::endl;

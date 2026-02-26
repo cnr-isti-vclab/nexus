@@ -14,7 +14,7 @@ public:
 	PlyLoader(const std::string& filename);
 	~PlyLoader();
 
-	void load(MappedMesh& mesh);
+	void load(MappedMesh& mesh, std::vector<Material> &materials);
 
 	std::vector<Material> materials;
 

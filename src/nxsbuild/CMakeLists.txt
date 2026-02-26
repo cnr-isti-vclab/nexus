@@ -94,6 +94,6 @@ target_include_directories(nxsbuild PRIVATE
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
-target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core ${JPEG_LIBRARIES})
+target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core Qt6::Gui ${JPEG_LIBRARIES})
 
 install(TARGETS nxsbuild DESTINATION bin)

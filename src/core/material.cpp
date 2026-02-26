@@ -1,5 +1,8 @@
 #include "material.h"
+
+#include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace nx {
 
@@ -65,94 +68,34 @@ bool can_merge_materials(const Material& a, const Material& b) {
     return true;
 }
 
-Material::Material(const Material& other)
-    : type(other.type),
-      base_color_texture(other.base_color_texture),
-      metallic_factor(other.metallic_factor),
-      roughness_factor(other.roughness_factor),
-      metallic_roughness_texture(other.metallic_roughness_texture),
-      specular_texture(other.specular_texture),
-      shininess(other.shininess),
-      normal_texture(other.normal_texture),
-      normal_scale(other.normal_scale),
-      occlusion_texture(other.occlusion_texture),
-      occlusion_strength(other.occlusion_strength),
-      emissive_texture(other.emissive_texture),
-      double_sided(other.double_sided),
-      name(other.name) {
-    std::copy(other.base_color, other.base_color + 4, base_color);
-    std::copy(other.specular, other.specular + 3, specular);
-    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-}
 
-Material& Material::operator=(const Material& other) {
-    if (this == &other) {
-        return *this;
+void TileMap::addSlot(Material::TextureSlot slot) {
+    auto it = std::find(texture_slots.begin(), texture_slots.end(), slot);
+    if (it == texture_slots.end()) {
+        texture_slots.push_back(slot);
+        std::sort(texture_slots.begin(), texture_slots.end(), [](Material::TextureSlot a, Material::TextureSlot b) {
+            return Material::slotIndex(a) < Material::slotIndex(b);
+        });
     }
-    type = other.type;
-    base_color_texture = other.base_color_texture;
-    metallic_factor = other.metallic_factor;
-    roughness_factor = other.roughness_factor;
-    metallic_roughness_texture = other.metallic_roughness_texture;
-    specular_texture = other.specular_texture;
-    shininess = other.shininess;
-    normal_texture = other.normal_texture;
-    normal_scale = other.normal_scale;
-    occlusion_texture = other.occlusion_texture;
-    occlusion_strength = other.occlusion_strength;
-    emissive_texture = other.emissive_texture;
-    double_sided = other.double_sided;
-    name = other.name;
-    std::copy(other.base_color, other.base_color + 4, base_color);
-    std::copy(other.specular, other.specular + 3, specular);
-    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-    return *this;
-}
 
-Material::Material(Material&& other) noexcept
-    : type(other.type),
-      base_color_texture(std::move(other.base_color_texture)),
-      metallic_factor(other.metallic_factor),
-      roughness_factor(other.roughness_factor),
-      metallic_roughness_texture(std::move(other.metallic_roughness_texture)),
-      specular_texture(std::move(other.specular_texture)),
-      shininess(other.shininess),
-      normal_texture(std::move(other.normal_texture)),
-      normal_scale(other.normal_scale),
-      occlusion_texture(std::move(other.occlusion_texture)),
-      occlusion_strength(other.occlusion_strength),
-      emissive_texture(std::move(other.emissive_texture)),
-      double_sided(other.double_sided),
-      name(std::move(other.name)) {
-    std::copy(other.base_color, other.base_color + 4, base_color);
-    std::copy(other.specular, other.specular + 3, specular);
-    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-}
-
-Material& Material::operator=(Material&& other) noexcept {
-    if (this == &other) {
-        return *this;
+    if (slot_offsets.size() != Material::kTextureSlotCount) {
+        slot_offsets.assign(Material::kTextureSlotCount, -1);
+    } else {
+        std::fill(slot_offsets.begin(), slot_offsets.end(), -1);
     }
-    type = other.type;
-    base_color_texture = std::move(other.base_color_texture);
-    metallic_factor = other.metallic_factor;
-    roughness_factor = other.roughness_factor;
-    metallic_roughness_texture = std::move(other.metallic_roughness_texture);
-    specular_texture = std::move(other.specular_texture);
-    shininess = other.shininess;
-    normal_texture = std::move(other.normal_texture);
-    normal_scale = other.normal_scale;
-    occlusion_texture = std::move(other.occlusion_texture);
-    occlusion_strength = other.occlusion_strength;
-    emissive_texture = std::move(other.emissive_texture);
-    double_sided = other.double_sided;
-    name = std::move(other.name);
-    std::copy(other.base_color, other.base_color + 4, base_color);
-    std::copy(other.specular, other.specular + 3, specular);
-    std::copy(other.emissive_factor, other.emissive_factor + 3, emissive_factor);
-    return *this;
+
+    assert(width >= 0);
+    assert(height >= 0);
+    const size_t pixel_count = static_cast<size_t>(width) * static_cast<size_t>(height);
+    const size_t bytes_per_slot = pixel_count * 3;
+
+    size_t slot_offset = 0;
+    for (Material::TextureSlot s: texture_slots) {
+        slot_offsets[Material::slotIndex(s)] = static_cast<int>(slot_offset);
+        slot_offset += bytes_per_slot;
+    }
+    texels.clear();
+    texels.resize(slot_offset, 0);
 }
 
-Material::~Material() = default;
-
-} // namespace nx
+} //namespace nx

@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include "mappedmesh.h"
+#include "material.h"
 
 namespace nx {
 
@@ -17,11 +18,16 @@ struct BuildParameters;
  */
 class MeshHierarchy {
 public:
-	std::vector<MappedMesh> levels;
-
 	MeshHierarchy() = default;
-	
-	void initialize(MappedMesh&& base_mesh);
+	~MeshHierarchy();
+	MeshHierarchy(const MeshHierarchy&) = delete;
+	MeshHierarchy& operator=(const MeshHierarchy&) = delete;
+
+	std::vector<MappedMesh *> levels;
+	std::vector<Material> materials;
+	std::vector<Material::TextureSlot> texture_slots; //which maps are stored in texels one after the other.
+
+	void initialize(MappedMesh *base_mesh, std::vector<Material> &_materials);
 	void build_hierarchy(const BuildParameters& params);
 	
 private:

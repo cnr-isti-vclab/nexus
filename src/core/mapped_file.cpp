@@ -12,13 +12,76 @@
 #include <errno.h>
 #endif
 
+#include <cassert>
 #include <cstdio>
 #include <filesystem>
+#include <iomanip>
+#include <random>
+#include <sstream>
 
 // We use std::filesystem for temp paths, require C++17
 // #include <filesystem> or use a fallback if absolutely necessary.
 
 namespace nx {
+
+namespace {
+
+class TempFileHandle {
+public:
+#ifdef _WIN32
+	HANDLE hFile = INVALID_HANDLE_VALUE;
+	TempFileHandle(const std::string& filename) {
+		std::string path = filename;
+		if (path.empty()) {
+			char temp_path[MAX_PATH + 1] = {};
+			DWORD len = GetTempPathA(MAX_PATH, temp_path);
+			assert(len > 0 && "GetTempPathA failed");
+			if (len == 0) return;
+
+			char temp_file[MAX_PATH + 1] = {};
+			UINT ok = GetTempFileNameA(temp_path, "nxm", 0, temp_file);
+			assert(ok != 0 && "GetTempFileNameA failed");
+			if (ok == 0) return;
+
+			path = temp_file;
+		}
+
+		DWORD access = GENERIC_READ | GENERIC_WRITE;
+		DWORD share = FILE_SHARE_READ;
+		DWORD creation = CREATE_ALWAYS;
+		DWORD flags = FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE;
+
+		hFile = CreateFileA(path.c_str(), access, share, NULL, creation, flags, NULL);
+		assert(hFile != INVALID_HANDLE_VALUE && "CreateFileA failed for TEMPORARY");
+	}
+	~TempFileHandle() = default;
+	bool valid() const { return hFile != INVALID_HANDLE_VALUE; }
+#else
+	int fd = -1;
+	TempFileHandle(const std::string& filename) {
+		std::string pattern = filename;
+		if (pattern.empty()) {
+			pattern = (std::filesystem::temp_directory_path() / "nx_mapped_XXXXXX").string();
+		} else if (pattern.find("XXXXXX") == std::string::npos) {
+			pattern += "XXXXXX";
+		}
+
+		std::vector<char> buf(pattern.begin(), pattern.end());
+		buf.push_back('\0');
+
+		fd = ::mkstemp(buf.data());
+		assert(fd != -1 && "mkstemp failed for TEMPORARY");
+		if (fd == -1) return;
+
+		int rc = ::unlink(buf.data());
+		assert(rc == 0 && "unlink failed for TEMPORARY");
+	}
+	~TempFileHandle() = default;
+	bool valid() const { return fd != -1; }
+#endif
+};
+
+} // namespace
 
 struct MappedFile::Impl {
 #ifdef _WIN32
@@ -26,8 +89,6 @@ struct MappedFile::Impl {
 	HANDLE hMapping = NULL;
 #else
 	int fd = -1;
-	bool is_temp = false;
-	std::string filename;
 #endif
 	Mode mode;
 };
@@ -61,6 +122,26 @@ MappedFile& MappedFile::operator=(MappedFile&& other) noexcept {
 	return *this;
 }
 
+std::string MappedFile::makeTempPath(const std::string& folder, const std::string& prefix) {
+	assert(!prefix.empty() && "prefix must not be empty");
+
+	namespace fs = std::filesystem;
+	fs::path base_path = folder.empty() ? fs::current_path() : fs::path(folder);
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<uint32_t> dis(0, 0xFFFFFFFFu);
+
+	std::stringstream ss;
+	ss << prefix << std::hex << std::setfill('0') << std::setw(8) << dis(gen);
+
+	return (base_path / ss.str()).string();
+}
+
+bool MappedFile::open(const std::string& folder, const std::string& prefix, Mode mode, size_t size) {
+	return open(makeTempPath(folder, prefix), mode, size);
+}
+
 bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 	if (isValid()) close();
 
@@ -72,13 +153,15 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 	DWORD share = FILE_SHARE_READ;
 	DWORD creation = (mode == READ_ONLY) ? OPEN_EXISTING : OPEN_ALWAYS;
 	if (mode == TEMPORARY) {
-		creation = CREATE_ALWAYS;
-		access = GENERIC_READ | GENERIC_WRITE;
-		// FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE logic could be added
+		TempFileHandle temp(filename);
+		assert(temp.valid() && "Temporary file creation failed");
+		if (!temp.valid()) return false;
+		_impl->hFile = temp.hFile;
+	} else {
+		_impl->hFile = CreateFileA(filename.c_str(), access, share, NULL, creation, FILE_ATTRIBUTE_NORMAL, NULL);
+		assert(_impl->hFile != INVALID_HANDLE_VALUE && "CreateFileA failed");
+		if (_impl->hFile == INVALID_HANDLE_VALUE) return false;
 	}
-
-	_impl->hFile = CreateFileA(filename.c_str(), access, share, NULL, creation, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (_impl->hFile == INVALID_HANDLE_VALUE) return false;
 
 	if (mode != READ_ONLY && size > 0) {
 		LARGE_INTEGER li;
@@ -96,6 +179,7 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 
 	DWORD protect = (mode == READ_ONLY) ? PAGE_READONLY : PAGE_READWRITE;
 	_impl->hMapping = CreateFileMappingA(_impl->hFile, NULL, protect, 0, 0, NULL);
+	assert(_impl->hMapping && "CreateFileMappingA failed");
 	if (!_impl->hMapping) {
 		CloseHandle(_impl->hFile);
 		_impl->hFile = INVALID_HANDLE_VALUE;
@@ -104,6 +188,7 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 
 	DWORD mapAccess = (mode == READ_ONLY) ? FILE_MAP_READ : FILE_MAP_WRITE;
 	_data = MapViewOfFile(_impl->hMapping, mapAccess, 0, 0, 0);
+	assert(_data && "MapViewOfFile failed");
 
 	return (_data != nullptr);
 
@@ -112,19 +197,20 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 	int flags = (mode == READ_ONLY) ? O_RDONLY : O_RDWR;
 	if (mode != READ_ONLY) flags |= O_CREAT;
 
-	// If temporary, complex logic, but let's stick to standard open
 	if (mode == TEMPORARY) {
-		// In robust code we might use mkstemp, but here we trust the filename or logic
-		flags |= O_TRUNC;
-		_impl->is_temp = true;
-		_impl->filename = filename; // Remember to unlink
+		TempFileHandle temp(filename);
+		assert(temp.valid() && "Temporary file creation failed");
+		if (!temp.valid()) return false;
+		_impl->fd = temp.fd;
+	} else {
+		_impl->fd = ::open(filename.c_str(), flags, 0666);
+		assert(_impl->fd != -1 && "open failed");
+		if (_impl->fd == -1) return false;
 	}
-
-	_impl->fd = ::open(filename.c_str(), flags, 0666);
-	if (_impl->fd == -1) return false;
 
 	struct stat sb;
 	if (fstat(_impl->fd, &sb) == -1) {
+		assert(false && "fstat failed");
 		::close(_impl->fd);
 		_impl->fd = -1;
 		return false;
@@ -132,6 +218,7 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 
 	if (mode != READ_ONLY && size > 0) {
 		if (ftruncate(_impl->fd, size) == -1) {
+			assert(false && "ftruncate failed");
 			::close(_impl->fd);
 			_impl->fd = -1;
 			return false;
@@ -152,6 +239,7 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 	void* ptr = mmap(NULL, _size, prot, MAP_SHARED, _impl->fd, 0);
 
 	if (ptr == MAP_FAILED) {
+		assert(false && "mmap failed");
 		::close(_impl->fd);
 		_impl->fd = -1;
 		return false;
@@ -183,9 +271,6 @@ void MappedFile::close() {
 #else
 		if (_impl->fd != -1) {
 			::close(_impl->fd);
-			if (_impl->is_temp && !_impl->filename.empty()) {
-				unlink(_impl->filename.c_str());
-			}
 		}
 		_impl->fd = -1;
 #endif

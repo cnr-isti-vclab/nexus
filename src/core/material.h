@@ -2,8 +2,11 @@
 #define NX_MATERIAL_H
 
 #include <cstdint>
+#include <cassert>
 #include <string>
 #include <filesystem>
+#include <array>
+#include <vector>
 #include <math.h>
 
 namespace nx {
@@ -31,6 +34,24 @@ enum class MaterialType : uint8_t {
  */
 
 struct Material {
+	enum class TextureSlot : uint8_t {
+		BaseColor = 0,
+		MetallicRoughness,
+		Specular,
+		Normal,
+		Occlusion,
+		Emissive,
+		Count
+	};
+
+	using TextureId = int32_t;
+	static constexpr TextureId INVALID_TEXTURE_ID = -1;
+	static constexpr size_t kTextureSlotCount = static_cast<size_t>(TextureSlot::Count);
+
+	static constexpr size_t slotIndex(TextureSlot slot) {
+		return static_cast<size_t>(slot);
+	}
+
 	MaterialType type = MaterialType::PBR;
 
 	// Base color / diffuse (Kd in Phong) - RGBA
@@ -66,20 +87,42 @@ struct Material {
 	// Optional name/id
 	std::string name;
 
-	Material() = default;
-	Material(const Material& other);
-	Material& operator=(const Material& other);
-	Material(Material&& other) noexcept;
-	Material& operator=(Material&& other) noexcept;
-	~Material();
+	std::array<TextureId, kTextureSlotCount> texture_ids = {
+		INVALID_TEXTURE_ID,
+		INVALID_TEXTURE_ID,
+		INVALID_TEXTURE_ID,
+		INVALID_TEXTURE_ID,
+		INVALID_TEXTURE_ID,
+		INVALID_TEXTURE_ID
+	};
 
 	// Helpers
-	bool has_base_color_texture() const { return !base_color_texture.empty(); }
+	bool has_base_color_texture()         const { return !base_color_texture.empty(); }
 	bool has_metallic_roughness_texture() const { return !metallic_roughness_texture.empty(); }
-	bool has_specular_texture() const { return !specular_texture.empty(); }
-	bool has_normal_texture() const { return !normal_texture.empty(); }
-	bool has_occlusion_texture() const { return !occlusion_texture.empty(); }
-	bool has_emissive_texture() const { return !emissive_texture.empty(); }
+	bool has_specular_texture()           const { return !specular_texture.empty(); }
+	bool has_normal_texture()             const { return !normal_texture.empty(); }
+	bool has_occlusion_texture()          const { return !occlusion_texture.empty(); }
+	bool has_emissive_texture()           const { return !emissive_texture.empty(); }
+
+
+	std::string& texturePath(TextureSlot slot) {
+		switch (slot) {
+		case TextureSlot::BaseColor:         return base_color_texture;
+		case TextureSlot::MetallicRoughness: return metallic_roughness_texture;
+		case TextureSlot::Specular:          return specular_texture;
+		case TextureSlot::Normal:            return normal_texture;
+		case TextureSlot::Occlusion:         return occlusion_texture;
+		case TextureSlot::Emissive:          return emissive_texture;
+		default:
+			assert(false && "Invalid material texture slot");
+			return base_color_texture;
+		}
+	}
+
+	bool hasTextureId(TextureSlot slot) const {
+		return texture_ids[slotIndex(slot)] != INVALID_TEXTURE_ID;
+	}
+
 	bool is_phong() const { return type == MaterialType::PHONG; }
 	bool is_pbr() const { return type == MaterialType::PBR; }
 
@@ -89,13 +132,21 @@ struct Material {
 	}
 };
 
-class TileMap {
-	int width, height;
-	uint8_t *color_map = nullptr;
-	uint8_t *metallic_map = nullptr;
-	uint8_t *specular_map = nullptr;
-	uint8_t *emissive_map = nullptr;
-	uint8_t *normal_map = nullptr;
+struct TileMap {
+	int width = 0;
+	int height = 0;
+
+	std::vector<Material::TextureSlot> texture_slots; //which maps are stored in texels one after the other.
+	std::vector<int> slot_offsets = std::vector<int>(Material::kTextureSlotCount, -1); // indexed by Material::slotIndex(slot)
+	std::vector<uint8_t> texels;
+
+	void addSlot(Material::TextureSlot slot);
+	uint8_t *pixel(int x, int y, Material::TextureSlot slot) {
+		size_t idx = Material::slotIndex(slot);
+		assert(idx < slot_offsets.size());
+		assert(slot_offsets[idx] >= 0);
+		return &texels[slot_offsets[idx] + 3*(x + y*width)];
+	}
 };
 
 } // namespace nx

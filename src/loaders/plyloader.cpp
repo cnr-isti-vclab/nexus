@@ -216,7 +216,7 @@ void PlyLoader::init() {
 
 }
 
-void PlyLoader::load(MappedMesh& mesh) {
+void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &materials) {
 	mesh.positions.resize(n_vertices);
 	if(has_colors)
 		mesh.colors.resize(n_vertices);

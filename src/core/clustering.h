@@ -16,7 +16,7 @@ class MappedMesh;
 
 
 // Build clusters using the selected method (greedy or METIS).
-void build_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMethod method);
+void build_initial_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMethod method);
 
 //TODO: we need to measure the quality of clustering (border length, compactness, etc)
 
@@ -49,7 +49,7 @@ Vector3f compute_triangle_centroid(const MappedArray<Vector3f>& positions,
 // Split each cluster into 4 smaller clusters and create a micronode for each group.
 // Each original cluster becomes a micronode containing its 4 child clusters.
 // max_triangles: target maximum triangles per resulting cluster
-void split_clusters(MappedMesh& mesh, std::size_t max_triangles);
+void split_initial_clusters(MappedMesh& mesh, std::size_t max_triangles);
 
 } // namespace nx
 

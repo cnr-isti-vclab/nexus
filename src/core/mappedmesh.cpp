@@ -1,26 +1,13 @@
 #include "mappedmesh.h"
 
-#include <random>
-#include <sstream>
-#include <iomanip>
 #include <iostream>
 #include <filesystem>
-#include <random>
 
 
 namespace nx {
 
 MappedMesh::MappedMesh() {
-	// Create temporary directory with random suffix
-	namespace fs = std::filesystem;
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<uint32_t> dis(0, 0xFFFFFFFF);
-	std::stringstream ss;
-	ss << "nxs_cache_" << std::hex << std::setfill('0') << std::setw(8) << dis(gen);
-
-	fs::path tmp = fs::current_path() / ss.str();
-	create(tmp);
+	create(std::filesystem::path(MappedFile::makeTempPath(std::filesystem::current_path().string(), "nxs_cache_")));
 }
 
 MappedMesh::~MappedMesh() {

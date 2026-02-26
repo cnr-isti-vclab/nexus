@@ -692,7 +692,7 @@ void build_clusters_metis(MappedMesh& mesh, std::size_t max_triangles) {
 	build_clusters_from_partition(mesh, num_partitions);
 }
 
-void build_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMethod method) {
+void build_initial_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMethod method) {
 	switch (method) {
 		case ClusteringMethod::Greedy:
 			build_clusters_greedy(mesh, max_triangles);
@@ -708,7 +708,7 @@ void build_clusters(MappedMesh& mesh, std::size_t max_triangles, ClusteringMetho
 }
 
 
-void split_clusters(MappedMesh& mesh, std::size_t max_triangles) {
+void split_initial_clusters(MappedMesh& mesh, std::size_t max_triangles) {
 	nx::debug << "\n=== Splitting clusters into N and creating micronodes ===" << std::endl;
 
 	std::size_t num_original_clusters = mesh.clusters.size();
