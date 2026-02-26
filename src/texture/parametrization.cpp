@@ -352,7 +352,6 @@ void allocate_node_textures_and_texels(MappedMesh& mesh, int tex_res, int compon
 		node_texture.width = tex_res;
 		node_texture.height = tex_res;
 		node_texture.components = components;
-		node_texture.tile_size = tex_res;
 		node_texture.mip_count = 1;
 		total_texels += node_texture_bytes(node_texture);
 	}
@@ -701,7 +700,6 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 	for (Index micro_id = 0; micro_id < mesh.micronodes.size(); micro_id++) {
 		pool.enqueue_detach([&mesh, &temp_wedges, &temp_texcoords, &materials, &texture_cache, &active_slots, options, tex_res, components](Index micro_id) {
 			MicroNode& micronode = mesh.micronodes[micro_id];
-			NodeTexture &node_texture = mesh.node_textures[micro_id];
 			NodeMesh merged = merge_micronode_clusters(mesh, micronode);
 			NodeMesh original = merged;
 
@@ -717,17 +715,9 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 			{
 				std::lock_guard<std::mutex> lock(mesh.lock);
 
-				// Write texels to mesh.texels for this micronode.
-				std::size_t offset = mesh.node_textures[micro_id].offset;
-
-				uint8_t* dst = mesh.texels.data() + offset;
+				NodeTexture &node_texture = mesh.node_textures[micro_id];
+				uint8_t* dst = mesh.texels.data() + node_texture.offset;
 				std::memcpy(dst, merged.tilemap.texels.data(), merged.tilemap.texels.size());
-				node_texture.offset = offset;
-				node_texture.width = merged.tilemap.width;
-				node_texture.height = merged.tilemap.height;
-				node_texture.components = components;
-				node_texture.tile_size = merged.tilemap.width;
-				node_texture.mip_count = 1;
 
 				rewrite_micronode_wedges_and_texcoords(mesh,
 					micronode,
@@ -768,7 +758,6 @@ void reparametrize_clusters(MappedMesh& mesh,
 	for(Index micro_id = 0; micro_id < next_mesh.micronodes.size(); micro_id++) {
 		pool.enqueue_detach([&mesh, &next_mesh, &temp_wedges, &temp_texcoords, &write_lock, &active_slots, &materials, options, tex_res, components](Index micro_id) {
 			MicroNode& destination_micronode = next_mesh.micronodes[micro_id];
-			NodeTexture& node_texture = next_mesh.node_textures[micro_id];
 
 			std::vector<std::pair<Index, Index>> source_clusters = collect_source_clusters_for_projection(
 				mesh, next_mesh, destination_micronode, micro_id, materials);
@@ -781,17 +770,10 @@ void reparametrize_clusters(MappedMesh& mesh,
 			{
 				std::lock_guard<std::mutex> lock(write_lock);
 
-				std::size_t offset = node_texture.offset;
-				assert(next_mesh.texels.size() >= offset + destination.tilemap.texels.size());
-				uint8_t* dst = next_mesh.texels.data() + offset;
+				NodeTexture& node_texture = next_mesh.node_textures[micro_id];
+				assert(next_mesh.texels.size() >= node_texture.offset + destination.tilemap.texels.size());
+				uint8_t* dst = next_mesh.texels.data() + node_texture.offset;
 				std::memcpy(dst, destination.tilemap.texels.data(), destination.tilemap.texels.size());
-
-				node_texture.offset = offset;
-				node_texture.width = destination.tilemap.width;
-				node_texture.height = destination.tilemap.height;
-				node_texture.components = static_cast<int>(destination.tilemap.texture_slots.size()) * 3;
-				node_texture.tile_size = destination.tilemap.width;
-				node_texture.mip_count = 1;
 
 				rewrite_micronode_wedges_and_texcoords(next_mesh,
 					destination_micronode,

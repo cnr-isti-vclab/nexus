@@ -88,7 +88,6 @@ struct NodeTexture {
     int width = 0;
     int height = 0;
     int components = 3;
-    int tile_size = 0;
     int mip_count = 1;
 };
 

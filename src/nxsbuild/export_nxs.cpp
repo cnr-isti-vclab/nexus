@@ -6,6 +6,11 @@
 #include <set>
 #include <map>
 #include <stdio.h>
+#include <cstring>
+#include <QImage>
+#include <QImageWriter>
+#include <QBuffer>
+#include <QByteArray>
 
 /*
 NXS file save logic (legacy reference):
@@ -37,7 +42,6 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 
 	Signature &signature = header.signature;
 	signature.vertex.setComponent(VertexElement::COORD, Attribute(Attribute::FLOAT, 3));
-	//if(components & FACES)     //ignore normals for meshes
 	signature.face.setComponent(FaceElement::INDEX, Attribute(Attribute::UNSIGNED_SHORT, 3));
 	//if(components & NORMALS)
 	signature.vertex.setComponent(VertexElement::NORM, Attribute(Attribute::SHORT, 3));
@@ -48,6 +52,10 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
 	header.version = 2;
+	nodes.clear();
+	patches.clear();
+	textures.clear();
+	texture_payloads.clear();
 
 	//temporarily write header to disk
 
@@ -62,11 +70,11 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 		header.n_patches += mesh.clusters.size();
 	}
 	if(signature.vertex.hasTextures())
-		header.n_textures = header.n_nodes;
+		header.n_textures = header.n_nodes + 1; // +1 sentinel texture entry
 	header.n_nodes++; //sink
 
 	//temporarily write nodes, we will come back after we have the numbers.
-	size_t index_size = sizeof(Header) + sizeof(Node)*header.n_nodes + sizeof(Patch)*header.n_patches;
+	size_t index_size = sizeof(Header) + sizeof(Node)*header.n_nodes + sizeof(Patch)*header.n_patches + sizeof(Texture)*header.n_textures;
 	pad(index_size);
 	fseek(out, index_size, SEEK_SET);
 
@@ -74,9 +82,24 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	for(int level = hierarchy.levels.size()-1; level >= 0; level--) {
 		MappedMesh &mesh = *hierarchy.levels[level];
 		for(size_t m = 0; m < mesh.micronodes.size(); m++) {
-			MicroNode &micronode = mesh.micronodes[m];
-			exportMicronode(level, mesh, micronode, out);
+			exportMicronode(level, static_cast<Index>(m), mesh, out);
 		}
+	}
+
+	if(signature.vertex.hasTextures()) {
+		assert(textures.size() == texture_payloads.size());
+		for(size_t i = 0; i < texture_payloads.size(); ++i) {
+			alignFile();
+			textures[i].offset = static_cast<uint32_t>(ftell(out) / NEXUS_PADDING);
+			const std::vector<uint8_t>& payload = texture_payloads[i];
+			if(!payload.empty())
+				fwrite(payload.data(), 1, payload.size(), out);
+		}
+		alignFile();
+		Texture sentinel;
+		sentinel.offset = static_cast<uint32_t>(ftell(out) / NEXUS_PADDING);
+		textures.push_back(sentinel);
+		assert(textures.size() == header.n_textures);
 	}
 
 	for(Patch &patch: patches)
@@ -101,6 +124,7 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	header.nface = hierarchy.levels[0]->triangles.size();
 	header.n_nodes = nodes.size();
 	header.n_patches = patches.size();
+	header.n_textures = textures.size();
 	vcg::Point3f center(nodes[0].sphere.Center());
 	header.sphere = vcg::Sphere3f(center, nodes[0].tight_radius);
 
@@ -108,8 +132,48 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	fwrite((char *)&header, sizeof(Header), 1, out);
 	fwrite((char*)&(nodes[0]), 1, sizeof(Node)*nodes.size(), out);
 	fwrite((char*)&(patches[0]), 1, sizeof(Patch)*patches.size(), out);
+	if(!textures.empty())
+		fwrite((char*)&(textures[0]), 1, sizeof(Texture)*textures.size(), out);
 
 	fclose(out);
+}
+
+std::vector<uint8_t> ExportNxs::encodeBaseColorJpeg(const MappedMesh& mesh, uint32_t micronode_id, int quality) {
+	assert(mesh.has_textures);
+	assert(micronode_id < mesh.node_textures.size());
+	const NodeTexture& node_texture = mesh.node_textures[micronode_id];
+	assert(node_texture.width > 0 && node_texture.height > 0);
+	assert(node_texture.components == 3);
+
+	const std::size_t pixel_count = static_cast<std::size_t>(node_texture.width) * static_cast<std::size_t>(node_texture.height);
+	const std::size_t base_slot_bytes = pixel_count * 3;
+	assert(mesh.texels.size() >= node_texture.offset + base_slot_bytes);
+
+	const uint8_t* src = mesh.texels.data() + node_texture.offset;
+	assert(node_texture.offset + node_texture.width*node_texture.height*3 <= mesh.texels.size());
+
+	QImage image(node_texture.width, node_texture.height, QImage::Format_RGB888);
+	for(int y = 0; y < node_texture.height; ++y) {
+		uint8_t* dst_row = image.scanLine(node_texture.height - y -1);
+		const std::size_t row_offset = static_cast<std::size_t>(y) * static_cast<std::size_t>(node_texture.width) * 3;
+		std::memcpy(dst_row, src + row_offset, static_cast<std::size_t>(node_texture.width) * 3);
+	}
+
+	QByteArray encoded;
+	QBuffer buffer(&encoded);
+	bool opened = buffer.open(QIODevice::WriteOnly);
+	assert(opened);
+	QImageWriter writer(&buffer, "jpg");
+	writer.setQuality(quality);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
+	writer.setOptimizedWrite(true);
+	writer.setProgressiveScanWrite(true);
+#endif
+	bool ok = writer.write(image);
+	assert(ok);
+	buffer.close();
+
+	return std::vector<uint8_t>(encoded.begin(), encoded.end());
 }
 
 void ExportNxs::printDag(MeshHierarchy &hierarchy) {
@@ -169,9 +233,17 @@ void ExportNxs::printDagHierarchy(MeshHierarchy &hierarchy) {
 
 
 
-void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronode, FILE *out) {
+void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMesh &mesh, FILE *out) {
+	MicroNode &micronode = mesh.micronodes[micronode_id];
+
 	nx::Node node;
 	node.first_patch = patches.size();
+	Index texture_index = NONE;
+	if(mesh.has_textures) {
+		texture_index = static_cast<Index>(textures.size());
+		textures.push_back(Texture());
+		texture_payloads.push_back(encodeBaseColorJpeg(mesh, micronode_id));
+	}
 
 	std::map<Index, Index> wedges_ids; //this are the local wedges.
 	size_t n_triangles = 0;
@@ -200,8 +272,8 @@ void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronod
 	int16_t *normals = (int16_t *)(buffer + 12*n_wedges);
 
 	if(mesh.has_textures) {
-		texcoords = (Vector2f *)buffer + 12*n_wedges;
-		normals += 8*n_wedges;
+		texcoords = (Vector2f *)(buffer + 12*n_wedges);
+		normals = (int16_t *)(buffer + 20*n_wedges);
 	}
 
 	//write the wedges
@@ -216,25 +288,22 @@ void ExportNxs::exportMicronode(int level, MappedMesh &mesh, MicroNode &micronod
 		normals[new_index*3 + 1] = int16_t(n.y*32767);
 		normals[new_index*3 + 2] = int16_t(n.z*32767);
 		if(mesh.has_textures) {
-			Vector2f t = mesh.texcoords[wedge.t];
-			texcoords[new_index*3 + 0] = t.u;
-			texcoords[new_index*3 + 1] = t.v;
-
+			texcoords[new_index] = mesh.texcoords[wedge.t];
 		}
 	}
 
-	uint16_t *triangles = (uint16_t *)(buffer + 18*n_wedges);
+	uint16_t *triangles = (uint16_t *)(buffer + header.signature.vertex.size()*n_wedges);
 	int tri_count = 0;
 	for(Index c = 0; c < micronode.cluster_ids.size(); c++) {
 		const Cluster &cluster = mesh.clusters[micronode.cluster_ids[c]];
 		nx::Patch patch;
 		if(cluster.node == NONE) {
-			patch.node = NONE; //first level, sync node
+			patch.node = header.n_nodes-1; //first level, sink node
 			assert(level == 0);
 		} else {
 			patch.node = cluster.node + level_node_offset[level-1];
 		}
-		patch.texture = NONE;
+		patch.texture = mesh.has_textures ? texture_index : NONE;
 
 		size_t end = cluster.triangle_offset + cluster.triangle_count;
 		for(size_t t = cluster.triangle_offset; t < end; t++) {
