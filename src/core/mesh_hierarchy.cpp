@@ -897,8 +897,6 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 
 	}
 
-	// TODO: Implement compaction (remove unused vertices/wedges and remap indices)
-	compact_mesh(next_mesh);
 
 	// Recompute adjacency for the next level
 	if (next_mesh.triangles.size() > 0) {

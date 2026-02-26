@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <cstdint>
 #include "rasterizer.h"
 
 namespace nx {
@@ -74,6 +75,9 @@ void Rasterizer::SetPixel(unsigned int x, unsigned int y, Index material_id, con
 	assert(tilemap->width == width);
 	assert(tilemap->height == height);
 	assert(material_id < materials->size());
+	if(write_mask) {
+		(*write_mask)[static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)] = 1;
+	}
 
 	const Material& material = (*materials)[material_id];
 	const float u = std::clamp(uv.u, 0.0f, 1.0f);
@@ -272,7 +276,7 @@ Rasterizer::DrawLine(Index material_id,
 	}
 }
 
-void Rasterizer::rasterizeTriangles(
+std::vector<uint8_t> Rasterizer::rasterizeTriangles(
 	const std::vector<Vector2f>& positions,
 	const std::vector<Vector2f>& uvs,
 	const std::vector<Index>& material_ids,
@@ -287,10 +291,12 @@ void Rasterizer::rasterizeTriangles(
 	assert(tilemap_in->width == width);
 	assert(tilemap_in->height == height);
 	assert(!tilemap_in->texture_slots.empty());
+	std::vector<uint8_t> mask(static_cast<size_t>(width) * static_cast<size_t>(height), 0);
 
 	materials = &materials_in;
 	texture_cache = texture_cache_in;
 	tilemap = tilemap_in;
+	write_mask = &mask;
 
 	const size_t triangle_count = material_ids.size();
 	for(size_t i = 0; i < triangle_count; ++i) {
@@ -306,6 +312,10 @@ void Rasterizer::rasterizeTriangles(
 	materials = nullptr;
 	texture_cache = nullptr;
 	tilemap = nullptr;
+	write_mask = nullptr;
+	return mask;
 }
+
+
 
 }

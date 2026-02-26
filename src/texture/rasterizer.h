@@ -60,6 +60,7 @@ protected:
 	const std::vector<Material>* materials = nullptr;
 	TextureCache* texture_cache = nullptr;
 	TileMap* tilemap = nullptr;
+    std::vector<uint8_t>* write_mask = nullptr;
 
 	void DrawSpan(const Span &span, int y, Index material_id);
 	void DrawSpansBetweenEdges(const Edge &e1, const Edge &e2, Index material_id);
@@ -80,7 +81,7 @@ public:
         float x1, float y1, const Vector2f& uv1,
         float x2, float y2, const Vector2f& uv2);
 
-    void rasterizeTriangles(const std::vector<Vector2f>& positions,
+    std::vector<uint8_t> rasterizeTriangles(const std::vector<Vector2f>& positions,
 		const std::vector<Vector2f>& uvs,
 		const std::vector<Index>& material_ids,
         const std::vector<Material>& materials,

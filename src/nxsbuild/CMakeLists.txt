@@ -19,7 +19,9 @@ set(SOURCES
 	../texture/pyramid.cpp
 	../texture/texture.cpp
 	../texture/rasterizer.cpp
+	../texture/pushpull.cpp
 	../texture/texture_cache.cpp
+	../texture/uniform_grid.cpp
 	../core/mapped_file.cpp
 	../core/basemesh.cpp
 	../core/mappedmesh.cpp
@@ -47,7 +49,9 @@ set(HEADERS
 	../texture/pyramid.h
 	../texture/texture.h
 	../texture/rasterizer.h
+	../texture/pushpull.h
 	../texture/texture_cache.h
+	../texture/uniform_grid.h
 	../core/mesh_types.h
 	../core/basemesh.h
 	../core/mappedmesh.h

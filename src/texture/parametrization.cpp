@@ -2,6 +2,8 @@
 #include "xatlas.h"
 #include "texture_cache.h"
 #include "rasterizer.h"
+#include "pushpull.h"
+#include "uniform_grid.h"
 #include "../loaders/objexporter.h"
 
 #include "../core/mappedmesh.h"
@@ -193,8 +195,7 @@ Vector3f sample_node_texture(const MappedMesh& mesh,
 
 bool project_to_parents(const Vector3f& pos,
 						const Vector3f& normal,
-						const MappedMesh& source_mesh,
-						const std::vector<std::pair<Index, Index>>& source_clusters,
+						const UniformTriangleGrid& grid,
 						Index& out_parent,
 						Vector2f& out_uv) {
 	const Vector3f n = normalize(normal);
@@ -203,70 +204,37 @@ bool project_to_parents(const Vector3f& pos,
 	float best_distance = std::numeric_limits<float>::max();
 	bool found = false;
 
-	for(const auto& ref: source_clusters) {
-		const Index parent_id = ref.first;
-		const Index cluster_id = ref.second;
+	for(const Vector3f& dir: dirs) {
+		const Vector3f origin = add(pos, mul(dir, 1e-4f));
+		Index hit_parent = NONE;
+		Vector2f hit_uv{0, 0};
+		float hit_distance = 0.0f;
+		if(!grid.project(origin, dir, hit_parent, hit_uv, hit_distance))
+			continue;
+		if(hit_distance >= best_distance)
+			continue;
 
-		assert(cluster_id < source_mesh.clusters.size());
-		const Cluster& cluster = source_mesh.clusters[cluster_id];
-		const Index tri_begin = cluster.triangle_offset;
-		const Index tri_end = cluster.triangle_offset + cluster.triangle_count;
-
-		for(Index tri_idx = tri_begin; tri_idx < tri_end; ++tri_idx) {
-			assert(tri_idx < source_mesh.triangles.size());
-			const Triangle& tri = source_mesh.triangles[tri_idx];
-			const Wedge& w0 = source_mesh.wedges[tri.w[0]];
-			const Wedge& w1 = source_mesh.wedges[tri.w[1]];
-			const Wedge& w2 = source_mesh.wedges[tri.w[2]];
-			const Vector3f& a = source_mesh.positions[w0.p];
-			const Vector3f& b = source_mesh.positions[w1.p];
-			const Vector3f& c = source_mesh.positions[w2.p];
-
-			for(const Vector3f& dir: dirs) {
-				float t = 0.0f;
-				float u = 0.0f;
-				float v = 0.0f;
-				const Vector3f origin = add(pos, mul(dir, 1e-4f));
-				if(!intersect_ray_triangle(origin, dir, a, b, c, t, u, v))
-					continue;
-
-				if(t >= best_distance)
-					continue;
-
-				const float w = 1.0f - u - v;
-				assert(w0.t != NONE && w1.t != NONE && w2.t != NONE);
-				assert(w0.t < source_mesh.texcoords.size());
-				assert(w1.t < source_mesh.texcoords.size());
-				assert(w2.t < source_mesh.texcoords.size());
-				const Vector2f& uv0 = source_mesh.texcoords[w0.t];
-				const Vector2f& uv1 = source_mesh.texcoords[w1.t];
-				const Vector2f& uv2 = source_mesh.texcoords[w2.t];
-
-				out_uv.u = uv0.u * w + uv1.u * u + uv2.u * v;
-				out_uv.v = uv0.v * w + uv1.v * u + uv2.v * v;
-				out_parent = parent_id;
-				best_distance = t;
-				found = true;
-			}
-		}
+		best_distance = hit_distance;
+		out_parent = hit_parent;
+		out_uv = hit_uv;
+		found = true;
 	}
 	return found;
 }
 
-void rasterize_projected(const MappedMesh& prev_mesh,
+std::vector<uint8_t> rasterize_projected(const MappedMesh& prev_mesh,
 						const std::vector<std::pair<Index, Index>>& source_clusters,
 						NodeMesh& destination,
 						const std::vector<Material::TextureSlot>& active_slots,
 						int tex_res) {
 	TileMap& tilemap = destination.tilemap;
-	tilemap.width = tex_res;
-	tilemap.height = tex_res;
-	tilemap.texture_slots.clear();
-	for(Material::TextureSlot slot: active_slots)
-		tilemap.addSlot(slot);
 
-	const int w = tex_res;
-	const int h = tex_res;
+	const int w = tilemap.width;
+	const int h = tilemap.height;
+	std::vector<uint8_t> raster_mask(static_cast<size_t>(w) * static_cast<size_t>(h), 0);
+	UniformTriangleGrid grid(prev_mesh, source_clusters);
+	if(grid.empty())
+		throw std::runtime_error("Empty grid!");
 
 	for(const Triangle& tri: destination.triangles) {
 		const Wedge& dw0 = destination.wedges[tri.w[0]];
@@ -307,6 +275,7 @@ void rasterize_projected(const MappedMesh& prev_mesh,
 
 		for(int py = min_y; py <= max_y; ++py) {
 			for(int px = min_x; px <= max_x; ++px) {
+				const size_t mask_idx = static_cast<size_t>(py) * static_cast<size_t>(w) + static_cast<size_t>(px);
 				const float sx = static_cast<float>(px) + 0.5f;
 				const float sy = static_cast<float>(py) + 0.5f;
 
@@ -319,17 +288,11 @@ void rasterize_projected(const MappedMesh& prev_mesh,
 				const Vector3f pos = add(add(mul(p0, b0), mul(p1, b1)), mul(p2, b2));
 				const Vector3f n = normalize(add(add(mul(n0, b0), mul(n1, b1)), mul(n2, b2)));
 
-				for(Material::TextureSlot slot: active_slots) {
-					uint8_t* pixel = tilemap.pixel(px, py, slot);
-					pixel[0] = 0;
-					pixel[1] = 0;
-					pixel[2] = 255;
-				}
-
 				Index parent_id = NONE;
 				Vector2f src_uv{0.0f, 0.0f};
-				if(!project_to_parents(pos, n, prev_mesh, source_clusters, parent_id, src_uv))
+				if(!project_to_parents(pos, n, grid, parent_id, src_uv))
 					continue;
+				raster_mask[mask_idx] = 1;
 
 				for(Material::TextureSlot slot: active_slots) {
 					const Vector3f color = sample_node_texture(prev_mesh, parent_id, src_uv, slot, active_slots);
@@ -341,6 +304,7 @@ void rasterize_projected(const MappedMesh& prev_mesh,
 			}
 		}
 	}
+	return raster_mask;
 }
 
 void allocate_node_textures_and_texels(MappedMesh& mesh, int tex_res, int components) {
@@ -629,30 +593,15 @@ void rasterize_initial(TextureCache& texture_cache, const std::vector<Material>&
 		}
 	}
 	TileMap &tilemap = destination.tilemap;
-	tilemap.width = tex_res;
-	tilemap.height = tex_res;
-	tilemap.slot_offsets.assign(Material::kTextureSlotCount, -1);
-	const size_t pixel_count = static_cast<size_t>(tex_res) * static_cast<size_t>(tex_res);
-	const size_t bytes_per_slot = pixel_count * 3;
-	size_t total_bytes = 0;
-	for (Material::TextureSlot slot : tilemap.texture_slots) {
-		tilemap.slot_offsets[Material::slotIndex(slot)] = static_cast<int>(total_bytes);
-		total_bytes += bytes_per_slot;
-	}
-	tilemap.texels.assign(total_bytes, 0);
-	for (size_t i = 0; i < total_bytes; i += 3) {
-		tilemap.texels[i + 0] = 255;
-		tilemap.texels[i + 1] = 0;
-		tilemap.texels[i + 2] = 255;
-	}
 
 	Rasterizer rasterizer(tex_res, tex_res);
-	rasterizer.rasterizeTriangles(dst_positions,
+	std::vector<uint8_t> raster_mask = rasterizer.rasterizeTriangles(dst_positions,
 								  src_uvs,
 								  triangle_material_ids,
 								  materials,
 								  &texture_cache,
 								  &tilemap);
+	pushPullFillUnwrittenPixels(tex_res, tex_res, tilemap.texels, raster_mask, materials);
 }
 
 
@@ -702,7 +651,7 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 			MicroNode& micronode = mesh.micronodes[micro_id];
 			NodeMesh merged = merge_micronode_clusters(mesh, micronode);
 			NodeMesh original = merged;
-
+			merged.tilemap.width = merged.tilemap.height = tex_res;
 			for(Material::TextureSlot slot: active_slots)
 				merged.tilemap.addSlot(slot);
 
@@ -710,7 +659,7 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 			create_parametrization(merged, options);
 
 			rasterize_initial(texture_cache, materials, original, merged, tex_res);
-			//export_iobj(merged, materials, merged_export_dir / ("merged_" + std::to_string(micro_id) + ".obj"));
+			//export_iobj(merged, materials, "merged_" + std::to_string(micro_id) + ".obj");
 
 			{
 				std::lock_guard<std::mutex> lock(mesh.lock);
@@ -763,8 +712,16 @@ void reparametrize_clusters(MappedMesh& mesh,
 				mesh, next_mesh, destination_micronode, micro_id, materials);
 
 			NodeMesh destination = merge_micronode_clusters(next_mesh, destination_micronode);
+			TileMap &tilemap = destination.tilemap;
+			tilemap.width = tex_res;
+			tilemap.height = tex_res;
+			tilemap.texture_slots.clear();
+			for(Material::TextureSlot slot: active_slots)
+				tilemap.addSlot(slot);
+
 			create_parametrization(destination, options);
-			rasterize_projected(mesh, source_clusters, destination, active_slots, tex_res);
+			std::vector<uint8_t> raster_mask = rasterize_projected(mesh, source_clusters, destination, active_slots, tex_res);
+			pushPullFillUnwrittenPixels(tex_res, tex_res, destination.tilemap.texels, raster_mask, materials);
 
 			//export_iobj(destination, materials, "projected_cluster_" + std::to_string(micro_id) + ".obj");
 			{
