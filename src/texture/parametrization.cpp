@@ -97,6 +97,82 @@ inline float clamp01(float value) {
 	return value;
 }
 
+inline double uv_triangle_area(const Vector2f& a, const Vector2f& b, const Vector2f& c) {
+	const double ab_u = static_cast<double>(b.u) - static_cast<double>(a.u);
+	const double ab_v = static_cast<double>(b.v) - static_cast<double>(a.v);
+	const double ac_u = static_cast<double>(c.u) - static_cast<double>(a.u);
+	const double ac_v = static_cast<double>(c.v) - static_cast<double>(a.v);
+	return 0.5 * std::abs(ab_u * ac_v - ab_v * ac_u);
+}
+
+inline int closest_power_of_two(double value) {
+	assert(std::isfinite(value));
+	assert(value > 0.0);
+
+	int upper = 1;
+	while(static_cast<double>(upper) < value && upper <= (1 << 29))
+		upper <<= 1;
+	int lower = upper;
+	if(static_cast<double>(upper) > value)
+		lower = std::max(1, upper >> 1);
+
+	const double dist_lower = std::abs(value - static_cast<double>(lower));
+	const double dist_upper = std::abs(static_cast<double>(upper) - value);
+	return (dist_upper < dist_lower) ? upper : lower;
+}
+
+int estimate_initial_tex_res(const MappedMesh& mesh,
+		const std::vector<Material>& materials,
+		const TextureCache& texture_cache) {
+	assert(mesh.micronodes.size() > 0);
+	assert(mesh.triangles.size() > 0);
+	assert(mesh.wedges.size() > 0);
+	assert(mesh.texcoords.size() > 0);
+
+	double total_textured_uv_area = 0.0;
+	for(size_t i = 0; i < mesh.triangles.size(); i++) {
+		const Triangle& triangle = mesh.triangles[i];
+		const Wedge& w0 = mesh.wedges[triangle.w[0]];
+		const Wedge& w1 = mesh.wedges[triangle.w[1]];
+		const Wedge& w2 = mesh.wedges[triangle.w[2]];
+		assert(w0.t != NONE && w1.t != NONE && w2.t != NONE);
+		assert(w0.t < mesh.texcoords.size());
+		assert(w1.t < mesh.texcoords.size());
+		assert(w2.t < mesh.texcoords.size());
+
+		const Vector2f& uv0 = mesh.texcoords[w0.t];
+		const Vector2f& uv1 = mesh.texcoords[w1.t];
+		const Vector2f& uv2 = mesh.texcoords[w2.t];
+		total_textured_uv_area += uv_triangle_area(uv0, uv1, uv2);
+	}
+
+	std::size_t texture_pixels = 0;
+	bool found_texture = false;
+	for(const Material& material: materials) {
+		for(std::size_t i = 0; i < Material::kTextureSlotCount; ++i) {
+			auto slot = static_cast<Material::TextureSlot>(i);
+			if(!material.hasTextureId(slot))
+				continue;
+			const Pyramid* pyramid = texture_cache.get(material.texture_ids[i]);
+			if(!pyramid)
+				continue;
+			texture_pixels = static_cast<std::size_t>(pyramid->width) * static_cast<std::size_t>(pyramid->height);
+			found_texture = true;
+			break;
+		}
+		if(found_texture)
+			break;
+	}
+	assert(texture_pixels > 0);
+
+	const double used_pixels = total_textured_uv_area * static_cast<double>(texture_pixels);
+	const double pixels_per_micronode = used_pixels / static_cast<double>(mesh.micronodes.size());
+	const double target_res = std::sqrt(std::max(1.0, pixels_per_micronode));
+	const int tex_res = closest_power_of_two(target_res);
+	assert(tex_res > 0);
+	return tex_res;
+}
+
 std::vector<std::pair<Index, Index>> collect_source_clusters_for_projection(const MappedMesh& mesh,
 															 const MappedMesh& next_mesh,
 															 const MicroNode& destination_micronode,
@@ -632,8 +708,8 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 		}
 	}
 
-	//TODO constant size is not good enough, but for now...
-	const int tex_res = options.resolution > 0 ? static_cast<int>(options.resolution) : 256;
+	const int tex_res = estimate_initial_tex_res(mesh, materials, texture_cache);
+	options.resolution = static_cast<uint32_t>(tex_res);
 	const int components = static_cast<int>(active_slots.size()) * 3;
 
 	allocate_node_textures_and_texels(mesh, tex_res, components);
@@ -684,14 +760,20 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 void reparametrize_clusters(MappedMesh& mesh,
 	MappedMesh& next_mesh,
 	const std::vector<Material::TextureSlot>& active_slots,
-	const std::vector<Material>& materials) {
+	const std::vector<Material>& materials,
+	bool halve_tex_res) {
 	if(!next_mesh.has_textures)
 		return;
 	if(active_slots.empty())
 		return;
 
 	ParametrizationOptions options;
-	const int tex_res = options.resolution > 0 ? static_cast<int>(options.resolution) : 256;
+	const int previous_tex_res = mesh.node_textures[0].width;
+	assert(previous_tex_res > 0);
+	int tex_res = halve_tex_res ? std::max(1, previous_tex_res / 2) : previous_tex_res;
+
+	std::cout << "Tex res: " << tex_res << std::endl;
+	options.resolution = static_cast<uint32_t>(tex_res);
 	const int components = static_cast<int>(active_slots.size()) * 3;
 
 	allocate_node_textures_and_texels(next_mesh, tex_res, components);
@@ -712,6 +794,7 @@ void reparametrize_clusters(MappedMesh& mesh,
 				mesh, next_mesh, destination_micronode, micro_id, materials);
 
 			NodeMesh destination = merge_micronode_clusters(next_mesh, destination_micronode);
+			destination_micronode.error *= sqrt(2.0f*destination.triangles.size()/float(tex_res*tex_res));
 			TileMap &tilemap = destination.tilemap;
 			tilemap.width = tex_res;
 			tilemap.height = tex_res;

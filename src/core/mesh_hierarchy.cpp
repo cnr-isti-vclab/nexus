@@ -849,6 +849,17 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 	next_mesh.has_normals = mesh.has_normals;
 	next_mesh.has_textures = mesh.has_textures;
 
+	bool high_triangle_texel_ratio = false;
+	if(mesh.has_textures && !mesh.node_textures.empty() && !mesh.micronodes.empty()) {
+		const int previous_tex_res = mesh.node_textures[0].width;
+		assert(previous_tex_res > 0);
+		const double texels_per_micronode = static_cast<double>(previous_tex_res) * static_cast<double>(previous_tex_res);
+		assert(texels_per_micronode > 0.0);
+		const double triangles_per_micronode = static_cast<double>(mesh.triangles.size()) / static_cast<double>(mesh.micronodes.size());
+		const double triangle_texel_ratio = texels_per_micronode/ triangles_per_micronode;
+		high_triangle_texel_ratio = triangle_texel_ratio > static_cast<double>(params.triangle_texel_ratio);
+	}
+
 	std::mutex next_mesh_lock;
 	dp::thread_pool pool;
 
@@ -857,7 +868,7 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 
 
 		// add tasks, in this case without caring about results of individual tasks
-		pool.enqueue_detach([this, &mesh, &next_mesh, &params, &next_mesh_lock](Index micro_id) {
+		pool.enqueue_detach([this, &mesh, &next_mesh, &params, &next_mesh_lock, high_triangle_texel_ratio](Index micro_id) {
 			MicroNode& micronode = mesh.micronodes[micro_id];
 
 
@@ -865,7 +876,9 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 			NodeMesh simplified = merge_micronode_clusters_for_simplification(mesh, micronode); //drop normals and textures.
 
 			// 2) Simplify node triangles (vertex collapse moves positions in new mesh)
-			const Index target_triangle_count = std::max<Index>(1, simplified.triangles.size() / 2);
+			const float simplification_ratio = (mesh.has_textures && high_triangle_texel_ratio) ? 0.9f : params.scaling;
+			const Index target_triangle_count = std::max<Index>(1,
+				static_cast<Index>(std::ceil(static_cast<float>(simplified.triangles.size()) * simplification_ratio)));
 			//simplify_mesh_edge(merged, target_triangle_count);
 			micronode.error = simplify_mesh(simplified, target_triangle_count);
 
@@ -911,7 +924,7 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 // Returns a vector of MicroNode structures representing the partitions.
 	next_mesh.micronodes = create_micronodes_metis(next_mesh, params.clusters_per_node, params.faces_per_cluster);
 	if (next_mesh.has_textures) {
-		reparametrize_clusters(mesh, next_mesh, texture_slots, materials);
+		reparametrize_clusters(mesh, next_mesh, texture_slots, materials, high_triangle_texel_ratio);
 	}
 
 	for(size_t i = 0; i < next_mesh.wedges.size(); i++) {

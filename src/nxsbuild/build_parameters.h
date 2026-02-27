@@ -39,6 +39,7 @@ public:
 	int clusters_per_node = 8;
 	int macro_node_faces = 1 << 15; // Faces per macro-node (32768)
 	float texel_weight = 0.05f;      // Relative weight of texels
+	float triangle_texel_ratio = 12.0f; // Ideal ratio between triangle count and texel count
 	float scaling = 0.5f;            // Decimation factor between levels
 
 	// Clustering algorithm selection

@@ -39,6 +39,7 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 void reparametrize_clusters(MappedMesh& mesh,
 	MappedMesh& next_mesh,
 	const std::vector<Material::TextureSlot>& active_slots,
-	const std::vector<Material>& materials);
+	const std::vector<Material>& materials,
+	bool halve_tex_res);
 
 } // namespace nx

@@ -22,6 +22,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	parser.addOption({{"p", "clusters"}, "Number of clusters per node [4]", "n", "8"});
 	parser.addOption({{"F", "macro-faces"}, "Number of faces per macro-node [32768]", "n", "32768"});
 	parser.addOption({{"w", "texel-weight"}, "Relative weight for texels [0.05]", "f", "0.05"});
+	parser.addOption({{"R", "triangle-texel-ratio"}, "Ideal ratio between triangle count and texel count [6]", "f", "6"});
 	parser.addOption({{"s", "scaling"}, "Decimation factor [0.5]", "f", "0.5"});
 
 	// Clustering algorithm
@@ -87,6 +88,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	clusters_per_node = parser.value("clusters").toInt();
 	macro_node_faces = parser.value("macro-faces").toInt();
 	texel_weight = parser.value("texel-weight").toFloat();
+	triangle_texel_ratio = parser.value("triangle-texel-ratio").toFloat();
 	scaling = parser.value("scaling").toFloat();
 
 	use_greedy = parser.isSet("greedy");
@@ -211,6 +213,11 @@ bool BuildParameters::validate() const {
 		return false;
 	}
 
+	if (triangle_texel_ratio <= 0.0f) {
+		std::cerr << "Error: triangle-texel-ratio must be > 0\n";
+		return false;
+	}
+
 	// Validate thread count
 	if (num_threads < 1) {
 		std::cerr << "Error: thread count must be at least 1\n";
@@ -232,6 +239,7 @@ void BuildParameters::printUsage() {
 	std::cout << "  -c, --clusters <n>        Clusters per node [4]\n";
 	std::cout << "  -F, --macro-faces <n>     Faces per macro-node [32768]\n";
 	std::cout << "  -w, --texel-weight <f>    Relative weight for texels [0.05]\n";
+	std::cout << "  -R, --triangle-texel-ratio <f> Ideal triangle/texel ratio [6]\n";
 	std::cout << "  -s, --scaling <f>         Decimation factor [0.5]\n";
 	std::cout << "      --metis               Use METIS for triangle clustering\n\n";
 
@@ -271,6 +279,7 @@ void BuildParameters::print() const {
 	nx::log << "  Faces per macro-node: " << macro_node_faces << "\n";
 	nx::log << "  Scaling: " << scaling << "\n";
 	nx::log << "  Texel weight: " << texel_weight << "\n";
+	nx::log << "  Triangle/texel ratio: " << triangle_texel_ratio << "\n";
 
 	// Print texture format
 	nx::log << "  Texture format: ";
