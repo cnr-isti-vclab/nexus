@@ -34,6 +34,7 @@ set(SOURCES
 	../core/micro_clustering.cpp
 	../core/hungarian.cpp
 	../loaders/meshloader.cpp
+	../loaders/gltfloader.cpp
 	../loaders/objloader.cpp
 	../loaders/objexporter.cpp
 	../loaders/plyloader.cpp
@@ -63,6 +64,7 @@ set(HEADERS
 	../core/clustering.h
 	../core/micro_clustering.h
 	../loaders/meshloader.h
+	../loaders/gltfloader.h
 	../loaders/objloader.h
 	../loaders/objexporter.h
 	../loaders/plyloader.h
@@ -72,7 +74,8 @@ set(HEADERS
 add_executable(nxsbuild ${SOURCES} ${HEADERS}
     ../../vcglib/wrap/ply/plylib.cpp ../../vcglib/wrap/ply/plylib.h
     ../core/adjacency.cpp ../core/material.cpp ../core/material.h
-    ../texture/jpeg_decoder.cpp ../texture/jpeg_decoder.h)
+    ../texture/jpeg_decoder.cpp ../texture/jpeg_decoder.h
+    ../texture/png_decoder.cpp  ../texture/png_decoder.h)
 
 # Apply the matching algorithm choice
 if(USE_HUNGARIAN)
@@ -85,6 +88,7 @@ endif()
 # Find Qt6
 find_package(Qt6 COMPONENTS Core Gui REQUIRED)
 find_package(JPEG REQUIRED)
+find_package(PNG  REQUIRED)
 # Add METIS and LEMON library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
@@ -95,9 +99,10 @@ target_include_directories(nxsbuild PRIVATE
     ../../lemon-graph-1.3.1
     ../../lemon-graph-1.3.1/build
     ${JPEG_INCLUDE_DIR}
+    ${PNG_INCLUDE_DIRS}
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
-target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core Qt6::Gui ${JPEG_LIBRARIES})
+target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core Qt6::Gui ${JPEG_LIBRARIES} ${PNG_LIBRARIES} draco)
 
 install(TARGETS nxsbuild DESTINATION bin)

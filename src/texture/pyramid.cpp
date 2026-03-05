@@ -1,5 +1,6 @@
 #include "pyramid.h"
 #include "jpeg_decoder.h"
+#include "png_decoder.h"
 
 #include <QFileInfo>
 
@@ -9,6 +10,8 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <cctype>
+#include <functional>
 #include <random>
 #include <algorithm>
 
@@ -234,10 +237,23 @@ void Pyramid::buildTiledImages(const std::string &input, const string &cache_dir
 	std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFFu);
 	cache_path = (cache_root / (stem + "_" + std::to_string(dist(rng)) + ".pyr")).string();
 
-	
-	JpegDecoder decoder;
-	if(!decoder.init(input.c_str(), width, height))
-		throw std::runtime_error("Could not read image file" + input);
+
+	std::string ext = input_path.extension().string();
+	for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+	JpegDecoder jpeg_decoder;
+	PngDecoder  png_decoder;
+	std::function<size_t(uint8_t*)> readRow;
+
+	if (ext == ".png") {
+		if (!png_decoder.init(input.c_str(), width, height))
+			throw std::runtime_error("Could not read PNG image file: " + input);
+		readRow = [&](uint8_t* buf) { return png_decoder.readRows(1, buf); };
+	} else {
+		if (!jpeg_decoder.init(input.c_str(), width, height))
+			throw std::runtime_error("Could not read image file: " + input);
+		readRow = [&](uint8_t* buf) { return jpeg_decoder.readRows(1, buf); };
+	}
 
 	std::vector<TileRow> rows = initRows();
 
@@ -245,7 +261,7 @@ void Pyramid::buildTiledImages(const std::string &input, const string &cache_dir
 	std::vector<uint8_t> carry;
 
 	for(int y = 0; y < height; ++y) {
-		decoder.readRows(1, line.data());
+		readRow(line.data());
 		const std::vector<uint8_t> *current = &line;
 		carry.clear();
 		for(size_t level = 0; level < rows.size(); ++level) {

@@ -1,4 +1,5 @@
 #include "meshloader.h"
+#include "gltfloader.h"
 #include "objloader.h"
 #include "plyloader.h"
 #include <algorithm>
@@ -18,10 +19,11 @@ void load_mesh(const std::filesystem::path& input_path, MappedMesh& mesh, std::v
 	} else if(ext == ".ply") {
 		PlyLoader loader(input_path.string());
 		loader.load(mesh, materials);
+	} else if (ext == ".gltf" || ext == ".glb") {
+		GltfLoader loader(input_path.string());
+		loader.load(mesh, materials);
 	} else
 		throw std::runtime_error("unsupported mesh format: " + ext);
-
-	// TODO: add  glTF, and other loaders here when available.
 }
 
 void trimWhitespace(std::string& s) {

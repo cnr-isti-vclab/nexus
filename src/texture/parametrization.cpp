@@ -484,6 +484,13 @@ void finalize_reparam_buffers(MappedMesh& mesh,
 	mesh.wedges = std::move(temp_wedges);
 	mesh.texcoords.close();
 	mesh.texcoords = std::move(temp_texcoords);
+
+	for(size_t i = 0; i < mesh.wedges.size(); i++) {
+		Wedge &w = mesh.wedges[i];
+		assert(w.p < mesh.positions.size());
+		assert(w.t < mesh.texcoords.size());
+		assert(w.n < mesh.normals.size());
+	}
 }
 
 } // namespace
@@ -719,7 +726,7 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 	std::size_t max_entries = static_cast<std::size_t>(mesh.triangles.size()) * 3;
 	open_temp_reparam_buffers(max_entries, temp_wedges, temp_texcoords);
 
-	dp::thread_pool pool(1);
+	dp::thread_pool pool;
 
 	mesh.node_textures.resize(mesh.micronodes.size());
 	for (Index micro_id = 0; micro_id < mesh.micronodes.size(); micro_id++) {
@@ -784,7 +791,7 @@ void reparametrize_clusters(MappedMesh& mesh,
 	open_temp_reparam_buffers(max_entries, temp_wedges, temp_texcoords);
 
 	std::mutex write_lock;
-	dp::thread_pool pool(1);
+	dp::thread_pool pool;
 
 	for(Index micro_id = 0; micro_id < next_mesh.micronodes.size(); micro_id++) {
 		pool.enqueue_detach([&mesh, &next_mesh, &temp_wedges, &temp_texcoords, &write_lock, &active_slots, &materials, options, tex_res, components](Index micro_id) {
@@ -803,6 +810,7 @@ void reparametrize_clusters(MappedMesh& mesh,
 				tilemap.addSlot(slot);
 
 			create_parametrization(destination, options);
+
 			std::vector<uint8_t> raster_mask = rasterize_projected(mesh, source_clusters, destination, active_slots, tex_res);
 			pushPullFillUnwrittenPixels(tex_res, tex_res, destination.tilemap.texels, raster_mask, materials);
 
@@ -820,12 +828,30 @@ void reparametrize_clusters(MappedMesh& mesh,
 					destination,
 					temp_wedges,
 					temp_texcoords);
+
+				for(size_t i = 0; i < temp_wedges.size(); i++) {
+					Wedge &w = temp_wedges[i];
+					assert(w.p < next_mesh.positions.size());
+					assert(w.t < temp_texcoords.size());
+					assert(w.n < next_mesh.normals.size());
+				}
 			}
 		}, micro_id);
 	}
 
 	pool.wait_for_tasks();
+
+	for(size_t i = 0; i < temp_wedges.size(); i++) {
+		Wedge &w = temp_wedges[i];
+		assert(w.t < temp_texcoords.size());
+	}
+
 	finalize_reparam_buffers(next_mesh, temp_wedges, temp_texcoords);
+
+	for(size_t i = 0; i < next_mesh.wedges.size(); i++) {
+		Wedge &w = next_mesh.wedges[i];
+		assert(w.t < next_mesh.texcoords.size());
+	}
 }
 
 

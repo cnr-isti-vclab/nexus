@@ -808,6 +808,14 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	assert(levels.size() > 0);
 	MappedMesh &mesh = *levels[0];
 
+
+	for(size_t i = 0; i < mesh.wedges.size(); i++) {
+		Wedge &w = mesh.wedges[i];
+		assert(w.p < mesh.positions.size());
+		assert(w.t < mesh.texcoords.size());
+		assert(w.n < mesh.normals.size());
+	}
+
 	nx::build_initial_clusters(mesh, max_triangles*params.clusters_per_node,
 					   params.use_greedy ? nx::ClusteringMethod::Greedy : nx::ClusteringMethod::Metis);
 
@@ -816,6 +824,15 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 
 	// Reparametrize all clusters after initial split
 	reparametrize_initial_clusters(mesh, materials);
+
+
+	for(size_t i = 0; i < mesh.wedges.size(); i++) {
+		Wedge &w = mesh.wedges[i];
+		assert(w.p < mesh.positions.size());
+		assert(w.t < mesh.texcoords.size());
+		assert(w.n < mesh.normals.size());
+	}
+
 
 	//parametrize and project texture
 	if(0) {
@@ -844,11 +861,14 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const BuildParameters &params) {
 	static int current_level = 1;
 	// Copy geometry (positions/wedges/colors/material_ids)
+	//TODO copy is not needed...
 	copyVertices(mesh, next_mesh);
 	next_mesh.has_colors = mesh.has_colors;
 	next_mesh.has_normals = mesh.has_normals;
 	next_mesh.has_textures = mesh.has_textures;
 
+	//TODO when implementing macrfonodes, we should use the size of the macronodes
+	//to keep the amount of texture reasonable (on top of this).
 	bool high_triangle_texel_ratio = false;
 	if(mesh.has_textures && !mesh.node_textures.empty() && !mesh.micronodes.empty()) {
 		const int previous_tex_res = mesh.node_textures[0].width;

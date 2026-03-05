@@ -6,6 +6,7 @@ using namespace vcg;
 using namespace vcg::ply;
 
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
 namespace fs = std::filesystem;
@@ -106,29 +107,33 @@ PlyLoader::PlyLoader(const std::string& filename):
 
 	}
 	init();
-	for(std::string &comment: pf.comments) {
-		std::string TFILE = "TEXTUREFILE";
+	for(const std::string& raw_comment: pf.comments) {
+		const std::string keyword = "TEXTUREFILE";
+		if(raw_comment.size() < keyword.size())
+			continue;
 
+		std::string prefix = raw_comment.substr(0, keyword.size());
+		std::transform(prefix.begin(), prefix.end(), prefix.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+		if(prefix != keyword)
+			continue;
 
-		std::string start = comment.substr(0,TFILE.length());
-		for(char &c: comment)
-			c = ::toupper(c);
+		std::size_t start = keyword.size();
+		while(start < raw_comment.size() && (raw_comment[start] == ' ' || raw_comment[start] == '\t' || raw_comment[start] == ':' || raw_comment[start] == '='))
+			++start;
 
-		if( TFILE == start ) {
-			std::string bufstr,bufclean;
-			bufstr = comment.substr(TFILE.length()+1);
-			int n = static_cast<int>(bufstr.length());
-			for(int i = 0; i < n; i++)
-				if(bufstr[i]!='\t' && bufstr[i]>=32 && bufstr[i]<=126 )	bufclean.push_back(bufstr[i]);
+		std::string texture_path = raw_comment.substr(start);
+		sanitizeTextureFilepath(texture_path);
+		if(texture_path.empty())
+			continue;
 
-			char buf2[255];
-			ply::interpret_texture_name( bufclean.c_str(),filename.c_str(), buf2, 255);
-			Material material;
-			material.base_color_texture = buf2;
-			sanitizeTextureFilepath(material.base_color_texture);
-			resolveTexturePath(filename, material.base_color_texture);
-			materials.push_back(material);
-		}
+		char interpreted_path[255];
+		ply::interpret_texture_name(texture_path.c_str(), filename.c_str(), interpreted_path, 255);
+
+		Material material;
+		material.base_color_texture = interpreted_path;
+		sanitizeTextureFilepath(material.base_color_texture);
+		material.base_color_texture = resolveTexturePath(filename, material.base_color_texture);
+		materials.push_back(material);
 	}
 }
 
@@ -216,15 +221,25 @@ void PlyLoader::init() {
 
 }
 
-void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &materials) {
+void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &_materials) {
+	_materials = this->materials;
+
 	mesh.positions.resize(n_vertices);
 	if(has_colors)
 		mesh.colors.resize(n_vertices);
 	if(has_normals)
 		mesh.normals.resize(n_vertices);
-	if(has_textures)
-		mesh.texcoords.resize(n_vertices);
-	mesh.wedges.resize(n_vertices);
+	const bool has_wedge_tex_coords = has_textures && !has_vertex_tex_coords;
+	if(has_textures) {
+		if(has_vertex_tex_coords)
+			mesh.texcoords.resize(n_vertices);
+		else
+			mesh.texcoords.resize(n_triangles*3);
+	}
+	if(has_wedge_tex_coords)
+		mesh.wedges.resize(n_triangles*3);
+	else
+		mesh.wedges.resize(n_vertices);
 
 	pf.SetCurElement(vertices_element);
 
@@ -232,8 +247,11 @@ void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &materials) {
 
 	for(size_t i = 0; i < n_vertices; i++) {
 		Vector3f &p = mesh.positions[i];
-		Wedge &w = mesh.wedges[i];
-		w.p = i;
+		Wedge *w = nullptr;
+		if(!has_wedge_tex_coords) {
+			w = &mesh.wedges[i];
+			w->p = i;
+		}
 		pf.Read((void *)&vertex);
 
 		if(double_coords) {
@@ -250,6 +268,8 @@ void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &materials) {
 			n.x = vertex.n[0];
 			n.y = vertex.n[1];
 			n.z = vertex.n[2];
+			if(w)
+				w->n = i;
 		}
 		if(has_colors) {
 			Rgba8 &c = mesh.colors[i];
@@ -258,10 +278,12 @@ void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &materials) {
 			c.b = vertex.c[2];
 			c.a = vertex.c[3];
 		}
-		if(has_textures) {
+		if(has_textures && has_vertex_tex_coords) {
 			Vector2f &t = mesh.texcoords[i];
 			t.u = vertex.t[0];
 			t.v = vertex.t[1];
+			if(w)
+				w->t = i;
 		}
 	}
 
@@ -283,11 +305,28 @@ void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &materials) {
 			if(v < 0 || v >= n_vertices)
 				throw std::runtime_error("Bad index in triangle list.");
 
-			tri.w[k] = v;
+			if(has_wedge_tex_coords) {
+				const Index wedge_idx = static_cast<Index>(i*3 + k);
+				Wedge &w = mesh.wedges[wedge_idx];
+				w.p = static_cast<Index>(v);
+				if(has_normals)
+					w.n = static_cast<Index>(v);
+				const Index tex_idx = wedge_idx;
+				Vector2f &t = mesh.texcoords[tex_idx];
+				t.u = face.t[k*2 + 0];
+				t.v = face.t[k*2 + 1];
+				w.t = tex_idx;
+				tri.w[k] = wedge_idx;
+			} else {
+				tri.w[k] = static_cast<Index>(v);
+			}
 		}
 		//TODO: if loading more than one model (because split, we need to reintroduce texOffset
+		if(!_materials.empty() && face.texNumber >= _materials.size())
+			throw std::runtime_error("PLY texNumber out of range of parsed materials.");
 		mesh.material_ids[i] = face.texNumber;
 	}
+	mesh.has_textures = has_textures;
 }
 
 }
