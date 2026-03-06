@@ -6,9 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Option to choose matching algorithm
-option(USE_HUNGARIAN "Use Hungarian algorithm instead of LEMON for matching" OFF)
-
 set(SOURCES
 	main.cpp
 	build_parameters.cpp
@@ -77,32 +74,23 @@ add_executable(nxsbuild ${SOURCES} ${HEADERS}
     ../texture/jpeg_decoder.cpp ../texture/jpeg_decoder.h
     ../texture/png_decoder.cpp  ../texture/png_decoder.h)
 
-# Apply the matching algorithm choice
-if(USE_HUNGARIAN)
-    target_compile_definitions(nxsbuild PRIVATE USE_HUNGARIAN)
-    message(STATUS "Using Hungarian algorithm for matching")
-else()
-    message(STATUS "Using LEMON library for matching")
-endif()
-
 # Find Qt6
 find_package(Qt6 COMPONENTS Core Gui REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(PNG  REQUIRED)
-# Add METIS and LEMON library paths
+
+# Add METIS library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
     ../../vcglib
     ../
     /usr/include/eigen3
     /home/ponchio/local/include
-    ../../lemon-graph-1.3.1
-    ../../lemon-graph-1.3.1/build
     ${JPEG_INCLUDE_DIR}
     ${PNG_INCLUDE_DIRS}
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
-target_link_libraries(nxsbuild PRIVATE metis GKlib Qt6::Core Qt6::Gui ${JPEG_LIBRARIES} ${PNG_LIBRARIES} draco)
+target_link_libraries(nxsbuild PRIVATE metis Qt6::Core Qt6::Gui ${JPEG_LIBRARIES} ${PNG_LIBRARIES} draco)
 
 install(TARGETS nxsbuild DESTINATION bin)

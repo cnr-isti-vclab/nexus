@@ -16,13 +16,7 @@
 #include <fstream>
 #include <filesystem>
 
-//#define USE_HUNGARIAN 1
-#ifdef USE_HUNGARIAN
 #include "hungarian.h"
-#else
-#include <lemon/list_graph.h>
-#include <lemon/matching.h>
-#endif
 
 
 using namespace std;
@@ -30,7 +24,7 @@ namespace nx {
 
 namespace {
 
-// Maximum weight matching using LEMON library or Hungarian algorithm
+// Maximum weight matching using Hungarian algorithm
 // Returns pairs of matched node indices
 std::vector<std::pair<std::size_t, std::size_t>> max_weight_matching(
 	std::size_t num_nodes,
@@ -38,7 +32,6 @@ std::vector<std::pair<std::size_t, std::size_t>> max_weight_matching(
 	const std::vector<idx_t>& adjncy,
 	const std::vector<idx_t>& adjwgt) {
 
-#ifdef USE_HUNGARIAN
 	// Hungarian algorithm implementation (bipartite matching)
 	// For general graphs, we create a bipartite graph by duplicating nodes
 	// Left side: nodes 0..num_nodes-1, Right side: nodes 0..num_nodes-1
@@ -86,57 +79,6 @@ std::vector<std::pair<std::size_t, std::size_t>> max_weight_matching(
 	}
 
 	return matched_pairs;
-
-#else
-	// LEMON library implementation (general graph matching)
-	using namespace lemon;
-
-	nx::debug << "Using LEMON library for matching..." << std::endl;
-
-	// Create LEMON graph
-	ListGraph graph;
-	ListGraph::EdgeMap<idx_t> weight(graph);
-
-	// Add nodes
-	std::vector<ListGraph::Node> nodes(num_nodes);
-	for (std::size_t i = 0; i < num_nodes; ++i) {
-		nodes[i] = graph.addNode();
-	}
-
-	// Add edges with weights
-	for (std::size_t i = 0; i < num_nodes; ++i) {
-		idx_t start = xadj[i];
-		idx_t end = xadj[i + 1];
-		for (idx_t e = start; e < end; ++e) {
-			std::size_t j = static_cast<std::size_t>(adjncy[e]);
-			if (i < j) { // Add each edge once
-				ListGraph::Edge edge = graph.addEdge(nodes[i], nodes[j]);
-				weight[edge] = adjwgt[e];
-			}
-		}
-	}
-
-	// Run maximum weight matching
-	MaxWeightedMatching<ListGraph, ListGraph::EdgeMap<idx_t>> matching(graph, weight);
-	matching.run();
-
-	// Extract matched pairs
-	std::vector<std::pair<std::size_t, std::size_t>> matched_pairs;
-	for (std::size_t i = 0; i < num_nodes; ++i) {
-		ListGraph::Node mate_node = matching.mate(nodes[i]);
-		if (mate_node != INVALID) {
-			// Find the index of the mate node
-			for (std::size_t j = i + 1; j < num_nodes; ++j) {
-				if (nodes[j] == mate_node) {
-					matched_pairs.emplace_back(i, j);
-					break;
-				}
-			}
-		}
-	}
-
-	return matched_pairs;
-#endif
 }
 
 // Partition graph into groups of exactly target_size using two rounds of matching

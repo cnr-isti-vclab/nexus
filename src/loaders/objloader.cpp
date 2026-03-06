@@ -117,16 +117,19 @@ void ObjLoader::read_mtl(const std::string& mtl_path) {
 		else if (cmd == "map_Kd" || cmd == "map_Ka") {
 			std::string tex_path;
 			std::getline(iss >> std::ws, tex_path);
+			tex_path.erase(tex_path.find_last_not_of(" \t\r\n") + 1);
 			current_material.base_color_texture = resolveTexturePath(mtl_path, tex_path);
 		}
 		else if (cmd == "map_Ks") {
 			std::string tex_path;
 			std::getline(iss >> std::ws, tex_path);
+			tex_path.erase(tex_path.find_last_not_of(" \t\r\n") + 1);
 			current_material.specular_texture = resolveTexturePath(mtl_path, tex_path);
 		}
 		else if (cmd == "map_Bump" || cmd == "bump") {
 			std::string tex_path;
 			std::getline(iss >> std::ws, tex_path);
+			tex_path.erase(tex_path.find_last_not_of(" \t\r\n") + 1);
 			current_material.normal_texture = resolveTexturePath(mtl_path, tex_path);
 		}
 		else if (cmd == "Ks") {
