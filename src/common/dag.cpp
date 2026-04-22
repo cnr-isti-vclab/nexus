@@ -184,7 +184,7 @@ std::vector<char> Header3::write() {
 
 	
 	index_offset = json_length + 12;
-	index_length = n_nodes*44 + n_patches*12 + n_textures*68;
+	index_length = n_nodes*48 + n_patches*16 + n_textures*8;
 	return buffer;
 }
 

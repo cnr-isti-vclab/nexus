@@ -119,9 +119,8 @@ public:
 	virtual void loadIndex();
 	virtual void loadIndex(char *buffer);
 
-	//FILE *file;
-	virtual uint32_t loadImageFromData(nx::TextureGroupData &groupdata, int texture_group) { throw std::string("Should never be called"); return 0; };
-
+	//Load texture data from file (JPEG compressed) and decompress to RGBA
+	virtual uint32_t loadImageFromData(nx::TextureGroupData &groupdata, int texture_group);
 
 	NexusFile* file;
 };

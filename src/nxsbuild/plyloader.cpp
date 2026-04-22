@@ -125,7 +125,7 @@ PlyLoader::PlyLoader(QString filename):
 				if(bufstr[i]!='\t' && bufstr[i]>=32 && bufstr[i]<=126 )	bufclean.push_back(bufstr[i]);
 
 			char buf2[255];
-			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2 );
+			ply::interpret_texture_name( bufclean.c_str(),filename.toLatin1().data(), buf2, 255);
 			nx::BuildMaterial material;
 			material.color_map = material.nmaps++;
 			material.textures.push_back(QString(buf2).trimmed());

@@ -148,6 +148,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	//TODO should actually remove textures not used anymore.
 	
 	file.write(header_dump.data(), header_dump.size());
+	assert(file.pos() == header.index_offset);
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
 	file.write((char *)&*textures.begin(), sizeof(nx::TextureGroup)*textures.size());
@@ -157,6 +158,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 		int n = node_remap[i];
 		if(n == -1) continue;
 		nx::Node &node = nodes[n];
+		assert((file.pos() % NEXUS_PADDING) == 0);
 		node.offset = file.pos()/NEXUS_PADDING;
 		
 		nexus->loadRam(i);
@@ -194,7 +196,8 @@ void Extractor::save(QString output, nx::Signature &signature) {
 			quint64 start = in.getBeginOffset();
 			quint64 size = in.getSize();
 			char *memory = (char *)nexus->file->map(start, size);
-			
+
+			assert((file.pos() % NEXUS_PADDING) == 0);
 			out.offset = file.pos()/NEXUS_PADDING;
 			file.write(memory, size);
 		}

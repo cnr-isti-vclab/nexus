@@ -88,6 +88,7 @@ function loadCorto() {
 
 	//corto = new Worker(getWorkerURL(corto_url));
 	corto = new Worker(path.replace('nexus.js', 'corto.em.js'));
+//	corto = new Worker(path.replace('nexus.js', 'corto.js'));
 	corto.requests = {};
 	corto.count = 0;
 	corto.postRequest = function(node) {
