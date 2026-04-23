@@ -51,7 +51,8 @@ public:
 
 
         void setWidget(QOpenGLWidget *widget);
-
+        void setGpu(uint64_t size) { max_gpu = size; gpu_cache.setCapacity(size); }
+        uint64_t maxGpu() const { return max_gpu; }
 	void setRam(uint64_t size) { max_ram = size; ram_cache.setCapacity(size); }
 	uint64_t maxRam() const { return max_ram; }
 
