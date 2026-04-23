@@ -70,6 +70,9 @@ light1.shadow.camera.bottom = - 2;
 light1.shadow.mapSize.width = 1024;
 light1.shadow.mapSize.height = 1024;
 
+light1.shadow.normalBias = 0.05;  // tweak: 0.01–0.1
+light1.shadow.bias = -0.001;  // usually negative, tweak: 0–-0.005
+
 
 scene.add( light1 );
 

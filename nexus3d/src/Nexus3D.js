@@ -285,12 +285,18 @@ if(this.mesh.vertex.COLOR_0)
 		attr.scale    = gl.getUniformLocation(program, "scale");
 
 		// Detect multiple texture samplers for PBR material support
-		if(!this.samplers) {
+		// Reset whenever the compiled program changes (e.g. after material.needsUpdate recompile)
+		if(!this.samplers || this._lastProgram !== program) {
+			this._lastProgram = program;
 			this.samplers = {};
 			["map", "bumpMap", "roughnessMap", "metalnessMap", "normalMap", "specularMap"].forEach((mapName) => {
 				let location = gl.getUniformLocation(program, mapName);
 				this.samplers[mapName] = location !== null ? gl.getUniform(program, location) : null;
 			});
+			// Also reset material mappings so they are rebuilt with the new sampler units
+			if(this.mesh.materials)
+				for(let mat of this.mesh.materials)
+					mat.mapping = null;
 		}
 		
 		// Build material mapping arrays from PBR properties (lazy initialization)
@@ -584,28 +590,31 @@ if(this.mesh.vertex.COLOR_0)
 		
 		// Update Three.js material with first texture to trigger shader compilation
 		if(!this.materialTexturesSet && texindex === 0 && this.expectedTextures) {
-			// Create Three.js DataTexture wrapper for the WebGL texture
-			// This ensures Three.js compiles shaders with texture support
-			let dataTexture = new DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, RGBAFormat);
-			dataTexture.needsUpdate = true;
+			// Create Three.js DataTexture placeholders to trigger shader compilation
+			// with the correct sampler uniforms. Each map type needs a neutral placeholder.
+			const whiteTex    = new DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, RGBAFormat);
+			// Neutral tangent-space normal: (128,128,255) decodes to (0,0,1) — no perturbation.
+			const neutralNorm = new DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1, RGBAFormat);
+			whiteTex.needsUpdate    = true;
+			neutralNorm.needsUpdate = true;
 			
 			if(this.expectedTextures.map) {
-				this.material.map = dataTexture;
+				this.material.map = whiteTex;
 			}
 			if(this.expectedTextures.roughnessMap) {
-				this.material.roughnessMap = dataTexture;
+				this.material.roughnessMap = whiteTex;
 			}
 			if(this.expectedTextures.metalnessMap) {
-				this.material.metalnessMap = dataTexture;
+				this.material.metalnessMap = whiteTex;
 			}
 			if(this.expectedTextures.normalMap) {
-				this.material.normalMap = dataTexture;
+				this.material.normalMap = neutralNorm;
 			}
 			if(this.expectedTextures.bumpMap) {
-				this.material.bumpMap = dataTexture;
+				this.material.bumpMap = whiteTex;
 			}
 			if(this.expectedTextures.specularMap) {
-				this.material.specularMap = dataTexture;
+				this.material.specularMap = whiteTex;
 			}
 			
 			this.material.needsUpdate = true; // Force shader recompilation

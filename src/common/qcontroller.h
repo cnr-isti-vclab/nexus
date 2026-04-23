@@ -5,11 +5,11 @@
 #include <QTimer>
 #include "controller.h"
 
-class QGLWidget;
+class QOpenGLWidget;
 class QController: public QObject, public Controller {
     Q_OBJECT
 public:
-    void start(QGLWidget *shared = NULL);
+    void start(QOpenGLWidget *shared = NULL);
 
 signals:
     ///emitted at most every (1/fps)s if the cache is changed

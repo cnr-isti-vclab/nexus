@@ -48,7 +48,7 @@ module.exports = {
     new webpack.HotModuleReplacementPlugin(),
     new HtmlWebpackPlugin({
       title: 'Nexus3D',
-      template: __dirname + '/dist/index.html',
+      template: path.resolve(__dirname + '/src/index.html'),
       inject: 'body'
     }),
   ],

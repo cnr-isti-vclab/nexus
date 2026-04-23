@@ -20,9 +20,9 @@ for more details.
 
 #include <GL/glew.h>
 #include <iostream>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QDebug>
-#include <QTime>
+#include <QElapsedTimer>
 
 #include <vcg/space/point2.h>
 #include <vcg/space/box3.h>
@@ -32,7 +32,7 @@ for more details.
 #include "../common/renderer.h"
 #include "scene.h"
 
-class GLNxsview : public QGLWidget {
+class GLNxsview : public QOpenGLWidget {
 	Q_OBJECT
 
 public:
@@ -88,7 +88,7 @@ protected:
 	std::vector<vcg::Similarityf> viewpoints;
 	quint32 current_viewpoint;
 	float current_time; //this will be modified by velocity
-	QTime time;
+	QElapsedTimer time;
 	bool playing;
 
 	void init(QString file);

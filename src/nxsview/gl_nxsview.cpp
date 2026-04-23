@@ -37,7 +37,7 @@ int current_texture = 0;
 void glV(Point3f &p) { glVertex3f(p[0], p[1], p[2]); }
 
 GLNxsview::GLNxsview(QWidget *parent, bool _share):
-	QGLWidget(parent), share(_share),
+	QOpenGLWidget(parent), share(_share),
 	default_trackball(true), extracting(true), current_viewpoint(-1), current_time(-1), playing(false),
 	hasToPick(false), fov(60), info(false) {
 
@@ -133,7 +133,7 @@ void GLNxsview::setColorBottom() {
 }
 
 void GLNxsview::getSnapshot() {
-	QImage im = grabFrameBuffer();
+	QImage im = grabFramebuffer();
 	QString file = QFileDialog::getSaveFileName(this,
 												tr("Select .png filename to save shapshot"),
 												"",
@@ -352,7 +352,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	if(extracting)
 		renderer.endFrame();
 
-	static QTime time;
+	static QElapsedTimer time;
 	static bool first_time = true;
 	if(first_time)
 		time.start();
@@ -406,7 +406,7 @@ Trackball::Button QT2VCG(Qt::MouseButton qtbt,  Qt::KeyboardModifiers modifiers)
 	int vcgbt=Trackball::BUTTON_NONE;
 	if(qtbt & Qt::LeftButton)           vcgbt |= Trackball::BUTTON_LEFT;
 	if(qtbt & Qt::RightButton)          vcgbt |= Trackball::BUTTON_RIGHT;
-	if(qtbt & Qt::MidButton)            vcgbt |= Trackball::BUTTON_MIDDLE;
+	if(qtbt & Qt::MiddleButton)         vcgbt |= Trackball::BUTTON_MIDDLE;
 	if(modifiers & Qt::ShiftModifier)   vcgbt |= Trackball::KEY_SHIFT;
 	if(modifiers & Qt::ControlModifier) vcgbt |= Trackball::KEY_CTRL;
 	if(modifiers & Qt::AltModifier)     vcgbt |= Trackball::KEY_ALT;
@@ -414,7 +414,7 @@ Trackball::Button QT2VCG(Qt::MouseButton qtbt,  Qt::KeyboardModifiers modifiers)
 }
 
 void GLNxsview::wheelEvent(QWheelEvent *e) {
-	if(e->delta() > 0)
+	if(e->angleDelta().y() > 0)
 		trackball.MouseWheel(1);
 	else
 		trackball.MouseWheel(-1);

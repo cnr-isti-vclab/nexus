@@ -71,7 +71,7 @@ target_include_directories(nexus PUBLIC
 
 target_include_directories(nexus PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/draco/src) # include dirs
 target_include_directories(nexus PUBLIC ${CMAKE_BINARY_DIR}) # needed to find draco_features.h
-target_link_libraries(nexus PUBLIC vcglib corto Qt5::Widgets)
+target_link_libraries(nexus PUBLIC vcglib corto Qt6::Widgets)
 
 if (WIN32)
 	target_compile_definitions(nexus PUBLIC NOMINMAX)

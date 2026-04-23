@@ -22,7 +22,7 @@ for more details.
 #include "globalgl.h"
 #include "qtnexusfile.h"
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
 
 
 using namespace nx;

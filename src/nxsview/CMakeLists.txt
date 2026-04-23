@@ -63,15 +63,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5OpenGL)
+find_package(Qt6 COMPONENTS OpenGL OpenGLWidgets REQUIRED)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
 add_executable(nxsview MACOSX_BUNDLE ${SOURCES} ${HEADERS})
 if (WIN32)
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32)
+	target_link_libraries(nxsview PUBLIC nexus Qt6::OpenGL Qt6::OpenGLWidgets external-glew glu32 OpenGL32)
 else()
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew OpenGL::GLU OpenGL::GL)
+	target_link_libraries(nxsview PUBLIC nexus Qt6::OpenGL Qt6::OpenGLWidgets external-glew OpenGL::GLU OpenGL::GL)
 endif()
 
 target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)

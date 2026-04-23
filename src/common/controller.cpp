@@ -29,10 +29,10 @@ Controller::Controller(): max_tokens(300), max_ram(512*1000*1000), max_gpu(256*1
 	//setMaxTokens(max_tokens);
 }
 
-void Controller::setWidget(QGLWidget *widget) {
+void Controller::setWidget(QOpenGLWidget *widget) {
 	//TODO check destruction of widget
 #ifdef SHARED_CONTEXT
-	gpu_cache.shared = widget; //new QGLWidget(NULL, widget);
+	gpu_cache.shared = widget; //new QOpenGLWidget(NULL, widget);
 #endif
 }
 

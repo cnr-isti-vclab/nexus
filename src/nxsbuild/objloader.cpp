@@ -19,6 +19,7 @@ for more details.
 #include <QFileInfo>
 #include <QDir>
 #include <QTextStream>
+#include <QRegularExpression>
 #include <iostream>
 
 
@@ -213,8 +214,8 @@ void ObjLoader::readMTL(QString mtl_path) {
 				}
 				if(str.startsWith("Map_Kd", Qt::CaseInsensitive)){
 					txtfname = str.mid(7).trimmed();
-					txtfname = txtfname.remove(QRegExp("^(\")"));
-					txtfname = txtfname.remove(QRegExp("(\")$"));
+					txtfname = txtfname.remove(QRegularExpression("^(\")"));
+					txtfname = txtfname.remove(QRegularExpression("(\")$"));
 
 					material.color_map = material.nmaps++;
 					material.textures.push_back(txtfname);
@@ -232,8 +233,8 @@ void ObjLoader::readMTL(QString mtl_path) {
 				}
 				if(str.startsWith("Map_Ks", Qt::CaseInsensitive)){
 					txtfname = str.mid(7).trimmed();
-					txtfname = txtfname.remove(QRegExp("^(\")"));
-					txtfname = txtfname.remove(QRegExp("(\")$"));
+					txtfname = txtfname.remove(QRegularExpression("^(\")"));
+					txtfname = txtfname.remove(QRegularExpression("(\")$"));
 
 					material.specular_map = material.nmaps++;
 					material.textures.push_back(txtfname);
@@ -248,8 +249,8 @@ void ObjLoader::readMTL(QString mtl_path) {
 				//TODO check for bump also str.startsWith("bump", Qt::CaseInsensitive) ||
 				if(str.startsWith("map_bump", Qt::CaseInsensitive)) {
 					txtfname = str.mid(9).trimmed();
-					txtfname = txtfname.remove(QRegExp("^(\")"));
-					txtfname = txtfname.remove(QRegExp("(\")$"));
+					txtfname = txtfname.remove(QRegularExpression("^(\")"));
+					txtfname = txtfname.remove(QRegularExpression("(\")$"));
 
 					material.bump_map = material.nmaps++;
 					material.textures.push_back(txtfname);
@@ -317,8 +318,8 @@ void ObjLoader::cacheVertices() {
 				QFileInfo info = QFileInfo(fname);
 
 				QString mtl = QString(buffer).mid(7).trimmed();
-				mtl = mtl.remove(QRegExp("^(\")"));
-				mtl = mtl.remove(QRegExp("(\")$"));
+				mtl = mtl.remove(QRegularExpression("^(\")"));
+				mtl = mtl.remove(QRegularExpression("(\")$"));
 				mtl = info.dir().filePath(mtl);
 				mtls.push_back(mtl);
 			}
@@ -374,8 +375,8 @@ quint32 ObjLoader::getTriangles(quint32 size, Triangle *faces) {
 
 		QString str = QString(buffer).simplified();
 
-		QRegExp rx("[ ]");// match a space
-		QStringList list = str.split(rx, QString::SkipEmptyParts);
+		QRegularExpression rx("[ ]");// match a space
+		QStringList list = str.split(rx, Qt::SkipEmptyParts);
 		list.removeFirst(); //'f'
 		if (list.last().startsWith('\n') || list.last().startsWith('\r'))
 			list.removeLast();
