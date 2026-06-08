@@ -129,7 +129,7 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 	QImage img;
 	bool success = img.loadFromData((uchar*)data.memory, texture.getSize());
 	if(header.signature.isDeepzoom()) {
-		file->dropDZTex(t);
+		file->dropDZTex(data.memory);
 	} else {
 		file->unmap((uchar*)data.memory);
 	}

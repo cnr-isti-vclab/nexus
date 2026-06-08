@@ -196,8 +196,8 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 
 bool BuildParameters::validate() const {
 	// Validate node_faces range
-	if (faces_per_cluster < 64 || faces_per_cluster > 2048) {
-		std::cerr << "Error: faces per cluster must be between 64 and 2048\n";
+	if (faces_per_cluster < 64 || faces_per_cluster > 8192) {
+		std::cerr << "Error: faces per cluster must be between 64 and 8192\n";
 		return false;
 	}
 

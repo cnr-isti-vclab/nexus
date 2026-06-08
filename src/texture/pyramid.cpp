@@ -274,7 +274,8 @@ void Pyramid::buildTiledImages(const std::string &input, const string &cache_dir
 	}
 
 	flushLevels(rows);
-	exportPyramid(cache_dir);
+	//For debug purposes:
+	//exportPyramid(cache_dir);
 }
 
 int Pyramid::nLevels() {
@@ -303,8 +304,8 @@ std::vector<TileRow>  Pyramid::initRows() {
 		PyrLevel &pyr_level = levels[level];
 		pyr_level.width = w;
 		pyr_level.height = h;
-		pyr_level.rows = std::max(1, (w + tileside - 1) / tileside);
-		pyr_level.cols = std::max(1, (h + tileside - 1) / tileside);
+		pyr_level.cols = std::max(1, (w + tileside - 1) / tileside);
+		pyr_level.rows = std::max(1, (h + tileside - 1) / tileside);
 		tot_tiles += pyr_level.rows*pyr_level.cols;
 		w = std::max(1, w >> 1);
 		h = std::max(1, h >> 1);

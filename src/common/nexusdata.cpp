@@ -263,7 +263,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				exit(0);
 			}
 
-			//loadImageFromData(data, t);
+			loadImageFromData(data, t);
 
 			/*
 			QImage img;
