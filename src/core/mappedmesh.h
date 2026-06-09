@@ -45,12 +45,13 @@ public:
 	MappedArray<FaceAdjacency> adjacency; // Computed separately
 	MappedArray<Cluster> clusters;        // Computed by clustering (includes bounds)
 
-	// Triangle to cluster mapping (in-memory, not memory-mapped)
-	std::vector<Index> triangle_to_cluster;
+	// Triangle to cluster mapping (memory-mapped)
+	MappedArray<Index> triangle_to_cluster;
 
 	// Micronodes (in-memory, not memory-mapped)
 	std::vector<MicroNode> micronodes;
-	std::vector<NodeTexture> node_textures; // Texture info for each micronode
+	// Texture info for each micronode (memory-mapped)
+	MappedArray<NodeTexture> node_textures;
 
 	std::vector<MacroNode> macronodes;
 

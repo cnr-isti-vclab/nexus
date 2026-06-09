@@ -82,6 +82,39 @@ public:
 
 	void close() { _file.close(); }
 
+	// STL-like helpers to improve compatibility with std::vector usage.
+	T* begin() { return data(); }
+	const T* begin() const { return data(); }
+	T* end() { return data() + size(); }
+	const T* end() const { return data() + size(); }
+
+	bool empty() const { return size() == 0; }
+	void clear() { resize(0); }
+
+	// push_back and assign are implemented using resize and operator[].
+	void push_back(const T& v) {
+		const size_t s = size();
+		resize(s + 1);
+		(*this)[s] = v;
+	}
+
+	void reserve(size_t) { /* no-op for mapped files */ }
+
+	void assign(size_t count, const T& value) {
+		resize(count);
+		for(size_t i = 0; i < count; ++i)
+			(*this)[i] = value;
+	}
+
+	// Assign from a generic container (e.g., std::vector) with element conversion.
+	template <typename Container>
+	void assign_from(const Container& c) {
+		resize(c.size());
+		for (size_t i = 0; i < c.size(); ++i) {
+			(*this)[i] = static_cast<T>(c[i]);
+		}
+	}
+
 private:
 	MappedFile _file;
 };

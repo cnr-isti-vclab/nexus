@@ -99,7 +99,7 @@ float distance_to_triangle(const MappedArray<Vector3f>& positions,
 // Helper: Count shared edges between triangle and a cluster using adjacency
 int count_shared_edges_with_cluster(Index tri_idx,
 									Index cluster_id,
-									const std::vector<Index>& triangle_to_cluster,
+									const MappedArray<Index>& triangle_to_cluster,
 									const MappedArray<FaceAdjacency>& adjacency) {
 	const FaceAdjacency& adj = adjacency[tri_idx];
 	int shared = 0;
@@ -684,10 +684,8 @@ void build_clusters_metis(MappedMesh& mesh, std::size_t max_triangles) {
 		throw std::runtime_error("METIS_PartGraphKway failed with code " + std::to_string(ret));
 	}
 
-	mesh.triangle_to_cluster.resize(num_triangles);
-	for (std::size_t i = 0; i < num_triangles; ++i) {
-		mesh.triangle_to_cluster[i] = static_cast<Index>(part[i]);
-	}
+	// Copy METIS partition result into memory-mapped triangle_to_cluster
+	mesh.triangle_to_cluster.assign_from(part);
 
 	build_clusters_from_partition(mesh, num_partitions);
 }
@@ -893,7 +891,8 @@ void split_initial_clusters(MappedMesh& mesh, std::size_t max_triangles) {
 	for (std::size_t i = 0; i < new_clusters.size(); ++i) {
 		mesh.clusters[i] = new_clusters[i];
 	}
-	mesh.triangle_to_cluster = std::move(new_triangle_to_cluster);
+	// Copy new_triangle_to_cluster into the memory-mapped triangle_to_cluster
+	mesh.triangle_to_cluster.assign_from(new_triangle_to_cluster);
 
 	// Store micronodes
 	mesh.micronodes = std::move(micronodes);

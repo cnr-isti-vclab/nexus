@@ -139,10 +139,8 @@ void build_clusters_metis(MeshFiles& mesh, std::size_t max_triangles) {
 	nx::debug << "METIS partitioning complete. Edge-cut: " << objval << std::endl;
 
 	// Store partition assignments
-	mesh.triangle_to_cluster.resize(num_triangles);
-	for (std::size_t i = 0; i < num_triangles; ++i) {
-		mesh.triangle_to_cluster[i] = static_cast<Index>(part[i]);
-	}
+	// Copy METIS partition result into memory-mapped triangle_to_cluster
+	mesh.triangle_to_cluster.assign_from(part);
 
 	// Count triangles per partition
 	std::vector<Index> partition_sizes(num_partitions, 0);
