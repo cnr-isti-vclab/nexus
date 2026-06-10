@@ -383,30 +383,6 @@ std::vector<uint8_t> rasterize_projected(const MappedMesh& prev_mesh,
 	return raster_mask;
 }
 
-void allocate_node_textures_and_texels(MappedMesh& mesh, int tex_res, int components) {
-	mesh.node_textures.resize(mesh.micronodes.size());
-	std::size_t total_texels = 0;
-	for(std::size_t i = 0; i < mesh.micronodes.size(); ++i) {
-		NodeTexture& node_texture = mesh.node_textures[i];
-		node_texture.offset = total_texels;
-		node_texture.width = tex_res;
-		node_texture.height = tex_res;
-		node_texture.components = components;
-		node_texture.mip_count = 1;
-		total_texels += node_texture_bytes(node_texture);
-	}
-
-	if(mesh.texels.size() == 0) {
-		std::filesystem::path texel_path = mesh.dir / "texels.bin";
-		if(!mesh.texels.open(texel_path.string(), MappedFile::READ_WRITE, total_texels)) {
-			throw std::runtime_error("Could not create texels file: " + texel_path.string());
-		}
-	} else if(mesh.texels.size() != total_texels) {
-		if(!mesh.texels.resize(total_texels)) {
-			throw std::runtime_error("Could not resize texels file");
-		}
-	}
-}
 
 void open_temp_reparam_buffers(std::size_t max_entries,
 							   MappedArray<Wedge>& temp_wedges,
@@ -719,7 +695,7 @@ void reparametrize_initial_clusters(MappedMesh& mesh, std::vector<Material> &mat
 	options.resolution = static_cast<uint32_t>(tex_res);
 	const int components = static_cast<int>(active_slots.size()) * 3;
 
-	allocate_node_textures_and_texels(mesh, tex_res, components);
+	mesh.allocate_node_textures_and_texels(tex_res, components);
 
 	MappedArray<Wedge> temp_wedges;
 	MappedArray<Vector2f> temp_texcoords;
@@ -783,7 +759,7 @@ void reparametrize_clusters(MappedMesh& mesh,
 	options.resolution = static_cast<uint32_t>(tex_res);
 	const int components = static_cast<int>(active_slots.size()) * 3;
 
-	allocate_node_textures_and_texels(next_mesh, tex_res, components);
+	next_mesh.allocate_node_textures_and_texels(tex_res, components);
 
 	MappedArray<Wedge> temp_wedges;
 	MappedArray<Vector2f> temp_texcoords;

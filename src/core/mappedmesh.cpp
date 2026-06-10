@@ -59,4 +59,113 @@ bool MappedMesh::mapDataFiles(MappedFile::Mode mode) {
 	return true;
 }
 
+// Allocate node textures and texels for micronodes
+void MappedMesh::allocate_node_textures_and_texels(int tex_res, int components) {
+	node_textures.resize(micronodes.size());
+	std::size_t total_texels = 0;
+	for(std::size_t i = 0; i < micronodes.size(); ++i) {
+		NodeTexture& node_texture = node_textures[i];
+		node_texture.offset = total_texels;
+		node_texture.width = tex_res;
+		node_texture.height = tex_res;
+		node_texture.components = components;
+		node_texture.mip_count = 1;
+		total_texels += node_texture_bytes(node_texture);
+	}
+
+	if(texels.size() == 0) {
+		std::filesystem::path texel_path = dir / "texels.bin";
+		if(!texels.open(texel_path.string(), MappedFile::READ_WRITE, total_texels)) {
+			throw std::runtime_error("Could not create texels file: " + texel_path.string());
+		}
+	} else if(texels.size() != total_texels) {
+		if(!texels.resize(total_texels)) {
+			throw std::runtime_error("Could not resize texels file");
+		}
+	}
+}
+
+// Save micronodes and macronodes to a JSON file for state persistence
+void MappedMesh::saveState(const std::filesystem::path& filepath) const {
+	using json = nlohmann::json;
+	json j;
+
+	// Serialize micronodes
+	j["micronodes"] = json::array();
+	for (const auto& node : micronodes) {
+		json node_j;
+		node_j["id"] = node.id;
+		node_j["cluster_ids"] = node.cluster_ids;
+		node_j["triangle_count"] = node.triangle_count;
+		node_j["vertex_count"] = node.vertex_count;
+		node_j["centroid"] = {node.centroid.x, node.centroid.y, node.centroid.z};
+		node_j["center"] = {node.center.x, node.center.y, node.center.z};
+		node_j["radius"] = node.radius;
+		node_j["error"] = node.error;
+		j["micronodes"].push_back(node_j);
+	}
+
+	// Serialize macronodes
+	j["macronodes"] = json::array();
+	for (const auto& node : macronodes) {
+		json node_j;
+		node_j["id"] = node.id;
+		node_j["micronode_ids"] = node.micronode_ids;
+		node_j["triangle_count"] = node.triangle_count;
+		node_j["centroid"] = {node.centroid.x, node.centroid.y, node.centroid.z};
+		node_j["center"] = {node.center.x, node.center.y, node.center.z};
+		node_j["radius"] = node.radius;
+		j["macronodes"].push_back(node_j);
+	}
+
+	// Write to file
+	std::ofstream o(filepath.string());
+	o << std::setw(4) << j << std::endl;
+}
+
+// Load micronodes and macronodes from a JSON file
+void MappedMesh::loadState(const std::filesystem::path& filepath) {
+	using json = nlohmann::json;
+	std::ifstream i(filepath.string());
+	if (!i.is_open()) {
+		throw std::runtime_error("Could not open state file for loading: " + filepath.string());
+	}
+	json j;
+	i >> j;
+
+	// Clear existing state
+	micronodes.clear();
+	macronodes.clear();
+
+	// Load micronodes
+	if (j.contains("micronodes") && j["micronodes"].is_array()) {
+		for (const auto& node_j : j["micronodes"]) {
+			MicroNode node;
+			node.id = node_j["id"].get<Index>();
+			node.cluster_ids = node_j["cluster_ids"].get<std::vector<Index>>();
+			node.triangle_count = node_j["triangle_count"].get<Index>();
+			node.vertex_count = node_j["vertex_count"].get<Index>();
+			node.centroid = {node_j["centroid"][0].get<float>(), node_j["centroid"][1].get<float>(), node_j["centroid"][2].get<float>()};
+			node.center = {node_j["center"][0].get<float>(), node_j["center"][1].get<float>(), node_j["center"][2].get<float>()};
+			node.radius = node_j["radius"].get<float>();
+			node.error = node_j["error"].get<float>();
+			micronodes.push_back(node);
+		}
+	}
+
+	// Load macronodes
+	if (j.contains("macronodes") && j["macronodes"].is_array()) {
+		for (const auto& node_j : j["macronodes"]) {
+			MacroNode node;
+			node.id = node_j["id"].get<Index>();
+			node.micronode_ids = node_j["micronode_ids"].get<std::vector<Index>>();
+			node.triangle_count = node_j["triangle_count"].get<Index>();
+			node.centroid = {node_j["centroid"][0].get<float>(), node_j["centroid"][1].get<float>(), node_j["centroid"][2].get<float>()};
+			node.center = {node_j["center"][0].get<float>(), node_j["center"][1].get<float>(), node_j["center"][2].get<float>()};
+			node.radius = node_j["radius"].get<float>();
+			macronodes.push_back(node);
+		}
+	}
+}
+
 }

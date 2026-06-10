@@ -2,7 +2,11 @@
 #define NX_MAPPEDMESH_H
 
 #include "basemesh.h"
+#include "mesh_types.h"
 #include <mutex>
+#include "json.hpp"
+#include <fstream>
+#include <iomanip>
 
 namespace nx {
 
@@ -28,6 +32,7 @@ public:
 	MappedMesh();
 	~MappedMesh();
 
+	std::filesystem::path dir;
 	std::mutex lock;
 	Aabb bounds{{0,0,0}, {0,0,0}};
 
@@ -59,15 +64,18 @@ public:
 
 	// Create empty files; callers typically resize afterwards.
 	bool create(const std::filesystem::path& dir);
-
 	void close();
 
+	// State persistence for resumable builds
+	void saveState(const std::filesystem::path& filepath) const;
+	void loadState(const std::filesystem::path& filepath);
 
-	std::filesystem::path dir;
+	// Allocate node textures and texels for micronodes
+	void allocate_node_textures_and_texels(int tex_res, int components);
+
 private:
-
-	std::filesystem::path pathFor(const char* fname) const { return dir / fname; }
 	bool mapDataFiles(MappedFile::Mode mode);
+	std::filesystem::path pathFor(const char* fname) const { return dir / fname; }
 };
 
 

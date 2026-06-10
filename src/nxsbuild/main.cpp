@@ -6,6 +6,7 @@
 #include <QLocale>
 
 #include "build_parameters.h"
+#include "../core/json.hpp"
 #include "../core/mappedmesh.h"
 #include "../core/material.h"
 #include "../core/mesh_hierarchy.h"
@@ -39,14 +40,44 @@ int main(int argc, char *argv[]) {
 	std::string input_file = params.inputs.first().toStdString();
 
 	try {
-		// Load the base mesh
-		nx::MappedMesh *mesh = new nx::MappedMesh();
-		std::vector<nx::Material> materials;
-		nx::load_mesh(fs::path(input_file), *mesh, materials);
+			nx::MeshHierarchy hierarchy;
 
-		// Initialize hierarchy with the preprocessed base mesh
-		nx::MeshHierarchy hierarchy;
-		hierarchy.initialize(mesh, materials);
+			if (params.resume) {
+				// Resume: read levels.json in current directory
+				using json = nlohmann::json;
+				std::ifstream in("levels.json");
+				if (!in.is_open()) {
+					throw std::runtime_error("Could not open levels.json in current directory for resume");
+				}
+				json j; in >> j;
+				if (!j.contains("levels") || !j["levels"].is_array()) {
+					throw std::runtime_error("Invalid levels.json: missing 'levels' array");
+				}
+
+				for (const auto &entry : j["levels"]) {
+					if (!entry.contains("dir")) continue;
+					std::string dir = entry["dir"].get<std::string>();
+					nx::MappedMesh *m = new nx::MappedMesh();
+					// Use existing directory
+					if (!m->create(std::filesystem::path(dir))) {
+						throw std::runtime_error("Failed to open mapped mesh directory: " + dir);
+					}
+					// load saved state if present
+					std::filesystem::path statep = std::filesystem::path(dir) / "state.json";
+					if (std::filesystem::exists(statep)) {
+						try { m->loadState(statep); } catch (...) { /* ignore load errors */ }
+					}
+					hierarchy.levels.push_back(m);
+				}
+			} else {
+				// Load the base mesh
+				nx::MappedMesh *mesh = new nx::MappedMesh();
+				std::vector<nx::Material> materials;
+				nx::load_mesh(fs::path(input_file), *mesh, materials);
+
+				// Initialize hierarchy with the preprocessed base mesh
+				hierarchy.initialize(mesh, materials);
+			}
 
 		// Build the complete hierarchy
 		nx::log << "Building mesh hierarchy..." << std::endl;

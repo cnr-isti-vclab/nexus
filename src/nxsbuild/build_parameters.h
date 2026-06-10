@@ -68,6 +68,9 @@ public:
 	int num_threads = 0;             // Number of worker threads
 	Verbosity verbosity = Verbosity::Default; // Logging verbosity
 
+	// Resume build
+	bool resume = false;             // Resume from previous run (use levels.json)
+
 	/**
      * @brief Default constructor with default values
 	 */

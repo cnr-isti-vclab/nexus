@@ -51,6 +51,9 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	parser.addOption({{"j", "threads"}, "Number of threads [4]", "n", "4"});
 	parser.addOption({{"V", "verbosity"}, "Logging verbosity: silent|default|verbose", "level", "default"});
 
+	// Resume option
+	parser.addOption({{"", "resume"}, "Resume build from existing levels.json in current directory"});
+
 	// Add positional arguments
 	parser.addPositionalArgument("inputs", "Input mesh file(s)", "<input files>");
 
@@ -171,6 +174,9 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 
 	// Get positional arguments (input files)
 	inputs = parser.positionalArguments();
+
+	// Resume flag
+	resume = parser.isSet("resume");
 
 	if (inputs.isEmpty()) {
 		std::cerr << "Error: no input files specified\n";

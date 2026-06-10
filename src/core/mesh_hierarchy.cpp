@@ -3,6 +3,8 @@
 #include "adjacency.h"
 #include "clustering.h"
 #include "micro_clustering.h"
+#include "json.hpp"
+#include <fstream>
 
 #include "../nxsbuild/build_parameters.h"
 #include "../nxsbuild/merge_simplify_split.h"
@@ -29,6 +31,28 @@
 namespace nx {
 
 namespace {
+
+static void save_levels_list(const std::vector<MappedMesh *>& levels) {
+	if (levels.empty())
+		return;
+	using json = nlohmann::json;
+	json j;
+	j["levels"] = json::array();
+	for (size_t i = 0; i < levels.size(); ++i) {
+		json e;
+		e["level"] = static_cast<int>(i);
+		e["dir"] = levels[i] ? levels[i]->dir.string() : std::string();
+		j["levels"].push_back(e);
+	}
+	std::filesystem::path out = levels[0]->dir / "levels.json";
+	std::ofstream o(out.string());
+	if (o) {
+		o << std::setw(4) << j << std::endl;
+		nx::log << "Saved levels list to " << out << std::endl;
+	} else {
+		nx::log << "Warning: could not write levels list to " << out << std::endl;
+	}
+}
 
 inline Vector3f add(const Vector3f& a, const Vector3f& b) {
 	return {a.x + b.x, a.y + b.y, a.z + b.z};
@@ -799,6 +823,13 @@ void MeshHierarchy::initialize(MappedMesh *base_mesh, std::vector<Material> &_ma
 	validate_normals_for_mapped_mesh(*base_mesh, "initial");
 
 	levels.push_back(base_mesh);
+
+	// Save list of levels
+	try {
+		save_levels_list(levels);
+	} catch (const std::exception &e) {
+		nx::log << "Warning: could not save levels list: " << e.what() << std::endl;
+	}
 }
 
 void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
@@ -816,14 +847,27 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 		assert(w.n < mesh.normals.size());
 	}
 
-	nx::build_initial_clusters(mesh, max_triangles*params.clusters_per_node,
+	// Use explicit resume flag: when resuming skip initial clustering.
+	if (!params.resume) {
+		nx::build_initial_clusters(mesh, max_triangles*params.clusters_per_node,
 					   params.use_greedy ? nx::ClusteringMethod::Greedy : nx::ClusteringMethod::Metis);
 
-	//split each cluster in N clusters and create a micronode
-	nx::split_initial_clusters(mesh, max_triangles);
+		//split each cluster in N clusters and create a micronode
+		nx::split_initial_clusters(mesh, max_triangles);
 
-	// Reparametrize all clusters after initial split
-	reparametrize_initial_clusters(mesh, materials);
+		// Reparametrize all clusters after initial split
+		reparametrize_initial_clusters(mesh, materials);
+
+		// Save state after initial clustering / reparametrization
+		try {
+			mesh.saveState(mesh.dir / "state.json");
+			nx::log << "Saved post-initialization state to " << (mesh.dir / "state.json") << std::endl;
+		} catch (const std::exception &e) {
+			nx::log << "Warning: could not save post-initialization state: " << e.what() << std::endl;
+		}
+	} else {
+		nx::log << "Resume requested: skipping initial clustering." << std::endl;
+	}
 
 
 	for(size_t i = 0; i < mesh.wedges.size(); i++) {
@@ -855,6 +899,22 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 		process_level(current, *next_level, params);
 		
 		levels.push_back(next_level);
+
+		// Save state for the newly created level
+		try {
+			int level_index = static_cast<int>(levels.size()) - 1;
+			next_level->saveState(next_level->dir / "state.json");
+			nx::log << "Saved state for level " << level_index << " to " << (next_level->dir / "state.json") << std::endl;
+		} catch (const std::exception &e) {
+			nx::log << "Warning: could not save state for new level: " << e.what() << std::endl;
+		}
+
+		// Update levels list JSON
+		try {
+			save_levels_list(levels);
+		} catch (const std::exception &e) {
+			nx::log << "Warning: could not save levels list: " << e.what() << std::endl;
+		}
 	}
 }
 
