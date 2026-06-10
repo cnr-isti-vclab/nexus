@@ -67,7 +67,7 @@ public:
 	void close();
 
 	// State persistence for resumable builds
-	void saveState(const std::filesystem::path& filepath) const;
+	void saveState(const std::filesystem::path& filepath);
 	void loadState(const std::filesystem::path& filepath);
 
 	// Allocate node textures and texels for micronodes

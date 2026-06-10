@@ -29,6 +29,9 @@ public:
 
 	void initialize(MappedMesh *base_mesh, std::vector<Material> &_materials);
 	void build_hierarchy(const BuildParameters& params);
+
+	// Resume hierarchy levels from a `levels.json` file
+	void resumeFromLevelsJson(const std::filesystem::path& levels_path = "levels.json");
 	
 private:
 	void process_level(MappedMesh& mesh, MappedMesh& next_mesh, const BuildParameters &params);

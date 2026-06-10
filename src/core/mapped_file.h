@@ -33,6 +33,9 @@ public:
 	static std::string makeTempPath(const std::string& folder, const std::string& prefix);
 	void close();
 
+	// Ensure any in-memory mappings are flushed to disk
+	bool sync();
+
 	// Pointers obtained via data() become invalid!
 	bool resize(size_t new_size);
 
@@ -64,6 +67,9 @@ public:
 	bool open(const std::string& filename, MappedFile::Mode mode, size_t count = 0) {
 		return _file.open(filename, mode, count * sizeof(T));
 	}
+
+	// Ensure mapped contents are flushed to disk
+	bool sync() { return _file.sync(); }
 
 	// Direct access (unsafe if bounds unchecked, but fast)
 	T* data() const { return static_cast<T*>(_file.data()); }

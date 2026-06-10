@@ -277,6 +277,25 @@ void MappedFile::close() {
 	}
 }
 
+bool MappedFile::sync() {
+#ifdef _WIN32
+	if (!_data) return true;
+	// Flush view and file buffers
+	if (!FlushViewOfFile(_data, _size)) return false;
+	if (_impl && _impl->hFile != INVALID_HANDLE_VALUE) {
+		return FlushFileBuffers(_impl->hFile) != 0;
+	}
+	return true;
+#else
+	if (!_data) return true;
+	if (msync(_data, _size, MS_SYNC) == -1) return false;
+	if (_impl && _impl->fd != -1) {
+		if (fsync(_impl->fd) == -1) return false;
+	}
+	return true;
+#endif
+}
+
 bool MappedFile::resize(size_t new_size) {
 	if (!_impl) return false;
 	if (_impl->mode == READ_ONLY) return false;

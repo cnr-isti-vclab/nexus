@@ -10,7 +10,7 @@ namespace nx {
 class TextureCache;
 
 struct ParametrizationOptions {
-	uint32_t padding = 0;
+	uint32_t padding = 2;
 	float texels_per_unit = 1.0f;
 	uint32_t resolution = 1024;
 	bool use_bruteforce = true;

@@ -75,11 +75,11 @@ struct MicroNode {
     Index id;                           // MicroNode index
     std::vector<Index> cluster_ids;     // Cluster indices belonging to this micronode
     Index triangle_count;               // Total number of triangles across all clusters
-	Index vertex_count;
+    Index vertex_count;
     Vector3f centroid;                  // Weighted spatial center
     Vector3f center;                    // Bounding sphere center
     float radius;                       // Bounding sphere radius
-	float error;
+    float error;
 };
 
 //the material defines how many components and which textures are stored here.

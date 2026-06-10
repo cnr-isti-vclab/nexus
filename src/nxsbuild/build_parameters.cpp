@@ -32,6 +32,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	parser.addOption({{"q", "vertex-quantization"}, "Vertex quantization [0]", "f", "0"});
 	parser.addOption({{"T", "texture-format"}, "Texture format: jpeg|webp|basis|bc7|etc2 [jpeg]", "format", "jpeg"});
 	parser.addOption({{"Q", "texture-quality"}, "Quality for lossy formats [95]", "n", "95"});
+	parser.addOption({{"P", "texture-padding"}, "Padding between charts in pixels", "n", "2"});
 
 	// Format options
 	parser.addOption({{"n", "normals"}, "Force per-vertex normals"});

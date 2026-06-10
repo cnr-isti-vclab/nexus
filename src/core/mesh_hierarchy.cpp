@@ -28,6 +28,8 @@
 #include <limits>
 #include "../core/log.h"
 
+#include <stdexcept>
+
 namespace nx {
 
 namespace {
@@ -44,13 +46,12 @@ static void save_levels_list(const std::vector<MappedMesh *>& levels) {
 		e["dir"] = levels[i] ? levels[i]->dir.string() : std::string();
 		j["levels"].push_back(e);
 	}
-	std::filesystem::path out = levels[0]->dir / "levels.json";
+	std::filesystem::path out = "levels.json";
 	std::ofstream o(out.string());
 	if (o) {
 		o << std::setw(4) << j << std::endl;
-		nx::log << "Saved levels list to " << out << std::endl;
 	} else {
-		nx::log << "Warning: could not write levels list to " << out << std::endl;
+		throw std::runtime_error(std::string("Could not write levels list to ") + out.string());
 	}
 }
 
@@ -796,6 +797,32 @@ MeshHierarchy::~MeshHierarchy() {
 	levels.clear();
 }
 
+void MeshHierarchy::resumeFromLevelsJson(const std::filesystem::path& levels_path) {
+	using json = nlohmann::json;
+	std::ifstream in(levels_path.string());
+	if (!in.is_open()) {
+		throw std::runtime_error(std::string("Could not open ") + levels_path.string() + " for resume");
+	}
+	json j; in >> j;
+	if (!j.contains("levels") || !j["levels"].is_array()) {
+		throw std::runtime_error("Invalid levels.json: missing 'levels' array");
+	}
+
+	for (const auto &entry : j["levels"]) {
+		if (!entry.contains("dir")) continue;
+		std::string dir = entry["dir"].get<std::string>();
+		MappedMesh *m = new MappedMesh();
+		if (!m->create(std::filesystem::path(dir))) {
+			throw std::runtime_error(std::string("Failed to open mapped mesh directory: ") + dir);
+		}
+		std::filesystem::path statep = std::filesystem::path(dir) / "state.json";
+		if (std::filesystem::exists(statep)) {
+			try { m->loadState(statep); } catch (...) { /* ignore load errors */ }
+		}
+		levels.push_back(m);
+	}
+}
+
 void MeshHierarchy::initialize(MappedMesh *base_mesh, std::vector<Material> &_materials) {
 	materials = _materials;
 	texture_slots.clear();
@@ -861,6 +888,7 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 		// Save state after initial clustering / reparametrization
 		try {
 			mesh.saveState(mesh.dir / "state.json");
+			save_levels_list(levels);
 			nx::log << "Saved post-initialization state to " << (mesh.dir / "state.json") << std::endl;
 		} catch (const std::exception &e) {
 			nx::log << "Warning: could not save post-initialization state: " << e.what() << std::endl;

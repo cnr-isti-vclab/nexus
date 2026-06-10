@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <filesystem>
+#include <sstream>
 
 
 namespace nx {
@@ -38,6 +39,9 @@ void MappedMesh::close() {
 	material_ids.close();
 	adjacency.close();
 	clusters.close();
+	triangle_to_cluster.close();
+	node_textures.close();
+	texels.close();
 
 	if(!dir.empty())
 		std::filesystem::remove_all(dir);
@@ -56,6 +60,9 @@ bool MappedMesh::mapDataFiles(MappedFile::Mode mode) {
 	if (!material_ids.open(pathFor("material_ids.bin").string(), mode, 0)) return false;
 	if (!adjacency.open(pathFor("adjacency.bin").string(), mode, 0)) return false;
 	if (!clusters.open(pathFor("clusters.bin").string(), mode, 0)) return false;
+	if (!triangle_to_cluster.open(pathFor("triangle_to_cluster.bin").string(), mode, 0)) return false;
+	if (!node_textures.open(pathFor("node_textures.bin").string(), mode, 0)) return false;
+	if (!texels.open(pathFor("texels.bin").string(), mode, 0)) return false;
 	return true;
 }
 
@@ -73,12 +80,7 @@ void MappedMesh::allocate_node_textures_and_texels(int tex_res, int components) 
 		total_texels += node_texture_bytes(node_texture);
 	}
 
-	if(texels.size() == 0) {
-		std::filesystem::path texel_path = dir / "texels.bin";
-		if(!texels.open(texel_path.string(), MappedFile::READ_WRITE, total_texels)) {
-			throw std::runtime_error("Could not create texels file: " + texel_path.string());
-		}
-	} else if(texels.size() != total_texels) {
+	if(texels.size() != total_texels) {
 		if(!texels.resize(total_texels)) {
 			throw std::runtime_error("Could not resize texels file");
 		}
@@ -86,7 +88,7 @@ void MappedMesh::allocate_node_textures_and_texels(int tex_res, int components) 
 }
 
 // Save micronodes and macronodes to a JSON file for state persistence
-void MappedMesh::saveState(const std::filesystem::path& filepath) const {
+void MappedMesh::saveState(const std::filesystem::path& filepath) {
 	using json = nlohmann::json;
 	json j;
 
@@ -118,9 +120,24 @@ void MappedMesh::saveState(const std::filesystem::path& filepath) const {
 		j["macronodes"].push_back(node_j);
 	}
 
-	// Write to file
-	std::ofstream o(filepath.string());
-	o << std::setw(4) << j << std::endl;
+	// Write to file and ensure data is flushed to disk.
+	std::ostringstream ss;
+	ss << std::setw(4) << j << std::endl;
+	const std::string out_str = ss.str();
+
+	// Ensure all mapped files are flushed to disk so we can recover after a crash
+	positions.sync();
+	colors.sync();
+	normals.sync();
+	texcoords.sync();
+	wedges.sync();
+	triangles.sync();
+	material_ids.sync();
+	adjacency.sync();
+	clusters.sync();
+	triangle_to_cluster.sync();
+	node_textures.sync();
+	texels.sync();
 }
 
 // Load micronodes and macronodes from a JSON file
@@ -166,6 +183,11 @@ void MappedMesh::loadState(const std::filesystem::path& filepath) {
 			macronodes.push_back(node);
 		}
 	}
+	mapDataFiles(MappedFile::READ_WRITE);
+	has_colors = colors.size() > 0;
+	has_normals = normals.size() > 0;
+	has_textures = texcoords.size() > 0;
+
 }
 
 }
