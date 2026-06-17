@@ -342,8 +342,13 @@ Mesh.prototype = {
 				mesh.corto = (mesh.signature.flags & 4);
 				if(mesh.deepzoom)
 					mesh.baseurl = url.substr(0, url.length -4) + '_files/';
+				// Prefer the server's ETag if available
+				var etag = this.getResponseHeader && this.getResponseHeader('ETag');
+				var signature = etag
+					? 'etag:' + etag
+					: 'counts:' + [mesh.version, mesh.verticesCount, mesh.facesCount, mesh.nodesCount, mesh.patchesCount].join(':');
 				// Validate (and if needed reset) the IndexedDB chunk cache.
-				mesh.openCache(function() { mesh.requestIndex(); });
+				mesh.openCache(signature, function() { mesh.requestIndex(); });
 			},
 			error:function() { console.log("Open request error!");},
 			abort:function() { console.log("Open request abort!");},
@@ -351,17 +356,15 @@ Mesh.prototype = {
 		});
 	},
 
-	/** 
-	 * Open cache database and ensure freshness
-	 * using available data about the mesh that _should_ change if it is rebuilt
+	/**
+	 * Open cache database and ensure freshness against the supplied opaque
+	 * `signature` string (ETag-derived when available, header counts otherwise).
 	 */
-	openCache: function(done) {
+	openCache: function(signature, done) {
 		var mesh = this;
 		var idb = typeof window !== "undefined" &&
 			(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB);
 		if(!mesh.useIndexedDb || !idb) { done(); return; }
-
-		var signature = [mesh.version, mesh.verticesCount, mesh.facesCount, mesh.nodesCount, mesh.patchesCount].join(":");
 
 		var request;
 		try { request = idb.open(mesh.url, 2); }
