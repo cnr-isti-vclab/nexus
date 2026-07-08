@@ -98,12 +98,12 @@ int main(int argc, char *argv[]) {
 	bool read_only = true;
 
 	try {
-		if(!nexus.open(inputs[0].toLatin1())) {
+		if(!nexus.open(inputs[0].toUtf8())) {
 			cerr << "Could not open file " << qPrintable(inputs[0]) << endl;
 			return 0;
 		}
 
-		cout << "Reading " << qPrintable(inputs[0].toLatin1()) << endl;
+		cout << "Reading " << qPrintable(inputs[0]) << endl;
 
 		if(compress && output.isEmpty()) {
 			output = inputs[0].left(inputs[0].length()-4) + ".nxz";
