@@ -6,10 +6,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(USE_VCG_SIMPLIFIER "Use the VCG mesh simplifier instead of Trueform" OFF)
+
 set(SOURCES
 	main.cpp
 	build_parameters.cpp
 	merge_simplify_split.cpp
+	simplify_true.cpp
+	simplify_vcg.cpp
 	export_nxs.cpp
 	../texture/parametrization.cpp
 	../texture/xatlas.cpp
@@ -78,7 +82,15 @@ add_executable(nxsbuild ${SOURCES} ${HEADERS}
 find_package(Qt6 COMPONENTS Core Gui REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(PNG  REQUIRED)
+include(FetchContent)
 
+FetchContent_Declare(
+  trueform
+  GIT_REPOSITORY https://github.com/polydera/trueform.git
+  GIT_TAG        main
+)
+
+FetchContent_MakeAvailable(trueform)
 # Add METIS library paths
 target_include_directories(nxsbuild PRIVATE 
     ../core
@@ -91,6 +103,6 @@ target_include_directories(nxsbuild PRIVATE
 )
 
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
-target_link_libraries(nxsbuild PRIVATE metis Qt6::Core Qt6::Gui ${JPEG_LIBRARIES} ${PNG_LIBRARIES} draco)
+target_link_libraries(nxsbuild PRIVATE metis Qt6::Core Qt6::Gui ${JPEG_LIBRARIES} ${PNG_LIBRARIES} draco tf::trueform)
 
 install(TARGETS nxsbuild DESTINATION bin)

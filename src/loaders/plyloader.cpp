@@ -236,6 +236,7 @@ void PlyLoader::load(MappedMesh& mesh, std::vector<Material> &_materials) {
 		else
 			mesh.texcoords.resize(n_triangles*3);
 	}
+	mesh.wedges.clear();
 	if(has_wedge_tex_coords)
 		mesh.wedges.resize(n_triangles*3);
 	else

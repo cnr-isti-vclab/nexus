@@ -6,6 +6,9 @@
 
 #include "../core/nodemesh.h"
 #include "../core/material.h"
+
+//#define USE_VCG_SIMPLIFIER 1
+
 namespace nx {
 
 class MappedMesh;

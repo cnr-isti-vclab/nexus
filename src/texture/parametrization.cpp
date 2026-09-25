@@ -790,7 +790,7 @@ void reparametrize_clusters(MappedMesh& mesh,
 			std::vector<uint8_t> raster_mask = rasterize_projected(mesh, source_clusters, destination, active_slots, tex_res);
 			pushPullFillUnwrittenPixels(tex_res, tex_res, destination.tilemap.texels, raster_mask, materials);
 
-			export_iobj(destination, materials, "projected_cluster_" + std::to_string(micro_id) + ".obj");
+			//export_iobj(destination, materials, "projected_cluster_" + std::to_string(micro_id) + ".obj");
 
 			{
 				std::lock_guard<std::mutex> lock(write_lock);

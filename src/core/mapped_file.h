@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
+#include <new>
 
 namespace nx {
 
@@ -80,10 +81,17 @@ public:
 	size_t byteSize() const { return _file.size(); }
 
 	bool resize(size_t count) {
-		return _file.resize(count * sizeof(T));
+		const size_t old_count = size();
+		if (!_file.resize(count * sizeof(T))) return false;
+		if (count > old_count) {
+			char* bytes = static_cast<char*>(_file.data());
+			for (size_t i = old_count; i < count; ++i)
+				::new (static_cast<void*>(bytes + i * sizeof(T))) T();
+		}
+		return true;
 	}
 	bool grow(size_t count) {
-		return _file.resize(count*sizeof(T) + _file.size());
+		return resize(size() + count);
 	}
 
 	void close() { _file.close(); }

@@ -204,6 +204,7 @@ bool MappedFile::open(const std::string& filename, Mode mode, size_t size) {
 		_impl->fd = temp.fd;
 	} else {
 		_impl->fd = ::open(filename.c_str(), flags, 0666);
+		if (_impl->fd == -1) perror(filename.c_str());
 		assert(_impl->fd != -1 && "open failed");
 		if (_impl->fd == -1) return false;
 	}

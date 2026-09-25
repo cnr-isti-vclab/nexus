@@ -870,7 +870,7 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	for(size_t i = 0; i < mesh.wedges.size(); i++) {
 		Wedge &w = mesh.wedges[i];
 		assert(w.p < mesh.positions.size());
-		assert(w.t < mesh.texcoords.size());
+		assert(w.t == NONE || w.t < mesh.texcoords.size());
 		assert(w.n < mesh.normals.size());
 	}
 
@@ -901,7 +901,7 @@ void MeshHierarchy::build_hierarchy(const BuildParameters& params) {
 	for(size_t i = 0; i < mesh.wedges.size(); i++) {
 		Wedge &w = mesh.wedges[i];
 		assert(w.p < mesh.positions.size());
-		assert(w.t < mesh.texcoords.size());
+		assert(w.t == NONE || w.t < mesh.texcoords.size());
 		assert(w.n < mesh.normals.size());
 	}
 
@@ -1038,7 +1038,7 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 	for(size_t i = 0; i < next_mesh.wedges.size(); i++) {
 		Wedge &w = next_mesh.wedges[i];
 		assert(w.p < next_mesh.positions.size());
-		assert(w.t < next_mesh.texcoords.size());
+		assert(w.t == NONE || w.t < next_mesh.texcoords.size());
 		assert(w.n < next_mesh.normals.size());
 	}
 	//TODO make sure normals are empty until we compute them.
