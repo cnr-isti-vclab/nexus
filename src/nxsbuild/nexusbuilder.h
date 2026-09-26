@@ -111,11 +111,8 @@ public:
 	QMutex m_output;    //locks output stream stream when building nodes multithread
 	QMutex m_builder;   //locks builders data (patches, etc.)
 	QMutex m_chunks;    //locks builder chunks (the cache)
-	QMutex m_atlas;     //locks atlas (the cache)
-	QMutex m_texsimply;     //locks the temporary data simplification structure for texture. (UGH)
-
-
-	QMutex m_textures;  //locks  texture temporary file
+	QMutex m_texsimply; //locks the temporary data simplification structure for texture. (UGH)
+	QMutex m_textures;  //locks texture temporary file
 
 	// Graceful exits from the thread pool
 	std::atomic<bool> abort_requested{false};

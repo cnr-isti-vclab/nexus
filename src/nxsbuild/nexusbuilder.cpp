@@ -421,7 +421,6 @@ QImage NexusBuilder::extractNodeTex(TMesh &mesh, int level, float &error, float 
 	}
 
 	{
-		QMutexLocker locker(&m_atlas);
 		//	static int boxid = 0;
 		QPainter painter(&image);
 		//convert tex coordinates using mapping

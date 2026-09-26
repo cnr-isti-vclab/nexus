@@ -5,6 +5,8 @@
 #include <QString>
 #include <QImage>
 #include <QTemporaryFile>
+#include <QMutex>
+#include <list>
 #include "meshloader.h"
 
 namespace nx {
@@ -64,9 +66,9 @@ public:
 	};
 	struct RamData {
 		QImage image;
-		uint32_t access;
+		std::list<Index>::iterator lru;   //position in the LRU list (front = most recent)
 		RamData() {}
-		RamData(QImage img, uint32_t a): image(img), access(a) {}
+		RamData(QImage img): image(img) {}
 	};
 	struct DiskData {
 		uint64_t offset;
@@ -80,7 +82,6 @@ public:
 	int quality = 92;
 	uint64_t cache_max = 2000000000;
 	uint64_t cache_size = 0;
-	uint64_t access = 1;
 
 	TexAtlas() {}
 
@@ -99,8 +100,18 @@ public:
 
 	std::map<Index, RamData> ram;
 	std::map<Index, DiskData> disk;
+	std::list<Index> lru_list;        //front = most-recently-used, back = LRU eviction candidate
 
 	QTemporaryFile storage;
+
+	//cache_lock guards ram/disk/lru_list/cache_size/storage so tiles can be
+	//decoded concurrently by the texture-extraction worker threads.
+	QMutex cache_lock;
+
+private:
+	//helpers that assume cache_lock is already held by the caller
+	void addImgLocked(Index index, const QImage &img);
+	void pruneCacheLocked();
 };
 
 } //namespace
