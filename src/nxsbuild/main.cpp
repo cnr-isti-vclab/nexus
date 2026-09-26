@@ -38,6 +38,10 @@ int main(int argc, char *argv[]) {
 	QCoreApplication myUselessApp(argc, argv);
 	setlocale(LC_ALL, "C");
 	QLocale::setDefault(QLocale::C);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+	// Qt6 rejects images over 256 MB decoded (i.e. larger than 8K); 0 disables the limit.
+	QImageReader::setAllocationLimit(0);
+#endif
 
 	int node_size = 1<<15;
 	float texel_weight =0.05; //relative weight of texels.
