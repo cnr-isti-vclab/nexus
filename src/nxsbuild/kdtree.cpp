@@ -365,11 +365,14 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 double KDTreeSoup::weight(Triangle &t) {
 	if(textures.size() == 0)
 		return 0;
+
+	if(t.tex < 0 || size_t(t.tex) >= textures.size())
+		return 0;
+
 	Vertex &v0 = t.vertices[0];
 	Vertex &v1 = t.vertices[1];
 	Vertex &v2 = t.vertices[2];
 
-	//TODO deal with negative tex values (or > width/height;
 	double w = double(textures[t.tex].width);
 	double h = double(textures[t.tex].height);
 	double area = fabs(((v1.t[0] - v0.t[0])*(v2.t[1] - v0.t[1]) - (v2.t[0] - v0.t[0])*(v1.t[1] - v0.t[1])))/2.0;
