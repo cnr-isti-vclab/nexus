@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
 	bool useOrigTex = false;
 	bool create_pow_two_tex = false;
 	bool deepzoom = false;
+	bool no_heuristic = false;
 
 	//BTREE options
 	QVariant adaptive(0.333f);
@@ -118,6 +119,7 @@ int main(int argc, char *argv[]) {
 	opt.addSwitch('C', "colors", "save vertex colors", &colors);
 	opt.addSwitch('c', "no colors", "do not store per vertex colors", &no_colors);
 	opt.addSwitch('u', "no textures", "do not store textures and vertex texture coordinates", &no_texcoords);
+	opt.addSwitch('H', "no heuristic", "skip the check predicting the 'fragmented parametrization' abort", &no_heuristic);
 
 
 	//other options
@@ -297,6 +299,31 @@ int main(int argc, char *argv[]) {
 		if(has_textures && !no_texcoords) {
 			components |= NexusBuilder::TEXTURES;
 			cout << "Textures enabled\n";
+		}
+
+		StreamSoup *soup = dynamic_cast<StreamSoup *>(stream);
+		if((components & NexusBuilder::TEXTURES) && soup && soup->size() && !no_heuristic) {
+			//The build aborts when a node has more than 60000 vertices after splitting texture seams.
+			//Leaf nodes hold node_size faces, and since seams resist simplification the count roughly
+			//doubles at coarser levels (factor fitted on 66 photogrammetric models, 7 aborts).
+			const double max_vertices = 60000;
+			const double seam_growth = 2.0;
+			double uv_per_face = soup->estimatedUvVertices()/soup->size();
+			double predicted = seam_growth*node_size*uv_per_face;
+			cout << "UV vertices per face: " << qPrintable(QString::number(uv_per_face, 'f', 3))
+				 << ", predicted peak node vertices: " << (int)predicted << " (max " << (int)max_vertices << ")\n";
+			if(predicted > max_vertices) {
+				int suggested = int(max_vertices/(seam_growth*uv_per_face))/1024*1024;
+				QString msg = QString("Fragmented parametrization: the build will likely abort after most of the work is done.\n");
+				if(suggested >= 1024) {
+				    msg += QString("Try -f %1 (or lower).\n").arg(suggested);
+				} else {
+				    msg += "Reducing -f is unlikely to help: reparametrize the mesh (e.g. texture-defrag).\n";
+				}
+				msg += "To verify, run the same command adding -O (no texture repacking): it reaches the abort\n"
+					   "much faster. Use -H to skip this check.";
+				throw msg;
+			}
 		}
 
 		//WORKAROUND to save loading textures not needed

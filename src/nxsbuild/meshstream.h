@@ -87,10 +87,18 @@ public:
 	Soup streamTriangles();
 	quint64 size() { return VirtualTriangleSoup::size(); }
 	void setMaxMemory(quint64 m) { return VirtualTriangleSoup::setMaxMemory(m); }
+	//estimated number of distinct (position, texcoord, texture) corners in the loaded meshes (HyperLogLog, ~1% error)
+	double estimatedUvVertices() const;
 
 protected:    
 	void flush() { VirtualTriangleSoup::flush(); }
 	void loadMesh(MeshLoader *loader);
+	void countUvVertex(const Vertex &v, int tex);
+	//the top UvVerticesHllBits of the hash pick a register, which keeps the longest run of leading zeros seen in the remaining bits
+	//error ~1.04/sqrt(registers), which for 14 is ~1%
+	static constexpr auto UvVerticesHllBits = 14;
+	//2^UvVerticesHllBits HyperLogLog registers
+	std::vector<quint8> uv_vertices_hll = std::vector<quint8>(1<<UvVerticesHllBits, 0);
 	void clearVirtual();
 	quint64 addBlock(quint64 level); //return index of block added
 

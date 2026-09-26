@@ -15,6 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
+#include <cmath>
 #include <QDebug>
 #include <QFileInfo>
 
@@ -181,10 +182,59 @@ void StreamSoup::loadMesh(MeshLoader *loader) {
 		if(count == 0) break;
 		for(int i = 0; i < count; i++) {
 			assert(triangles[i].node == 0);
+			for(int k = 0; k < 3; k++)
+				countUvVertex(triangles[i].vertices[k], triangles[i].tex);
 			pushTriangle(triangles[i]);
 		}
 	}
 	delete []triangles;
+}
+
+//count distinct corners with HyperLogLog
+void StreamSoup::countUvVertex(const Vertex &v, const int tex) {
+	//hash `FNV-1a` over the fields TMesh::splitSeams compares
+	auto h = 14695981039346656037ull;
+	auto fnv = [&h](const void *data, const size_t n) {
+		const auto b = static_cast<const uchar *>(data);
+		for(size_t i = 0; i < n; i++)
+			h = (h ^ b[i]) * 1099511628211ull;
+	};
+	fnv(v.v, sizeof(v.v));
+	fnv(v.t, sizeof(v.t));
+	fnv(&tex, sizeof(tex));
+
+	//finalizer `splitmix64` as FNV mixes the high bits poorly but HyperLogLog uses them
+	auto finalize = [](quint64 x) {
+		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ull;
+		x = (x ^ (x >> 27)) * 0x94d049bb133111ebull;
+		return x ^ (x >> 31);
+	};
+	h = finalize(h);
+
+	quint64 reg = h >> (64 - UvVerticesHllBits);
+	quint64 rest = h << UvVerticesHllBits;
+	quint8 rank = 1; //position of the first 1 bit
+	while(rank <= 64 - UvVerticesHllBits && !(rest & (1ull << 63))) {
+		rest <<= 1;
+		rank++;
+	}
+	if(rank > uv_vertices_hll[reg])
+		uv_vertices_hll[reg] = rank;
+}
+
+double StreamSoup::estimatedUvVertices() const {
+	const double m = uv_vertices_hll.size();
+	const double alpha = 0.7213/(1 + 1.079/m);
+	double sum = 0;
+	auto empty = 0;
+	for(const quint8 r: uv_vertices_hll) {
+		sum += std::ldexp(1.0, -r);
+		if(r == 0) empty++;
+	}
+	double estimate = alpha * m * m / sum;
+	if(estimate <= 2.5*m && empty > 0)
+		estimate = m * std::log(m/empty);
+	return estimate;
 }
 
 void StreamSoup::pushTriangle(Triangle &triangle) {
