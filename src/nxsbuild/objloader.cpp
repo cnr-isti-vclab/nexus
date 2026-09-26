@@ -102,6 +102,7 @@ void ObjLoader::readMTL(QFile &file) {
 				continue;
 
 			QString m = QString(buffer).mid(7).trimmed();
+			m = QFileInfo(file.fileName()).dir().filePath(m);
 			if (QFileInfo::exists(m))
 				mtl = m;
 			break;
