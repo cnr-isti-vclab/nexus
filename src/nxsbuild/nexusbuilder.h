@@ -19,6 +19,7 @@ for more details.
 #define NX_NEXUSBUILDER_H
 
 #include <vector>
+#include <atomic>
 
 #include <QString>
 #include <QFile>
@@ -116,6 +117,9 @@ public:
 
 	QMutex m_textures;  //locks  texture temporary file
 
+	// Graceful exits from the thread pool
+	std::atomic<bool> abort_requested{false};
+	QString abort_message;
 
 	QFile file;
 
