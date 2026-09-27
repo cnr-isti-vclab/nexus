@@ -20,11 +20,14 @@ public:
   inline void start()
   {
     timer.start();
+    start_msecs = timer.msecsSinceReference();
   }
 
   inline int restart()
   {
-    return static_cast<int>(timer.restart());
+    const int elapsed = static_cast<int>(timer.restart());
+    start_msecs = timer.msecsSinceReference();
+    return elapsed;
   }
 
   inline int elapsed() const
@@ -37,8 +40,14 @@ public:
     return timer.isValid();
   }
 
+  int msecsTo(const Clock & t) const
+  {
+    return static_cast<int>(t.start_msecs - start_msecs);
+  }
+
 private:
   QElapsedTimer timer;
+  qint64 start_msecs = 0;
 };
 
 }//namespace
