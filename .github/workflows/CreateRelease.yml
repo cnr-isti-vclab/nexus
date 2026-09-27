@@ -28,13 +28,25 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ['ubuntu-22.04', 'ubuntu-22.04-arm', 'macos-15-intel', 'macos-latest', 'windows-latest']
+        include:
+          - os: ubuntu-22.04
+            qt_version: '6.10.*'
+          - os: ubuntu-22.04-arm
+            qt_version: system
+          - os: macos-15-intel
+            qt_version: '6.10.0'
+          - os: macos-latest
+            qt_version: '6.10.0'
+          - os: windows-latest
+            qt_version: '6.10.*'
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: Build and Deploy
       uses: ./.github/actions/build_and_deploy
+      with:
+        qt_version: ${{ matrix.qt_version }}
     - name: Sign and Notarize
       uses: cnr-isti-vclab/sign-and-notarize@v1
       with:
