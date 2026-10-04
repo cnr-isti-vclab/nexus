@@ -1252,27 +1252,40 @@ function loadNodeTexture(request, context, node, texid) {
 
 	var blob = request.response;
 
-	var urlCreator = window.URL || window.webkitURL;
-	var img = document.createElement('img');
-	img.onerror = function(e) { console.log("Texture loading error!"); };
-	img.src = urlCreator.createObjectURL(blob);
-
 	var gl = context.gl;
-	img.onload = function() {
-		urlCreator.revokeObjectURL(img.src);
 
-		var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
-		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+	//Decode the JPEG off the main thread. createImageBitmap returns a
+	//Promise<ImageBitmap> that texImage2D accepts directly, so the heavy decode
+	//no longer blocks the main thread the way an <img> + texImage2D upload did.
+	//The vertical flip is baked into the decode (imageOrientation:'flipY')
+	//instead of UNPACK_FLIP_Y_WEBGL, which is unreliable for ImageBitmap
+	//sources across browsers; premultiplyAlpha:'none' matches the previous
+	//default WebGL unpack state.
+	createImageBitmap(blob, { imageOrientation: 'flipY', premultiplyAlpha: 'none' }).then(function(bitmap) {
+		//The node may have been evicted (removeNode) while we were decoding.
+		if(m.status[n] == 0) { bitmap.close(); return; }
+
 		var tex = m.texids[texid] = gl.createTexture();
 		gl.bindTexture(gl.TEXTURE_2D, tex);
 
+		//Orientation is already baked into the bitmap (imageOrientation:'flipY'),
+		//so force the unpack flags to their defaults for this ImageBitmap upload.
+		//A non-default y-flip/premultiply on a non-DOM source both triggers a
+		//browser deprecation warning and would re-flip the already-flipped
+		//bitmap -- e.g. three.js leaves UNPACK_FLIP_Y_WEBGL enabled from the last
+		//texture.flipY upload. Save and restore so we don't disturb the host.
+		var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
+		var premult = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL);
+		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+
 //TODO some textures might be alpha only! save space
-		var s = gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-		if(!(gl instanceof WebGLRenderingContext) || (powerOf2(img.width) && powerOf2(img.height))) {
+		if(!(gl instanceof WebGLRenderingContext) || (powerOf2(bitmap.width) && powerOf2(bitmap.height))) {
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 			gl.generateMipmap(gl.TEXTURE_2D);
 		} else {
@@ -1280,6 +1293,9 @@ function loadNodeTexture(request, context, node, texid) {
 		}
 
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
+		gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premult);
+
+		bitmap.close(); //decoded pixels now live in the GPU texture
 
 		m.status[n]--;
 
@@ -1290,7 +1306,7 @@ function loadNodeTexture(request, context, node, texid) {
 			node.instance.onUpdate && node.instance.onUpdate();
 			updateCache(gl);
 		}
-	}
+	}).catch(function(e) { console.log("Texture loading error!", e); });
 }
 
 function scramble(n, coords, normals, colors) {
