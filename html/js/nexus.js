@@ -452,7 +452,10 @@ Mesh.prototype = {
 		t.vsize = 12 + (t.vertex.normal?6:0) + (t.vertex.color?4:0) + (t.vertex.texCoord?8:0);
 		t.fsize = 6;
 
-		//problem: I have no idea how much space a texture is needed in GPU. 10x factor assumed.
+		//We don't know the decoded texture size yet, so seed nsize with a rough guess
+		//(10x the compressed size). loadNodeTexture() replaces the texture part with
+		//the exact GPU size once the image is decoded; the geometry part is constant
+		//and gets recomputed there, so there's no need to store the split.
 		var tmptexsize = new Uint32Array(n-1);
 		var tmptexcount = new Uint32Array(n-1);
 		for(var i = 0; i < n-1; i++) {
@@ -461,10 +464,8 @@ Mesh.prototype = {
 				tmptexsize[i] += t.textures[tex+1] - t.textures[tex];
 				tmptexcount[i]++;
 			}
-			t.nsize[i] = t.vsize*t.nvertices[i] + t.fsize*t.nfaces[i];
-		}
-		for(var i = 0; i < n-1; i++) {
-			t.nsize[i] += 10*tmptexsize[i]/tmptexcount[i];
+			var texguess = tmptexcount[i] ? 10*tmptexsize[i]/tmptexcount[i] : 0;
+			t.nsize[i] = t.vsize*t.nvertices[i] + t.fsize*t.nfaces[i] + texguess;
 		}
 
 		t.status = new Uint8Array(n); //0 for none, 1 for ready, 2+ for waiting data
@@ -1272,7 +1273,8 @@ function loadNodeTexture(request, context, node, texid) {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-		if(!(gl instanceof WebGLRenderingContext) || (powerOf2(img.width) && powerOf2(img.height))) {
+		var mipmapped = !(gl instanceof WebGLRenderingContext) || (powerOf2(img.width) && powerOf2(img.height));
+		if(mipmapped) {
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 			gl.generateMipmap(gl.TEXTURE_2D);
 		} else {
@@ -1280,6 +1282,18 @@ function loadNodeTexture(request, context, node, texid) {
 		}
 
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
+
+		//We now know the decoded resolution: replace the guess baked into nsize[n]
+		//at parse time with the exact RGBA8 GPU footprint (plus ~1/3 for the mipmap
+		//chain) and keep cacheSize in sync, since nsize[n] was added at request time.
+		//Textures are 1:1 with nodes, so each node decodes its own texture exactly once.
+		if(m.status[n] != 0) {
+			var realtexsize = img.width * img.height * 4;
+			if(mipmapped) realtexsize = Math.floor(realtexsize * 4/3);
+			var size = m.vsize*m.nvertices[n] + m.fsize*m.nfaces[n] + realtexsize;
+			context.cacheSize += size - m.nsize[n];
+			m.nsize[n] = size;
+		}
 
 		m.status[n]--;
 
