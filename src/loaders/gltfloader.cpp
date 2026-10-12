@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cassert>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
@@ -235,6 +236,24 @@ static void decompress_draco(fx::gltf::Document& doc) {
 // Image / material helpers
 // ---------------------------------------------------------------------------
 
+// glTF URIs are percent-encoded (RFC 3986): "a%20b.jpg" is the file "a b.jpg".
+static std::string decode_uri(const std::string& uri)
+{
+	std::string path;
+	path.reserve(uri.size());
+	for (std::size_t i = 0; i < uri.size(); i++) {
+		if (uri[i] == '%' && i + 2 < uri.size()
+			&& std::isxdigit(static_cast<unsigned char>(uri[i + 1]))
+			&& std::isxdigit(static_cast<unsigned char>(uri[i + 2]))) {
+			path += static_cast<char>(std::stoi(uri.substr(i + 1, 2), nullptr, 16));
+			i += 2;
+		} else {
+			path += uri[i];
+		}
+	}
+	return path;
+}
+
 static std::string resolve_image(
 	const fx::gltf::Document& doc,
 	int texture_index,
@@ -258,8 +277,13 @@ static std::string resolve_image(
 		return out_path;
 	}
 
-	if (!image.uri.empty())
-		return (fs::path(base_dir) / image.uri).lexically_normal().string();
+	if (!image.uri.empty()) {
+		fs::path path = fs::path(base_dir) / decode_uri(image.uri);
+		// Some exporters write the file name as it is: keep reading those.
+		if (!fs::exists(path) && fs::exists(fs::path(base_dir) / image.uri))
+			path = fs::path(base_dir) / image.uri;
+		return path.lexically_normal().string();
+	}
 
 	// Buffer-view embedded (no URI)
 	assert(image.bufferView >= 0 && image.bufferView < (int)doc.bufferViews.size());
