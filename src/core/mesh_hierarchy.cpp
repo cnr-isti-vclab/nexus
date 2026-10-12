@@ -789,6 +789,8 @@ void recompute_normals(MappedMesh& mesh) {
 		Wedge &w = mesh.wedges[i];
 		w.n = w.p;
 	}
+	//the source might have had no normals: now it has.
+	mesh.has_normals = true;
 }
 
 MeshHierarchy::~MeshHierarchy() {
