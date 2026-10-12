@@ -636,8 +636,12 @@ void GltfLoader::load(MappedMesh& mesh, std::vector<Material>& out_materials) {
 				doc.accessors[prim.attributes.at("TEXCOORD_0")];
 			assert(tc_acc.count == n_verts);
 			assert(tc_acc.componentType == fx::gltf::Accessor::ComponentType::Float);
-			for (uint32_t i = 0; i < n_verts; i++)
-				mesh.texcoords[pos_base + i] = read_vec2f(doc, tc_acc, i);
+			// glTF has v = 0 on the top row of the image, we have it on the bottom one (as obj and ply).
+			for (uint32_t i = 0; i < n_verts; i++) {
+				Vector2f t = read_vec2f(doc, tc_acc, i);
+				t.v = 1.0f - t.v;
+				mesh.texcoords[pos_base + i] = t;
+			}
 		}
 
 		// --- Vertex colors ---
