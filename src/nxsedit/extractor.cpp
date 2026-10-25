@@ -355,7 +355,7 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 		file.write((char *)&*coder.stream.buffer, coder.stream.size());
 		//padding
 		quint64 size = pad(file.pos()) - file.pos();
-		char tmp[NEXUS_PADDING];
+		char tmp[NEXUS_PADDING] = {};
 		file.write(tmp, size);
 	} else if(signature.flags & Signature::CORTO) {
 		
@@ -419,7 +419,7 @@ void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, 
 		
 		file.write((char *)&*encoder.stream.data(), encoder.stream.size());
 		quint64 size = pad(file.pos()) - file.pos();
-		char tmp[NEXUS_PADDING];
+		char tmp[NEXUS_PADDING] = {};
 		file.write(tmp, size);
 	}
 }
