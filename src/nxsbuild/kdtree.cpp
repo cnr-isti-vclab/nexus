@@ -152,10 +152,24 @@ bool KDTree::isIn(vcg::Point3f *axes, vcg::Box3f &box, vcg::Point3f &p) {
 
 }//check if point is in the box (using axes) semiopen box.
 
-void KDTree::split(qint32 node_number) {
+//thrown when a full leaf cannot be divided: smaller nodes would not help
+static QString indivisibleLeaf(quint64 capacity, const char *elements) {
+	return QString("More than %1 %2 lie in a region too small to be divided "
+				   "(they coincide, or are closer than float precision).").arg(capacity).arg(elements);
+}
+
+bool KDTree::split(qint32 node_number) {
 	KDCell &node = cells[node_number];
 
 	findMiddle(node);
+
+	//when the elements of a leaf all lie in the same place the box shrinks at each split until
+	//the middle falls on its side: one child would get the whole box and every element again,
+	//and splitting would go on forever, adding a block each time.
+	if(!(node.middle > node.box.min[node.split] && node.middle < node.box.max[node.split])) {
+		node.divisible = false;
+		return false;
+	}
 
 	//create new nodes
 	KDCell child0;
@@ -175,6 +189,7 @@ void KDTree::split(qint32 node_number) {
 
 	cells.push_back(child0);
 	cells.push_back(child1);
+	return true;
 }
 
 
@@ -347,12 +362,15 @@ void KDTreeSoup::pushTriangle(Triangle &t) {
 			bool too_large = node_triangles >=triangles_per_block;
 			bool too_small = node_triangles < triangles_per_block/16;
 			bool too_heavy = node.weight > max_weight;
-			if(too_small || (!too_large && !too_heavy)) {
+			//a leaf that cannot be divided takes triangles as long as it has room for them
+			if(too_small || (!too_large && (!too_heavy || !node.divisible))) {
 				Soup soup = get(node.block);
 				soup.push_back(t);
 				node.weight += w;
 				break;
 			}
+			if(!node.divisible)
+				throw indivisibleLeaf(triangles_per_block, "triangles");
 			//no space, add 1 block, split node and continue
 			//reference to node might not be valid anymore.
 			split(node_number);
@@ -496,7 +514,8 @@ void KDTreeCloud::pushVertex(Splat &v) {
 			}
 			//no space, add 1 block, split node and continue
 			//reference to node might not be valid anymore.
-			split(node_number);
+			if(!split(node_number))
+				throw indivisibleLeaf(triangles_per_block, "points");
 
 		} else {
 			vcg::Point3f p(v.v);
