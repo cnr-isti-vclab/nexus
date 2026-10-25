@@ -102,6 +102,8 @@ public:
 	uint32_t size(uint32_t node);
 	uint64_t loadRam(uint32_t node);
 	uint64_t dropRam(uint32_t node, bool write = false);
+	//releases the memory of a loaded node the way loadRam obtained it (unmap, deepzoom buffer or delete[])
+	void releaseNodeMemory(NodeData &data);
 
 	void loadHeader();
 	void loadHeader(char *buffer);
