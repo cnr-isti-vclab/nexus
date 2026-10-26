@@ -24,17 +24,13 @@ for more details.
 
 #include "gl_nxsview.h"
 
-#include <wrap/gl/picking.h>
-#include <wrap/gl/space.h>
-#include <wrap/qt/gl_label.h>
+#include <QPainter>
+#include <cmath>
 
 using namespace std;
-using namespace vcg;
 using namespace nx;
 
 int current_texture = 0;
-
-void glV(Point3f &p) { glVertex3f(p[0], p[1], p[2]); }
 
 GLNxsview::GLNxsview(QWidget *parent, bool _share):
 	QGLWidget(parent), share(_share),
@@ -44,9 +40,9 @@ GLNxsview::GLNxsview(QWidget *parent, bool _share):
 	setAutoFillBackground(false);
 	setFocusPolicy(Qt::StrongFocus);
 
-	colorBottom = vcg::Color4b(64,64,128,1);
-	colorTop    = vcg::Color4b(0,0,0,1);
-	color       = vcg::Color4b(200,200,200,1);
+	colorBottom = Rgba8{64,64,128,1};
+	colorTop    = Rgba8{0,0,0,1};
+	color       = Rgba8{200,200,200,1};
 
 	setMouseTracking(true);
 	//connect(this, SIGNAL(destroyed()), this, SLOT(stopController()));
@@ -117,18 +113,18 @@ void GLNxsview::setRam(double d) {
 }
 
 void GLNxsview::setColor() {
-	QColor _color = QColorDialog::getColor(QColor(color[0], color[1], color[2]));
-	color = Color4b(_color.red(), _color.green(), _color.blue(), 0);
+	QColor _color = QColorDialog::getColor(QColor(color.r, color.g, color.b));
+	color = Rgba8{(uint8_t)_color.red(), (uint8_t)_color.green(), (uint8_t)_color.blue(), 0};
 	update();
 }
 void GLNxsview::setColorTop() {
-	QColor _color = QColorDialog::getColor(QColor(colorTop[0], colorTop[1], colorTop[2]));
-	colorTop = Color4b(_color.red(), _color.green(), _color.blue(), 0);
+	QColor _color = QColorDialog::getColor(QColor(colorTop.r, colorTop.g, colorTop.b));
+	colorTop = Rgba8{(uint8_t)_color.red(), (uint8_t)_color.green(), (uint8_t)_color.blue(), 0};
 	update();
 }
 void GLNxsview::setColorBottom() {
-	QColor _color = QColorDialog::getColor(QColor(colorBottom[0], colorBottom[1], colorBottom[2]));
-	colorBottom = Color4b(_color.red(), _color.green(), _color.blue(), 0);
+	QColor _color = QColorDialog::getColor(QColor(colorBottom.r, colorBottom.g, colorBottom.b));
+	colorBottom = Rgba8{(uint8_t)_color.red(), (uint8_t)_color.green(), (uint8_t)_color.blue(), 0};
 	update();
 }
 
@@ -160,9 +156,6 @@ void GLNxsview::initializeGL() {
 
 	glEnable(GL_LIGHTING);
 
-	trackball.center = Point3f(0, 0, 0);
-	trackball.radius = 1;
-
 	glLoadIdentity();
 }
 
@@ -175,6 +168,8 @@ void GLNxsview::resizeGL(int w, int h) {
 	gluPerspective(60, r, 1, 10);
 
 	glMatrixMode(GL_MODELVIEW);
+
+	trackball.pixel_size = trackball_light.pixel_size = 2.0f/h;
 }
 
 
@@ -188,7 +183,7 @@ void GLNxsview::setView(float znear, float zfar) {
 
 	//compute distance so that unitary sphere is inside view.
 	float ratio = 1.0f;
-	float objDist = ratio / tanf(vcg::math::ToRad(fov * .5f));
+	float objDist = ratio / tanf(fov * (float)M_PI / 360.0f);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -222,10 +217,10 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	glDisable(GL_TEXTURE_2D);
 
 	glBegin(GL_TRIANGLE_STRIP);
-	glColor(colorTop);    glVertex2f(-1, 1);
-	glColor(colorBottom);  glVertex2f(-1,-1);
-	glColor(colorTop);  glVertex2f( 1, 1);
-	glColor(colorBottom);  glVertex2f( 1,-1);
+	glColor3ub(colorTop.r, colorTop.g, colorTop.b);       glVertex2f(-1, 1);
+	glColor3ub(colorBottom.r, colorBottom.g, colorBottom.b); glVertex2f(-1,-1);
+	glColor3ub(colorTop.r, colorTop.g, colorTop.b);       glVertex2f( 1, 1);
+	glColor3ub(colorBottom.r, colorBottom.g, colorBottom.b); glVertex2f( 1,-1);
 	glEnd();
 
 	glPopAttrib();
@@ -246,29 +241,19 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 			playing = false;
 		} else {
 
-			vcg::Similarityf r;
-			r.tra[0] = r.tra[1] = r.tra[2] = 0.0f;
-			r.rot[0] = r.rot[1] = r.rot[2] = r.rot[3] = 0.0f;
-			r.sca = 0;
+			Trackball::Pose r;
+			r.scale = 0;
 			float tot = 0;
 			for(int i = viewpoint - 6; i < viewpoint + 6; i++) {
 				if(i < 0 || i >= (int)viewpoints.size()) continue;
 				float t = current_time -i;
 				float w = exp(-t*t);
 				tot += w;
-				const vcg::Similarityf &a = viewpoints[i];
-				r.rot += a.rot * w;
-				r.tra += a.tra * w;
-				r.sca += a.sca * w;
+				r += viewpoints[i] * w;
 			}
-			r.rot /= tot;
-			r.tra /= tot;
-			r.sca /= tot;
-			trackball.track = r;
+			trackball.pose = r * (1/tot);
 		}
 	}
-
-	trackball.GetView();
 
 	glPushMatrix();
 
@@ -276,8 +261,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	// ============== LIGHT TRACKBALL ==============
 	// Apply the trackball for the light direction
 	glPushMatrix();
-	trackball_light.GetView();
-	trackball_light.Apply();
+	glMultMatrixf(trackball_light.matrix().m);
 
 	static float lightPosF[]={0.0,0.0,1.0,0.0};
 	glLightfv(GL_LIGHT0,GL_POSITION,lightPosF);
@@ -301,8 +285,8 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	glPopMatrix();
 	//draw light trackball?
 
-	trackball.Apply();
-	glColor(color);
+	glMultMatrixf(trackball.matrix().m);
+	glColor3ub(color.r, color.g, color.b);
 
 
 	//if(extracting)
@@ -315,7 +299,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	for(unsigned int i = 0; i < scene.nodes.size(); i++) {
 		Scene::Node &node = scene.nodes[i];
 		glPushMatrix();
-		glMultMatrix(node.transform);
+		glMultMatrixf(node.transform.m);
 		if(extracting)
 			renderer.getView();
 		renderer.nearFar(node.nexus, znear, zfar);
@@ -330,7 +314,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 		znear = zfar/1000.0f;
 
 	setView(znear, zfar);
-	trackball.Apply();
+	glMultMatrixf(trackball.matrix().m);
 
 	for(unsigned int i = 0; i < scene.nodes.size(); i++) {
 		Scene::Node &node = scene.nodes[i];
@@ -340,7 +324,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 
 
 		glPushMatrix();
-		glMultMatrix(node.transform);
+		glMultMatrixf(node.transform.m);
 
 		renderer.render(node.nexus, extracting);
 
@@ -362,15 +346,18 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	glPopMatrix(); //end of trackball
 
 	if(hasToPick) { // Double click move picked point to center
-		Point3f pp;
 		hasToPick=false;
-		if(Pick<Point3f>(pointToPick[0],pointToPick[1],pp)) {
-			//check if intersects
-			vcg::Matrix44f m = Inverse(scene.nodes[0].transform);
-			//vcg::Point3f p = m * trackball.InverseMatrix() * pp;
-
-			trackball.Translate(-pp);
-			trackball.Scale(1.25f);
+		GLint viewport[4];
+		GLdouble modelview[16], projection[16];
+		glGetIntegerv(GL_VIEWPORT, viewport);
+		glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+		glGetDoublev(GL_PROJECTION_MATRIX, projection);
+		GLfloat depth;
+		glReadPixels(pickX, pickY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+		GLdouble px, py, pz;
+		if(depth < 1.0f && gluUnProject(pickX, pickY, depth, modelview, projection, viewport, &px, &py, &pz) == GL_TRUE) {
+			trackball.translate({(float)px, (float)py, (float)pz});
+			trackball.scale(1.25f);
 			QCursor::setPos(mapToGlobal(QPoint(width()/2+2,height()/2+2)));
 		}
 	}
@@ -378,9 +365,6 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	if(info) {
 
 		Stats &stats = renderer.stats;
-
-		glLabel::Mode mode;
-		mode.qFont.setStyleStrategy(QFont::PreferAntialias);
 
 		QStringList text;
 		text << QString("Fps: %1").arg(stats.fps, 0, 'f', 2);
@@ -394,63 +378,66 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 		text << QString("Node rendered: %1").arg(stats.node_rendered);
 		text << QString("Frustum culled: %1").arg(stats.frustum_culled);
 		// text << QString("Cone culled: %1").arg(stats.cone_culled);
+		painter.endNativePainting();
+		painter.setPen(Qt::white);
+		painter.setRenderHint(QPainter::TextAntialiasing);
 		for(int i = 0; i < text.size(); i++)
-			glLabel::render2D(&painter, vcg::Point2f(10, 120 - 15*i), text[i], mode);
+			painter.drawText(10, height() - (120 - 15*i), text[i]);
+		painter.beginNativePainting();
 	}
 	painter.endNativePainting();
 	if(playing)
 		update();
 }
 
-Trackball::Button QT2VCG(Qt::MouseButton qtbt,  Qt::KeyboardModifiers modifiers) {
-	int vcgbt=Trackball::BUTTON_NONE;
-	if(qtbt & Qt::LeftButton)           vcgbt |= Trackball::BUTTON_LEFT;
-	if(qtbt & Qt::RightButton)          vcgbt |= Trackball::BUTTON_RIGHT;
-	if(qtbt & Qt::MidButton)            vcgbt |= Trackball::BUTTON_MIDDLE;
-	if(modifiers & Qt::ShiftModifier)   vcgbt |= Trackball::KEY_SHIFT;
-	if(modifiers & Qt::ControlModifier) vcgbt |= Trackball::KEY_CTRL;
-	if(modifiers & Qt::AltModifier)     vcgbt |= Trackball::KEY_ALT;
-	return Trackball::Button(vcgbt);
+static int qtButtons(Qt::MouseButton qtbt, Qt::KeyboardModifiers modifiers) {
+	int bt = Trackball::BUTTON_NONE;
+	if(qtbt & Qt::LeftButton)           bt |= Trackball::BUTTON_LEFT;
+	if(qtbt & Qt::RightButton)          bt |= Trackball::BUTTON_RIGHT;
+	if(qtbt & Qt::MidButton)            bt |= Trackball::BUTTON_MIDDLE;
+	if(modifiers & Qt::ControlModifier) bt |= Trackball::KEY_CTRL;
+	return bt;
 }
 
 void GLNxsview::wheelEvent(QWheelEvent *e) {
 	if(e->delta() > 0)
-		trackball.MouseWheel(1);
+		trackball.wheel(1);
 	else
-		trackball.MouseWheel(-1);
+		trackball.wheel(-1);
 	update();
 }
 
 void GLNxsview::mouseMoveEvent(QMouseEvent *e) {
 	if(default_trackball)
-		trackball.MouseMove(e->x(), height() - e->y());
+		trackball.mouseMove(e->x(), height() - e->y());
 	else
-		trackball_light.MouseMove(e->x(), height() - e->y());
+		trackball_light.mouseMove(e->x(), height() - e->y());
 	update();
 	//e->ignore();
 }
 
 void GLNxsview::mousePressEvent(QMouseEvent *e) {
-	button =  QT2VCG(e->button(), e->modifiers() );
+	button = qtButtons(e->button(), e->modifiers());
 	if(default_trackball)
-		trackball.MouseDown(e->x(),height()-e->y(), button);
+		trackball.mouseDown(e->x(),height()-e->y(), button);
 	else
-		trackball_light.MouseDown(e->x(),height()-e->y(), button );
+		trackball_light.mouseDown(e->x(),height()-e->y(), button );
 	update();
 	//e->ignore();
 }
 
 void GLNxsview::mouseReleaseEvent(QMouseEvent *e) {
 	if(default_trackball)
-		trackball.MouseUp(e->x(),height()-e->y(), button);
+		trackball.mouseUp(e->x(),height()-e->y(), button);
 	else
-		trackball_light.MouseUp(e->x(),height()-e->y(), button);
+		trackball_light.mouseUp(e->x(),height()-e->y(), button);
 	//e->ignore();
 }
 
 void GLNxsview::mouseDoubleClickEvent ( QMouseEvent * e ) {
 	hasToPick=true;
-	pointToPick=Point2i(e->x(),height()-e->y());
+	pickX = e->x();
+	pickY = height() - e->y();
 	update();
 }
 
@@ -499,19 +486,19 @@ void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
 			 << "[ctrl+r] : record (starts from beginning)\n";
 		break;
 	case Qt::Key_S: //save trackball
-		saved_trackball = trackball;
+		saved_pose = trackball.pose;
 		break;
-	case Qt::Key_L: //save trackball
-		trackball.track = saved_trackball.track;
+	case Qt::Key_L: //load trackball
+		trackball.pose = saved_pose;
+		break;
 	case Qt::Key_R: //reset trackball
-		trackball.Reset();
+		trackball.reset();
+		break;
 
 	case Qt::Key_P: {
-		Matrix44f m = trackball.Matrix();
-		m *= scene.nodes[0].transform;
-		m.transposeInPlace();
+		Matrix4f m = trackball.matrix() * scene.nodes[0].transform;
 		for(int i = 0; i < 16; i++) {
-			cout << m.V()[i];
+			cout << m.m[i];
 			if(i != 15) cout << ", ";
 		}
 		cout << endl;
@@ -525,7 +512,7 @@ void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
 		for(unsigned int i = viewpoints.size()-1; i > current_viewpoint; i--) {
 			viewpoints[i] = viewpoints[i-1];
 		}
-		viewpoints[current_viewpoint] = trackball.track;
+		viewpoints[current_viewpoint] = trackball.pose;
 		cout << "Viewpoint created: " << current_viewpoint << endl;
 		break;
 
@@ -533,7 +520,7 @@ void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
 		if(viewpoints.size()) {
 			current_time = current_viewpoint = 0;
 
-			trackball.track = viewpoints[0];
+			trackball.pose = viewpoints[0];
 			cout << "Viewpoint: " << current_viewpoint << endl;
 		}
 		break;
@@ -541,7 +528,7 @@ void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
 	case Qt::Key_End:
 		if(viewpoints.size()) {
 			current_time = current_viewpoint = viewpoints.size()-1;
-			trackball.track = viewpoints[current_viewpoint];
+			trackball.pose = viewpoints[current_viewpoint];
 			cout << "Viewpoint: " << current_viewpoint << endl;
 		}
 
@@ -551,7 +538,7 @@ void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
 		if(current_viewpoint < viewpoints.size()-1) {
 			current_viewpoint++;
 			current_time = current_viewpoint;
-			trackball.track = viewpoints[current_viewpoint];
+			trackball.pose = viewpoints[current_viewpoint];
 			cout << "Viewpoint: " << current_viewpoint << endl;
 		}
 		break;
@@ -560,7 +547,7 @@ void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
 		if(current_viewpoint > 0) {
 			current_viewpoint--;
 			current_time = current_viewpoint;
-			trackball.track = viewpoints[current_viewpoint];
+			trackball.pose = viewpoints[current_viewpoint];
 			cout << "Viewpoint: " << current_viewpoint << endl;
 		}
 		break;

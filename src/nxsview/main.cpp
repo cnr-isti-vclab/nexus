@@ -20,7 +20,7 @@ for more details.
 #include <QImageIOPlugin>
 #include <QFileDialog>
 
-#include <wrap/system/qgetopt.h>
+#include <QCommandLineParser>
 
 #include "scene.h"
 #include "gl_nxsview.h"
@@ -63,54 +63,43 @@ int main(int argc, char *argv[]) {
 	QApplication app(argc, argv);
 	QMyWindow *window = new QMyWindow(NULL);
 
-	QVariant draw(3.0), error(3.0f), ram(500.0f), gpu(250.0f), cache(100000),
-			fov(30), width(800), height(600), fps(0.0f), instances(1), prefetch(100);
+	QCommandLineParser opt;
+	opt.setApplicationDescription("ARGS specify a nexus file (specify more to join several nexus)");
+	opt.addHelpOption();
+	opt.addPositionalArgument("files", "nexus files", "[files...]");
 
-	bool fullscreen;
-	bool backface = false;
-	bool occlusion = false;
-	bool dontshare = false;
-	bool autopositioning = false;
+	auto addValue = [&opt](const char *name, const char *shortName, const char *desc, const char *def) {
+		opt.addOption(QCommandLineOption({shortName, name}, desc, name, def));
+	};
+	addValue("draw",      "d", "max number of triangles (millions)",    "3");
+	addValue("error",     "e", "target error in pixels",                "3");
+	addValue("ram",       "m", "max ram used (in Mb)",                  "500");
+	addValue("video",     "g", "max video ram used (in Mb)",           "250");
+	addValue("cache",     "c", "max number of items in cache",          "100000");
+	addValue("fov",       "v", "field of view in degrees",              "30");
+	addValue("height",    "H", "height of the window",                  "600");
+	addValue("width",     "w", "width of the window",                   "800");
+	addValue("fps",       "f", "target frames per second",              "0");
+	addValue("instances", "i", "number of instances",                   "1");
+	addValue("prefetch",  "p", "amount of node prefetching in prioritizer", "100");
+	opt.addOption(QCommandLineOption({"S", "dontshare"}, "do not use another thread for textures"));
+	opt.addOption(QCommandLineOption({"a", "autopositioning"}, "distribute models in a grid"));
+	opt.process(app);
 
-	GetOpt opt(argc, argv);
-	QString help("ARGS specify a nexus file (specify more ply files or the directory containing them to get a merged output)");
-	opt.setHelp(help);
-
-	opt.allowUnlimitedArguments(true); //able to join several nexus
-
-//	GetOpt opt(argc, argv);
-//	opt.allowUnlimitedArguments(true); //able to join several plys
-
-	opt.addOption('d', "draw", "max number of triangles", &draw);
-	opt.addOption('e', "error", "target error in pixels", &error);
-	opt.addOption('m', "ram", "max ram used (in Mb)", &ram);
-	opt.addOption('g', "video", "max video ram used (in Mb)", &gpu);
-	opt.addOption('c', "cache", "max number of items in cache", &cache);
-	opt.addOption('v', "fov", "field of view in degrees", &fov);
-	opt.addOption('h', "height", "height of the window", &height);
-	opt.addOption('w', "width", "width of the window", &width);
-
-	opt.addSwitch('s', "fullscreen", "fullscreen mode", &fullscreen);
-	opt.addSwitch('b', "backface", "backface culling", &backface);
-	opt.addSwitch('o', "occlusion", "occlusion culling", &occlusion);
-	opt.addSwitch('S', "dontshare", "do not use another thread for textures", &dontshare);
-
-	opt.addOption('f', "fps", "target frames per second", &fps);
-	opt.addOption('i', "instances", "number of instances", &instances);
-	opt.addSwitch('a', "autopositioning", "distribute models ina a grid", &autopositioning);
-	opt.addOption('p', "prefetch", "amount of node prefetching in prioritizer", &prefetch);
-
-
-//	QString help = "This is just a quick tool to visualize nexus models.";
-//	opt.setHelp(help);
-	opt.parse();
+	QVariant draw(opt.value("draw").toDouble()), error(opt.value("error").toDouble()),
+			ram(opt.value("ram").toDouble()), gpu(opt.value("video").toDouble()),
+			cache(opt.value("cache").toDouble()), fov(opt.value("fov").toDouble()),
+			width(opt.value("width").toInt()), height(opt.value("height").toInt()),
+			fps(opt.value("fps").toDouble()), instances(opt.value("instances").toInt());
+	bool dontshare = opt.isSet("dontshare");
+	bool autopositioning = opt.isSet("autopositioning");
 
 	Ui::Form &ui = window->ui;
 	GLNxsview *area = ui.area;
 	if(dontshare)
 		area->share = false;
 
-	QStringList inputs = opt.arguments;
+	QStringList inputs = opt.positionalArguments();
 	if(inputs.size() == 0) {
 		inputs = QFileDialog::getOpenFileNames(
 					window, "Import Nxs/Nxz",
@@ -118,7 +107,7 @@ int main(int argc, char *argv[]) {
 					"All known files (*.nxs *.nxz);;nxs file (*.nxs);;nxz file (*.nxz)");
 		if (inputs.size() == 0){
 			cerr << "No input files specified.\n";
-			cerr << qPrintable(opt.usage()) << "\n";
+			cerr << qPrintable(opt.helpText()) << "\n";
 			return -1;
 		}
 	}

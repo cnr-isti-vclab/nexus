@@ -4,12 +4,6 @@ cmake_minimum_required(VERSION 3.10)
 project(nxsview)
 
 SET(HEADERS
-	${VCGDIR}/wrap/gcache/token.h
-	${VCGDIR}/wrap/gcache/provider.h
-	${VCGDIR}/wrap/gcache/door.h
-	${VCGDIR}/wrap/gcache/dheap.h
-	${VCGDIR}/wrap/gcache/controller.h
-	${VCGDIR}/wrap/gcache/cache.h
 	../common/nexus.h
 	../common/token.h
 	../common/renderer.h
@@ -24,13 +18,11 @@ SET(HEADERS
 	../nxszip/cstream.h
 	../nxszip/zpoint.h
 	gl_nxsview.h
+	trackball.h
 	scene.h
 )
 
 SET(SOURCES
-	${VCGDIR}/wrap/gui/trackmode.cpp
-	${VCGDIR}/wrap/gui/trackball.cpp
-	${VCGDIR}/wrap/system/qgetopt.cpp
 	../common/controller.cpp
 	../common/nexus.cpp
 	../common/renderer.cpp

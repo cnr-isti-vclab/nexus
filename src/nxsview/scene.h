@@ -20,7 +20,7 @@ for more details.
 
 #include "../common/controller.h"
 #include <QStringList>
-#include <vcg/math/matrix44.h>
+#include "../core/mesh_types.h"
 
 namespace nx {
 class Nexus;
@@ -32,12 +32,10 @@ public:
 	class Node {
 	public:
 		nx::Nexus *nexus;
-		vcg::Matrix44f transform;
+		nx::Matrix4f transform;
 		bool inited;
 
-		Node(nx::Nexus *in): nexus(in), inited(false) {
-			transform.SetIdentity();
-		}
+		Node(nx::Nexus *in): nexus(in), transform(nx::Matrix4f::identity()), inited(false) {}
 	};
 	std::vector<nx::Nexus *> models;
 	std::vector<Node> nodes;

@@ -1,6 +1,7 @@
 #ifndef NX_MESH_TYPES_H
 #define NX_MESH_TYPES_H
 
+#include <cmath>
 #include <cstdint>
 #include <type_traits>
 #include <vector>
@@ -13,6 +14,14 @@ namespace nx {
 
 struct Vector3f { float x, y, z;
 	bool operator==(const Vector3f &v) const { return x == v.x && y == v.y && z == v.z; }
+	Vector3f operator+(const Vector3f &v) const { return {x + v.x, y + v.y, z + v.z}; }
+	Vector3f operator-(const Vector3f &v) const { return {x - v.x, y - v.y, z - v.z}; }
+	Vector3f operator-() const { return {-x, -y, -z}; }
+	Vector3f operator*(float s) const { return {x * s, y * s, z * s}; }
+	Vector3f operator/(float s) const { return {x / s, y / s, z / s}; }
+	Vector3f &operator+=(const Vector3f &v) { x += v.x; y += v.y; z += v.z; return *this; }
+	float dot(const Vector3f &v) const { return x * v.x + y * v.y + z * v.z; }
+	float norm() const { return std::sqrt(dot(*this)); }
 };
 struct Vector3d { double x, y, z; };
 struct Vector2f { float u, v; };
@@ -25,6 +34,68 @@ public:
     Vector3f max;
 };
 
+
+// Bounding sphere; radius < 0 means empty.
+struct Sphere {
+	Vector3f center{0, 0, 0};
+	float radius = -1;
+
+	// Grows this sphere to contain s.
+	void add(const Sphere &s) {
+		if(s.radius < 0) return;
+		if(radius < 0) { *this = s; return; }
+		Vector3f d = s.center - center;
+		float dist = d.norm();
+		if(dist + s.radius <= radius) return;
+		if(dist + radius <= s.radius) { *this = s; return; }
+		float r = (dist + radius + s.radius) * 0.5f;
+		center += d * ((r - radius) / dist);
+		radius = r;
+	}
+};
+
+// 4x4 matrix, column-major (same layout as OpenGL): element (row, col) is m[col*4 + row].
+struct Matrix4f {
+	float m[16];
+
+	static Matrix4f identity() {
+		return {{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1}};
+	}
+	static Matrix4f translation(const Vector3f &t) {
+		return {{1,0,0,0, 0,1,0,0, 0,0,1,0, t.x,t.y,t.z,1}};
+	}
+	static Matrix4f scale(float s) {
+		return {{s,0,0,0, 0,s,0,0, 0,0,s,0, 0,0,0,1}};
+	}
+	static Matrix4f rotationX(float a) {
+		float c = std::cos(a), s = std::sin(a);
+		return {{1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1}};
+	}
+	static Matrix4f rotationY(float a) {
+		float c = std::cos(a), s = std::sin(a);
+		return {{c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1}};
+	}
+
+	Matrix4f operator*(const Matrix4f &o) const {
+		Matrix4f r;
+		for(int c = 0; c < 4; c++)
+			for(int row = 0; row < 4; row++) {
+				float v = 0;
+				for(int k = 0; k < 4; k++)
+					v += m[k*4 + row] * o.m[c*4 + k];
+				r.m[c*4 + row] = v;
+			}
+		return r;
+	}
+	Matrix4f &operator*=(const Matrix4f &o) { return *this = *this * o; }
+
+	// Transforms a point (w = 1).
+	Vector3f operator*(const Vector3f &p) const {
+		return {m[0]*p.x + m[4]*p.y + m[8]*p.z  + m[12],
+				m[1]*p.x + m[5]*p.y + m[9]*p.z  + m[13],
+				m[2]*p.x + m[6]*p.y + m[10]*p.z + m[14]};
+	}
+};
 
 // Indices are 32-bit for now (fits ~4B elements).
 using Index = std::uint32_t;
@@ -116,6 +187,8 @@ struct MacroPartition {
 static_assert(sizeof(Vector3f) == 12, "Vector3f must stay packed");
 static_assert(sizeof(Vector2f) == 8,  "Vector2f must stay packed");
 static_assert(sizeof(Rgba8) == 4,     "Rgba8 layout changed unexpectedly");
+static_assert(sizeof(Sphere) == 16,   "Sphere layout changed unexpectedly");
+static_assert(sizeof(Matrix4f) == 64, "Matrix4f layout changed unexpectedly");
 static_assert(sizeof(Aabb) == 24,     "Aabb layout changed unexpectedly");
 static_assert(sizeof(Wedge)   == 12, "Wedge layout changed unexpectedly");
 static_assert(sizeof(Triangle)== 12, "Triangle layout changed unexpectedly");

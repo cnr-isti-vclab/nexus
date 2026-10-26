@@ -64,33 +64,31 @@ void Scene::update() {
 				const int x  = i - (y*side);
 
 				//scale everything to 1
-				vcg::Sphere3f sphere = nexus->boundingSphere();
-				float r = sphere.Radius()*2;
-				vcg::Point3f t = sphere.Center();
+				const auto &bs = nexus->boundingSphere();
+				float r = bs.Radius()*2;
+				nx::Vector3f t{bs.Center()[0], bs.Center()[1], bs.Center()[2]};
 
 				node.inited = true;
-				node.transform.SetTranslate(x, 0, y);
-				node.transform *= vcg::Matrix44f().SetScale(1/r, 1/r, 1/r);
-				node.transform *= vcg::Matrix44f().SetTranslate(-t);
+				node.transform = nx::Matrix4f::translation({(float)x, 0, (float)y});
+				node.transform *= nx::Matrix4f::scale(1/r);
+				node.transform *= nx::Matrix4f::translation(-t);
 			}
 		}
 	} else {
-		vcg::Sphere3f sphere;
+		nx::Sphere sphere;
 		for(unsigned int i = 0; i < nodes.size(); i++) {
-			Scene::Node &node = nodes[i];
-
-			nx::Nexus *nexus = node.nexus;
-			if(nexus->isReady())
-				sphere.Add(nexus->boundingSphere());
+			nx::Nexus *nexus = nodes[i].nexus;
+			if(nexus->isReady()) {
+				const auto &bs = nexus->boundingSphere();
+				sphere.add({{bs.Center()[0], bs.Center()[1], bs.Center()[2]}, bs.Radius()});
+			}
 		}
 
-		float r = sphere.Radius()*2;
-		vcg::Point3f t = sphere.Center();
+		float r = sphere.radius*2;
 		for(unsigned int i = 0; i < nodes.size(); i++) {
 			Scene::Node &node = nodes[i];
-			node.transform.SetTranslate(0, 0, 0);
-			node.transform *= vcg::Matrix44f().SetScale(1/r, 1/r, 1/r);
-			node.transform *= vcg::Matrix44f().SetTranslate(-t);
+			node.transform = nx::Matrix4f::scale(1/r);
+			node.transform *= nx::Matrix4f::translation(-sphere.center);
 		}
 	}
 }

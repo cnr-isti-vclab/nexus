@@ -24,13 +24,10 @@ for more details.
 #include <QDebug>
 #include <QTime>
 
-#include <vcg/space/point2.h>
-#include <vcg/space/box3.h>
-#include <wrap/gui/trackball.h>
-
 #include "../common/controller.h"
 #include "../common/renderer.h"
 #include "scene.h"
+#include "trackball.h"
 
 class GLNxsview : public QGLWidget {
 	Q_OBJECT
@@ -38,9 +35,9 @@ class GLNxsview : public QGLWidget {
 public:
 	nx::Renderer renderer;
 	Scene scene;
-	vcg::Color4b colorBottom;
-	vcg::Color4b colorTop;
-	vcg::Color4b color;
+	nx::Rgba8 colorBottom;
+	nx::Rgba8 colorTop;
+	nx::Rgba8 color;
 	bool share; //if true shares context with nexus at initialization
 
 	GLNxsview(QWidget *parent = 0, bool share = true);
@@ -69,23 +66,22 @@ public slots:
 	void setColor();
 	void setColorTop();
 	void setColorBottom();
-	void zoomIn() { trackball.MouseWheel(-1); repaint(); }
-	void zoomOut() { trackball.MouseWheel(1); repaint(); }
+	void zoomIn() { trackball.wheel(1); repaint(); }
+	void zoomOut() { trackball.wheel(-1); repaint(); }
 	void stopController() {
 		//sleep(2);
 	}
 
 protected:
-	vcg::Box3f box;
-	vcg::Trackball trackball;
-	vcg::Transform saved_trackball;
-	vcg::Trackball trackball_light;
+	Trackball trackball;
+	Trackball::Pose saved_pose;
+	Trackball trackball_light;
 	bool default_trackball;
-	vcg::Trackball::Button button;
+	int button;
 	bool extracting;
 
 	//viewpoints sequence
-	std::vector<vcg::Similarityf> viewpoints;
+	std::vector<Trackball::Pose> viewpoints;
 	quint32 current_viewpoint;
 	float current_time; //this will be modified by velocity
 	QTime time;
@@ -111,7 +107,7 @@ private:
 	bool  hasToPick;  // has to pick during the next redraw.
 	float fov;
 	bool info;
-	vcg::Point2i pointToPick;
+	int pickX = 0, pickY = 0;
 };
 
 
