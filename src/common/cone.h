@@ -21,8 +21,7 @@ for more details.
 
 #include <vector>
 
-#include <vcg/space/point3.h>
-#include <vcg/space/sphere3.h>
+#include "../core/mesh_types.h"
 
 namespace nx {
 
@@ -32,21 +31,21 @@ class AnchoredCone3f {
 public:
 	AnchoredCone3f();
 
-	bool Frontface(const vcg::Point3f &viewPoint);
-	bool Backface(const vcg::Point3f &viewPoint);
+	bool Frontface(const nx::Vector3f &viewPoint);
+	bool Backface(const nx::Vector3f &viewPoint);
 
 	//threshold [0, 1]: percentage of normals to left out
-	void AddNormals(std::vector<vcg::Point3f> &normals,
+	void AddNormals(std::vector<nx::Vector3f> &normals,
 					float threshold = 1.0f);
-	void AddNormals(std::vector<vcg::Point3f> &normals,
+	void AddNormals(std::vector<nx::Vector3f> &normals,
 					std::vector<float> &areas,
 					float threshold = 1.0f);
-	void AddAnchors(std::vector<vcg::Point3f> &anchors);
+	void AddAnchors(std::vector<nx::Vector3f> &anchors);
 
 protected:
-	vcg::Point3f scaledNormal;
-	vcg::Point3f frontAnchor;
-	vcg::Point3f backAnchor;
+	nx::Vector3f scaledNormal;
+	nx::Vector3f frontAnchor;
+	nx::Vector3f backAnchor;
 
 	friend class Cone3s;
 };
@@ -58,10 +57,10 @@ class Cone3s {
 public:
 	void Import(const AnchoredCone3f &c);
 
-	bool Backface(const vcg::Sphere3f &sphere,
-				  const vcg::Point3f &view) const;
-	bool Frontface(const vcg::Sphere3f &sphere,
-				   const vcg::Point3f &view) const;
+	bool Backface(const nx::Sphere &sphere,
+				  const nx::Vector3f &view) const;
+	bool Frontface(const nx::Sphere &sphere,
+				   const nx::Vector3f &view) const;
 
 	//encode normal and sin(alpha) in n[3]
 	short n[4];

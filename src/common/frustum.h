@@ -18,8 +18,7 @@ for more details.
 #ifndef NX_FRUSTUM_H
 #define NX_FRUSTUM_H
 
-#include <vcg/math/matrix44.h>
-#include <vcg/space/plane3.h>
+#include "../core/mesh_types.h"
 
 class Frustum {
 public:
@@ -30,11 +29,11 @@ public:
 	void setModel(const float *_model);
 
 	//view point in model space
-	vcg::Point3f viewPoint();
+	nx::Vector3f viewPoint();
 
 	//how many pixel a unit length segment projects on the screen at point p
 	//or the closest point of a sphere if radius > 0
-	float resolution(vcg::Point3f p, float radius = 0);
+	float resolution(const nx::Vector3f &p, float radius = 0);
 
 	//return scale between model space and view space
 	float scale() { return _scale; }
@@ -42,22 +41,25 @@ public:
 	//same as before.
 	float resolution(float dist = 1);
 
-	bool isOutside(vcg::Point3f center, float radius = 0);
-	float distance(vcg::Point3f center, float radius = 0);
+	bool isOutside(const nx::Vector3f &center, float radius = 0);
+	float distance(const nx::Vector3f &center, float radius = 0);
 
-	void updateNearFar(float &znear, float &zfar, const vcg::Point3f &center, float radius = 0);
-	void updateNear(float &znear, const vcg::Point3f &p);
+	void updateNearFar(float &znear, float &zfar, const nx::Vector3f &center, float radius = 0);
+	void updateNear(float &znear, const nx::Vector3f &p);
 
-	float zNear() { return -planes[4]*vcg::Point4f(view_point[0], view_point[1], view_point[2], 1); }
-	float zFar() { return planes[5]*vcg::Point4f(view_point[0], view_point[1], view_point[2], 1); }
+	float zNear() { return -planeDistance(planes[4], view_point); }
+	float zFar() { return planeDistance(planes[5], view_point); }
 
 protected:
 	float _resolution;
 	float _scale; //to scale a radius from model space to view space
 	//top right bottom left, near, far, the normal points inward
-	vcg::Point4f planes[6];
-	vcg::Point3f view_point;
-	vcg::Point3f view_dir;
+	float planes[6][4]{};
+	nx::Vector3f view_point{};
+	nx::Vector3f view_dir{};
+	static float planeDistance(const float *plane, const nx::Vector3f &point) {
+		return plane[0]*point.x + plane[1]*point.y + plane[2]*point.z + plane[3];
+	}
 };
 
 #endif // NX_FRUSTUM_H

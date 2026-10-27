@@ -1,8 +1,8 @@
 #ifndef NX_RENDERER_H
 #define NX_RENDERER_H
 
+#include <chrono>
 #include <vector>
-#include <wrap/system/time/clock.h>
 
 #include "traversal.h"
 #include "metric.h"
@@ -44,7 +44,7 @@ public:
 	uint32_t instance_rendered;   //number of primitives rendered in this instance
 	float instance_error;         //max error in this instance
 
-	mt::Clock time;
+	std::chrono::steady_clock::time_point time{};
 };
 
 

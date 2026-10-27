@@ -167,7 +167,7 @@ private:
 
 	void encodeFaces(int start, int end);
 
-	void computeNormals(std::vector<vcg::Point3s> &estimated_normals);
+	void computeNormals(std::vector<nx::Vector3s> &estimated_normals);
 	void markBoundary();
 
 	void encodeVertex(int target, const vcg::Point3i &predicted, const vcg::Point2i &texpredicted, BitStream &bitstream, std::vector<uchar> &diffs, std::vector<uchar> &tdiffs);

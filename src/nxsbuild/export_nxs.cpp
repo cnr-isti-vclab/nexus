@@ -125,8 +125,8 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	header.n_nodes = nodes.size();
 	header.n_patches = patches.size();
 	header.n_textures = textures.size();
-	vcg::Point3f center(nodes[0].sphere.Center());
-	header.sphere = vcg::Sphere3f(center, nodes[0].tight_radius);
+	const nx::Vector3f &center = nodes[0].sphere.Center();
+	header.sphere = nx::Sphere(center, nodes[0].tight_radius);
 
 	fseek(out, 0, SEEK_SET);
 	fwrite((char *)&header, sizeof(Header), 1, out);
@@ -323,8 +323,8 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 	node.offset = ftell(out)/NEXUS_PADDING;
 	node.error = micronode.error;
 
-	vcg::Point3f center(micronode.center.x, micronode.center.y, micronode.center.z);
-	node.sphere = vcg::Sphere3f(center, micronode.radius);
+	nx::Vector3f center{micronode.center.x, micronode.center.y, micronode.center.z};
+	node.sphere = nx::Sphere(center, micronode.radius);
 	node.tight_radius = micronode.radius;
 
 	nodes.push_back(node);
@@ -358,7 +358,7 @@ void ExportNxs::saturateNode(uint32_t n) {
 
 		//we cannot just add the sphere, because it moves the center and the tight radius will be wrong
 		if(!node.sphere.IsIn(child.sphere)) {
-			float dist = (child.sphere.Center() - node.sphere.Center()).Norm();
+			float dist = (child.sphere.Center() - node.sphere.Center()).norm();
 			dist += child.sphere.Radius();
 			if(dist > node.sphere.Radius())
 				node.sphere.Radius() = dist;

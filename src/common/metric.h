@@ -20,7 +20,7 @@ for more details.
 
 #include "globalgl.h"
 #include "frustum.h"
-#include <vcg/space/sphere3.h>
+#include "../core/mesh_types.h"
 
 #include <iostream>
 
@@ -50,9 +50,10 @@ public:
 		}
 	}
 
-	float getError(vcg::Sphere3f &s, float error, bool &visible) {
+	float getError(const nx::Sphere &s, float error, bool &visible) {
 		visible = true;
-		float dist = (s.Center() - frustum.viewPoint()).Norm() - s.Radius();
+		const nx::Vector3f &center = s.Center();
+		float dist = (center - frustum.viewPoint()).norm() - s.Radius();
 		float zn = frustum.zNear();
 		if(dist < zn) dist = zn;
 
@@ -60,7 +61,7 @@ public:
 		if(res <= 0.000001f) res = 0.000001f;
 		error = error/res;
 		if(culling) {
-			float distance = frustum.distance(s.Center(), s.Radius());
+			float distance = frustum.distance(center, s.Radius());
 			//if(distance < tight_radius - s.Radius())
 			//    visible = false;
 

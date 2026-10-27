@@ -16,41 +16,52 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <iostream>
+#include <algorithm>
+#include <cmath>
 #include "cone.h"
 
+#include <assert.h>
+
 using namespace std;
-using namespace vcg;
 using namespace nx;
 
 AnchoredCone3f::AnchoredCone3f() {
-	scaledNormal = Point3f(0,0,0);
-	frontAnchor = Point3f(0,0,0);
-	backAnchor = Point3f(0,0,0);
+	scaledNormal = {0, 0, 0};
+	frontAnchor = {0, 0, 0};
+	backAnchor = {0, 0, 0};
 }
 
-bool AnchoredCone3f::Frontface(const Point3f &viewPoint) {
-	Point3f d = frontAnchor - viewPoint; //Vector from viewPoint to frontAnchor.
-	float f = - d * scaledNormal;
-	if (f < 0.001 || f * f < d * d)
+bool AnchoredCone3f::Frontface(const Vector3f &viewPoint) {
+	Vector3f d = frontAnchor - viewPoint; //Vector from viewPoint to frontAnchor.
+	float f = -d.dot(scaledNormal);
+	if (f < 0.001 || f * f < d.dot(d))
 		return false;
 	return true;
 }
 
-bool AnchoredCone3f::Backface(const Point3f &viewPoint) {
-	Point3f d = backAnchor - viewPoint; //Vector from viewPoint to frontAnchor.
-	float f = d * scaledNormal;
-	if (f < 0.001 || f * f < d * d)
+bool AnchoredCone3f::Backface(const Vector3f &viewPoint) {
+	Vector3f d = backAnchor - viewPoint; //Vector from viewPoint to frontAnchor.
+	float f = d.dot(scaledNormal);
+	if (f < 0.001 || f * f < d.dot(d))
 		return false;
 	return true;
 }
 
-void AnchoredCone3f::AddNormals(vector<Point3f> &normal, vector<float> &area, float threshold) {
+static float vectorAngle(const Vector3f &a, const Vector3f &b) {
+	float denominator = a.norm() * b.norm();
+	if(denominator <= 0) return 0;
+	float cosine = a.dot(b) / denominator;
+	return std::acos(std::max(-1.0f, std::min(1.0f, cosine)));
+}
+
+void AnchoredCone3f::AddNormals(vector<Vector3f> &normal, vector<float> &area, float threshold) {
 	assert(normal.size() == area.size());
 	//compute average normal
-	scaledNormal = Point3f(0,0,0);
+	scaledNormal = {0, 0, 0};
 	for(auto &n: normal)
 		scaledNormal += n;
-	scaledNormal.Normalize();
+	float averageLength = scaledNormal.norm();
+	if(averageLength > 0) scaledNormal /= averageLength;
 
 	//create 50 concentric rings around the average normal (scaledNormal)
 	double distr[50];
@@ -59,9 +70,9 @@ void AnchoredCone3f::AddNormals(vector<Point3f> &normal, vector<float> &area, fl
 	double tot_area = 0;
 
 	vector<float>::iterator j;
-	vector<Point3f>::iterator i;
+	vector<Vector3f>::iterator i;
 	for(i = normal.begin(), j = area.begin(); i != normal.end(); i++, j++) {
-		int pos = (int)(49.0 * Angle(scaledNormal, *i)/M_PI);
+		int pos = (int)(49.0 * vectorAngle(scaledNormal, *i)/M_PI);
 		if(pos < 0) continue;
 		assert(pos >=0 && pos < 50);
 		distr[pos] += *j;
@@ -77,23 +88,25 @@ void AnchoredCone3f::AddNormals(vector<Point3f> &normal, vector<float> &area, fl
 	}
 	double alpha = M_PI * (best + 1) / 50;
 	if(alpha >= M_PI/ 2 - 0.1)
-		scaledNormal = Point3f(0,0,0);
+		scaledNormal = {0, 0, 0};
 	else
-		scaledNormal /= cos(M_PI/2.0f - alpha);
+		scaledNormal /= std::cos(M_PI/2.0f - alpha);
 }
 
-void AnchoredCone3f::AddNormals(vector<Point3f> &normal, float threshold) {
+void AnchoredCone3f::AddNormals(vector<Vector3f> &normal, float threshold) {
 	assert(normal.size() > 0);
-	scaledNormal = Point3f(0,0,0);
+	scaledNormal = {0, 0, 0};
 	int count = 0;
 	for(auto &n: normal) {
-		if(n.Norm() < 0.00001) continue;
-		n.Normalize();
+		float length = n.norm();
+		if(length < 0.00001f) continue;
+		n /= length;
 		scaledNormal += n;
 		count++;
 	}
+	if(count == 0) return;
 	scaledNormal /= count;
-	float len = scaledNormal.Norm();
+	float len = scaledNormal.norm();
 	if(len == 0) return;
 	scaledNormal /= len;
 
@@ -102,7 +115,8 @@ void AnchoredCone3f::AddNormals(vector<Point3f> &normal, float threshold) {
 		distr[k] =0;
 
 	for(auto &n: normal) {
-		int pos = (int)(49.0 * Angle(scaledNormal, n)/M_PI);
+		int pos = (int)(49.0 * vectorAngle(scaledNormal, n)/M_PI);
+		pos = std::max(0, std::min(49, pos));
 		distr[pos]++;
 	}
 	int tot = 0;
@@ -114,24 +128,24 @@ void AnchoredCone3f::AddNormals(vector<Point3f> &normal, float threshold) {
 	}
 	double alpha = M_PI * (best +1) / 50;
 	if(alpha >= M_PI/ 2 - 0.1) {
-		scaledNormal = Point3f(0,0,0);
+		scaledNormal = {0, 0, 0};
 	} else {
-		scaledNormal /= cos(M_PI/2.0f - alpha);
+		scaledNormal /= std::cos(M_PI/2.0f - alpha);
 	}
 }
 
-void AnchoredCone3f::AddAnchors(vector<Point3f> &anchors) {
+void AnchoredCone3f::AddAnchors(vector<Vector3f> &anchors) {
 	assert(anchors.size() > 0);
 	frontAnchor = anchors[0];
 	backAnchor = anchors[0];
 
-	float fa = frontAnchor * scaledNormal;
-	float fb = -backAnchor * scaledNormal;
+	float fa = frontAnchor.dot(scaledNormal);
+	float fb = -backAnchor.dot(scaledNormal);
 
-	vector<Point3f>::iterator i;
+	vector<Vector3f>::iterator i;
 	for(i = anchors.begin(); i != anchors.end(); i++) {
-		Point3f &anchor = *i;
-		float na = anchor * scaledNormal;
+		Vector3f &anchor = *i;
+		float na = anchor.dot(scaledNormal);
 		if(na < fa) {
 			frontAnchor = anchor;
 			fa = na;
@@ -144,8 +158,8 @@ void AnchoredCone3f::AddAnchors(vector<Point3f> &anchors) {
 }
 
 void Cone3s::Import(const AnchoredCone3f &c) {
-	Point3f normal = c.scaledNormal;
-	float len = normal.Norm();
+	Vector3f normal = c.scaledNormal;
+	float len = normal.norm();
 	if(len > 0.001)
 		normal /= len;
 
@@ -165,26 +179,26 @@ void Cone3s::Import(const AnchoredCone3f &c) {
 }
 
 
-bool Cone3s::Backface(const vcg::Sphere3f &sphere,
-					  const vcg::Point3f &view) const {
-	vcg::Point3f norm(n[0]/32766.0f, n[1]/32766.0f, n[2]/32766.0f);
-	vcg::Point3f d = (sphere.Center() - norm * sphere.Radius()) - view;
+bool Cone3s::Backface(const nx::Sphere &sphere,
+					  const nx::Vector3f &view) const {
+	nx::Vector3f norm{n[0]/32766.0f, n[1]/32766.0f, n[2]/32766.0f};
+	nx::Vector3f d = (sphere.Center() - norm * sphere.Radius()) - view;
 	norm *= n[3]/32766.0f;
 
-	float f = d * norm;
-	if (f < 0.001 || f * f < d * d)
+	float f = d.dot(norm);
+	if (f < 0.001 || f * f < d.dot(d))
 		return false;
 	return true;
 }
 
-bool Cone3s::Frontface(const vcg::Sphere3f &sphere,
-					   const vcg::Point3f &view) const {
-	vcg::Point3f norm(n[0]/32766.0f, n[1]/32766.0f, n[2]/32766.0f);
-	vcg::Point3f d = (sphere.Center() + norm * sphere.Radius()) - view;
+bool Cone3s::Frontface(const nx::Sphere &sphere,
+					   const nx::Vector3f &view) const {
+	nx::Vector3f norm{n[0]/32766.0f, n[1]/32766.0f, n[2]/32766.0f};
+	nx::Vector3f d = (sphere.Center() + norm * sphere.Radius()) - view;
 	norm *= n[3]/3276.0f;
 
-	float f = -d * norm;
-	if (f < 0.001 || f * f < d * d)
+	float f = -d.dot(norm);
+	if (f < 0.001 || f * f < d.dot(d))
 		return false;
 	return true;
 }

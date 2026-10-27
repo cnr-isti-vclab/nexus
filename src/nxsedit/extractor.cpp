@@ -21,8 +21,6 @@ for more details.
 #include <QDir>
 #include "extractor.h"
 
-#include "../nxszip/meshcoder.h"
-//typedef MeshCoder MeshEncoder;
 #include <corto/corto.h>
 
 #include <vcg/space/triangle3.h>
@@ -137,8 +135,11 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	header.nvert = 0;
 	header.nface = 0;
 	
-	if(transform)
-		header.sphere.Center() = matrix * header.sphere.Center();
+	if(transform) {
+		nx::Vector3f &center = header.sphere.Center();
+		vcg::Point3f transformed = matrix * vcg::Point3f(center.x, center.y, center.z);
+		center = {transformed[0], transformed[1], transformed[2]};
+	}
 	
 	vector<nx::Node> nodes;
 	vector<nx::Patch> patches;
@@ -151,8 +152,11 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	for(uint i = 0; i < n_nodes-1; i++) {
 		if(!selected[i]) continue;
 		nx::Node node = nexus->nodes[i];
-		if(transform)
-			node.sphere.Center() = matrix * node.sphere.Center();
+		if(transform) {
+			nx::Vector3f &center = node.sphere.Center();
+			vcg::Point3f transformed = matrix * vcg::Point3f(center.x, center.y, center.z);
+			center = {transformed[0], transformed[1], transformed[2]};
+		}
 		header.nvert += node.nvert;
 		header.nface += node.nface;
 		
@@ -223,8 +227,9 @@ void Extractor::save(QString output, nx::Signature &signature) {
 			memcpy(memory, data.memory, data_size);
 			
 			for(int k = 0; k < node.nvert; k++) {
-				vcg::Point3f &v = ((vcg::Point3f *)memory)[k];
-				v = matrix * v;
+				nx::Vector3f &v = reinterpret_cast<nx::Vector3f *>(memory)[k];
+				vcg::Point3f transformed = matrix * vcg::Point3f(v.x, v.y, v.z);
+				v = {transformed[0], transformed[1], transformed[2]};
 			}
 		}
 		if(signature.isCompressed()) {
@@ -330,34 +335,9 @@ quint32 Extractor::pad(quint32 s) {
 
 void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, nx::NodeData &data, Patch *patches) {
 	
-	//detect first node error which is out of boundary.
-	if(signature.flags & Signature::MECO) {
-		
-		meco::MeshEncoder coder(node, data, patches, signature);
-		coder.coord_q = coord_q;
-		coder.error = error_factor*node.error;
-		coder.norm_q = norm_bits;
-		for(int k = 0; k < 4; k++)
-			coder.color_q[k] = color_bits[k];
-		//HER if signaure has texture was set to (int)log2(tex_step * pow(2, -12)); //here set to -14
-		//here we shold set to -log2(max_side/tex_step) where max_side width or height of the associated texture.
-		//unfortunately we have no really fast to provide this info.....
-		//so assume
-		coder.tex_q = -(int)log2(512/tex_step);
-		
-		coder.encode();
-		
-		//cout << "V size: " << coder.coord_size << endl;
-		//cout << "N size: " << coder.normal_size << endl;
-		//cout << "C size: " << coder.color_size << endl;
-		//cout << "I size: " << coder.face_size << endl;
-		
-		file.write((char *)&*coder.stream.buffer, coder.stream.size());
-		//padding
-		quint64 size = pad(file.pos()) - file.pos();
-		char tmp[NEXUS_PADDING];
-		file.write(tmp, size);
-	} else if(signature.flags & Signature::CORTO) {
+	if(signature.flags & Signature::MECO)
+		throw "MECO compression is no longer supported";
+	if(signature.flags & Signature::CORTO) {
 		
 		crt::Encoder encoder(node.nvert, node.nface);
 		
@@ -512,20 +492,16 @@ void Extractor::savePly(QString filename) {
 		NodeData &data = nexus->nodedata[n];
 		
 		char *buffer = new char[bytes_per_vertex * node.nvert];
-		char *pos = buffer;
-		vcg::Point3f *coords = data.coords();
-		vcg::Color4b *colors = data.colors(nexus->header.signature, node.nvert);
-		for(int k = 0; k < node.nvert; k++) {
-			vcg::Point3f *p = (vcg::Point3f *)pos;
-			*p = coords[k];
-			p++;
-			pos = (char *)p;
-			if(has_colors) {
-				vcg::Color4b *c  = (vcg::Color4b *)pos;
-				*c = colors[k];
-				c++;
-				pos = (char *)c;
-			}
+		nx::Vector3f *coords = data.coords();
+		nx::Rgba8 *colors = data.colors(nexus->header.signature, node.nvert);
+		if(has_colors) {
+			struct PlyColorVertex { nx::Vector3f position; nx::Rgba8 color; };
+			static_assert(sizeof(PlyColorVertex) == 16, "PLY vertex layout must be packed");
+			PlyColorVertex *vertices = reinterpret_cast<PlyColorVertex *>(buffer);
+			for(int k = 0; k < node.nvert; k++)
+				vertices[k] = {coords[k], colors[k]};
+		} else {
+			memcpy(buffer, coords, sizeof(nx::Vector3f) * node.nvert);
 		}
 		count_vertices += n_vertices;
 		ply.write((char *)buffer, bytes_per_vertex * node.nvert);
@@ -636,18 +612,22 @@ void Extractor::saveStl(QString filename) {
 			}
 
 			uint16_t *triangles = data.faces(nexus->header.signature, node.nvert);
-			vcg::Point3f *coords = data.coords();
+			nx::Vector3f *coords = data.coords();
 
 			for(uint k = start; k < patch.triangle_offset; k++) {
-				vcg::Point3f *face = (vcg::Point3f *)(buffer + 50*face_count);
-				vcg::Point3f &p0 = coords[triangles[3*k + 0]];
-				vcg::Point3f &p1 = coords[triangles[3*k + 1]];
-				vcg::Point3f &p2 = coords[triangles[3*k + 2]];
-
-				face[0] = (( p1 - p0) ^ (p2 - p0)).Normalize();
-				face[1] = p0;
-				face[2] = p1;
-				face[3] = p2;
+				float *face = reinterpret_cast<float *>(buffer + 50*face_count);
+				const nx::Vector3f &p0 = coords[triangles[3*k + 0]];
+				const nx::Vector3f &p1 = coords[triangles[3*k + 1]];
+				const nx::Vector3f &p2 = coords[triangles[3*k + 2]];
+				nx::Vector3f a = p1 - p0;
+				nx::Vector3f b = p2 - p0;
+				nx::Vector3f normal = {a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x};
+				float length = normal.norm();
+				if(length > 0) normal = normal / length;
+				face[0] = normal.x; face[1] = normal.y; face[2] = normal.z;
+				face[3] = p0.x; face[4] = p0.y; face[5] = p0.z;
+				face[6] = p1.x; face[7] = p1.y; face[8] = p1.z;
+				face[9] = p2.x; face[10] = p2.y; face[11] = p2.z;
 				face_count++;
 			}
 
@@ -662,15 +642,15 @@ void Extractor::saveStl(QString filename) {
 }
 
 struct PlyVertex {
-	vcg::Point3f p;
+	nx::Vector3f p;
 	PlyVertex() {}
-	PlyVertex(const vcg::Point3f &_p): p(_p){}
+	PlyVertex(const nx::Vector3f &_p): p(_p){}
 };
 
 struct PlyColorVertex {
-	vcg::Point3f v;
-	vcg::Color4b c;
-	PlyColorVertex(const vcg::Point3f &_v, const vcg::Color4b &_c): v(_v), c(_c) {}
+	nx::Vector3f v;
+	nx::Rgba8 c;
+	PlyColorVertex(const nx::Vector3f &_v, const nx::Rgba8 &_c): v(_v), c(_c) {}
 };
 
 struct PlyFace {
@@ -714,8 +694,8 @@ void Extractor::saveUnifiedPly(QString filename) {
 		NodeData &data = nexus->nodedata[i];
 		nexus->loadRam(i);
 		
-		vcg::Point3f *coords = data.coords();
-		vcg::Color4b *colors = data.colors(nexus->header.signature, node.nvert);
+		nx::Vector3f *coords = data.coords();
+		nx::Rgba8 *colors = data.colors(nexus->header.signature, node.nvert);
 		uint16_t *triangles = data.faces(nexus->header.signature, node.nvert);
 		
 		

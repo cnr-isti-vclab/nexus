@@ -11,13 +11,11 @@ SET(HEADERS
 	../nxszip/fpu_precision.h
 	../nxszip/math_class.h
 	../nxszip/cstream.h
-	../nxszip/meshcoder.h
 	extractor.h
 )
 
 SET(SOURCES
 	${VCGDIR}/wrap/system/qgetopt.cpp
-	../nxszip/meshcoder.cpp
 	../common/qtnexusfile.cpp
 	main.cpp
 	extractor.cpp
@@ -34,7 +32,8 @@ target_link_libraries(nxsedit PUBLIC nexus)
 
 project(nxscompress)
 
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 SET(HEADERS
 	${VCGDIR}/wrap/system/qgetopt.h

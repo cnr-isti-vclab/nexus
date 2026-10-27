@@ -16,7 +16,6 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include "ram_cache.h"
-#include "../nxszip/meshdecoder.h"
 
 #include <corto/decoder.h>
 
@@ -88,9 +87,12 @@ void RamCache::loadNexus(Nexus *nexus) {
 }
 
 int RamCache::get(nx::Token *in) {
+	try {
 	if(in->nexus->isStreaming()) {
 #ifdef USE_CURL
 		auto &signature = in->nexus->header.signature;
+		if(signature.flags & Signature::MECO)
+			throw "MECO-compressed Nexus files are no longer supported";
 		Node &node = in->nexus->nodes[in->node];
 		NodeData &nodedata = in->nexus->nodedata[in->node];
 		nodedata.memory = new char[node.getSize()];
@@ -104,12 +106,7 @@ int RamCache::get(nx::Token *in) {
 			char *buffer = nodedata.memory;
 			nodedata.memory = new char[size];
 
-			if(signature.flags & Signature::MECO) {
-
-				meco::MeshDecoder coder(node, nodedata, in->nexus->patches, signature);
-				coder.decode(node.getSize(), (unsigned char *)buffer);
-
-			} else if(signature.flags & Signature::CORTO) {
+			if(signature.flags & Signature::CORTO) {
 
 				crt::Decoder decoder(node.getSize(), (unsigned char *)buffer);
 
@@ -123,8 +120,6 @@ int RamCache::get(nx::Token *in) {
 				if(node.nface)
 					decoder.setIndex(nodedata.faces(signature, node.nvert));
 				decoder.decode();
-
-				delete []buffer;
 			}
 			delete []buffer;
 		}
@@ -134,6 +129,11 @@ int RamCache::get(nx::Token *in) {
 #endif
 	} else {
 		return in->nexus->loadRam(in->node);
+	}
+	} catch(const char *error) {
+		std::cerr << "Error loading node " << in->node << " from Nexus "
+			  << in->nexus->url << ": " << error << std::endl;
+		return -1;
 	}
 }
 

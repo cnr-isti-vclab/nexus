@@ -273,7 +273,7 @@
  <customwidgets>
   <customwidget>
    <class>GLNxsview</class>
-   <extends>QWidget</extends>
+    <extends>QOpenGLWidget</extends>
    <header>gl_nxsview.h</header>
    <container>1</container>
   </customwidget>

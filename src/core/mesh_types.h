@@ -7,12 +7,14 @@
 #include <vector>
 #include <limits>
 
-// Basic POD geometry types intended for out-of-core usage.
-// Keep them trivial (no constructors) to simplify mmap'ed I/O.
+// Compact geometry types intended for out-of-core usage.
+// Keep their data members packed and layouts stable for mapped I/O.
 
 namespace nx {
 
 struct Vector3f { float x, y, z;
+	float &operator[](std::size_t i) { return i == 0 ? x : (i == 1 ? y : z); }
+	const float &operator[](std::size_t i) const { return i == 0 ? x : (i == 1 ? y : z); }
 	bool operator==(const Vector3f &v) const { return x == v.x && y == v.y && z == v.z; }
 	Vector3f operator+(const Vector3f &v) const { return {x + v.x, y + v.y, z + v.z}; }
 	Vector3f operator-(const Vector3f &v) const { return {x - v.x, y - v.y, z - v.z}; }
@@ -20,12 +22,55 @@ struct Vector3f { float x, y, z;
 	Vector3f operator*(float s) const { return {x * s, y * s, z * s}; }
 	Vector3f operator/(float s) const { return {x / s, y / s, z / s}; }
 	Vector3f &operator+=(const Vector3f &v) { x += v.x; y += v.y; z += v.z; return *this; }
+	Vector3f &operator-=(const Vector3f &v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
+	Vector3f &operator*=(float s) { x *= s; y *= s; z *= s; return *this; }
+	Vector3f &operator/=(float s) { x /= s; y /= s; z /= s; return *this; }
 	float dot(const Vector3f &v) const { return x * v.x + y * v.y + z * v.z; }
 	float norm() const { return std::sqrt(dot(*this)); }
+	float squaredNorm() const { return dot(*this); }
 };
 struct Vector3d { double x, y, z; };
-struct Vector2f { float u, v; };
-struct Rgba8 { std::uint8_t r, g, b, a; };
+struct Vector3s {
+	std::int16_t x, y, z;
+	std::int16_t &operator[](std::size_t i) { return i == 0 ? x : (i == 1 ? y : z); }
+	const std::int16_t &operator[](std::size_t i) const { return i == 0 ? x : (i == 1 ? y : z); }
+};
+struct Vector2f {
+	float u, v;
+	float &operator[](std::size_t i) { return i == 0 ? u : v; }
+	const float &operator[](std::size_t i) const { return i == 0 ? u : v; }
+};
+
+// Infinite ray; direction is not necessarily normalized.
+class Ray3 {
+public:
+	Ray3() = default;
+	Ray3(const Vector3f &origin, const Vector3f &direction): origin_(origin), direction_(direction) {}
+
+	const Vector3f &Origin() const { return origin_; }
+	Vector3f &Origin() { return origin_; }
+	const Vector3f &Direction() const { return direction_; }
+	void SetOrigin(const Vector3f &origin) { origin_ = origin; }
+	void SetDirection(const Vector3f &direction) { direction_ = direction; }
+	bool NormalizeDirection() {
+		float length = direction_.norm();
+		if(length == 0.0f) return false;
+		direction_ /= length;
+		return true;
+	}
+
+private:
+	Vector3f origin_{};
+	Vector3f direction_{};
+};
+
+using Ray3f = Ray3;
+
+struct Rgba8 {
+	std::uint8_t r, g, b, a;
+	std::uint8_t &operator[](std::size_t i) { return i == 0 ? r : (i == 1 ? g : (i == 2 ? b : a)); }
+	const std::uint8_t &operator[](std::size_t i) const { return i == 0 ? r : (i == 1 ? g : (i == 2 ? b : a)); }
+};
 
 // Axis-aligned bounding box used for mesh extents.
 class Aabb {
@@ -39,6 +84,15 @@ public:
 struct Sphere {
 	Vector3f center{0, 0, 0};
 	float radius = -1;
+	Sphere() = default;
+	Sphere(const Vector3f &c, float r): center(c), radius(r) {}
+	Vector3f &Center() { return center; }
+	const Vector3f &Center() const { return center; }
+	float &Radius() { return radius; }
+	float Radius() const { return radius; }
+	bool IsIn(const Sphere &s) const {
+		return s.radius < 0 || (radius >= 0 && (s.center - center).norm() + s.radius <= radius);
+	}
 
 	// Grows this sphere to contain s.
 	void add(const Sphere &s) {
@@ -185,6 +239,7 @@ struct MacroPartition {
 };
 
 static_assert(sizeof(Vector3f) == 12, "Vector3f must stay packed");
+static_assert(sizeof(Vector3s) == 6,  "Vector3s must stay packed");
 static_assert(sizeof(Vector2f) == 8,  "Vector2f must stay packed");
 static_assert(sizeof(Rgba8) == 4,     "Rgba8 layout changed unexpectedly");
 static_assert(sizeof(Sphere) == 16,   "Sphere layout changed unexpectedly");

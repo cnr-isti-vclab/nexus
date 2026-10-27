@@ -14,11 +14,11 @@ SET(HEADERS
 	../common/frustum.h
 	../common/dag.h
 	../common/controller.h
-	../nxszip/meshcoder.h
 	../nxszip/cstream.h
 	../nxszip/zpoint.h
 	gl_nxsview.h
-	trackball.h
+	nxsview.h
+	../gui/trackball.h
 	scene.h
 )
 
@@ -30,6 +30,7 @@ SET(SOURCES
 	../common/frustum.cpp
 	../common/qtnexusfile.cpp
 	main.cpp
+	nxsview.cpp
 	gl_nxsview.cpp
 	scene.cpp
 )
@@ -38,15 +39,21 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 COMPONENTS OpenGL REQUIRED)
+find_package(Qt6 COMPONENTS OpenGLWidgets REQUIRED)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/glew.cmake)
 
-add_executable(nxsview MACOSX_BUNDLE ${SOURCES} ${HEADERS})
+add_executable(nxsview MACOSX_BUNDLE ${SOURCES} ${HEADERS}
+	../common/nexusdata.cpp ../common/nexusdata.h
+	../common/traversal.cpp ../common/traversal.h
+	../common/cone.cpp ../common/cone.h)
+target_include_directories(nxsview SYSTEM PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../../vcglib")
+target_include_directories(nxsview SYSTEM PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../corto/include")
+set(CORTO_LIBRARY "${CMAKE_CURRENT_LIST_DIR}/../corto/libcorto.a")
 if (WIN32)
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew glu32 OpenGL32)
+	target_link_libraries(nxsview PRIVATE "${CORTO_LIBRARY}" Qt6::OpenGLWidgets external-glew glu32 OpenGL32)
 else()
-	target_link_libraries(nxsview PUBLIC nexus Qt5::OpenGL external-glew OpenGL::GLU OpenGL::GL)
+	target_link_libraries(nxsview PRIVATE "${CORTO_LIBRARY}" Qt6::OpenGLWidgets external-glew OpenGL::GLU OpenGL::GL)
 endif()
 
 target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)

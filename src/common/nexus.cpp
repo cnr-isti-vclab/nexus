@@ -21,9 +21,7 @@ for more details.
 #include "controller.h"
 #include "globalgl.h"
 #include "qtnexusfile.h"
-
-#include <QGLWidget>
-
+#include <QImage>
 
 using namespace nx;
 

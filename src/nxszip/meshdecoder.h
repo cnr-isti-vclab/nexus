@@ -81,7 +81,7 @@ private:
 
 	void decodeFaces(int start, uint16_t *faces);
 	//TODO these are in common with MeshCoder, we should make a meshencoder class and move the common parts
-	void computeNormals(vcg::Point3s *estimated_normals);
+	void computeNormals(nx::Vector3s *estimated_normals);
 	void markBoundary();
 
 	int decodeDiff(uchar diff, BitStream &stream);

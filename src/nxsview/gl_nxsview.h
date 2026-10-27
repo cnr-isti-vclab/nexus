@@ -20,24 +20,15 @@ for more details.
 
 #include <GL/glew.h>
 #include <iostream>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QDebug>
-#include <QTime>
 
-#include "../common/controller.h"
-#include "../common/renderer.h"
-#include "scene.h"
-#include "trackball.h"
+#include "nxsview.h"
 
-class GLNxsview : public QGLWidget {
+class GLNxsview : public QOpenGLWidget, public Nxsview {
 	Q_OBJECT
 
 public:
-	nx::Renderer renderer;
-	Scene scene;
-	nx::Rgba8 colorBottom;
-	nx::Rgba8 colorTop;
-	nx::Rgba8 color;
 	bool share; //if true shares context with nexus at initialization
 
 	GLNxsview(QWidget *parent = 0, bool share = true);
@@ -46,8 +37,6 @@ public:
 public slots:
 
 	void checkForUpdate();
-
-	void lightTrackball(bool on) { default_trackball = !on; }
 
 	void setTriangles(bool on);
 	void setNormals(bool on);
@@ -63,36 +52,20 @@ public slots:
 
 	void getSnapshot();
 
+	void lightTrackball(bool on);
 	void setColor();
 	void setColorTop();
 	void setColorBottom();
-	void zoomIn() { trackball.wheel(1); repaint(); }
-	void zoomOut() { trackball.wheel(-1); repaint(); }
-	void stopController() {
-		//sleep(2);
-	}
+	void zoomIn();
+	void zoomOut();
+	void stopController();
 
 protected:
-	Trackball trackball;
-	Trackball::Pose saved_pose;
-	Trackball trackball_light;
-	bool default_trackball;
-	int button;
-	bool extracting;
-
-	//viewpoints sequence
-	std::vector<Trackball::Pose> viewpoints;
-	quint32 current_viewpoint;
-	float current_time; //this will be modified by velocity
-	QTime time;
-	bool playing;
-
-	void init(QString file);
+	void requestUpdate() override { update(); }
 	void initializeGL();
 	void resizeGL(int w, int h);
 	void setView(float znear, float zfar);
-	void computeNearFar(float &znear, float &zfar);
-	void paintEvent(QPaintEvent *event);
+	void paintGL();
 
 	void closeEvent ( QCloseEvent * event );
 	void wheelEvent(QWheelEvent *e);
@@ -104,10 +77,6 @@ protected:
 	void keyPressEvent(QKeyEvent* e);
 
 private:
-	bool  hasToPick;  // has to pick during the next redraw.
-	float fov;
-	bool info;
-	int pickX = 0, pickY = 0;
 };
 
 

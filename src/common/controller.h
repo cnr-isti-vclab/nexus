@@ -25,7 +25,7 @@ for more details.
 #include "gpu_cache.h"
 
 
-class QGLWidget;
+class QOpenGLWidget;
 
 namespace nx {
 
@@ -50,7 +50,7 @@ public:
 	~Controller() { finish(); }
 
 
-	void setWidget(QGLWidget *widget);
+	void setWidget(QOpenGLWidget *widget);
 
 	void setGpu(uint64_t size) { max_gpu = size; gpu_cache.setCapacity(size); }
 	uint64_t maxGpu() const { return max_gpu; }

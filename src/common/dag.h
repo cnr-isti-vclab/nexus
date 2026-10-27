@@ -30,10 +30,7 @@ typedef unsigned __int64 uint64_t;
 #include <stdint.h>
 #endif
 
-#include <vcg/space/point2.h>
-#include <vcg/space/sphere3.h>
-#include <vcg/space/ray3.h>
-
+#include "../core/mesh_types.h"
 #include "cone.h"
 #include "signature.h"
 
@@ -52,7 +49,7 @@ struct Header {
 	uint32_t n_nodes;          //number of nodes in the dag
 	uint32_t n_patches;        //number of links (patches) in the dag
 	uint32_t n_textures;       //number of textures
-	vcg::Sphere3f sphere;      //bounding sphere
+	Sphere sphere;             //bounding sphere; same 16-byte on-disk layout
 };
 
 struct Node {
@@ -61,11 +58,11 @@ struct Node {
 	uint16_t nface;
 	float error;
 	nx::Cone3s cone;           //cone of normals
-	vcg::Sphere3f sphere;      //saturated sphere (extraction)
+	Sphere sphere;             //saturated sphere (extraction)
 	float tight_radius;        //tight sphere (frustum culling)
 	uint32_t first_patch;      //index of the first patch in the array of patches.
 	uint32_t last_patch() { return (this + 1)->first_patch; } //this node is ALWAYS inside an array.
-	vcg::Sphere3f tightSphere() { return vcg::Sphere3f(sphere.Center(), tight_radius); }
+	Sphere tightSphere() const { return Sphere{sphere.Center(), tight_radius}; }
 
 	uint64_t getBeginOffset() { return (uint64_t)offset * (uint64_t) NEXUS_PADDING; }
 	uint64_t getEndOffset() { return (this+1)->getBeginOffset(); }

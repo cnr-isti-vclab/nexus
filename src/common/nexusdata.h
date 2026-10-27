@@ -23,8 +23,8 @@ for more details.
 
 #include "signature.h"
 #include "dag.h"
+#include "../core/mesh_types.h"
 
-#include <vcg/space/color4.h>
 #include "nexusfile.h"
 
 namespace nx {
@@ -35,26 +35,26 @@ public:
 	char *memory;
 	uint32_t vbo;
 	uint32_t fbo;
-	vcg::Point3f *coords() { return (vcg::Point3f *)memory; }
-	vcg::Point2f *texCoords(Signature &/*sig*/, uint32_t nvert) {
+	Vector3f *coords() { return reinterpret_cast<Vector3f *>(memory); }
+	Vector2f *texCoords(Signature &/*sig*/, uint32_t nvert) {
 		char *m = memory;
-		m += nvert * sizeof(vcg::Point3f);
-		return (vcg::Point2f *)m;
+		m += nvert * sizeof(Vector3f);
+		return reinterpret_cast<Vector2f *>(m);
 	}
-	vcg::Point3s *normals(Signature &sig, uint32_t nvert) {
-		char *m = memory + nvert * sizeof(vcg::Point3f);
+	Vector3s *normals(Signature &sig, uint32_t nvert) {
+		char *m = memory + nvert * sizeof(Vector3f);
 		if(sig.vertex.hasTextures())
-			m += nvert * sizeof(vcg::Point2f);
-		return (vcg::Point3s *)m;
+			m += nvert * sizeof(Vector2f);
+		return reinterpret_cast<Vector3s *>(m);
 	}
-	vcg::Color4b *colors(Signature &sig, uint32_t nvert) {
+	Rgba8 *colors(Signature &sig, uint32_t nvert) {
 		char *m = memory;
-		m += nvert * sizeof(vcg::Point3f);
+		m += nvert * sizeof(Vector3f);
 		if(sig.vertex.hasTextures())
-			m += nvert * sizeof(vcg::Point2f);
+			m += nvert * sizeof(Vector2f);
 		if(sig.vertex.hasNormals())
-			m += nvert * sizeof(vcg::Point3s);
-		return (vcg::Color4b *)m;
+			m += nvert * sizeof(Vector3s);
+		return reinterpret_cast<Rgba8 *>(m);
 	}
 
 	uint16_t *faces(Signature &sig, uint32_t nvert) {
@@ -96,8 +96,8 @@ public:
 	void close();
 	virtual void flush();
 
-	vcg::Sphere3f &boundingSphere() { return header.sphere; }
-	bool intersects(vcg::Ray3f &r, float &distance);
+	Sphere &boundingSphere() { return header.sphere; }
+	bool intersects(Ray3 &r, float &distance);
 
 	uint32_t size(uint32_t node);
 	uint64_t loadRam(uint32_t node);

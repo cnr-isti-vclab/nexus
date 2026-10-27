@@ -5,7 +5,7 @@ CONFIG   += console
 CONFIG   -= app_bundle
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++11
+QMAKE_CXXFLAGS += -std=c++17
 
 DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES
@@ -27,10 +27,6 @@ SOURCES += \
     ../common/nexusdata.cpp \
     ../common/traversal.cpp \
     ../common/cone.cpp \
-    ../nxszip/meshcoder.cpp \
-    ../nxszip/meshdecoder.cpp \
-    ../nxszip/abitstream.cpp \
-    ../nxszip/atunstall.cpp \
     main_compress.cpp \
     extractor.cpp \
     ../common/qtnexusfile.cpp
@@ -47,11 +43,7 @@ HEADERS += \
     ../nxszip/fpu_precision.h \
     ../nxszip/bytestream.h \
     ../nxszip/math_class.h \
-    ../nxszip/bitstream.h \
-    ../nxszip/tunstall.h \
     ../nxszip/cstream.h \
-    ../nxszip/meshcoder.h \
-    ../nxszip/meshdecoder.h \
     extractor.h \
     ../common/qtnexusfile.h
 

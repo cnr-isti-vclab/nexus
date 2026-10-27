@@ -55,7 +55,6 @@ int main(int argc, char *argv[]) {
 	QString projection("");
 	QString matrix("");
 	QString imatrix("");
-	QString compresslib("corto");
 
 	bool compress = true;
 
@@ -69,7 +68,6 @@ int main(int argc, char *argv[]) {
 	opt.addOption('o', "nexus file", "filename of the nexus output file", &output);
 
 	//compression and quantization options
-	opt.addOption('Z', "compression library", "pick among compression libs [corto, meco], default corto", &compresslib);
 	opt.addOption('v', "vertex quantization", "absolute side of quantization grid, default 0.0 (uses quantization factor, instead)", &coord_step);
 	opt.addOption('V', "vertex bits", "number of bits in vertex coordinates when compressing default, 0 (uses quantization factor, instead)", &position_bits);
 	opt.addOption('Q', "quantization factor", "quantization as a factor of error, default 0.1", &error_q);
@@ -138,19 +136,12 @@ int main(int argc, char *argv[]) {
 			Signature signature = nexus.header.signature;
 			if(compress) {
 				signature.flags &= ~(Signature::MECO | Signature::CORTO);
-				if(compresslib == "meco")
-					signature.flags |= Signature::MECO;
-				else if(compresslib == "corto")
-					signature.flags |= Signature::CORTO;
-				else {
-					cerr << "Unknown compression method: " << qPrintable(compresslib) << endl;
-					exit(-1);
-				}
+				signature.flags |= Signature::CORTO;
 				if(coord_step) {  //global precision, absolute value
 					extractor.error_factor = 0.0; //ignore error factor.
 					//do nothing
 				} else if(position_bits) {
-					vcg::Sphere3f &sphere = nexus.header.sphere;
+					nx::Sphere &sphere = nexus.header.sphere;
 					coord_step = sphere.Radius()/pow(2.0f, position_bits);
 					extractor.error_factor = 0.0;
 
@@ -182,8 +173,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			cout << "Saving with flag: " << signature.flags;
-			if (signature.flags & Signature::MECO) cout << " (compressed with MECO)";
-			else if (signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
+			if (signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
 			else cout << " (not compressed)";
 			cout << endl;
 

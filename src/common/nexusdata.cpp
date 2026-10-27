@@ -20,9 +20,9 @@ for more details.
 #include "nexusdata.h"
 #include "qtnexusfile.h"
 #include <vcg/space/line3.h>
-#include <vcg/space/intersection3.h>
+//#include <vcg/space/intersection3.h>
+#include <vcg/space/sphere3.h>
 
-#include "../nxszip/meshdecoder.h"
 #include <corto/decoder.h>
 
 //#if _MSC_VER >= 1800
@@ -153,6 +153,8 @@ uint32_t NexusData::size(uint32_t node) {
 uint64_t NexusData::loadRam(uint32_t n) {
 
 	Signature &sign = header.signature;
+	if(sign.flags & Signature::MECO)
+		throw "MECO-compressed Nexus files are no longer supported";
 	Node &node = nodes[n];
 	uint64_t offset = node.getBeginOffset();
 
@@ -183,11 +185,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 		d.memory = new char[size];
 
-		if(sign.flags & Signature::MECO) {
-			meco::MeshDecoder coder(node, d, patches, sign);
-			coder.decode(compressed_size, (unsigned char *)buffer);
-
-		} else if(sign.flags & Signature::CORTO) {
+		if(sign.flags & Signature::CORTO) {
 
 			crt::Decoder decoder(compressed_size, (unsigned char *)buffer);
 
@@ -216,25 +214,25 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 			unsigned seed = 0;
 			std::shuffle (order.begin(), order.end(), std::default_random_engine(seed));
-			std::vector<vcg::Point3f> coords(node.nvert);
+			std::vector<Vector3f> coords(node.nvert);
 			for(int i =0; i < node.nvert; i++)
 				coords[i] = d.coords()[order[i]];
-			memcpy(d.coords(), &*coords.begin(), sizeof(Point3f)*node.nvert);
+			memcpy(d.coords(), coords.data(), sizeof(Vector3f)*node.nvert);
 
 			if(sign.vertex.hasNormals()) {
-				Point3s *n = d.normals(sign, node.nvert);
-				std::vector<Point3s> normals(node.nvert);
+				nx::Vector3s *n = d.normals(sign, node.nvert);
+				std::vector<nx::Vector3s> normals(node.nvert);
 				for(int i =0; i < node.nvert; i++)
 					normals[i] = n[order[i]];
-				memcpy(n, &*normals.begin(), sizeof(Point3s)*node.nvert);
+				memcpy(n, normals.data(), sizeof(nx::Vector3s)*node.nvert);
 			}
 
 			if(sign.vertex.hasColors()) {
-				Color4b *c = d.colors(sign, node.nvert);
-				std::vector<Color4b> colors(node.nvert);
+				Rgba8 *c = d.colors(sign, node.nvert);
+				std::vector<Rgba8> colors(node.nvert);
 				for(int i =0; i < node.nvert; i++)
 					colors[i] = c[order[i]];
-				memcpy(c, &*colors.begin(), sizeof(Color4b)*node.nvert);
+				memcpy(c, colors.data(), sizeof(Rgba8)*node.nvert);
 			}
 		}
 	}
@@ -353,32 +351,26 @@ public:
 	}
 };
 
-bool closest(vcg::Sphere3f &sphere, vcg::Ray3f &ray, float &distance) {
-	vcg::Point3f dir = ray.Direction();
-	vcg::Line3f line(ray.Origin(), dir.Normalize());
-
-	vcg::Point3f p, q;
-	bool success = vcg::IntersectionLineSphere(sphere, line, p, q);
-	if(!success) return false;
-	p -= ray.Origin();
-	q -= ray.Origin();
-	float a = p*ray.Direction();
-	float b = q*ray.Direction();
-	if(a > b) a = b;
-	if(b < 0) return false; //behind observer
-	if(a < 0) {   //we are inside
-		distance = 0;
-		return true;
-	}
-	distance = a;
+bool closest(const nx::Sphere &sphere, const nx::Ray3 &ray, float &distance) {
+	if(sphere.Radius() < 0) return false;
+	nx::Vector3f offset = ray.Origin() - sphere.Center();
+	const nx::Vector3f &direction = ray.Direction();
+	float b = offset.dot(direction);
+	float c = offset.squaredNorm() - sphere.Radius()*sphere.Radius();
+	float discriminant = b*b - c; // direction is normalized
+	if(discriminant < 0) return false;
+	float root = std::sqrt(discriminant);
+	float near_distance = -b - root;
+	float far_distance = -b + root;
+	if(far_distance < 0) return false;
+	distance = near_distance < 0 ? 0.0f : near_distance;
 	return true;
 }
 
-bool NexusData::intersects(vcg::Ray3f &ray, float &distance) {
+bool NexusData::intersects(nx::Ray3 &ray, float &distance) {
 	uint32_t sink = header.n_nodes -1;
 
-	vcg::Point3f dir = ray.Direction();
-	ray.SetDirection(dir.Normalize());
+	if(!ray.NormalizeDirection()) return false;
 
 	if(!closest(header.sphere, ray, distance))
 		return false;

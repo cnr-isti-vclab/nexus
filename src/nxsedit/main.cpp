@@ -71,7 +71,6 @@ int main(int argc, char *argv[]) {
 	QString projection("");
 	QString matrix("");
 	QString imatrix("");
-	QString compresslib("corto");
 
 	bool info = false;
 	bool check = false;
@@ -104,7 +103,6 @@ int main(int argc, char *argv[]) {
 
 	//compression and quantization options
 	opt.addSwitch('z', "compress", "compress patches", &compress);
-	opt.addOption('Z', "compression library", "pick among compression libs [corto, meco (deprecated)], default corto [requires -z]", &compresslib);
 	opt.addOption('v', "vertex quantization", "absolute side of quantization grid [requires -z]", &coord_step);
 	opt.addOption('V', "vertex bits", "number of bits in vertex coordinates when compressing [requires -z]", &position_bits);
 	opt.addOption('Y', "luma bits", "quantization of luma channel, default 6 [requires -z]", &luma_bits);
@@ -244,19 +242,12 @@ int main(int argc, char *argv[]) {
 			Signature signature = nexus.header.signature;
 			if(compress) {
 				signature.flags &= ~(Signature::MECO | Signature::CORTO);
-				if(compresslib == "meco")
-					signature.flags |= Signature::MECO;
-				else if(compresslib == "corto")
-					signature.flags |= Signature::CORTO;
-				else {
-					cerr << "Unknown compression method: " << qPrintable(compresslib) << endl;
-					exit(-1);
-				}
+				signature.flags |= Signature::CORTO;
 				if(coord_step) {  //global precision, absolute value
 					extractor.error_factor = 0.0; //ignore error factor.
 					//do nothing
 				} else if(position_bits) {
-					vcg::Sphere3f &sphere = nexus.header.sphere;
+					nx::Sphere &sphere = nexus.header.sphere;
 					coord_step = sphere.Radius()/pow(2.0f, position_bits);
 					extractor.error_factor = 0.0;
 
@@ -288,8 +279,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			cout << "Saving with flag: " << signature.flags;
-			if (signature.flags & Signature::MECO) cout << " (compressed with MECO)";
-			else if (signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
+			if (signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
 			else cout << " (not compressed)";
 			cout << endl;
 
@@ -357,12 +347,12 @@ void printInfo(NexusData &nexus) {
 	cout << endl;
 
 	cout << "Flag        : " << header.signature.flags;
-	if(header.signature.flags & Signature::MECO) cout << " (compressed with MECO)";
+	if(header.signature.flags & Signature::MECO) cout << " (MECO compression unsupported)";
 	else if(header.signature.flags & Signature::CORTO) cout << " (compressed with CORTO)";
 	else cout << " (not compressed)";
 	cout << endl;
 
-	vcg::Point3f c = header.sphere.Center();
+	const nx::Vector3f &c = header.sphere.Center();
 	float r = header.sphere.Radius();
 	cout << "Sphere      : c [" << c[0] << "," << c[1] << "," << c[2] << "] r " << r << endl;
 	cout << "Nodes       : " << header.n_nodes << endl;
@@ -466,7 +456,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 		nexus.loadRam(i);
 
 		NodeData &data = nexus.nodedata[i];
-		vcg::Point3f *coords = data.coords();
+		nx::Vector3f *coords = data.coords();
 		uint16_t *faces = data.faces(nexus.header.signature, node.nvert);
 
 		switch(method) {
@@ -477,7 +467,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 					int v0 = faces[i*3 + k];
 					int v1 = faces[i*3 + ((k+1)%3)];
 					//this computes average
-					float err = (coords[v0] - coords[v1]).SquaredNorm();
+					float err = (coords[v0] - coords[v1]).squaredNorm();
 					error += sqrt(err);
 					count++;
 				}
@@ -489,7 +479,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 				for(int k = 0; k < 3; k++) {
 					int v0 = faces[i*3 + k];
 					int v1 = faces[i*3 + ((k+1)%3)];
-					error +=(coords[v0] - coords[v1]).SquaredNorm();
+					error +=(coords[v0] - coords[v1]).squaredNorm();
 					count++;
 				}
 			}
@@ -501,7 +491,7 @@ void recomputeError(NexusData &nexus, QString error_method) {
 					int v0 = faces[i*3 + k];
 					int v1 = faces[i*3 + ((k+1)%3)];
 
-					float err = (coords[v0] - coords[v1]).SquaredNorm();
+					float err = (coords[v0] - coords[v1]).squaredNorm();
 					error += log(err); //this is actually 2*error because of the missing square root
 					count++;
 				}
@@ -582,15 +572,16 @@ void checkSpheres(NexusData &nexus) {
 	uint32_t n_nodes = nexus.header.n_nodes;
 	for(int i = n_nodes -2; i >= 0; i--) {
 		Node &node = nexus.nodes[i];
-		vcg::Sphere3f sphere = node.tightSphere();
+			nx::Sphere sphere = node.tightSphere();
 		nexus.loadRam(i);
 		NodeData &data = nexus.nodedata[i];
 
-		vcg::Point3f *coords = data.coords();
+		nx::Vector3f *coords = data.coords();
 		float new_radius = sphere.Radius();
 		for(int k = 0; k < node.nvert; k++) {
-			vcg::Point3f &p = coords[k];
-			float dist = (p - sphere.Center()).Norm();
+			nx::Vector3f &p = coords[k];
+			nx::Vector3f delta = p - sphere.Center();
+			float dist = delta.norm();
 			if(dist > new_radius)
 				new_radius = dist;
 		}

@@ -49,8 +49,13 @@ protected:
 	void middle() {
 		mt::mutexlocker locker(&loading_mutex);
 		if(loading.size()) {
-			loadNexus(loading.front());
+			Nexus *nexus = loading.front();
 			loading.pop_front();
+			try {
+				loadNexus(nexus);
+			} catch(const char *error) {
+				std::cerr << "Error loading Nexus " << nexus->url << ": " << error << std::endl;
+			}
 		}
 	}
 

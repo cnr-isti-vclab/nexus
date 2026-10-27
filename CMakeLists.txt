@@ -6,7 +6,8 @@ option(BUILD_NXS_BUILD "" ON)
 option(BUILD_NXS_EDIT "" ON)
 option(BUILD_NXS_VIEW "" ON)
 
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # enable setting options with SET cmake command
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)

@@ -28,7 +28,7 @@ for more details.
 //#define SHARED_CONTEXT
 
 #ifdef SHARED_CONTEXT
-#include <QGLContext>
+#include <QOpenGLWidget>
 #endif
 
 #include <iostream>
@@ -44,8 +44,8 @@ public:
 #endif
 
 #ifdef SHARED_CONTEXT
-	QGLWidget *widget;
-	QGLWidget *shared;
+	QOpenGLWidget *widget;
+	QOpenGLWidget *shared;
 
 	GpuCache(): widget(NULL), shared(NULL) {}
 #endif
@@ -63,7 +63,8 @@ public:
 
 #ifdef SHARED_CONTEXT
 	void begin() {
-		widget = new QGLWidget(NULL, shared);
+		Q_UNUSED(shared);
+		widget = new QOpenGLWidget();
 		widget->show();
 		widget->makeCurrent();
 	}

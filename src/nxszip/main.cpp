@@ -76,8 +76,11 @@ int main(int argc, char *argv[]) {
     header.nvert = 0;
     header.nface = 0;
 
-    if(transform)
-        header.sphere.Center() = matrix * header.sphere.Center();
+    if(transform) {
+        nx::Vector3f &center = header.sphere.Center();
+        vcg::Point3f transformed = matrix * vcg::Point3f(center.x, center.y, center.z);
+        center = {transformed[0], transformed[1], transformed[2]};
+    }
 
     vector<nx::Node> nodes;
     vector<nx::Patch> patches;
@@ -90,8 +93,11 @@ int main(int argc, char *argv[]) {
     for(uint i = 0; i < n_nodes-1; i++) {
         if(!selected[i]) continue;
         nx::Node node = nexus->nodes[i];
-        if(transform)
-            node.sphere.Center() = matrix * node.sphere.Center();
+        if(transform) {
+            nx::Vector3f &center = node.sphere.Center();
+            vcg::Point3f transformed = matrix * vcg::Point3f(center.x, center.y, center.z);
+            center = {transformed[0], transformed[1], transformed[2]};
+        }
         header.nvert += node.nvert;
         header.nface += node.nface;
 

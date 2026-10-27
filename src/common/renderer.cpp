@@ -17,7 +17,6 @@ for more details.
 */
 #include <vcg/space/color4.h>
 #include <wrap/system/multithreading/util.h>
-#include <wrap/system/time/clock.h>
 
 #include "renderer.h"
 #include "nexus.h"
@@ -68,7 +67,7 @@ void Renderer::nearFar(Nexus *nexus, float &neard, float &fard) {
 	if(!nexus->isReady()) return;
 	
 	Frustum &frustum = metric.frustum;
-	vcg::Sphere3f s = nexus->header.sphere;
+	nx::Sphere s = nexus->header.sphere;
 	
 	float fd = 0;
 	float nd = 1e20;
@@ -84,7 +83,7 @@ void Renderer::nearFar(Nexus *nexus, float &neard, float &fard) {
 		if(token->lock()) {
 			Node &node = nexus->nodes[0];
 			NodeData &data = nexus->data[0];
-			vcg::Point3f *points = data.coords();
+		nx::Vector3f *points = data.coords();
 			for(uint i = 0; i < node.nvert; i++)
 				frustum.updateNear(nnd, points[i]);
 			token->unlock();
@@ -116,10 +115,9 @@ void Renderer::render(Nexus *nexus, bool get_view, int wait ) {
 	locked.clear();
 	last_node = 0;
 	
-	mt::Clock time = mt::Clock::currentTime();
-	time.start();
-	if(stats.time.isValid()) {
-		int elapsed = stats.time.elapsed();
+	const auto time = std::chrono::steady_clock::now();
+	if(stats.time != std::chrono::steady_clock::time_point{}) {
+		int elapsed = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(time - stats.time).count());
 		if(elapsed > 0) {
 			float fps = 1000.0f/elapsed;
 			stats.fps = 0.1*fps + 0.9*stats.fps;
@@ -136,7 +134,7 @@ void Renderer::render(Nexus *nexus, bool get_view, int wait ) {
 			if(nexus->controller->isWaiting())
 				break;
 			
-			if(time.elapsed() > wait)
+			if(std::chrono::steady_clock::now() - time > std::chrono::milliseconds(wait))
 				break;
 			
 			mt::sleep_ms(10);
@@ -280,18 +278,20 @@ void Renderer::renderSelected(Nexus *nexus) {
 		stats.node_rendered++;
 		
 		//TODO cleanup frustum..
-		vcg::Sphere3f sphere = node.tightSphere();
-		if(frustum_culling && metric.frustum.isOutside(sphere.Center(), sphere.Radius())) {
+		nx::Sphere sphere = node.tightSphere();
+		const nx::Vector3f &sphereCenter = sphere.Center();
+		if(frustum_culling && metric.frustum.isOutside(sphereCenter, sphere.Radius())) {
 			stats.frustum_culled++;
 			continue;
 		}
-		if(cone_culling && node.cone.Backface(sphere, metric.frustum.viewPoint())) {
+		nx::Vector3f viewPoint = metric.frustum.viewPoint();
+		if(cone_culling && node.cone.Backface(sphere, viewPoint)) {
 			stats.cone_culled++;
 			continue;
 		}
 		glCheckError();
 		if(0) { //DEBUG
-			vcg::Point3f c = sphere.Center();
+			const nx::Vector3f &c = sphere.Center();
 			float r = node.tight_radius; //sphere.Radius(); //DEBUG
 			
 			glLineWidth(4);
@@ -354,7 +354,7 @@ void Renderer::renderSelected(Nexus *nexus) {
 #endif
 		
 		if(mode & PATCHES) {
-			vcg::Color4b  color;
+		nx::Rgba8 color{};
 			color[2] = ((i % 11)*171)%63 + 63;
 			//color[1] = 255*log2((i+1))/log2(nexus->header.n_patches);
 			color[1] = ((i % 7)*57)%127 + 127;
@@ -473,7 +473,7 @@ Traversal::Action Renderer::expand(HeapNode h) {
 		errors[h.node] = h.error;
 		if(h.visible) { //TODO check proper working on large models
 			bool visible;
-			vcg::Sphere3f sphere = node.tightSphere();
+			nx::Sphere sphere = node.tightSphere();
 			metric.getError(sphere, node.error, visible);
 			if(visible)
 				stats.instance_rendered += node.nvert/2;

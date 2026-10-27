@@ -1,4 +1,4 @@
-QT       += core gui opengl widgets
+QT       += core gui openglwidgets widgets
 
 TARGET   = nxsview
 TEMPLATE = app
@@ -13,13 +13,14 @@ win32:DEFINES += NOMINMAX
 
 INCLUDEPATH += \
     ../../../vcglib \
-    ../../../vcglib/eigenlib
+    ../../../vcglib/eigenlib \
+    ../corto/include
 
-win32:INCLUDEPATH += ../../../glew/include ../../../corto/include
-win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib ../../../corto/lib/corto.lib
+win32:INCLUDEPATH += ../../../glew/include
+CORTO_LIBRARY = $$absolute_path(../corto/libcorto.a, $$_PRO_FILE_PWD_)
+win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib $$CORTO_LIBRARY
 
-unix:INCLUDEPATH += /usr/local/lib ../../../corto/include
-unix:LIBS += -lGLEW -lGLU ../../../corto/libcorto.a
+unix:LIBS += -lGLEW -lGLU -lGL $$CORTO_LIBRARY
 
 SOURCES += \
     ../../../vcglib/wrap/gui/trackmode.cpp \
@@ -33,11 +34,9 @@ SOURCES += \
     ../common/ram_cache.cpp \
     ../common/frustum.cpp \
     ../common/nexusdata.cpp \
-    ../nxszip/abitstream.cpp \
-    ../nxszip/atunstall.cpp \
-    ../nxszip/meshdecoder.cpp \
     main.cpp \
     gl_nxsview.cpp \
+    nxsview.cpp \
     scene.cpp \
     ../common/qtnexusfile.cpp
 
@@ -62,13 +61,11 @@ HEADERS  += \
     ../common/dag.h \
     ../common/controller.h \
     ../common/nexusdata.h \
-    ../nxszip/bitstream.h \
-    ../nxszip/tunstall.h \
-    ../nxszip/meshcoder.h \
     ../nxszip/cstream.h \
     ../nxszip/zpoint.h \
-    ../nxszip/meshdecoder.h \
     gl_nxsview.h \
+    nxsview.h \
+    ../gui/trackball.h \
     scene.h \
     ../common/qtnexusfile.h
 

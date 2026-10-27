@@ -73,7 +73,7 @@ void MeshEncoder::quantizeCoords() {
 	//TODO use quadric to quantize for better rate?  probably not worth it, for so few bits.
 	qpoints.resize(node.nvert);
 	for(unsigned int i = 0; i < node.nvert; i++) {
-		Point3f &p = data.coords()[i];
+		nx::Vector3f &p = data.coords()[i];
 		Point3i &q = qpoints[i];
 		for(int k = 0; k < 3; k++) {
 			q[k] = (int)floor(p[k]/side + 0.5f);
@@ -111,7 +111,7 @@ void MeshEncoder::quantizeTexCoords() {
 
 	//TODO use quadric to quantize for better rate?  probably not worth it, for so few bits.
 	qtexcoords.resize(node.nvert);
-	Point2f *texcoords = data.texCoords(sig, node.nvert);
+	nx::Vector2f *texcoords = data.texCoords(sig, node.nvert);
 	for(unsigned int i = 0; i < node.nvert; i++) {
 		Point2f &p = texcoords[i];
 		Point2i &q = qtexcoords[i];
@@ -261,7 +261,7 @@ void MeshEncoder::encodeNormals() {
 	vector<uchar> signs;
 	BitStream bitstream(node.nvert/64);
 
-	Point3s *normals = data.normals(sig, node.nvert);
+	nx::Vector3s *normals = data.normals(sig, node.nvert);
 
 	if(!sig.face.hasIndex()) { //point cloud
 
@@ -271,7 +271,7 @@ void MeshEncoder::encodeNormals() {
 		for(int k = 0; k < 2; k++) {
 			int on = 0; //old color
 			for(unsigned int i = 0; i < zpoints.size(); i++) {
-				Point3s c = normals[zpoints[i].pos];
+				nx::Vector3s c = normals[zpoints[i].pos];
 				int n = c[k];
 				n = n/step;
 				//n = (n/(float)step + 0.5);
@@ -283,7 +283,7 @@ void MeshEncoder::encodeNormals() {
 			}
 		}
 		for(unsigned int i = 0; i < zpoints.size(); i++) {
-			Point3s c = normals[zpoints[i].pos];
+			nx::Vector3s c = normals[zpoints[i].pos];
 			bool signbit = c[2] > 0;
 			signs.push_back(signbit);
 		}
@@ -291,14 +291,14 @@ void MeshEncoder::encodeNormals() {
 	} else { //mesh
 
 		markBoundary(); //mark boundary points on original vertices.
-		vector<Point3s> estimated_normals(node.nvert); //this are computed using the original indexing.
+		vector<nx::Vector3s> estimated_normals(node.nvert); //this are computed using the original indexing.
 		computeNormals(estimated_normals);
 
 		for(unsigned int i = 0; i < qpoints.size(); i++) {
 			int pos = order[i];
 			if(!boundary[pos]) continue;
-			Point3s &computed = estimated_normals[pos];
-			Point3s &original = normals[pos];
+			nx::Vector3s &computed = estimated_normals[pos];
+			nx::Vector3s &original = normals[pos];
 			for(int comp = 0; comp < 2; comp++) {
 				int d = (int)(original[comp]/side - computed[comp]/side); //act1ual value - predicted
 				encodeDiff(diffs, bitstream, d);
@@ -346,7 +346,7 @@ void MeshEncoder::markBoundary() {
 }
 
 
-void MeshEncoder::computeNormals(vector<Point3s> &estimated_normals) {
+void MeshEncoder::computeNormals(vector<nx::Vector3s> &estimated_normals) {
 
 	uint16_t *faces = data.faces(sig, node.nvert);
 	vector<Point3i> normals(node.nvert, Point3i(0, 0, 0));
@@ -372,8 +372,8 @@ void MeshEncoder::computeNormals(vector<Point3s> &estimated_normals) {
 }
 
 #define REVERSIBLEFAST 1
-static Color4b toYCC(Color4b s) {
-	Color4b e;
+static nx::Rgba8 toYCC(nx::Rgba8 s) {
+	nx::Rgba8 e;
 
 #ifdef REVERSIBLEFAST
 	e[0] = s[1];
@@ -390,8 +390,8 @@ static Color4b toYCC(Color4b s) {
 	return e;
 }
 
-static Color4b toRGB(Color4b e) {
-	Color4b s;
+static nx::Rgba8 toRGB(nx::Rgba8 e) {
+	nx::Rgba8 s;
 #ifdef REVERSIBLEFAST
 	s[2] = e[1] + e[0];
 	s[0] = e[2] + e[0];
@@ -415,8 +415,8 @@ static Color4b toRGB(Color4b e) {
 
 void MeshEncoder::encodeColors() {
 
-	Color4b *original_colors = data.colors(sig, node.nvert);
-	vector<Color4b> colors;
+	nx::Rgba8 *original_colors = data.colors(sig, node.nvert);
+	vector<nx::Rgba8> colors;
 
 	BitStream bitstream(node.nvert/2);
 	vector<uchar> diffs[4];
@@ -435,11 +435,11 @@ void MeshEncoder::encodeColors() {
 		}
 
 		for(int i = 0; i < node.nvert; i++) {
-			Color4b &c = colors[order[i]];
+			nx::Rgba8 &c = colors[order[i]];
 			int l = last[i];
-			Color4b b;
+			nx::Rgba8 b;
 			if(l < 0)
-				b = Color4b(0, 0, 0, 0);
+				b = nx::Rgba8{0, 0, 0, 0};
 			else
 				b = colors[last[i]];
 
@@ -456,7 +456,7 @@ void MeshEncoder::encodeColors() {
 			for(int k = 0; k < 4; k++) {
 
 				int pos = zpoints[i].pos;
-				Color4b c = toYCC(original_colors[pos]);
+				nx::Rgba8 c = toYCC(original_colors[pos]);
 				int n = c[k];
 
 				n = n/steps[k];

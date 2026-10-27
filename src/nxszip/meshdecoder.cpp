@@ -105,38 +105,41 @@ void MeshDecoder::decodeCoordinates() {
 	}
 
 	float step = pow(2.0f, (float)coord_q);
-	vcg::Point3f *coords = data.coords();
+	nx::Vector3f *coords = data.coords();
 	for(size_t i = 0; i < zpoints.size(); i++)
-		coords[i] = zpoints[i].toPoint(min, step);
+		{
+			vcg::Point3f point = zpoints[i].toPoint(min, step);
+			coords[i] = {point[0], point[1], point[2]};
+		}
 }
 
 void MeshDecoder::dequantize() {
 	{
 		float step = pow(2.0f, (float)coord_q);
-		vcg::Point3f *coords = data.coords();
+		nx::Vector3f *coords = data.coords();
 		for(int i = 0; i < node.nvert; i++) {
-			Point3i p = *(Point3i *)&coords[i];
+			Point3i p = *reinterpret_cast<Point3i *>(&coords[i]);
 			p[0] += min[0];
 			p[1] += min[1];
 			p[2] += min[2];
-			coords[i] = Point3f(p[0]*step, p[1]*step, p[2]*step);
+			coords[i] = {p[0]*step, p[1]*step, p[2]*step};
 		}
 	}
 	if(sig.vertex.hasTextures()) {
 		float step = pow(2.0f, (float)tex_q);
-		vcg::Point2f *texcoords = data.texCoords(sig, node.nvert);
+		nx::Vector2f *texcoords = data.texCoords(sig, node.nvert);
 		for(int i = 0; i < node.nvert; i++) {
-			Point2i p = *(Point2i *)&texcoords[i];
+			Point2i p = *reinterpret_cast<Point2i *>(&texcoords[i]);
 			p[0] += tmin[0];
 			p[1] += tmin[1];
-			texcoords[i] = Point2f(p[0]*step, p[1]*step);
+			texcoords[i] = {p[0]*step, p[1]*step};
 		}
 	}
 }
 
 void MeshDecoder::decodeNormals() {
 
-	Point3s *norms = data.normals(sig, node.nvert);
+	nx::Vector3s *norms = data.normals(sig, node.nvert);
 	norm_q = stream.read<char>();
 
 	std::vector<uchar> diffs;
@@ -158,7 +161,7 @@ void MeshDecoder::decodeNormals() {
 
 			int on = 0; //old normal;
 			for(unsigned int i = 0; i < node.nvert; i++) {
-				Point3s &c = norms[i];
+				nx::Vector3s &c = norms[i];
 				int n = c[k];
 				//int16_t &n = c[k];
 
@@ -172,7 +175,7 @@ void MeshDecoder::decodeNormals() {
 		}
 
 		for(unsigned int i = 0; i < node.nvert; i++) {
-			Point3s &c = norms[i];
+			nx::Vector3s &c = norms[i];
 			double z = 32767.0 * 32767.0 - c[0]*c[0] - c[1]*c[1];
 			if(z < 0) z = 0;
 			z = sqrt(z);
@@ -188,7 +191,7 @@ void MeshDecoder::decodeNormals() {
 	} else {
 
 		markBoundary();
-		Point3s *estimated_normals = data.normals(sig, node.nvert);
+		nx::Vector3s *estimated_normals = data.normals(sig, node.nvert);
 		computeNormals(estimated_normals);
         if(sig.vertex.hasTextures()) //hack, actually fixing normals makes it worse if textures are enabled.
             return;
@@ -197,7 +200,7 @@ void MeshDecoder::decodeNormals() {
 		int signcount = 0;
 		//gert difference between original and predicted
 		for(unsigned int i = 0; i < node.nvert; i++) {
-			vcg::Point3s &N = estimated_normals[i];
+			nx::Vector3s &N = estimated_normals[i];
 			if(!boundary[i]) continue;
 			if(diffcount >= diffs.size()) break; //TODO assert here.
 			for(int comp = 0; comp < 2; comp++) {
@@ -243,17 +246,17 @@ void MeshDecoder::markBoundary() {
 }
 
 
-void MeshDecoder::computeNormals(Point3s *estimated_normals) {
+void MeshDecoder::computeNormals(nx::Vector3s *estimated_normals) {
 
-	Point3f *coords = data.coords();
+	nx::Vector3f *coords = data.coords();
 	uint16_t *faces = data.faces(sig, node.nvert);
 	vector<Point3f> normals(node.nvert, Point3f(0, 0, 0));
 
 	for(int i = 0; i < node.nface; i++) {
 		uint16_t *face = faces + i*3;
-		Point3f &p0 = coords[face[0]];
-		Point3f &p1 = coords[face[1]];
-		Point3f &p2 = coords[face[2]];
+		Point3f p0(coords[face[0]].x, coords[face[0]].y, coords[face[0]].z);
+		Point3f p1(coords[face[1]].x, coords[face[1]].y, coords[face[1]].z);
+		Point3f p2(coords[face[2]].x, coords[face[2]].y, coords[face[2]].z);
 		Point3f n = (( p1 - p0) ^ (p2 - p0));
 		normals[face[0]] += n;
 		normals[face[1]] += n;
@@ -269,8 +272,8 @@ void MeshDecoder::computeNormals(Point3s *estimated_normals) {
 }
 
 #define REVERSIBLEFAST
-static Color4b toRGB(Color4b e) {
-	Color4b s;
+static nx::Rgba8 toRGB(nx::Rgba8 e) {
+	nx::Rgba8 s;
 #ifdef REVERSIBLEFAST
 	s[2] = e[1] + e[0];
 	s[0] = e[2] + e[0];
@@ -294,7 +297,7 @@ static Color4b toRGB(Color4b e) {
 
 void MeshDecoder::decodeColors() {
 
-	Color4b *colors = data.colors(sig, node.nvert);
+	nx::Rgba8 *colors = data.colors(sig, node.nvert);
 
 	for(int k = 0; k < 4; k++)
 		color_q[k] = stream.read<char>();
@@ -308,14 +311,14 @@ void MeshDecoder::decodeColors() {
 	stream.read(bitstream);
 
 	bool indexed = sig.face.hasIndex();
-	colors[0] = Color4b(0, 0, 0, 0);
+	colors[0] = nx::Rgba8{0, 0, 0, 0};
 
 	int count = 0;
 
 	if(indexed) {
 		for(int i = 0; i < node.nvert; i++) {
 			int l = last[i];
-			Color4b &c = colors[i];
+			nx::Rgba8 &c = colors[i];
 			for(int k = 0; k < 4; k++) {
 				c[k] = decodeDiff(diffs[k][count], bitstream);
 				if(l >= 0)
@@ -325,9 +328,9 @@ void MeshDecoder::decodeColors() {
 		}
 
 	} else {
-		Color4b on(0, 0, 0, 0);
+		nx::Rgba8 on{0, 0, 0, 0};
 		for(int i = 0; i < node.nvert; i++) {
-			Color4b &c = colors[i];
+			nx::Rgba8 &c = colors[i];
 
 			for(int k = 0; k < 4; k++)
 				on[k] += decodeDiff(diffs[k][count], bitstream);
@@ -341,7 +344,7 @@ void MeshDecoder::decodeColors() {
 		steps[k] = (1<<(8 - color_q[k]));
 
 	for(int i = 0; i < node.nvert; i++) {
-		Color4b &c = colors[i];
+		nx::Rgba8 &c = colors[i];
 		for(int k = 0; k < 4; k++)
 			c[k] *= steps[k];
 		c = toRGB(c);

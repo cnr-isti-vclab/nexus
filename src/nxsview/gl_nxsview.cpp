@@ -18,8 +18,8 @@ for more details.
 #include <iostream>
 
 #include <QWheelEvent>
-#include <QColorDialog>
 #include <QFileDialog>
+#include <QSurfaceFormat>
 #include <QTimer>
 
 #include "gl_nxsview.h"
@@ -30,19 +30,15 @@ for more details.
 using namespace std;
 using namespace nx;
 
-int current_texture = 0;
-
 GLNxsview::GLNxsview(QWidget *parent, bool _share):
-	QGLWidget(parent), share(_share),
-	default_trackball(true), extracting(true), current_viewpoint(-1), current_time(-1), playing(false),
-	hasToPick(false), fov(60), info(false) {
+	QOpenGLWidget(parent), Nxsview(), share(_share) {
+	QSurfaceFormat format;
+	format.setVersion(2, 1);
+	format.setProfile(QSurfaceFormat::CompatibilityProfile);
+	setFormat(format);
 
 	setAutoFillBackground(false);
 	setFocusPolicy(Qt::StrongFocus);
-
-	colorBottom = Rgba8{64,64,128,1};
-	colorTop    = Rgba8{0,0,0,1};
-	color       = Rgba8{200,200,200,1};
 
 	setMouseTracking(true);
 	//connect(this, SIGNAL(destroyed()), this, SLOT(stopController()));
@@ -53,83 +49,30 @@ GLNxsview::GLNxsview(QWidget *parent, bool _share):
 }
 
 void GLNxsview::checkForUpdate() {
-	if(scene.controller.hasCacheChanged())
-		update();
+	Nxsview::checkForUpdate();
 }
 
-void GLNxsview::setTriangles(bool on) {
-	renderer.setMode(Renderer::TRIANGLES, on);
-	update();
-}
-
-void GLNxsview::setNormals(bool on) {
-	renderer.setMode(Renderer::NORMALS, on);
-	update();
-}
-
-void GLNxsview::setColors(bool on) {
-	renderer.setMode(Renderer::COLORS, on);
-	update();
-}
-
-void GLNxsview::setPatches(bool on) {
-	renderer.setMode(Renderer::PATCHES, on);
-	update();
-}
-
-void GLNxsview::setExtraction(bool on) {
-	extracting = on;
-	update();
-}
-
-void GLNxsview::setFov(int f) {
-	fov = f;
-	update();
-}
-
-void GLNxsview::setInfo(bool on) {
-	info = on;
-	update();
-}
-
-void GLNxsview::setPrimitives(double e) {
-	renderer.setMaxPrimitives((int)(e*(1<<20)));
-}
-
-void GLNxsview::setError(double e) {
-	//extraction.SetExtr((unsigned int)(e*(1<<20)));
-	renderer.setError(e); //extraction.target_error = e;
-	update();
-}
-
-void GLNxsview::setGpu(double d) {
-	scene.controller.setGpu(d*(1<<20));
-	update();
-}
-
-void GLNxsview::setRam(double d) {
-	scene.controller.setRam(d*(1<<20));
-	update();
-}
-
-void GLNxsview::setColor() {
-	QColor _color = QColorDialog::getColor(QColor(color.r, color.g, color.b));
-	color = Rgba8{(uint8_t)_color.red(), (uint8_t)_color.green(), (uint8_t)_color.blue(), 0};
-	update();
-}
-void GLNxsview::setColorTop() {
-	QColor _color = QColorDialog::getColor(QColor(colorTop.r, colorTop.g, colorTop.b));
-	colorTop = Rgba8{(uint8_t)_color.red(), (uint8_t)_color.green(), (uint8_t)_color.blue(), 0};
-	update();
-}
-void GLNxsview::setColorBottom() {
-	QColor _color = QColorDialog::getColor(QColor(colorBottom.r, colorBottom.g, colorBottom.b));
-	colorBottom = Rgba8{(uint8_t)_color.red(), (uint8_t)_color.green(), (uint8_t)_color.blue(), 0};
-	update();
-}
+void GLNxsview::setTriangles(bool on) { Nxsview::setTriangles(on); }
+void GLNxsview::setNormals(bool on) { Nxsview::setNormals(on); }
+void GLNxsview::setColors(bool on) { Nxsview::setColors(on); }
+void GLNxsview::setPatches(bool on) { Nxsview::setPatches(on); }
+void GLNxsview::setExtraction(bool on) { Nxsview::setExtraction(on); }
+void GLNxsview::setFov(int f) { Nxsview::setFov(f); }
+void GLNxsview::setInfo(bool on) { Nxsview::setInfo(on); }
+void GLNxsview::setPrimitives(double e) { Nxsview::setPrimitives(e); }
+void GLNxsview::setError(double e) { Nxsview::setError(e); }
+void GLNxsview::setGpu(double e) { Nxsview::setGpu(e); }
+void GLNxsview::setRam(double d) { Nxsview::setRam(d); }
+void GLNxsview::lightTrackball(bool on) { Nxsview::lightTrackball(on); }
+void GLNxsview::setColor() { Nxsview::setColor(this); }
+void GLNxsview::setColorTop() { Nxsview::setColorTop(this); }
+void GLNxsview::setColorBottom() { Nxsview::setColorBottom(this); }
+void GLNxsview::zoomIn() { Nxsview::zoomIn(); }
+void GLNxsview::zoomOut() { Nxsview::zoomOut(); }
+void GLNxsview::stopController() { Nxsview::stopController(); }
 
 void GLNxsview::getSnapshot() {
-	QImage im = grabFrameBuffer();
+	QImage im = grabFramebuffer();
 	QString file = QFileDialog::getSaveFileName(this,
 												tr("Select .png filename to save shapshot"),
 												"",
@@ -191,10 +134,9 @@ void GLNxsview::setView(float znear, float zfar) {
 }
 
 
-void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
+void GLNxsview::paintGL() {
 	QPainter painter(this);
 	painter.beginNativePainting();
-	makeCurrent();
 
 	//glEnable(GL_DEPTH_TEST);
 	//initializeGL();
@@ -234,26 +176,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 
 	/*end drawing background */
 
-	if(playing && current_time >= 0) {
-		current_time += time.restart()/1000.0f;
-		int viewpoint = floor(current_time);
-		if(viewpoint >= (int)viewpoints.size()-1) {
-			playing = false;
-		} else {
-
-			Trackball::Pose r;
-			r.scale = 0;
-			float tot = 0;
-			for(int i = viewpoint - 6; i < viewpoint + 6; i++) {
-				if(i < 0 || i >= (int)viewpoints.size()) continue;
-				float t = current_time -i;
-				float w = exp(-t*t);
-				tot += w;
-				r += viewpoints[i] * w;
-			}
-			trackball.pose = r * (1/tot);
-		}
-	}
+	advanceViewpointAnimation();
 
 	glPushMatrix();
 
@@ -336,7 +259,7 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 	if(extracting)
 		renderer.endFrame();
 
-	static QTime time;
+	static QElapsedTimer time;
 	static bool first_time = true;
 	if(first_time)
 		time.start();
@@ -390,207 +313,34 @@ void GLNxsview::paintEvent(QPaintEvent * /*event*/) {
 		update();
 }
 
-static int qtButtons(Qt::MouseButton qtbt, Qt::KeyboardModifiers modifiers) {
-	int bt = Trackball::BUTTON_NONE;
-	if(qtbt & Qt::LeftButton)           bt |= Trackball::BUTTON_LEFT;
-	if(qtbt & Qt::RightButton)          bt |= Trackball::BUTTON_RIGHT;
-	if(qtbt & Qt::MidButton)            bt |= Trackball::BUTTON_MIDDLE;
-	if(modifiers & Qt::ControlModifier) bt |= Trackball::KEY_CTRL;
-	return bt;
-}
-
 void GLNxsview::wheelEvent(QWheelEvent *e) {
-	if(e->delta() > 0)
-		trackball.wheel(1);
-	else
-		trackball.wheel(-1);
-	update();
+	handleWheelEvent(e, height());
 }
 
 void GLNxsview::mouseMoveEvent(QMouseEvent *e) {
-	if(default_trackball)
-		trackball.mouseMove(e->x(), height() - e->y());
-	else
-		trackball_light.mouseMove(e->x(), height() - e->y());
-	update();
-	//e->ignore();
+	handleMouseMoveEvent(e, height());
 }
 
 void GLNxsview::mousePressEvent(QMouseEvent *e) {
-	button = qtButtons(e->button(), e->modifiers());
-	if(default_trackball)
-		trackball.mouseDown(e->x(),height()-e->y(), button);
-	else
-		trackball_light.mouseDown(e->x(),height()-e->y(), button );
-	update();
-	//e->ignore();
+	handleMousePressEvent(e, height());
 }
 
 void GLNxsview::mouseReleaseEvent(QMouseEvent *e) {
-	if(default_trackball)
-		trackball.mouseUp(e->x(),height()-e->y(), button);
-	else
-		trackball_light.mouseUp(e->x(),height()-e->y(), button);
-	//e->ignore();
+	handleMouseReleaseEvent(e, height());
 }
 
 void GLNxsview::mouseDoubleClickEvent ( QMouseEvent * e ) {
-	hasToPick=true;
-	pickX = e->x();
-	pickY = height() - e->y();
-	update();
+	handleMouseDoubleClickEvent(e, height());
 }
 
 void GLNxsview::keyReleaseEvent ( QKeyEvent * e ) {
-	e->ignore();
-
-	//if(e->key()==Qt::Key_Control) trackball.MouseUp(0,0, QT2VCG(Qt::NoButton, Qt::ControlModifier ) );
-	//if(e->key()==Qt::Key_Shift) trackball.MouseUp(0,0, QT2VCG(Qt::NoButton, Qt::ShiftModifier ) );
-	//if(e->key()==Qt::Key_Alt) trackball.MouseUp(0,0, QT2VCG(Qt::NoButton, Qt::AltModifier ) );
-
-	if(e->modifiers() == Qt::ControlModifier) {
-		return;
-	}
-	if(e->modifiers() == Qt::ShiftModifier) {
-		return;
-	}
-	if(e->modifiers() == Qt::AltModifier) {
-		return;
-	}
-
-	//ignore multiple modifiers
-	if(e->modifiers() & (Qt::ControlModifier | Qt::ControlModifier | Qt::AltModifier))
-		return;
-
-	switch(e->key()) {
-	case Qt::Key_H:
-		cout << "Keyboard shortcuts:\n"
-			 << "h : print this help sheet\n"
-			 << "r : reset trackball\n"
-			 << "p : print trackball\n"
-			 << "s : save trackball\n"
-			 << "l : load trackball\n\n"
-
-			 << "[ctrl+s] : save camera path\n"
-			 << "[ctrl+l] : load camera path\n\n"
-
-			 << "[enter] : insert viewpoint (after current viewpoint)\n"
-			 << "[canc] : delete current viewpoint\n"
-			 << "[home] : go to first viewpoint\n"
-			 << "[PgDn] : go to next viewpoint\n"
-			 << "[PgUp] : go to previous viewpoint\n"
-			 << "[end] : go to last viewpoint\n\n"
-
-			 << "[space] : play\n"
-			 << "[space] : pause\n"
-			 << "[ctrl+r] : record (starts from beginning)\n";
-		break;
-	case Qt::Key_S: //save trackball
-		saved_pose = trackball.pose;
-		break;
-	case Qt::Key_L: //load trackball
-		trackball.pose = saved_pose;
-		break;
-	case Qt::Key_R: //reset trackball
-		trackball.reset();
-		break;
-
-	case Qt::Key_P: {
-		Matrix4f m = trackball.matrix() * scene.nodes[0].transform;
-		for(int i = 0; i < 16; i++) {
-			cout << m.m[i];
-			if(i != 15) cout << ", ";
-		}
-		cout << endl;
-	}
-		break;
-
-
-	case Qt::Key_Return:
-		current_viewpoint++;
-		viewpoints.resize(viewpoints.size()+1);
-		for(unsigned int i = viewpoints.size()-1; i > current_viewpoint; i--) {
-			viewpoints[i] = viewpoints[i-1];
-		}
-		viewpoints[current_viewpoint] = trackball.pose;
-		cout << "Viewpoint created: " << current_viewpoint << endl;
-		break;
-
-	case Qt::Key_Home:
-		if(viewpoints.size()) {
-			current_time = current_viewpoint = 0;
-
-			trackball.pose = viewpoints[0];
-			cout << "Viewpoint: " << current_viewpoint << endl;
-		}
-		break;
-
-	case Qt::Key_End:
-		if(viewpoints.size()) {
-			current_time = current_viewpoint = viewpoints.size()-1;
-			trackball.pose = viewpoints[current_viewpoint];
-			cout << "Viewpoint: " << current_viewpoint << endl;
-		}
-
-		break;
-
-	case Qt::Key_PageDown:
-		if(current_viewpoint < viewpoints.size()-1) {
-			current_viewpoint++;
-			current_time = current_viewpoint;
-			trackball.pose = viewpoints[current_viewpoint];
-			cout << "Viewpoint: " << current_viewpoint << endl;
-		}
-		break;
-
-	case Qt::Key_PageUp:
-		if(current_viewpoint > 0) {
-			current_viewpoint--;
-			current_time = current_viewpoint;
-			trackball.pose = viewpoints[current_viewpoint];
-			cout << "Viewpoint: " << current_viewpoint << endl;
-		}
-		break;
-
-	case Qt::Key_Delete:
-		if(viewpoints.size()) {
-
-			//last viewpoint
-			if(current_viewpoint == viewpoints.size()-1) {
-				current_viewpoint--;
-				current_time = current_viewpoint;
-				viewpoints.pop_back();
-			} else {
-				for(unsigned int i = current_viewpoint; i < viewpoints.size()-1; i++)
-					viewpoints[i] = viewpoints[i+1];
-				viewpoints.resize(viewpoints.size()-1);
-			}
-		}
-		cout << "Viewpoint: " << current_viewpoint << endl;
-		break;
-
-	case Qt::Key_Space:
-		playing = !playing;
-		if(playing) time.start();
-		break;
-	}
-	update();
+	handleKeyReleaseEvent(e);
 }
 
-void GLNxsview::keyPressEvent ( QKeyEvent * e )
-{
-	current_texture++;
-	if(current_texture == 9)
-		current_texture = 0;
-
-	e->ignore();
-
-	//if(e->key()==Qt::Key_Control) trackball.ButtonDown(QT2VCG(Qt::NoButton, Qt::ControlModifier ) );
-	//if(e->key()==Qt::Key_Shift) trackball.ButtonDown(QT2VCG(Qt::NoButton, Qt::ShiftModifier ) );
-	//if(e->key()==Qt::Key_Alt) trackball.ButtonDown(QT2VCG(Qt::NoButton, Qt::AltModifier ) );
-
+void GLNxsview::keyPressEvent(QKeyEvent *e) {
+	handleKeyPressEvent(e);
 }
 
 void GLNxsview::closeEvent ( QCloseEvent * /*event*/ ) {
-	//scene.controller.finish();
+	handleCloseEvent(nullptr);
 }
