@@ -520,7 +520,9 @@ void GltfLoader::load(MappedMesh& mesh, std::vector<Material>& out_materials) {
 	else
 		doc = fx::gltf::LoadFromText(gltf_path, quotas);
 
-	const std::string base_dir = fs::path(gltf_path).parent_path().string();
+	std::string base_dir = fs::path(gltf_path).parent_path().string();
+	if(base_dir == "")
+		base_dir = ".";
 
 	// Decompress any Draco-encoded primitives (patches doc in-place)
 	decompress_draco(doc);

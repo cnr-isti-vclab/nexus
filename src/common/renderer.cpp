@@ -15,8 +15,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
-#include <vcg/space/color4.h>
-#include <wrap/system/multithreading/util.h>
+//#include <vcg/space/color4.h>
+#include "../gcache/multithreading/util.h"
 
 #include "renderer.h"
 #include "nexus.h"

@@ -18,7 +18,7 @@ for more details.
 #ifndef NX_CONTROLLER_H
 #define NX_CONTROLLER_H
 
-#include <wrap/gcache/controller.h>
+#include "../gcache/controller.h"
 
 #include "token.h"
 #include "ram_cache.h"

@@ -21,7 +21,7 @@ for more details.
 #include "globalgl.h"
 #include "nexus.h"
 #include "token.h"
-#include <wrap/gcache/cache.h>
+#include "../gcache/cache.h"
 
 #include <QThread>
 //#include <QWindow>

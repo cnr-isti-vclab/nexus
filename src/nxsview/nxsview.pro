@@ -12,7 +12,6 @@ unix:DEFINES -= USE_CURL
 win32:DEFINES += NOMINMAX
 
 INCLUDEPATH += \
-    ../../../vcglib \
     ../../../vcglib/eigenlib \
     ../corto/include
 
@@ -23,9 +22,6 @@ win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib $$CORTO_LIBRAR
 unix:LIBS += -lGLEW -lGLU -lGL $$CORTO_LIBRARY
 
 SOURCES += \
-    ../../../vcglib/wrap/gui/trackmode.cpp \
-    ../../../vcglib/wrap/gui/trackball.cpp \
-    ../../../vcglib/wrap/system/qgetopt.cpp \
     ../common/controller.cpp \
     ../common/nexus.cpp \
     ../common/cone.cpp \
@@ -41,12 +37,12 @@ SOURCES += \
     ../common/qtnexusfile.cpp
 
 HEADERS  += \
-    ../../../vcglib/wrap/gcache/token.h \
-    ../../../vcglib/wrap/gcache/provider.h \
-    ../../../vcglib/wrap/gcache/door.h \
-    ../../../vcglib/wrap/gcache/dheap.h \
-    ../../../vcglib/wrap/gcache/controller.h \
-    ../../../vcglib/wrap/gcache/cache.h \
+    ../gcache/token.h \
+	../gcache/provider.h \
+	../gcache/door.h \
+	../gcache/dheap.h \
+	../gcache/controller.h \
+	../gcache/cache.h \
     ../common/signature.h \
     ../common/nexus.h \
     ../common/cone.h \

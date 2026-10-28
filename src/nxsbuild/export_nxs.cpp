@@ -143,7 +143,8 @@ std::vector<uint8_t> ExportNxs::encodeBaseColorJpeg(const MappedMesh& mesh, uint
 	assert(micronode_id < mesh.node_textures.size());
 	const NodeTexture& node_texture = mesh.node_textures[micronode_id];
 	assert(node_texture.width > 0 && node_texture.height > 0);
-	assert(node_texture.components == 3);
+	if(node_texture.components != 3)
+		throw "nxs old format supports only 1 texture (3 components)";
 
 	const std::size_t pixel_count = static_cast<std::size_t>(node_texture.width) * static_cast<std::size_t>(node_texture.height);
 	const std::size_t base_slot_bytes = pixel_count * 3;

@@ -18,7 +18,7 @@ for more details.
 #ifndef NX_TOKEN_H
 #define NX_TOKEN_H
 
-#include <wrap/gcache/token.h>
+#include "../gcache/token.h"
 
 namespace nx {
 

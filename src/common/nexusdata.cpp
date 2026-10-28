@@ -19,9 +19,9 @@ for more details.
 
 #include "nexusdata.h"
 #include "qtnexusfile.h"
-#include <vcg/space/line3.h>
+//#include <vcg/space/line3.h>
 //#include <vcg/space/intersection3.h>
-#include <vcg/space/sphere3.h>
+//#include <vcg/space/sphere3.h>
 
 #include <corto/decoder.h>
 
@@ -31,7 +31,7 @@ for more details.
 
 #include <iostream>
 using namespace std;
-using namespace vcg;
+//using namespace vcg;
 using namespace nx;
 
 uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
