@@ -98,7 +98,7 @@ only if already loaded in the highest cache, otherwise the <code>lock()</code> f
 <p>Unlock allows the resource to be eventually dropped from the cache. Locks are recursive which means Tokens keep track
 of how many time <code>lock()</code> have been called and release the resource only after <code>unlock()</code>
 is called that many times.</p>
-<p>Loking and unlocking costs basically zero (we are using <code>QAtomicInt</code>).</p>
+<p>Locking and unlocking use <code>std::atomic&lt;int&gt;</code> for the token state.</p>
 
 
 <h2><a name="example"></a>Minimal example</h2>

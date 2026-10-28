@@ -5,7 +5,7 @@ CONFIG   += console
 CONFIG   -= app_bundle
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++17
+QMAKE_CXXFLAGS += -std=c++20
 
 DEFINES += _FILE_OFFSET_BITS=64 TEXTURE
 DEFINES += _USE_MATH_DEFINES

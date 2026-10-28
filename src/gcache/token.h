@@ -1,14 +1,7 @@
 #ifndef GCACHE_TOKEN_H
 #define GCACHE_TOKEN_H
 
-#include "multithreading/atomic_int.h"
-
-// Qt6 compatibility: QAtomicInt::load() was renamed to loadRelaxed()
-#if defined(QT_CORE_LIB) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-#  define QT_ATOMIC_LOAD(x) (x).loadRelaxed()
-#else
-#  define QT_ATOMIC_LOAD(x) (x).load()
-#endif
+#include <atomic>
 
 /* QAtomic int count keep trak of token status:
    >0: locked (possibly multiple times)
@@ -40,7 +33,7 @@ public:
     ///set in the main thread   [do not use, should be private]
     Priority new_priority;
     ///swap space used in updatePriorities [do not use, should be private]
-    mt::atomicInt count;
+    std::atomic<int> count;
 
 public:
     Token(): count(OUTSIDE) {}
@@ -57,35 +50,29 @@ public:
 
     ///return false if resource not in highest query. remember to unlock when done
     bool lock() {
-        if(count.fetchAndAddAcquire(1) >= 0) return true;
-        count.deref();
+        if(count.fetch_add(1) >= 0) return true;
+        count.fetch_sub(1);
         return false;
     }
 
     ///assumes it was locked first and 1 unlock for each lock.
     bool unlock() {
-        return count.deref();
+        return count.fetch_sub(1) - 1 != 0;
     }
 
     ///can't be removed if locked and will return false
     bool remove() {
-        count.testAndSetOrdered(READY, REMOVE);
-        count.testAndSetOrdered(CACHE, REMOVE);
-#if(QT_VERSION < 0x050000)
-        return count <= REMOVE;
-#else
-        return QT_ATOMIC_LOAD(count) <= REMOVE;           //might have become OUTSIDE in the meanwhile
-#endif
+        int expected = READY;
+        count.compare_exchange_strong(expected, REMOVE);
+        expected = CACHE;
+        count.compare_exchange_strong(expected, REMOVE);
+        return count.load() <= REMOVE; //might have become OUTSIDE in the meanwhile
     }
 
     bool isLocked() {
-#if(QT_VERSION < 0x050000)
-        return count > 0;
-#else
-        return QT_ATOMIC_LOAD(count) > 0;
-#endif
+        return count.load() > 0;
     }
-    bool isInCache() { return count != OUTSIDE; }  //careful, can be used only when provider thread is locked.
+        bool isInCache() { return count.load() != OUTSIDE; }  //careful, can be used only when provider thread is locked.
 
     ///copy priority to swap space [do not use, should be private]
     void pushPriority() {
@@ -93,26 +80,18 @@ public:
     }
 
     bool operator<(const Token &a) const {
-#if(QT_VERSION < 0x050000)
-        if(count == a.count)
+        const int this_count = count.load();
+        const int other_count = a.count.load();
+        if(this_count == other_count)
             return priority < a.priority;
-        return count < a.count;
-#else
-        if(QT_ATOMIC_LOAD(count) == QT_ATOMIC_LOAD(a.count))
-            return priority < a.priority;
-        return QT_ATOMIC_LOAD(count) < QT_ATOMIC_LOAD(a.count);
-#endif
+        return this_count < other_count;
     }
     bool operator>(const Token &a) const {
-#if(QT_VERSION < 0x050000)
-        if(count == a.count)
+        const int this_count = count.load();
+        const int other_count = a.count.load();
+        if(this_count == other_count)
             return priority > a.priority;
-        return count > a.count;
-#else
-        if(QT_ATOMIC_LOAD(count) == QT_ATOMIC_LOAD(a.count))
-            return priority > a.priority;
-        return QT_ATOMIC_LOAD(count) > QT_ATOMIC_LOAD(a.count);
-#endif
+        return this_count > other_count;
     }
 };
 

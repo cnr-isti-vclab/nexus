@@ -15,6 +15,7 @@ typedef unsigned __int64 uint64_t;
 #endif
 
 #include <iostream>
+#include <atomic>
 #include <limits.h>
 #include <vector>
 #include <list>
@@ -22,7 +23,6 @@ typedef unsigned __int64 uint64_t;
 #include "token.h"
 
 #include "multithreading/mt.h"
-#include "multithreading/atomic_int.h"
 
 #include "provider.h"
 
@@ -48,7 +48,7 @@ public:
     //if true the cache will exit at the first opportunity
     bool quit;
     ///keeps track of changes (if 1 then something was loaded or dropped
-    mt::atomicInt new_data;
+    std::atomic<int> new_data;
     ///callback for new_data
     void (*callback)(void *data);
 
@@ -76,7 +76,8 @@ public:
 
     ///return true if the cache is waiting for priority to change
     bool newData() {
-        bool r = new_data.testAndSetOrdered(1, 0); //if changed is 1, r is true
+        int expected = 1;
+        bool r = new_data.compare_exchange_strong(expected, 0); //if changed is 1, r is true
         return r;
     }
 
@@ -90,8 +91,10 @@ public:
                 //tokens.push_back(token);
                 s_curr -= drop(token);
                 //assert(!(token->count.load() >= Token::LOCKED));
-                if(final)
-                    token->count.testAndSetOrdered(Token::READY, Token::CACHE);
+                if(final) {
+                    int expected = Token::READY;
+                    token->count.compare_exchange_strong(expected, Token::CACHE);
+                }
                 input->heap.push(token);
             }
             this->heap.clear();
@@ -115,8 +118,10 @@ public:
                     tokens.push_back(token);
                     s_curr -= drop(token);
                     //assert(token->count.load() < Token::LOCKED);
-                    if(final)
-                        token->count.testAndSetOrdered(Token::READY, Token::CACHE);
+                    if(final) {
+                        int expected = Token::READY;
+                        token->count.compare_exchange_strong(expected, Token::CACHE);
+                    }
                 } else
                     this->heap.at(count++) = token;
             }
@@ -166,7 +171,8 @@ protected:
             middle();
 
             if(unload() || load()) {
-                new_data.testAndSetOrdered(0, 1);  //if not changed, set as changed
+                int expected = 0;
+                new_data.compare_exchange_strong(expected, 1);  //if not changed, set as changed
                 input->check_queue.open();        //we signal ourselves to check again
             }
             input->check_queue.leave();
@@ -199,12 +205,9 @@ protected:
                     if(!final) { //not final we can drop when we want
                         remove = this->heap.popMin();
                     } else {
-                        last.count.testAndSetOrdered(Token::READY, Token::CACHE);
-#if(QT_VERSION < 0x050000)
-                int last_count = last.count;
-#else
-                int last_count = QT_ATOMIC_LOAD(last.count);
-#endif
+                        int expected = Token::READY;
+                        last.count.compare_exchange_strong(expected, Token::CACHE);
+                        int last_count = last.count.load();
                         if(last_count <= Token::CACHE) { //was not locked and now can't be locked, remove it.
                             remove = this->heap.popMin();
                         } else { //last item is locked need to reorder stack
@@ -252,11 +255,7 @@ protected:
             input->rebuild();                                  //if dirty rebuild
             if(input->heap.size()) {                           //we need something in input to tranfer.
                 Token &first = input->heap.max();
-#if(QT_VERSION < 0x050000)
-                int first_count = first.count;
-#else
-                int first_count = QT_ATOMIC_LOAD(first.count);
-#endif
+                int first_count = first.count.load();
                 if(first_count > Token::REMOVE &&
                         (!last || first.priority > last->priority)) { //if !last we already decided we want a transfer., otherwise check for a swap
                     insert = input->heap.popMax();                 //remove item from heap, while we transfer it.
@@ -273,7 +272,7 @@ protected:
                 {
                     mt::mutexlocker locker(&(this->heap_lock));
                     if(final)
-                        insert->count.ref();                       //now lock is 0 and can be locked
+                        insert->count.fetch_add(1);                 //now state is READY and can be locked
 
                     this->heap.push(insert);
                 }

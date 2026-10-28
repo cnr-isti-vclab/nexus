@@ -53,7 +53,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 	parser.addOption({{"V", "verbosity"}, "Logging verbosity: silent|default|verbose", "level", "default"});
 
 	// Resume option
-	parser.addOption({{"", "resume"}, "Resume build from existing levels.json in current directory"});
+	parser.addOption({"resume", "Resume build from existing levels.json in current directory"});
 
 	// Add positional arguments
 	parser.addPositionalArgument("inputs", "Input mesh file(s)", "<input files>");

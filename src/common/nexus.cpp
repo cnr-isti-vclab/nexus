@@ -104,7 +104,10 @@ void Nexus::initIndex() {
 	NexusData::initIndex();
 	tokens = new Token[header.n_nodes];
 	for(uint i = 0; i < header.n_nodes; i++)
-		tokens[i] = Token(this, i);
+	{
+		tokens[i].nexus = this;
+		tokens[i].node = i;
+	}
 }
 
 void Nexus::loadIndex(char *buffer) {

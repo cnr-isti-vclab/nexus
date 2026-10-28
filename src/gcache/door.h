@@ -26,7 +26,7 @@
 #define CACHE_DOOR_H
 
 #include "multithreading/mt.h"
-#include "multithreading/atomic_int.h"
+#include <atomic>
 
 #ifdef NEXUS_USE_QT
 #include <QWaitCondition>
@@ -40,26 +40,28 @@ class QDoor {
  private:
   mt::semaphore door;
   mt::mutex room;     //lock when entering. unlock when exiting
-  QAtomicInt key; //keep tracks of door status
+  std::atomic<int> key; //keep tracks of door status
 
  public:
   QDoor():key(0) {}
   void open() {
-    if(key.testAndSetOrdered(0, 1))
+    int expected = 0;
+    if(key.compare_exchange_strong(expected, 1))
       door.release(1);
   }
 
   void enter() {
     door.acquire(1); //here I am sure that key is 1
     //if here a open appends will have no effect.
-    key.testAndSetOrdered(1, 0);
+    int expected = 1;
+    key.compare_exchange_strong(expected, 0);
     room.lock();
   }
   void leave() {
     room.unlock();
   }
   void lock() {
-    int r = key.fetchAndStoreOrdered(-1);
+    int r = key.exchange(-1);
     if(r == 1) //if the door was open
       door.tryAcquire(1); //might file if whe are between enter acquire and key = 0.
   }

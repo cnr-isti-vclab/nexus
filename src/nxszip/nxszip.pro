@@ -26,5 +26,5 @@ INCLUDEPATH += ../../../../vcglib
 
 DEFINES += MECO_TEST
 
-QMAKE_CXXFLAGS = -O2  -march=core2 -fno-omit-frame-pointer
+QMAKE_CXXFLAGS = -std=c++20 -O2  -march=core2 -fno-omit-frame-pointer
 

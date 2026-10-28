@@ -18,9 +18,6 @@ namespace mt {
 #endif
   typedef QSemaphore semaphore;
 
-//cache.h, token.h
-//QAtomicInt
-
 }//namespace
 
 

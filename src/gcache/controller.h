@@ -40,7 +40,8 @@ class Controller {
 
   ///insert the token in the cache if not already present (actual insertion is done on updatePriorities)
   bool addToken(Token *token) {
-    if(token->count.testAndSetOrdered(Token::OUTSIDE, Token::CACHE)) {
+    int expected = Token::OUTSIDE;
+    if(token->count.compare_exchange_strong(expected, Token::CACHE)) {
       tokens.push_back(token);
       return true;
     }

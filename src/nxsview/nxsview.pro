@@ -3,7 +3,7 @@ QT       += core gui openglwidgets widgets
 TARGET   = nxsview
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -std=c++17
+QMAKE_CXXFLAGS += -std=c++20
 
 DEFINES += GL_COMPATIBILITY 
 DEFINES += NDEBUG
