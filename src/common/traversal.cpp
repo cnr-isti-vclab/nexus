@@ -16,6 +16,7 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <algorithm>
+#include <iostream>
 #include "traversal.h"
 
 using namespace std;
@@ -60,6 +61,26 @@ void Traversal::traverse(NexusData *nx) {
 				blockChildren(h.node);
 		}
 		node_visited++;
+	}
+
+//	verifySelectionConsistency();
+}
+
+void Traversal::verifySelectionConsistency() {
+	for(uint32_t parent = 0; parent < sink; ++parent) {
+		const Node &node = nexus->nodes[parent];
+		for(uint32_t patch = node.first_patch; patch < node.last_patch(); ++patch) {
+			const uint32_t child = nexus->patches[patch].node;
+			if(selected[child] && !selected[parent]) {
+				bool visible;
+				const float error = nodeError(child, visible);
+				const float perror = nodeError(parent, visible);
+				cerr << "Traversal selection consistency violation: selected child "
+				     << child << " (error " << error << ") has unselected parent "
+					  << parent << " (error " << perror << ")" << endl;
+				return;
+			}
+		}
 	}
 }
 

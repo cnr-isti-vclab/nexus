@@ -220,7 +220,7 @@ NodeMesh merge_micronode_clusters(
 }
 
 
-
+/*
 float meshError(NodeMesh& mesh) {
 	double length = 0;
 	for (const Triangle& tri : mesh.triangles) {
@@ -348,6 +348,7 @@ float simplify_mesh_edge(
 	}
 	return meshError(mesh);
 }
+*/
 
 //only boundary positions needs to be shared: normals get recomputed, textures
 //are not shared because of the seam

@@ -978,7 +978,7 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 
 
 		// add tasks, in this case without caring about results of individual tasks
-		pool.enqueue_detach([this, &mesh, &next_mesh, &params, &next_mesh_lock, high_triangle_texel_ratio](Index micro_id) {
+		auto task = pool.enqueue([this, &mesh, &next_mesh, &params, &next_mesh_lock, high_triangle_texel_ratio](Index micro_id) {
 			MicroNode& micronode = mesh.micronodes[micro_id];
 
 
@@ -1016,7 +1016,9 @@ void MeshHierarchy::process_level(MappedMesh& mesh, MappedMesh& next_mesh, const
 				export_obj(debug_mesh, materials, "debug_clustered.obj");
 			}
 		}, micro_id);
-		pool.wait_for_tasks();
+		// Do not detach this task: failures in merge/simplify/split must abort the
+		// hierarchy build instead of silently leaving this micronode unprocessed.
+		task.get();
 
 	}
 

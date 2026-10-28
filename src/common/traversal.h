@@ -79,6 +79,7 @@ private:
 	bool add(uint32_t node);                //returns true if added
 	void addChildren(uint32_t node);
 	void blockChildren(uint32_t node);
+	void verifySelectionConsistency();
 
 };
 /*

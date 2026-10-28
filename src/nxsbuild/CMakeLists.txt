@@ -13,6 +13,7 @@ set(SOURCES
 	build_parameters.cpp
 	merge_simplify_split.cpp
 	simplify_true.cpp
+	simplify_edge.cpp
 	simplify_vcg.cpp
 	export_nxs.cpp
 	../texture/parametrization.cpp

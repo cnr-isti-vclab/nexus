@@ -299,8 +299,9 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 		const Cluster &cluster = mesh.clusters[micronode.cluster_ids[c]];
 		nx::Patch patch;
 		if(cluster.node == NONE) {
+			if(level != 0)
+				throw std::runtime_error("ExportNxs: non-base-level cluster has no parent node");
 			patch.node = header.n_nodes-1; //first level, sink node
-			assert(level == 0);
 		} else {
 			patch.node = cluster.node + level_node_offset[level-1];
 		}

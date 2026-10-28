@@ -61,7 +61,7 @@ struct Node {
 	Sphere sphere;             //saturated sphere (extraction)
 	float tight_radius;        //tight sphere (frustum culling)
 	uint32_t first_patch;      //index of the first patch in the array of patches.
-	uint32_t last_patch() { return (this + 1)->first_patch; } //this node is ALWAYS inside an array.
+	uint32_t last_patch() const { return (this + 1)->first_patch; } //this node is ALWAYS inside an array.
 	Sphere tightSphere() const { return Sphere{sphere.Center(), tight_radius}; }
 
 	uint64_t getBeginOffset() { return (uint64_t)offset * (uint64_t) NEXUS_PADDING; }

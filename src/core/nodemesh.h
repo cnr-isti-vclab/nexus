@@ -24,6 +24,8 @@ struct NodeMesh {
 	Index parent_micronode_id;
 
 	TileMap tilemap; //material. just one
+
+	static float meshError(const NodeMesh& mesh);
 };
 
 }

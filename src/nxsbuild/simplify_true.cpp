@@ -1,39 +1,15 @@
 #include "merge_simplify_split.h"
+#include "log.h"
 
 #ifndef USE_VCG_SIMPLIFIER
 
-#include <cassert>
-#include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 #include <trueform/remesh.hpp>
 
 namespace nx {
-
-namespace {
-
-float meshError(NodeMesh& mesh) {
-	double length = 0;
-	for (const Triangle& triangle : mesh.triangles) {
-		Index p0 = mesh.wedges[triangle.w[0]].p;
-		Index p1 = mesh.wedges[triangle.w[1]].p;
-		Index p2 = mesh.wedges[triangle.w[2]].p;
-		const Vector3f& a = mesh.positions[p0];
-		const Vector3f& b = mesh.positions[p1];
-		const Vector3f& c = mesh.positions[p2];
-		float dx01 = a.x - b.x; float dy01 = a.y - b.y; float dz01 = a.z - b.z;
-		float dx12 = b.x - c.x; float dy12 = b.y - c.y; float dz12 = b.z - c.z;
-		float dx20 = c.x - a.x; float dy20 = c.y - a.y; float dz20 = c.z - a.z;
-		length += dx01 * dx01 + dy01 * dy01 + dz01 * dz01;
-		length += dx12 * dx12 + dy12 * dy12 + dz12 * dz12;
-		length += dx20 * dx20 + dy20 * dy20 + dz20 * dz20;
-	}
-	length = std::sqrt(length) / mesh.triangles.size() * 3;
-	return static_cast<float>(length);
-}
-
-}
 
 float simplify_mesh(NodeMesh& merged, Index target_triangle_count) {
 	if (merged.triangles.size() <= target_triangle_count || target_triangle_count == 0) {
@@ -57,18 +33,13 @@ float simplify_mesh(NodeMesh& merged, Index target_triangle_count) {
 	}
 
 	tf::decimate_config<float> config;
-	config.parallel = false;
-	config.preserve_boundary = true;
+	config.parallel = true;
+	config.preserve_boundary = false;
 	float target_ratio = static_cast<float>(target_triangle_count) / merged.triangles.size();
 	auto [result, half_edges, protection, face_map, vertex_map] = tf::decimated(
 		polygons.polygons(), target_ratio, config,
 		tf::protect_vertices(pinned_vertices), tf::return_index_map);
 	(void)half_edges;
-
-	if(result.faces().size() > target_triangle_count*1.05) {
-		int triangle_count = result.faces().size();
-		throw std::string("Failed to simplify cluster");
-	}
 
 	const std::vector<Index> original_position_remap = merged.position_remap;
 	const std::vector<Rgba8> original_colors = merged.colors;
@@ -131,7 +102,16 @@ float simplify_mesh(NodeMesh& merged, Index target_triangle_count) {
 		}
 	}
 
-	return meshError(merged);
+	
+	if(result.faces().size() > target_triangle_count*1.05) {
+		nx::debug << "Failed to simplify cluster: target triangle count not reached. Target: " << target_triangle_count << " Result: " << merged.triangles.size();
+		float error	= simplify_mesh_edge(merged, target_triangle_count);
+		if(merged.triangles.size() > target_triangle_count*1.05) {
+			throw std::runtime_error("Failed to simplify cluster: target triangle count not reached");
+		}
+		
+	}
+	return NodeMesh::meshError(merged);
 }
 
 }

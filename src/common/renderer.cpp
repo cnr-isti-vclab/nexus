@@ -16,14 +16,14 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 //#include <vcg/space/color4.h>
-#include "../gcache/multithreading/util.h"
-
 #include "renderer.h"
 #include "nexus.h"
 #include "token.h"
 #include "controller.h"
 
 #include <QDebug>
+#include <chrono>
+#include <thread>
 
 #ifdef WIN32
 //microsoft compiler does not provide it.
@@ -60,6 +60,33 @@ void Renderer::startFrame() {
 
 void Renderer::getView(const float *proj, const float *modelview, const int *viewport) {
 	metric.getView(proj, modelview, viewport);
+}
+
+void Renderer::verifyErrorSaturation(Nexus *instance) {
+	const uint32_t n_nodes = instance->header.n_nodes;
+	const uint32_t sink = n_nodes - 1;
+	std::vector<float> screen_errors(n_nodes, 0.0f);
+
+	for(uint32_t node = 0; node < sink; ++node) {
+		bool visible;
+		screen_errors[node] = metric.getError(instance->nodes[node].sphere,
+		                                      instance->nodes[node].error, visible);
+	}
+
+	for(uint32_t parent = 0; parent < sink; ++parent) {
+		const Node &node = instance->nodes[parent];
+		for(uint32_t patch = node.first_patch; patch < node.last_patch(); ++patch) {
+			const uint32_t child = instance->patches[patch].node;
+			if(child == sink || screen_errors[child] <= screen_errors[parent])
+				continue;
+
+			qWarning() << "Screen-space error saturation violation: parent" << parent
+			          << "(" << screen_errors[parent] << ") child" << child
+			          << "(" << screen_errors[child] << ") stored errors"
+			          << node.error << "->" << instance->nodes[child].error;
+			return;
+		}
+	}
 }
 
 void Renderer::nearFar(Nexus *nexus, float &neard, float &fard) {
@@ -128,6 +155,7 @@ void Renderer::render(Nexus *nexus, bool get_view, int wait ) {
 	stats.time = time;
 	
 	if(wait) {
+		verifyErrorSaturation(nexus);
 		traverse(nexus);
 		
 		while(1) {
@@ -137,11 +165,15 @@ void Renderer::render(Nexus *nexus, bool get_view, int wait ) {
 			if(std::chrono::steady_clock::now() - time > std::chrono::milliseconds(wait))
 				break;
 			
-			mt::sleep_ms(10);
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 	}
 	errors.clear();
 	errors.resize(nexus->header.n_nodes);
+
+	//for debug purposes
+	//verifyErrorSaturation(nexus);
+
 	traverse(nexus);
 	stats.instance_rendered = 0;
 	

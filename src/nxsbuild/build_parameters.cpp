@@ -172,6 +172,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 				  << "', using default\n";
 		verbosity = Verbosity::Default;
 	}
+	LogStream::setVerbosity(verbosity);
 
 	// Get positional arguments (input files)
 	inputs = parser.positionalArguments();

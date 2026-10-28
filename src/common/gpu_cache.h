@@ -23,7 +23,8 @@ for more details.
 #include "token.h"
 #include "../gcache/cache.h"
 
-#include <QThread>
+#include <chrono>
+#include <thread>
 //#include <QWindow>
 //#define SHARED_CONTEXT
 
@@ -79,7 +80,7 @@ public:
 #ifdef SHARED_CONTEXT
 		in->nexus->loadGpu(in->node);
 		glFinish();
-		mt::sleep_ms(1);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 #endif
 		//do nothing, transfer will be done in renderer
 		return size(in);

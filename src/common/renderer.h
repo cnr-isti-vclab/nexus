@@ -96,6 +96,7 @@ protected:
 
 	Action expand(HeapNode h);
 	float nodeError(uint32_t n, bool &visible);
+	void verifyErrorSaturation(Nexus *instance);
 
 	void renderSelected(Nexus *nexus);
 

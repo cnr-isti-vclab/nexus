@@ -11,7 +11,6 @@
 #ifdef USE_CURL
 #include <curl/curl.h>
 #endif
-#include "../gcache/multithreading/util.h"
 
 size_t nx_curl_write_callback( char *ptr, size_t size, size_t nmemb, void *userdata);
 size_t nx_curl_header_callback( char *ptr, size_t size, size_t nmemb, void *userdata);
