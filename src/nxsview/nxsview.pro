@@ -20,6 +20,7 @@ CORTO_LIBRARY = $$absolute_path(../corto/libcorto.a, $$_PRO_FILE_PWD_)
 win32:LIBS += opengl32.lib GLU32.lib ../../../glew/lib/glew32.lib $$CORTO_LIBRARY
 
 unix:LIBS += -lGLEW -lGLU -lGL $$CORTO_LIBRARY
+unix:LIBS += -pthread
 
 SOURCES += \
     ../common/controller.cpp \

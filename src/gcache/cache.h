@@ -16,13 +16,12 @@ typedef unsigned __int64 uint64_t;
 
 #include <iostream>
 #include <atomic>
+#include <mutex>
 #include <limits.h>
 #include <vector>
 #include <list>
 
 #include "token.h"
-
-#include "multithreading/mt.h"
 
 #include "provider.h"
 
@@ -111,7 +110,7 @@ public:
         std::vector<Token *> tokens;
         {
             int count = 0;
-            mt::mutexlocker locker(&(this->heap_lock));
+            std::lock_guard<std::mutex> locker(this->heap_lock);
             for(int k = 0; k < this->heap.size(); k++) {
                 Token *token = &this->heap[k];
                 if(functor(token)) { //drop it
@@ -129,7 +128,7 @@ public:
             this->heap_dirty = true;
         }
         {
-            mt::mutexlocker locker(&(input->heap_lock));
+            std::lock_guard<std::mutex> locker(input->heap_lock);
             for(unsigned int i = 0; i < tokens.size(); i++) {
                 input->heap.push(tokens[i]);
             }
@@ -157,7 +156,7 @@ protected:
     virtual void end() {}
 
     ///[should be protected]
-    void run() {
+    void run() override {
         assert(input);
         /* basic operation of the cache:
           1) make room until eliminating an element would leave empty space.
@@ -166,7 +165,10 @@ protected:
         begin();
         while(!this->quit) {
             input->check_queue.enter();     //wait for cache below to load something or priorities to change
-            if(this->quit) break;
+            if(this->quit) {
+                input->check_queue.leave();
+                break;
+            }
 
             middle();
 
@@ -191,7 +193,7 @@ protected:
         //make room int the cache checking that:
         //1 we need to make room (capacity < current)
         if(size() > capacity()) {
-            mt::mutexlocker locker(&(this->heap_lock));
+            std::lock_guard<std::mutex> locker(this->heap_lock);
 
             //2 we have some element not in the upper caches (heap.size()  > 0
             if(this->heap.size()) {
@@ -223,7 +225,7 @@ protected:
 
         if(remove) {
             {
-                mt::mutexlocker input_locker(&(input->heap_lock));
+                std::lock_guard<std::mutex> input_locker(input->heap_lock);
                 int size = drop(remove);
                 assert(size >= 0);
                 s_curr -= size;
@@ -243,7 +245,7 @@ protected:
        empty heap is bad: we cannot drop anything to make room, and cache above has nothing to get.
        this should not happen if we set correct cache sizes, but if it happens.... */
         {
-            mt::mutexlocker locker(&(this->heap_lock));
+            std::lock_guard<std::mutex> locker(this->heap_lock);
             this->rebuild();
             if(size() > capacity() && this->heap.size() > 0) {
                 last = &(this->heap.min()); //no room, set last so we might check for a swap.
@@ -251,7 +253,7 @@ protected:
         }
 
         {
-            mt::mutexlocker input_locker(&(input->heap_lock));
+            std::lock_guard<std::mutex> input_locker(input->heap_lock);
             input->rebuild();                                  //if dirty rebuild
             if(input->heap.size()) {                           //we need something in input to tranfer.
                 Token &first = input->heap.max();
@@ -270,7 +272,7 @@ protected:
             if(size >= 0) {                                   //success
                 s_curr += size;
                 {
-                    mt::mutexlocker locker(&(this->heap_lock));
+                    std::lock_guard<std::mutex> locker(this->heap_lock);
                     if(final)
                         insert->count.fetch_add(1);                 //now state is READY and can be locked
 
@@ -280,7 +282,7 @@ protected:
                 return true;
 
             } else {                                         //failed transfer put it back, we will keep trying to transfer it...
-                mt::mutexlocker input_locker(&(input->heap_lock));
+                std::lock_guard<std::mutex> input_locker(input->heap_lock);
                 input->heap.push(insert);
                 return false;
             }

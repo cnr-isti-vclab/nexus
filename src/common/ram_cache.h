@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <mutex>
 
 #include "nexus.h"
 #include "token.h"
@@ -33,21 +34,21 @@ public:
 #endif
 
 	std::list<Nexus *> loading;
-	mt::mutex loading_mutex;
+	std::mutex loading_mutex;
 
 	RamCache(): curl(NULL) { }
 	~RamCache() { }
 
 #ifdef USE_CURL
 protected:
-	void run() {
+	void run() override {
 		curl = curl_easy_init();
 		vcg::Cache<nx::Token>::run();
 		curl_easy_cleanup(curl);
 	}
 #endif
 	void middle() {
-		mt::mutexlocker locker(&loading_mutex);
+		std::lock_guard<std::mutex> locker(loading_mutex);
 		if(loading.size()) {
 			Nexus *nexus = loading.front();
 			loading.pop_front();
@@ -62,7 +63,7 @@ protected:
 public:
 
 	void add(Nexus *nexus) {
-		mt::mutexlocker locker(&loading_mutex);
+		std::lock_guard<std::mutex> locker(loading_mutex);
 		loading.push_back(nexus);
 	}
 

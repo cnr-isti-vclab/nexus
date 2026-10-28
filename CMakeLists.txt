@@ -15,6 +15,7 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Threads REQUIRED)
 
 if (BUILD_NXS_VIEW)
 	include(${CMAKE_CURRENT_SOURCE_DIR}/src/cmake/tools.cmake)

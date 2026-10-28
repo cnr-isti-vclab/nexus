@@ -1,6 +1,7 @@
 #ifndef GCACHE_CONTROLLER_H
 #define GCACHE_CONTROLLER_H
 
+#include <mutex>
 #include "cache.h"
 
 /** Allows to insert tokens, update priorities and generally control the cache.
@@ -61,7 +62,7 @@ class Controller {
 
   ///if more tokens than m present in the provider, lowest priority ones will be removed
   void setMaxTokens(int m) {
-    mt::mutexlocker l(&provider.heap_lock);
+    std::lock_guard<std::mutex> l(provider.heap_lock);
     provider.max_tokens = m;
   }
 
@@ -69,7 +70,7 @@ class Controller {
   ///potential bug! update is done on the heaps, if something is in transit...
   void updatePriorities() {
     if(tokens.size()) {
-      mt::mutexlocker l(&provider.heap_lock);
+      std::lock_guard<std::mutex> l(provider.heap_lock);
       for(unsigned int i = 0; i < tokens.size(); i++)
         provider.heap.push(tokens[i]);
       tokens.clear();
@@ -86,8 +87,8 @@ class Controller {
     assert(!paused);
     assert(caches.size() > 1);
     caches.back()->final = true;
-    for(unsigned int i = 0; i < caches.size(); i++) //cache 0 is a provider, and his thread is not running.
-      caches[i]->start();
+    for(unsigned int i = 0; i < caches.size(); i++)
+      caches[i]->launch();
     stopped = false;
   }
 
@@ -109,7 +110,7 @@ class Controller {
       caches[i]->input->check_queue.open();
 
     for(unsigned int i = 0; i < caches.size(); i++)
-      caches[i]->wait();
+      caches[i]->join();
 
     stopped = true;
   }

@@ -1,7 +1,8 @@
 #ifndef GCACHE_PROVIDER_H
 #define GCACHE_PROVIDER_H
 
-#include "multithreading/mt.h"
+#include <mutex>
+#include <thread>
 #include "dheap.h"
 #include "door.h"
 
@@ -20,7 +21,10 @@
 namespace vcg {
 
 template <typename Token>
-class Provider: public mt::thread {
+class Provider {
+private:
+  std::thread worker;
+
  public:
   ///holds the resources in this cache but not in the cache above
   PtrDHeap<Token> heap;
@@ -29,16 +33,30 @@ class Provider: public mt::thread {
   ///signals we need to rebuild heap.
   bool heap_dirty;
   ///lock this before manipulating heap.
-  mt::mutex heap_lock;
+  std::mutex heap_lock;
   ///signals (to next cache!) priorities have changed or something is available
   QDoor check_queue;
 
   Provider(): max_tokens(-1), heap_dirty(false) {}
-  virtual ~Provider() {}
+  virtual ~Provider() = default;
+
+  // launch() may be called again only after join() has completed. The owner
+  // must join the worker before destroying this provider.
+  bool launch() {
+    if(worker.joinable()) return false;
+    worker = std::thread([this] { run(); });
+    return true;
+  }
+
+  bool join() {
+    if(!worker.joinable()) return false;
+    worker.join();
+    return true;
+  }
 
   /// [should be protected, do not use] called in controller thread!
   void pushPriorities() {
-    mt::mutexlocker locker(&heap_lock);
+    std::lock_guard<std::mutex> locker(heap_lock);
     for(int i = 0; i < heap.size(); i++)
       heap[i].pushPriority();
 
@@ -65,7 +83,7 @@ class Provider: public mt::thread {
   ///ensure no locked item are to be removed [should be protected, do not use]
   template <class FUNCTOR> void flush(FUNCTOR functor) {
     int count = 0;
-    mt::mutexlocker locker(&(this->heap_lock));
+    std::lock_guard<std::mutex> locker(this->heap_lock);
     for(int k = 0; k < this->heap.size(); k++) {
       Token *token = &this->heap[k];
       if(functor(token)) { //drop it
@@ -76,6 +94,9 @@ class Provider: public mt::thread {
     this->heap.resize(count);
     this->heap_dirty = true;
   }
+
+protected:
+  virtual void run() {}
 };
 
 } //namespace

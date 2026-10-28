@@ -32,6 +32,7 @@ for more details.
 #endif
 
 #include <iostream>
+#include <mutex>
 
 namespace nx {
 
@@ -40,7 +41,7 @@ class GpuCache: public vcg::Cache<nx::Token> {
 public:
 #ifndef SHARED_CONTEXT
 	std::vector<unsigned int> to_drop;
-	mt::mutex droplock;
+	std::mutex droplock;
 #endif
 
 #ifdef SHARED_CONTEXT
@@ -54,7 +55,7 @@ public:
 
 #ifndef SHARED_CONTEXT
 	void dropGpu() {
-		mt::mutexlocker locker(&droplock);
+		std::lock_guard<std::mutex> locker(droplock);
 		for(uint i = 0; i < to_drop.size(); i++)
 			glDeleteBuffers(1, (GLuint *)&(to_drop[i]));
 		to_drop.clear();
@@ -91,7 +92,7 @@ public:
 		if(data.vbo == 0)  //can happen if a patch is scheduled for GPU but never actually rendererd
 			return size(in);
 		{
-			mt::mutexlocker locker(&droplock);
+			std::lock_guard<std::mutex> locker(droplock);
 			if(data.vbo) {
 				to_drop.push_back(data.vbo);
 				data.vbo = 0;

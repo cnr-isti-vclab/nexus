@@ -51,9 +51,9 @@ target_include_directories(nxsview SYSTEM PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../
 target_include_directories(nxsview SYSTEM PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../corto/include")
 set(CORTO_LIBRARY "${CMAKE_CURRENT_LIST_DIR}/../corto/libcorto.a")
 if (WIN32)
-	target_link_libraries(nxsview PRIVATE "${CORTO_LIBRARY}" Qt6::OpenGLWidgets external-glew glu32 OpenGL32)
+	target_link_libraries(nxsview PRIVATE "${CORTO_LIBRARY}" Qt6::OpenGLWidgets external-glew glu32 OpenGL32 Threads::Threads)
 else()
-	target_link_libraries(nxsview PRIVATE "${CORTO_LIBRARY}" Qt6::OpenGLWidgets external-glew OpenGL::GLU OpenGL::GL)
+	target_link_libraries(nxsview PRIVATE "${CORTO_LIBRARY}" Qt6::OpenGLWidgets external-glew OpenGL::GLU OpenGL::GL Threads::Threads)
 endif()
 
 target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY)
