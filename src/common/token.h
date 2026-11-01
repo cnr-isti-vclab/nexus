@@ -33,6 +33,10 @@ public:
 		if(frame == p.frame) return error < p.error;
 		return frame < p.frame;
 	}
+	bool operator<=(const Priority &p) const {
+		if(frame == p.frame) return error <= p.error;
+		return frame <= p.frame;
+	}
 	bool operator>(const Priority &p) const {
 		if(frame == p.frame) return error > p.error;
 		return frame > p.frame;

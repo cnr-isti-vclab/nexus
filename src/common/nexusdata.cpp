@@ -166,18 +166,23 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 
 	if(!sign.isCompressed()) {
-		if(sign.isDeepzoom())
+		if(sign.isDeepzoom()) {
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			d.memory = file->loadDZNode(n);
-		else
+		} else {
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			d.memory = (char *)file->map(offset, size);
+		}
 
 	} else {
 
 		char *buffer = nullptr;
 		if(sign.isDeepzoom()) {
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			buffer = file->loadDZNode(n);
 		} else {
 			buffer = new char[compressed_size];
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			file->seek(offset);
 			int64_t r = file->read(buffer, compressed_size);
 			assert(r == (int64_t)compressed_size);
@@ -201,10 +206,12 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 			decoder.decode();
 		}
-		if(sign.isDeepzoom())
+		if(sign.isDeepzoom()) {
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			file->dropDZNode(buffer);
-		else
+		} else {
 			delete []buffer;
+		}
 
 		//Shuffle points in compressed point clouds
 		if(!sign.face.hasIndex()) {
@@ -246,14 +253,17 @@ uint64_t NexusData::loadRam(uint32_t n) {
 			if(t == 0xffffffff) continue;
 
 			TextureData &data = texturedata[t];
+			std::lock_guard<std::mutex> texture_locker(data.mutex);
 			data.count_ram++;
 			if(data.count_ram > 1)
 				continue;
 
 			Texture &texture = textures[t];
 			if(sign.isDeepzoom()) {
+				std::lock_guard<std::mutex> file_locker(file_mutex);
 				data.memory = file->loadDZTex(n);
 			} else {
+				std::lock_guard<std::mutex> file_locker(file_mutex);
 				data.memory = (char *)file->map(texture.getBeginOffset(), texture.getSize());
 			}
 			if(!data.memory) {
@@ -305,10 +315,13 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 
 	auto &sign = header.signature;
 	if(!sign.isCompressed()) {
-		if(sign.isDeepzoom())
+		if(sign.isDeepzoom()) {
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			file->dropDZNode(data.memory);
-		else
+		} else {
+			std::lock_guard<std::mutex> file_locker(file_mutex);
 			file->unmap((unsigned char *)data.memory);
+		}
 	} else {
 		delete []data.memory;
 	}
@@ -325,12 +338,16 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 			if(t == 0xffffffff) continue;
 
 			TextureData &tdata = texturedata[t];
+			std::lock_guard<std::mutex> texture_locker(tdata.mutex);
 			tdata.count_ram--;
 			if(tdata.count_ram != 0) continue;
-			if(sign.isDeepzoom())
+			if(sign.isDeepzoom()) {
+				std::lock_guard<std::mutex> file_locker(file_mutex);
 				file->dropDZTex(tdata.memory);
-			else
+			} else {
+				std::lock_guard<std::mutex> file_locker(file_mutex);
 				file->unmap((unsigned char *)tdata.memory);
+			}
 
 			tdata.memory = NULL;
 			size += tdata.width*tdata.height*4;

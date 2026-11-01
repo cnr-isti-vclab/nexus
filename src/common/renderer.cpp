@@ -155,7 +155,6 @@ void Renderer::render(Nexus *nexus, bool get_view, int wait ) {
 	stats.time = time;
 	
 	if(wait) {
-		verifyErrorSaturation(nexus);
 		traverse(nexus);
 		
 		while(1) {

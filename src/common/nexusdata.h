@@ -20,6 +20,7 @@ for more details.
 
 #include <stdio.h>
 #include <string>
+#include <mutex>
 
 #include "signature.h"
 #include "dag.h"
@@ -66,6 +67,7 @@ public:
 
 class TextureData {
 public:
+	std::mutex mutex;
 	TextureData(): memory(NULL), width(0), height(0), tex(0), count_ram(0), count_gpu(0) {}
 	char *memory;             //some form of raw data (probably compressed jpeg)
 	uint32_t width;            //size of image
@@ -116,6 +118,8 @@ public:
 	//FILE *file;
 
 	NexusFile* file;
+	///Serializes access to the stateful NexusFile object across RAM workers.
+	std::mutex file_mutex;
 };
 
 } //namespace

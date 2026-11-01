@@ -119,8 +119,10 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 {
 	Texture& texture = textures[t];
 	if(header.signature.isDeepzoom()) {
+		std::lock_guard<std::mutex> file_locker(file_mutex);
 		data.memory = file->loadDZTex(t);
 	} else {
+		std::lock_guard<std::mutex> file_locker(file_mutex);
 		data.memory = (char*)file->map(texture.getBeginOffset(), texture.getSize());
 	}
 	if (!data.memory) {
@@ -130,8 +132,10 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 	QImage img;
 	bool success = img.loadFromData((uchar*)data.memory, texture.getSize());
 	if(header.signature.isDeepzoom()) {
+		std::lock_guard<std::mutex> file_locker(file_mutex);
 		file->dropDZTex(data.memory);
 	} else {
+		std::lock_guard<std::mutex> file_locker(file_mutex);
 		file->unmap((uchar*)data.memory);
 	}
 

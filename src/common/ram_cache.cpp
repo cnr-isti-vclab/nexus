@@ -159,7 +159,11 @@ int RamCache::size(nx::Token *in) {
 			uint32_t t = in->nexus->patches[p].texture;
 			if(t == 0xffffffff) continue;
 			TextureData &tdata = in->nexus->texturedata[t];
-			size += tdata.width*tdata.height*4;
+			std::unique_lock<std::mutex> texture_locker(tdata.mutex, std::try_to_lock);
+			if(texture_locker.owns_lock() && tdata.width && tdata.height)
+				size += tdata.width*tdata.height*4;
+			else
+				size += in->nexus->textures[t].getSize();
 			break;
 		}
 	}
@@ -170,6 +174,7 @@ int RamCache::size(nx::Token *in) {
 
 uint64_t RamCache::getCurl(const char *url, CurlData &data, uint64_t start, uint64_t end) {
 #ifdef USE_CURL
+	std::lock_guard<std::mutex> curl_locker(curl_mutex);
 	struct curl_slist *header = NULL;
 	stringstream range;
 
@@ -185,6 +190,8 @@ uint64_t RamCache::getCurl(const char *url, CurlData &data, uint64_t start, uint
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, nx_curl_write_callback);
 
 	CURLcode res = curl_easy_perform(curl);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, nullptr);
+	curl_slist_free_all(header);
 	if(res != CURLE_OK)
 		return -1;
 

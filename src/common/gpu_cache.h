@@ -123,6 +123,7 @@ public:
 				if(t == 0xffffffff) continue;
 
 				TextureData &tdata = in->nexus->texturedata[t];
+				std::lock_guard<std::mutex> texture_locker(tdata.mutex);
 				size += tdata.width*tdata.height*3;
 				break;
 			}

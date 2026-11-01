@@ -34,6 +34,7 @@ public:
 
 	std::list<Nexus *> loading;
 	std::mutex loading_mutex;
+	std::mutex curl_mutex;
 
 	RamCache(): curl(NULL) { }
 	~RamCache() { }

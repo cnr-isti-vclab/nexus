@@ -83,6 +83,13 @@ drop(Token *) and size(Token *)</code>. Each cache runs its own thread. Resource
 
 <p>Cache are added to the controller using the function <code>Controller::addCache(Cache *)</code></p>
 
+<p>The cache coordinator owns heap and capacity bookkeeping. A cache may optionally use a bounded pool
+of transfer workers for its potentially expensive <code>get(Token *)</code> operation; completed transfers
+are committed by the coordinator. Set the worker count before starting the controller. A count of zero
+keeps transfers synchronous, which is useful for operations that require thread affinity (for example,
+OpenGL work). Nexus uses four RAM transfer workers by default; use
+<code>Controller::setRamThreads(count)</code> to tune this.</p>
+
 
 <p>The GCache employs a nested cache model: if a resource is present in a cache is also present in all the lower ones,
  and thus each cache should have more capacity than the lower one. For sake of simplicity and performances each cache

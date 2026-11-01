@@ -41,7 +41,6 @@ GLNxsview::GLNxsview(QWidget *parent, bool _share):
 	setFocusPolicy(Qt::StrongFocus);
 
 	setMouseTracking(true);
-	//connect(this, SIGNAL(destroyed()), this, SLOT(stopController()));
 
 	QTimer *timer = new QTimer(this);
 	timer->start(50);
@@ -51,25 +50,6 @@ GLNxsview::GLNxsview(QWidget *parent, bool _share):
 void GLNxsview::checkForUpdate() {
 	Nxsview::checkForUpdate();
 }
-
-void GLNxsview::setTriangles(bool on) { Nxsview::setTriangles(on); }
-void GLNxsview::setNormals(bool on) { Nxsview::setNormals(on); }
-void GLNxsview::setColors(bool on) { Nxsview::setColors(on); }
-void GLNxsview::setPatches(bool on) { Nxsview::setPatches(on); }
-void GLNxsview::setExtraction(bool on) { Nxsview::setExtraction(on); }
-void GLNxsview::setFov(int f) { Nxsview::setFov(f); }
-void GLNxsview::setInfo(bool on) { Nxsview::setInfo(on); }
-void GLNxsview::setPrimitives(double e) { Nxsview::setPrimitives(e); }
-void GLNxsview::setError(double e) { Nxsview::setError(e); }
-void GLNxsview::setGpu(double e) { Nxsview::setGpu(e); }
-void GLNxsview::setRam(double d) { Nxsview::setRam(d); }
-void GLNxsview::lightTrackball(bool on) { Nxsview::lightTrackball(on); }
-void GLNxsview::setColor() { Nxsview::setColor(this); }
-void GLNxsview::setColorTop() { Nxsview::setColorTop(this); }
-void GLNxsview::setColorBottom() { Nxsview::setColorBottom(this); }
-void GLNxsview::zoomIn() { Nxsview::zoomIn(); }
-void GLNxsview::zoomOut() { Nxsview::zoomOut(); }
-void GLNxsview::stopController() { Nxsview::stopController(); }
 
 void GLNxsview::getSnapshot() {
 	QImage im = grabFramebuffer();

@@ -57,6 +57,7 @@ public:
 
 	void setRam(uint64_t size) { max_ram = size; ram_cache.setCapacity(size); }
 	uint64_t maxRam() const { return max_ram; }
+	void setRamThreads(unsigned int count) { ram_cache.setTransferThreads(count); }
 
 	void load(Nexus *nexus);
 	void flush(Nexus *nexus);

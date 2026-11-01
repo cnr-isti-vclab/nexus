@@ -15,14 +15,16 @@ typedef unsigned __int64 uint64_t;
 #endif
 
 #include <iostream>
+#include <algorithm>
 #include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <limits.h>
+#include <thread>
 #include <vector>
 #include <list>
-
 #include "token.h"
-
 #include "provider.h"
 
 /* this cache system enforce the rule that the items in a cache are always in all the cache below */
@@ -40,6 +42,9 @@ template <typename Token> class Transfer;
 
 template <typename Token>
 class Cache: public Provider<Token> {
+
+    struct TransferJob { Token *token; uint64_t reservation; };
+    struct TransferResult { Token *token; int size; uint64_t reservation; };
 
 public:
     ///true if this is the last cache (the one we use the data from)
@@ -62,16 +67,49 @@ protected:
     uint64_t s_max;
     ///current space used
     uint64_t s_curr;
+    unsigned int transfer_threads;
+    std::vector<std::thread> workers;
+    std::deque<TransferJob> transfer_jobs;
+    std::deque<TransferResult> transfer_results;
+    std::vector<Token *> in_flight;
+    uint64_t reserved_space;
+    std::mutex transfer_mutex;
+    std::condition_variable transfer_ready;
+    std::condition_variable transfers_idle;
+    unsigned int working_transfers;
+    bool stop_workers;
 
 public:
     Cache(uint64_t _capacity = INT_MAX):
-        final(false), quit(false), new_data(false), input(NULL), s_max(_capacity), s_curr(0) {}
-    virtual ~Cache() {}
+        final(false), quit(false), new_data(false), input(NULL), s_max(_capacity), s_curr(0),
+        transfer_threads(0), reserved_space(0), working_transfers(0), stop_workers(false) {}
+    virtual ~Cache() { stopTransferWorkers(); }
 
     void setInputCache(Provider<Token> *p) { input = p; }
     uint64_t capacity() { return s_max; }
     uint64_t size() { return s_curr; }
     void setCapacity(uint64_t c) { s_max = c; }
+    void setTransferThreads(unsigned int count) {
+        std::lock_guard<std::mutex> locker(transfer_mutex);
+        assert(workers.empty());
+        transfer_threads = count;
+    }
+
+    void quiesce() {
+        std::unique_lock<std::mutex> locker(transfer_mutex);
+        transfers_idle.wait(locker, [this] {
+            return transfer_jobs.empty() && working_transfers == 0;
+        });
+        locker.unlock();
+        processTransferResults();
+    }
+
+    void pushPriorities() {
+        Provider<Token>::pushPriorities();
+        std::lock_guard<std::mutex> locker(transfer_mutex);
+        for(Token *token : in_flight)
+            token->pushPriority();
+    }
 
     ///return true if the cache is waiting for priority to change
     bool newData() {
@@ -162,6 +200,7 @@ protected:
           1) make room until eliminating an element would leave empty space.
           2) transfer first element of input_cache if
           cache has room OR first element in input has higher priority of last element */
+        startTransferWorkers();
         begin();
         while(!this->quit) {
             input->check_queue.enter();     //wait for cache below to load something or priorities to change
@@ -170,17 +209,105 @@ protected:
                 break;
             }
 
+            processTransferResults();
             middle();
 
-            if(unload() || load()) {
-                int expected = 0;
-                new_data.compare_exchange_strong(expected, 1);  //if not changed, set as changed
+            bool unloaded = unload();
+            bool loaded = !unloaded && load();
+            if(unloaded || loaded) {
+                if(unloaded || transfer_threads == 0) {
+                    int expected = 0;
+                    new_data.compare_exchange_strong(expected, 1);
+                }
                 input->check_queue.open();        //we signal ourselves to check again
             }
             input->check_queue.leave();
         }
         this->quit = false;                   //in case someone wants to restart;
+        stopTransferWorkers();
+        processTransferResults();
         end();
+    }
+
+    void startTransferWorkers() {
+        std::lock_guard<std::mutex> locker(transfer_mutex);
+        stop_workers = false;
+        for(unsigned int i = 0; i < transfer_threads; ++i)
+            workers.emplace_back([this] { transferWorker(); });
+    }
+
+    void stopTransferWorkers() {
+        {
+            std::lock_guard<std::mutex> locker(transfer_mutex);
+            if(workers.empty()) return;
+            stop_workers = true;
+        }
+        transfer_ready.notify_all();
+        for(std::thread &worker : workers)
+            if(worker.joinable()) worker.join();
+        workers.clear();
+        std::lock_guard<std::mutex> locker(transfer_mutex);
+        stop_workers = false;
+    }
+
+    void transferWorker() {
+        for(;;) {
+                TransferJob job;
+            {
+                std::unique_lock<std::mutex> locker(transfer_mutex);
+                transfer_ready.wait(locker, [this] { return stop_workers || !transfer_jobs.empty(); });
+                if(transfer_jobs.empty()) {
+                    if(stop_workers) return;
+                    continue;
+                }
+                job = transfer_jobs.front();
+                transfer_jobs.pop_front();
+                ++working_transfers;
+            }
+
+            int loaded_size = -1;
+            try { loaded_size = get(job.token); } catch(...) { loaded_size = -1; }
+
+            {
+                std::lock_guard<std::mutex> locker(transfer_mutex);
+                transfer_results.push_back({job.token, loaded_size, job.reservation});
+                --working_transfers;
+                if(transfer_jobs.empty() && working_transfers == 0)
+                    transfers_idle.notify_all();
+            }
+            input->check_queue.open();
+        }
+    }
+
+    void processTransferResults() {
+        std::deque<TransferResult> results;
+        {
+            std::lock_guard<std::mutex> locker(transfer_mutex);
+            results.swap(transfer_results);
+            for(const TransferResult &result : results) {
+                auto it = std::find(in_flight.begin(), in_flight.end(), result.token);
+                if(it != in_flight.end()) in_flight.erase(it);
+                reserved_space -= result.reservation;
+            }
+        }
+
+        for(const TransferResult &result : results) {
+            if(result.size >= 0) {
+                s_curr += result.size;
+                {
+                    std::lock_guard<std::mutex> locker(this->heap_lock);
+                    if(final) result.token->count.fetch_add(1);
+                    this->heap.push(result.token);
+                    this->heap_dirty = true;
+                }
+                this->check_queue.open();
+                new_data.store(1);
+            } else {
+                std::lock_guard<std::mutex> locker(input->heap_lock);
+                input->heap.push(result.token);
+                input->heap_dirty = true;
+            }
+        }
     }
 
 
@@ -192,7 +319,7 @@ protected:
         Token *remove = NULL;
         //make room int the cache checking that:
         //1 we need to make room (capacity < current)
-        if(size() > capacity()) {
+        if(size() + reserved_space > capacity()) {
             std::lock_guard<std::mutex> locker(this->heap_lock);
 
             //2 we have some element not in the upper caches (heap.size()  > 0
@@ -201,7 +328,9 @@ protected:
                 int itemsize = size(&last);
 
                 //3 after removing the item, we are still full (avoids bouncing items)
-                if(size() - itemsize > capacity()) {
+                uint64_t projected = size() + reserved_space;
+                if(projected > static_cast<uint64_t>(itemsize) &&
+                    projected - static_cast<uint64_t>(itemsize) > capacity()) {
 
                     //4 item to remove is not locked. (only in last cache. you can't lock object otherwise)
                     if(!final) { //not final we can drop when we want
@@ -247,7 +376,7 @@ protected:
         {
             std::lock_guard<std::mutex> locker(this->heap_lock);
             this->rebuild();
-            if(size() > capacity() && this->heap.size() > 0) {
+            if(size() + reserved_space > capacity() && this->heap.size() > 0) {
                 last = &(this->heap.min()); //no room, set last so we might check for a swap.
             }
         }
@@ -266,26 +395,39 @@ protected:
         }
 
         if(insert) {                                        //we want to fetch something
-
-            int size = get(insert);
-
-            if(size >= 0) {                                   //success
-                s_curr += size;
-                {
+            if(transfer_threads == 0) {
+                int loaded_size = get(insert);
+                if(loaded_size >= 0) {
+                    s_curr += loaded_size;
                     std::lock_guard<std::mutex> locker(this->heap_lock);
-                    if(final)
-                        insert->count.fetch_add(1);                 //now state is READY and can be locked
-
+                    if(final) insert->count.fetch_add(1);
                     this->heap.push(insert);
+                    this->check_queue.open();
+                    return true;
                 }
-                this->check_queue.open();                      //we should signal the parent cache that we have a new item
-                return true;
-
-            } else {                                         //failed transfer put it back, we will keep trying to transfer it...
-                std::lock_guard<std::mutex> input_locker(input->heap_lock);
+                std::lock_guard<std::mutex> locker(input->heap_lock);
                 input->heap.push(insert);
                 return false;
             }
+            uint64_t reservation = static_cast<uint64_t>(std::max(0, size(insert)));
+            {
+                std::lock_guard<std::mutex> locker(transfer_mutex);
+                uint64_t projected = s_curr + reserved_space;
+                bool fits = reservation <= capacity() - std::min<uint64_t>(projected, capacity());
+                bool may_overflow = reserved_space == 0 && last && insert->priority > last->priority;
+                if(in_flight.size() >= transfer_threads || (!fits && !may_overflow) ||
+                        (last && insert->priority <= last->priority)) {
+                    std::lock_guard<std::mutex> input_locker(input->heap_lock);
+                    input->heap.push(insert);
+                    return false;
+                }
+                in_flight.push_back(insert);
+                reserved_space += reservation;
+				transfer_jobs.push_back({insert, reservation});
+				std::cout << "jobs: " << transfer_jobs.size() << std::endl;
+            }
+            transfer_ready.notify_one();
+            return true;
         }
         return false;
     }

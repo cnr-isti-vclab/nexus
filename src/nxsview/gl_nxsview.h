@@ -37,28 +37,8 @@ public:
 public slots:
 
 	void checkForUpdate();
-
-	void setTriangles(bool on);
-	void setNormals(bool on);
-	void setColors(bool on);
-	void setPatches(bool on);
-	void setExtraction(bool on);
-	void setFov(int f);
-	void setInfo(bool on);
-	void setPrimitives(double e);
-	void setError(double e);
-	void setGpu(double e);
-	void setRam(double d);
-
 	void getSnapshot();
 
-	void lightTrackball(bool on);
-	void setColor();
-	void setColorTop();
-	void setColorBottom();
-	void zoomIn();
-	void zoomOut();
-	void stopController();
 
 protected:
 	void requestUpdate() override { update(); }

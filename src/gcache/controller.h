@@ -136,6 +136,11 @@ class Controller {
     for(unsigned int i = 0; i < caches.size()-1; i++)
       caches[i]->input->check_queue.room.lock();
 
+    // Async transfer workers are independent of the cache coordinator.
+    // Drain them before callers mutate or remove tokens during the pause.
+    for(unsigned int i = 0; i < caches.size(); ++i)
+      caches[i]->quiesce();
+
     paused = true;
   }
 

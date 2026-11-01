@@ -38,8 +38,8 @@ public:
     Nxsview();
     virtual ~Nxsview() = default;
 
-    nx::Renderer renderer;
-    Scene scene;
+	nx::Renderer renderer;
+	Scene scene;
     nx::Rgba8 colorBottom;
     nx::Rgba8 colorTop;
     nx::Rgba8 color;
@@ -62,7 +62,7 @@ public:
     void setColorBottom(QWidget *parent);
     void zoomIn();
     void zoomOut();
-    void stopController() {}
+	void stopController() {}
 
     // Called by the concrete backend once per rendered frame.
     void advanceViewpointAnimation();
