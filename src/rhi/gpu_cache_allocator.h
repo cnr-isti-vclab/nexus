@@ -47,7 +47,11 @@ public:
         std::uint32_t sampleCount = 1;
         std::uint32_t flags = 0;
 
-        friend bool operator==(const TextureArrayLayout &, const TextureArrayLayout &) = default;
+        bool operator==(const TextureArrayLayout &other) const noexcept {
+            return width == other.width && height == other.height &&
+                   format == other.format && mipLevels == other.mipLevels &&
+                   sampleCount == other.sampleCount && flags == other.flags;
+        }
     };
 
     struct TextureArrayAllocation {

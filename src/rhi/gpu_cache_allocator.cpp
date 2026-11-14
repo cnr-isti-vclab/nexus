@@ -117,7 +117,9 @@ GpuMemory::allocateTextureLayer(const TextureArrayLayout &layout) {
 
     for(std::size_t poolIndex = 0; poolIndex < texturePools.size(); ++poolIndex) {
         TexturePool &pool = texturePools[poolIndex];
-        if(pool.layout != layout)
+          if(pool.layout.width != layout.width || pool.layout.height != layout.height ||
+              pool.layout.format != layout.format || pool.layout.mipLevels != layout.mipLevels ||
+              pool.layout.sampleCount != layout.sampleCount || pool.layout.flags != layout.flags)
             continue;
 
         for(std::uint32_t layer = pool.cursor; layer < layerCapacity; ++layer) {
