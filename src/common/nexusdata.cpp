@@ -65,15 +65,24 @@ void NexusData::close() {
 }
 
 void NexusData::flush() {
-	//flush
-	for(unsigned int i = 0; i < header.n_nodes; i++)
-		delete nodedata[i].memory;
+	//a node is still loaded if an exception was thrown between loadRam and dropRam:
+	//its memory was mapped or allocated with new[], so it must be released like dropRam does
+	if(nodedata)
+		for(unsigned int i = 0; i < header.n_nodes; i++)
+			if(nodedata[i].memory)
+				releaseNodeMemory(nodedata[i]);
 
 	delete []nodes;
 	delete []patches;
 	delete []textures;
 	delete []nodedata;
 	delete []texturedata;
+	//flush can be called twice (Nexus::~Nexus and ~NexusData both call close)
+	nodes = 0;
+	patches = 0;
+	textures = 0;
+	nodedata = 0;
+	texturedata = 0;
 }
 
 void NexusData::loadHeader() {
@@ -297,14 +306,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 	return size;
 }
 
-uint64_t NexusData::dropRam(uint32_t n, bool write) {
-	Node &node = nodes[n];
-	NodeData &data = nodedata[n];
-
-	assert(!write);
-	assert(!data.vbo);
-	assert(data.memory);
-
+void NexusData::releaseNodeMemory(NodeData &data) {
 	auto &sign = header.signature;
 	if(!sign.isCompressed()) {
 		if(sign.isDeepzoom())
@@ -316,8 +318,20 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	}
 
 	data.memory = NULL;
+}
+
+uint64_t NexusData::dropRam(uint32_t n, bool write) {
+	Node &node = nodes[n];
+	NodeData &data = nodedata[n];
+
+	assert(!write);
+	assert(!data.vbo);
+	assert(data.memory);
+
+	releaseNodeMemory(data);
 
 	//report RAM size for compressed meshes.
+	auto &sign = header.signature;
 	uint32_t size = node.nvert * sign.vertex.size() +
 				node.nface * sign.face.size();
 
