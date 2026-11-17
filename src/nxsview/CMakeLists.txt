@@ -4,6 +4,15 @@ cmake_minimum_required(VERSION 3.10)
 project(nxsview)
 
 SET(HEADERS
+	wrap/gl/picking.h
+	wrap/gl/space.h
+	wrap/gl/deprecated_space.h
+	wrap/gl/math.h
+	wrap/gl/deprecated_math.h
+	wrap/gui/trackball.h
+	wrap/gui/trackmode.h
+	wrap/gui/trackutils.h
+	wrap/gui/view.h
 	${VCGDIR}/wrap/gcache/token.h
 	${VCGDIR}/wrap/gcache/provider.h
 	${VCGDIR}/wrap/gcache/door.h
@@ -28,8 +37,8 @@ SET(HEADERS
 )
 
 SET(SOURCES
-	${VCGDIR}/wrap/gui/trackmode.cpp
-	${VCGDIR}/wrap/gui/trackball.cpp
+	wrap/gui/trackmode.cpp
+	wrap/gui/trackball.cpp
 	${VCGDIR}/wrap/system/qgetopt.cpp
 	../common/controller.cpp
 	../common/nexus.cpp

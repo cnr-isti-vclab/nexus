@@ -26,7 +26,7 @@ for more details.
 
 #include <vcg/space/point2.h>
 #include <vcg/space/box3.h>
-#include <wrap/gui/trackball.h>
+#include "wrap/gui/trackball.h"
 
 #include "../common/controller.h"
 #include "../common/renderer.h"
@@ -117,4 +117,3 @@ private:
 
 
 #endif
-

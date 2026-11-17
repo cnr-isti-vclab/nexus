@@ -22,8 +22,8 @@ unix:INCLUDEPATH += /usr/local/lib ../../../corto/include
 unix:LIBS += -lGLEW -lGLU ../../../corto/libcorto.a
 
 SOURCES += \
-    ../../../vcglib/wrap/gui/trackmode.cpp \
-    ../../../vcglib/wrap/gui/trackball.cpp \
+    wrap/gui/trackmode.cpp \
+    wrap/gui/trackball.cpp \
     ../../../vcglib/wrap/system/qgetopt.cpp \
     ../common/controller.cpp \
     ../common/nexus.cpp \
@@ -42,6 +42,15 @@ SOURCES += \
     ../common/qtnexusfile.cpp
 
 HEADERS  += \
+    wrap/gl/picking.h \
+    wrap/gl/space.h \
+    wrap/gl/deprecated_space.h \
+    wrap/gl/math.h \
+    wrap/gl/deprecated_math.h \
+    wrap/gui/trackball.h \
+    wrap/gui/trackmode.h \
+    wrap/gui/trackutils.h \
+    wrap/gui/view.h \
     ../../../vcglib/wrap/gcache/token.h \
     ../../../vcglib/wrap/gcache/provider.h \
     ../../../vcglib/wrap/gcache/door.h \

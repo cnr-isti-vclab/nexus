@@ -24,8 +24,8 @@ for more details.
 
 #include "gl_nxsview.h"
 
-#include <wrap/gl/picking.h>
-#include <wrap/gl/space.h>
+#include "wrap/gl/picking.h"
+#include "wrap/gl/space.h"
 #include <wrap/qt/gl_label.h>
 
 using namespace std;
