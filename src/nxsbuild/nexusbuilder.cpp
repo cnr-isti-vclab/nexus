@@ -35,6 +35,7 @@ for more details.
 #include <vcg/math/similarity2.h>
 #include <vcg/space/rect_packer.h>
 
+#include <cstring>
 #include <iostream>
 using namespace std;
 
@@ -137,6 +138,8 @@ bool NexusBuilder::initAtlas(std::vector<LoadTexture> &textures) {
 
 void NexusBuilder::create(KDTree *tree, Stream *stream, uint top_node_size) {
 	Node sink;
+	//the sink is saved with the other nodes: no field may be left uninitialized
+	memset(&sink, 0, sizeof(Node));
 	sink.first_patch = 0;
 	nodes.push_back(sink);
 
