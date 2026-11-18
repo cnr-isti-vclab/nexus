@@ -72,9 +72,10 @@ void ObjLoader::cacheTextureUV() {
 
 		if (buffer[2] == ' ') {      //skip other properties
 
+			//vt u [v [w]]: v is optional and defaults to 0, w is not used
 			float vt0 = 0.0, vt1 = 0.0;
 			int n = sscanf(buffer, "vt %f %f", &vt0, &vt1);
-			if (n != 2) throw QString("error parsing vtxt  line: %1").arg(buffer);
+			if (n < 1) throw QString("error parsing vtxt  line: %1").arg(buffer);
 			cnt++;
 			vtxtuv.push_back(vt0);
 			vtxtuv.push_back(vt1);
