@@ -39,6 +39,25 @@ public slots:
 	void checkForUpdate();
 	void getSnapshot();
 
+	// Nxsview is not a QObject, so moc needs these forwarders for the .ui connections.
+	void lightTrackball(bool on) { Nxsview::lightTrackball(on); }
+	void setTriangles(bool on) { Nxsview::setTriangles(on); }
+	void setNormals(bool on) { Nxsview::setNormals(on); }
+	void setColors(bool on) { Nxsview::setColors(on); }
+	void setPatches(bool on) { Nxsview::setPatches(on); }
+	void setExtraction(bool on) { Nxsview::setExtraction(on); }
+	void setFov(int f) { Nxsview::setFov(f); }
+	void setInfo(bool on) { Nxsview::setInfo(on); }
+	void setPrimitives(double e) { Nxsview::setPrimitives(e); }
+	void setError(double e) { Nxsview::setError(e); }
+	void setGpu(double e) { Nxsview::setGpu(e); }
+	void setRam(double d) { Nxsview::setRam(d); }
+	void setColor() { Nxsview::setColor(this); }
+	void setColorTop() { Nxsview::setColorTop(this); }
+	void setColorBottom() { Nxsview::setColorBottom(this); }
+	void zoomIn() { Nxsview::zoomIn(); }
+	void zoomOut() { Nxsview::zoomOut(); }
+
 
 protected:
 	void requestUpdate() override { update(); }

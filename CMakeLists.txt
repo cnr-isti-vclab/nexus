@@ -14,7 +14,7 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Widgets REQUIRED)
 find_package(Threads REQUIRED)
 
 if (BUILD_NXS_VIEW)
@@ -70,16 +70,8 @@ endif()
 
 add_subdirectory(src)
 
-if (BUILD_NXS_BUILD)
-	add_subdirectory(src/nxsbuild)
-endif()
-
 if(BUILD_NXS_EDIT)
 	add_subdirectory(src/nxsedit)
-endif()
-
-if(BUILD_NXS_VIEW)
-	add_subdirectory(src/nxsview)
 endif()
 
 if(TARGET vcglib::vcglib AND TARGET corto::corto)

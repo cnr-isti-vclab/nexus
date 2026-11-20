@@ -119,27 +119,31 @@ void Nxsview::handleWheelEvent(QWheelEvent *event, int) {
 }
 
 void Nxsview::handleMouseMoveEvent(QMouseEvent *event, int height) {
-    if(default_trackball) trackball.mouseMove(event->x(), height - event->y());
-    else trackball_light.mouseMove(event->x(), height - event->y());
+    auto pos = event->position();
+    if(default_trackball) trackball.mouseMove(pos.x(), height - pos.y());
+    else trackball_light.mouseMove(pos.x(), height - pos.y());
     requestUpdate();
 }
 
 void Nxsview::handleMousePressEvent(QMouseEvent *event, int height) {
+    auto pos = event->position();
     button = qtButtons(event->button(), event->modifiers());
-    if(default_trackball) trackball.mouseDown(event->x(), height - event->y(), button);
-    else trackball_light.mouseDown(event->x(), height - event->y(), button);
+    if(default_trackball) trackball.mouseDown(pos.x(), height - pos.y(), button);
+    else trackball_light.mouseDown(pos.x(), height - pos.y(), button);
     requestUpdate();
 }
 
 void Nxsview::handleMouseReleaseEvent(QMouseEvent *event, int height) {
-    if(default_trackball) trackball.mouseUp(event->x(), height - event->y(), button);
-    else trackball_light.mouseUp(event->x(), height - event->y(), button);
+    auto pos = event->position();
+    if(default_trackball) trackball.mouseUp(pos.x(), height - pos.y(), button);
+    else trackball_light.mouseUp(pos.x(), height - pos.y(), button);
 }
 
 void Nxsview::handleMouseDoubleClickEvent(QMouseEvent *event, int height) {
+    auto pos = event->position();
     hasToPick = true;
-    pickX = event->x();
-    pickY = height - event->y();
+    pickX = pos.x();
+    pickY = height - pos.y();
     requestUpdate();
 }
 
