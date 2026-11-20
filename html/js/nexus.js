@@ -308,23 +308,11 @@ Mesh = function() {
 	t.reqAttempt = 0;
 	t.georeq = {}
 	t.texreq = {}
+	t.db = null;
 }
 
 Mesh.prototype = {
 	open: function(url) {
-		if(this.useIndexedDb) {
-			let indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB;
-			this.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction;
-			this.db = null;
-			let request = indexedDB.open(url);
-			request.onsuccess = () => { this.db = request.result; };
-			request.onupgradeneeded = (event) => {
-				let db = event.target.result;
-				this.meshStore = db.createObjectStore('mesh');
-				this.texStore = db.createObjectStore('tex');
-			};
-		}
-
 		var mesh = this;
 		mesh.url = url;
 		mesh.httpRequest({
@@ -354,12 +342,63 @@ Mesh.prototype = {
 				mesh.corto = (mesh.signature.flags & 4);
 				if(mesh.deepzoom)
 					mesh.baseurl = url.substr(0, url.length -4) + '_files/';
-				mesh.requestIndex();
+				// Prefer the server's ETag if available
+				var etag = this.getResponseHeader && this.getResponseHeader('ETag');
+				var signature = etag
+					? 'etag:' + etag
+					: 'counts:' + [mesh.version, mesh.verticesCount, mesh.facesCount, mesh.nodesCount, mesh.patchesCount].join(':');
+				// Validate (and if needed reset) the IndexedDB chunk cache.
+				mesh.openCache(signature, function() { mesh.requestIndex(); });
 			},
 			error:function() { console.log("Open request error!");},
 			abort:function() { console.log("Open request abort!");},
 			type:'arraybuffer'
 		});
+	},
+
+	/**
+	 * Open cache database and ensure freshness against the supplied opaque
+	 * `signature` string (ETag-derived when available, header counts otherwise).
+	 */
+	openCache: function(signature, done) {
+		var mesh = this;
+		var idb = typeof window !== "undefined" &&
+			(window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB);
+		if(!mesh.useIndexedDb || !idb) { done(); return; }
+
+		var request;
+		try { request = idb.open(mesh.url, 2); }
+		catch(e) { done(); return; }
+
+		request.onupgradeneeded = function(event) {
+			var db = event.target.result;
+			if(event.oldVersion < 1){
+				db.createObjectStore('mesh');
+				db.createObjectStore('tex');
+			}
+			if(event.oldVersion < 2){
+				db.createObjectStore('meta');
+			}
+		};
+		request.onerror = function() { if(Debug.verbose) console.log("Cache open error for " + mesh.url); done(); };
+		request.onsuccess = function() {
+			var db = request.result;
+			var tx;
+			try { tx = db.transaction(['meta', 'mesh', 'tex'], "readwrite"); }
+			catch(e) { done(); return; }
+			var meta = tx.objectStore('meta');
+			var getReq = meta.get('signature');
+			getReq.onsuccess = function() {
+				if(getReq.result !== signature) {
+					if(Debug.verbose) console.log("Cache signature mismatch for " + mesh.url + ", clearing");
+					tx.objectStore('mesh').clear();
+					tx.objectStore('tex').clear();
+					meta.put(signature, 'signature');
+				}
+			};
+			tx.oncomplete = function() { mesh.db = db; done(); };
+			tx.onerror = function() { done(); };
+		};
 	},
 
 	httpRequest: function({url, start, end, load, error, abort, type}) {
@@ -1139,8 +1178,8 @@ function requestNodeTexture(context, node) {
 
 	if(m.db) {
 		let transaction = node.mesh.db.transaction('tex', "readwrite");
-		let request = transaction.objectStore('tex').get(node.id);
-		request.onsuccess = (e) => { 
+		let request = transaction.objectStore('tex').get(tex);
+		request.onsuccess = (e) => {
 			if(request.result) {
 				loadNodeTexture({ response: request.result}, context, node, tex);
 			} else {
