@@ -27,7 +27,7 @@ bool Scene::load(QStringList inputs, int instances) {
 
 		nx::Nexus *nexus = new nx::Nexus(&controller);
 
-		if(!nexus->open(inputs[i].toLatin1())) {
+		if(!nexus->open(inputs[i].toUtf8())) {
 			std::cerr << "Could not load file: " << qPrintable(inputs[i]) << std::endl;
 			return false;
 		}

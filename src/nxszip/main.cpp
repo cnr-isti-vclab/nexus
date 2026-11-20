@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 /*
     if(input.endsWith(".ply")) {
         CMesh mesh;
-        if(vcg::tri::io::ImporterPLY<CMesh>::Open(mesh,input.toLatin1().data())!=0) {
+        if(vcg::tri::io::ImporterPLY<CMesh>::Open(mesh,input.toUtf8().data())!=0) {
             cerr << "Error reading file " << qPrintable(input) << endl;
             return -1;
         }
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     } */
 
     nx::NexusData in;
-    in.open(input.toLatin1().data());
+    in.open(input.toUtf8().data());
 
     QFile file;
     file.setFileName(output);

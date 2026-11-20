@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
 		read_only = false;
 
 	try {
-		if(!nexus.open(inputs[0].toLatin1())) {
+		if(!nexus.open(inputs[0].toUtf8())) {
 			cerr << "Fatal error: could not open file " << qPrintable(inputs[0]) << endl;
 			return -1;
 		}
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 			return 0;
 		}
 
-		cout << "Reading " << qPrintable(inputs[0].toLatin1()) << endl;
+		cout << "Reading " << qPrintable(inputs[0]) << endl;
 
 		if(check) {
 			checks(nexus);
