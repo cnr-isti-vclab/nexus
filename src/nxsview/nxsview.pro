@@ -28,6 +28,7 @@ SOURCES += \
     ../common/cone.cpp \
     ../common/traversal.cpp \
     ../common/renderer.cpp \
+    gl_renderer.cpp \
     ../common/ram_cache.cpp \
     ../common/frustum.cpp \
     ../common/nexusdata.cpp \
@@ -50,6 +51,7 @@ HEADERS  += \
     ../common/traversal.h \
     ../common/token.h \
     ../common/renderer.h \
+    gl_renderer.h \
     ../common/ram_cache.h \
     ../common/metric.h \
     ../common/gpu_cache.h \

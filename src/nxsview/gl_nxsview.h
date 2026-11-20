@@ -23,6 +23,7 @@ for more details.
 #include <QOpenGLWidget>
 #include <QDebug>
 
+#include "gl_renderer.h"
 #include "nxsview.h"
 
 class GLNxsview : public QOpenGLWidget, public Nxsview {
@@ -30,6 +31,7 @@ class GLNxsview : public QOpenGLWidget, public Nxsview {
 
 public:
 	bool share; //if true shares context with nexus at initialization
+	nx::GLRenderer renderer;
 
 	GLNxsview(QWidget *parent = 0, bool share = true);
 	~GLNxsview() {}
@@ -61,6 +63,7 @@ public slots:
 
 protected:
 	void requestUpdate() override { update(); }
+	nx::Renderer &getRenderer() override { return renderer; }
 	void initializeGL();
 	void resizeGL(int w, int h);
 	void setView(float znear, float zfar);
@@ -81,4 +84,3 @@ private:
 
 
 #endif
-

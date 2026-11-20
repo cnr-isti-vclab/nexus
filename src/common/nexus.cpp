@@ -26,13 +26,14 @@ for more details.
 using namespace nx;
 
 
+#ifndef NX_RHI
 void _glCheckError(const char *file, int line) {
 #ifndef NDEBUG
 	GLenum err (glGetError());
-	
+
 	while(err != GL_NO_ERROR) {
 		std::string error;
-		
+
 		switch(err) {
 		case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
 		case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
@@ -40,12 +41,13 @@ void _glCheckError(const char *file, int line) {
 		case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
 		case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
 		}
-		
+
 		std::cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<std::endl;
 		err=glGetError();
 	}
 #endif
 }
+#endif
 
 
 Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stream(false) {
@@ -187,6 +189,11 @@ bool isPowerOfTwo(unsigned int x) {
 }
 
 uint64_t Nexus::loadGpu(uint32_t n) {
+#ifdef NX_RHI
+	Node &node = nodes[n];
+	Signature &sig = header.signature;
+	return node.nvert * sig.vertex.size() + node.nface * sig.face.size();
+#else
 	NodeData &data = nodedata[n];
 	assert(data.memory);
 	assert(data.vbo == 0);
@@ -270,9 +277,17 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 	}
 
 	return size;
+#endif
 }
 
 uint64_t Nexus::dropGpu(uint32_t n) {
+#ifdef NX_RHI
+	NodeData &data = nodedata[n];
+	Node &node = nodes[n];
+	data.vbo = data.fbo = 0;
+	Signature &sig = header.signature;
+	return node.nvert * sig.vertex.size() + node.nface * sig.face.size();
+#else
 	NodeData &data = nodedata[n];
 	Node &node = nodes[n];
 
@@ -304,5 +319,5 @@ uint64_t Nexus::dropGpu(uint32_t n) {
 		}
 	}
 	return size;
+#endif
 }
-

@@ -18,7 +18,11 @@ for more details.
 #ifndef NX_GLOBALGL_H
 #define NX_GLOBALGL_H
 
-#ifdef GL_ES
+#ifdef NX_RHI
+
+#define glCheckError() ((void)0)
+
+#elif defined(GL_ES)
 
 #include <OpenGLES/ES2/gl.h>
 
@@ -31,7 +35,9 @@ for more details.
 #include <string>
 #include <iostream>
 
+#ifndef NX_RHI
 void _glCheckError(const char *file, int line);
 #define glCheckError() _glCheckError(__FILE__,__LINE__)
+#endif
 
 #endif // NX_GLOBALGL_H

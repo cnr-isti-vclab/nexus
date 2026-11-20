@@ -7,6 +7,7 @@ SET(HEADERS
 	../common/nexus.h
 	../common/token.h
 	../common/renderer.h
+	gl_renderer.h
 	../common/ram_cache.h
 	../common/metric.h
 	../common/gpu_cache.h
@@ -32,6 +33,7 @@ SET(SOURCES
 	main.cpp
 	nxsview.cpp
 	gl_nxsview.cpp
+	gl_renderer.cpp
 	scene.cpp
 )
 

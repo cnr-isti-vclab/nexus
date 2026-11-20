@@ -34,8 +34,6 @@ for more details.
 }*/
 #endif
 
-extern int current_texture;
-
 using namespace nx;
 
 
@@ -176,85 +174,26 @@ void Renderer::render(Nexus *nexus, bool get_view, int wait ) {
 	traverse(nexus);
 	stats.instance_rendered = 0;
 	
-	Signature &sig = nexus->header.signature;
-	bool draw_normals = sig.vertex.hasNormals() && (mode & NORMALS);
-	bool draw_colors = sig.vertex.hasColors() && (mode & COLORS ) && !(mode & PATCHES);
-	bool draw_triangles = sig.face.hasIndex() && (mode & TRIANGLES);
-	bool draw_textures = nexus->header.n_textures && (mode & TEXTURES);
-	bool draw_texcoords = sig.vertex.hasTextures()&& (mode & TEXTURES);
-	
-	
-	
-	if(draw_textures)
-		glEnable(GL_TEXTURE_2D);
-	if(draw_textures && ! draw_texcoords) {
-		glEnable(GL_TEXTURE_2D);
-		glEnable(GL_TEXTURE_GEN_S);
-		glEnable(GL_TEXTURE_GEN_T);
-		glEnable(GL_TEXTURE_GEN_R);
-		glEnable(GL_TEXTURE_GEN_Q);
-	}
-	
-	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-	glEnable(GL_COLOR_MATERIAL);
-	
-	glCheckError();
-	
-	
-#ifdef GL_COMPATIBILITY
-	glEnableClientState(GL_VERTEX_ARRAY);
-	if(draw_colors) glEnableClientState(GL_COLOR_ARRAY);
-	if(draw_normals) glEnableClientState(GL_NORMAL_ARRAY);
-	if(draw_texcoords) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	
-	renderSelected(nexus);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	if(draw_triangles) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	
-	glDisableClientState(GL_VERTEX_ARRAY);
-	if(draw_normals) glDisableClientState(GL_NORMAL_ARRAY);
-	if(draw_colors) glDisableClientState(GL_COLOR_ARRAY);
-	if(draw_texcoords) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-#endif
-	
-	glCheckError();
-	
-	
-	
-#if GL_ES || GL_CORE
-	glEnableVertexAttribArray(ATTRIB_VERTEX);
-	if(draw_colors) glEnableVertexAttribArray(ATTRIB_COLOR);
-	if(draw_normals) glEnableVertexAttribArray(ATTRIB_NORMAL);
-	
-	renderSelected(nexus);
-	
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
-	if(draw_triangles) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	
-	glDisableVertexAttribArray(ATTRIB_VERTEX);
-	if(draw_normals) glDisableVertexAttribArray(ATTRIB_NORMAL);
-	if(draw_colors) glDisableVertexAttribArray(ATTRIB_COLOR);
-#endif
-	
+	const Signature &sig = nexus->header.signature;
+	const RenderOptions options {
+		sig.vertex.hasNormals() && (mode & NORMALS),
+		sig.vertex.hasColors() && (mode & COLORS) && !(mode & PATCHES),
+		sig.face.hasIndex() && (mode & TRIANGLES),
+		nexus->header.n_textures && (mode & TEXTURES),
+		sig.vertex.hasTextures() && (mode & TEXTURES)
+	};
+
+	beginRender(options);
+	renderSelected(nexus, options);
+
 	for(unsigned int i = 0; i < locked.size(); i++)
 		locked[i]->unlock();
 	locked.clear();
 	
 	stats.rendered += stats.instance_rendered;
 	if(stats.instance_error > stats.error) stats.error = stats.instance_error;
-	
-	
-	if(draw_textures)
-		glDisable(GL_TEXTURE_2D);
-	if(draw_textures && ! draw_texcoords) {
-		glDisable(GL_TEXTURE_GEN_S);
-		glDisable(GL_TEXTURE_GEN_T);
-		glDisable(GL_TEXTURE_GEN_R);
-		glDisable(GL_TEXTURE_GEN_Q);
-	}
-	glDisable(GL_COLOR_MATERIAL);
+
+	endRender(options);
 }
 
 void Renderer::endFrame() {
@@ -272,212 +211,6 @@ void Renderer::endFrame() {
 void Renderer::setMode(Renderer::Mode m, bool on) {
 	if(on) mode |= m;
 	else mode &= ~m;
-}
-
-void Renderer::renderSelected(Nexus *nexus) {
-	
-	glCheckError();
-	
-	Signature &sig = nexus->header.signature;
-	bool draw_normals = sig.vertex.hasNormals() && (mode & NORMALS);
-	bool draw_colors = sig.vertex.hasColors() && (mode & COLORS ) && !(mode & PATCHES);
-	bool draw_triangles = sig.face.hasIndex() && (mode & TRIANGLES);
-	bool draw_textures = nexus->header.n_textures && (mode & TEXTURES);
-	bool draw_texcoords = sig.vertex.hasTextures()&& (mode & TEXTURES);
-	
-	/*
-	//DEBUG ensure it is a valid cut:
-	for(uint32_t i = 0; i < nexus->header.n_nodes-1; i++) {
-		Node &node = nexus->nodes[i];
-		//if a node is ! selected asser its children are not selected
-		if(selected[i]) continue;
-		for(uint32_t k = node.first_patch; k < node.last_patch(); k++) {
-			Patch &patch = nexus->patches[k];
-			assert(!selected[patch.node]);
-		}
-	}
-*/
-	int GPU_loaded = 0;
-	uint32_t last_texture = 0xffffffff;
-	for(uint32_t i = 0; i <= last_node; i++) {
-		if(!selected[i]) continue;
-		
-		Node &node = nexus->nodes[i];
-		
-		if(nexus->header.signature.face.hasIndex() && skipNode(i)) continue;
-		
-		stats.node_rendered++;
-		
-		//TODO cleanup frustum..
-		nx::Sphere sphere = node.tightSphere();
-		const nx::Vector3f &sphereCenter = sphere.Center();
-		if(frustum_culling && metric.frustum.isOutside(sphereCenter, sphere.Radius())) {
-			stats.frustum_culled++;
-			continue;
-		}
-		nx::Vector3f viewPoint = metric.frustum.viewPoint();
-		if(cone_culling && node.cone.Backface(sphere, viewPoint)) {
-			stats.cone_culled++;
-			continue;
-		}
-		glCheckError();
-		if(0) { //DEBUG
-			const nx::Vector3f &c = sphere.Center();
-			float r = node.tight_radius; //sphere.Radius(); //DEBUG
-			
-			glLineWidth(4);
-			glBegin(GL_LINE_STRIP);
-			for(int i = 0; i < 21; i++)
-				glVertex3f(c[0] + r*sin(i*M_PI/10), c[1] + r*cos(i*M_PI/10), c[2]);
-			glEnd();
-		}
-		
-		glCheckError();
-		NodeData &data = nexus->nodedata[i];
-		assert(data.memory);
-		
-		if(!data.vbo) {
-			GPU_loaded++;
-			nexus->loadGpu(i);
-		}
-		
-		assert(data.vbo);
-		
-		glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
-		uint64_t start = 0;
-
-#ifdef GL_COMPATIBILITY
-		glVertexPointer(3, GL_FLOAT, 0, (void *)start);
-		start += node.nvert*sig.vertex.attributes[VertexElement::COORD].size();
-		
-		if(draw_texcoords)
-			glTexCoordPointer(2, GL_FLOAT, 0, (void *)start);
-		if(sig.vertex.hasTextures())
-			start += node.nvert * sig.vertex.attributes[VertexElement::TEX].size();
-		
-		if(draw_normals)
-			glNormalPointer(GL_SHORT, 0, (void *)start);
-		if(sig.vertex.hasNormals())
-			start += node.nvert*sig.vertex.attributes[VertexElement::NORM].size();
-		
-		if(draw_colors)
-			glColorPointer(4, GL_UNSIGNED_BYTE, 0, (void *)start);
-		if(sig.vertex.hasColors())
-			start += node.nvert * sig.vertex.attributes[VertexElement::COLOR].size();
-		
-		
-#endif
-		
-#if GL_ES || GL_CORE
-		glVertexAttribPointer(ATTRIB_VERTEX, 3, GL_FLOAT, GL_TRUE, 0, (void *)start);
-		
-		start += node.nvert*sig.vertex.attributes[VertexElement::COORD].size();
-		
-		if(draw_normals)
-			glVertexAttribPointer(ATTRIB_NORMAL, 3, GL_SHORT, GL_TRUE, 0, (void *)start);
-		if(sig.vertex.hasNormals())
-			start += node.nvert*sig.vertex.attributes[VertexElement::NORM].size();
-		
-		if(draw_colors)
-			glVertexAttribPointer(ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void *)start);
-		if(sig.vertex.hasColors())
-			start += node.nvert * sig.vertex.attributes[VertexElement::COLOR].size();
-#endif
-		
-		if(mode & PATCHES) {
-		nx::Rgba8 color{};
-			color[2] = ((i % 11)*171)%63 + 63;
-			//color[1] = 255*log2((i+1))/log2(nexus->header.n_patches);
-			color[1] = ((i % 7)*57)%127 + 127;
-			color[0] = ((i % 16)*135)%127 + 127;
-			//metric.getError(node.sphere, node.error, visible); //here we must use the saturated radius.
-#ifdef GL_COMPATIBILITY
-			glColor3ub(color[0], color[1], color[2]);
-#endif
-#if GL_ES || GL_CORE
-			glVertexAttrib4f(ATTRIB_COLOR, color[0]/255.0f, color[1]/255.0f, color[2]/255.0f, 1.0f);
-#endif
-		}
-		
-		glCheckError();
-		
-		if(!draw_triangles) {
-			//NexusController::instance().splat_renderer.Render(nvert, 6);
-			//glPointSize(target_error);
-			//float pointsize = 0.4*stats.instance_error;
-			float pointsize = ceil(0.3*errors[i]); //2.0; //`0.1 * errors[i];
-			//float pointsize = 1.2*stats.instance_error;
-			if(pointsize > 2) pointsize = 2;
-			glPointSize(pointsize);
-			//glPointSize(4*target_error);
-			
-			glDrawArrays(GL_POINTS, 0, node.nvert);
-			stats.patch_rendered++;
-			stats.instance_rendered += node.nvert;
-			continue;
-		}
-		
-		if(draw_triangles)
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.fbo);
-		
-		uint32_t offset = 0;
-		uint32_t end = 0;
-		uint32_t last_patch = node.last_patch() - 1;
-		for(uint32_t k = node.first_patch; k < node.last_patch(); k++) {
-			Patch &patch = nexus->patches[k];
-			
-			if(!selected[patch.node]) { //we need to draw this
-				end = patch.triangle_offset; //advance end
-				if(k != last_patch)  //delay rendering
-					continue;
-			}
-			if(end > offset) {
-				
-				//TODO GROUP TEXTURES ALSO
-				if(draw_textures) {
-					if(patch.texture != 0xffffffff) {
-						if(last_texture != patch.texture) {
-							//if(patch.texture == current_texture) {
-							
-							if(draw_textures && !draw_texcoords) {
-								Texture &texture = nexus->textures[patch.texture];
-								glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								glTexGeni(GL_Q, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								
-								glTexGenfv(GL_S, GL_OBJECT_PLANE, &texture.matrix[0]);
-								glTexGenfv(GL_T, GL_OBJECT_PLANE, &texture.matrix[4]);
-								glTexGenfv(GL_R, GL_OBJECT_PLANE, &texture.matrix[8]);
-								glTexGenfv(GL_Q, GL_OBJECT_PLANE, &texture.matrix[12]);
-							}
-							TextureData &tdata = nexus->texturedata[patch.texture];
-							glBindTexture(GL_TEXTURE_2D, tdata.tex);
-							//glBindTexture(GL_TEXTURE_2D, 0);
-							last_texture = patch.texture;
-						}
-					} else {
-						glBindTexture(GL_TEXTURE_2D, 0);
-						last_texture = 0xffffffff;
-					}
-				}
-				
-				if(!draw_triangles) {
-					if(nexus->header.signature.face.hasIndex())
-						glDrawArrays(GL_POINTS, 0, node.nvert);
-					else
-						glDrawArrays(GL_POINTS, offset, end - offset);
-				} else {
-					glDrawElements(GL_TRIANGLES, (end - offset)*3, GL_UNSIGNED_SHORT, (void *)(offset*3*sizeof(uint16_t)));
-				}
-				stats.patch_rendered++;
-				stats.instance_rendered += end - offset;
-			}
-			offset = patch.triangle_offset;
-		}
-		glCheckError();
-	}
-	//	cout << "GPU loaded: " << GPU_loaded <<  endl;
 }
 
 Traversal::Action Renderer::expand(HeapNode h) {
@@ -524,5 +257,4 @@ float Renderer::nodeError(uint32_t n, bool &visible) {
 	//vcg::Sphere3f sphere = node.tightSphere();
 	//return metric.getError(sphere, node.error, visible); //here we must use the saturated radius.
 }
-
 

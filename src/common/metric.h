@@ -18,7 +18,6 @@ for more details.
 #ifndef NX_METRIC_H
 #define NX_METRIC_H
 
-#include "globalgl.h"
 #include "frustum.h"
 #include "../core/mesh_types.h"
 
@@ -34,20 +33,8 @@ public:
 	bool culling;
 
 	Metric(): culling(true) {}
-	void getView(const float *proj = NULL, const float *modelview = NULL, const int *viewport = NULL) {
-		if(proj == NULL) {
-#ifndef GL_ES
-			float p[16];
-			float m[16];
-			int v[4];
-			glGetFloatv(GL_PROJECTION_MATRIX, p);
-			glGetFloatv(GL_MODELVIEW_MATRIX,m);
-			glGetIntegerv(GL_VIEWPORT, v);
-			frustum.setView(p, m, v);
-#endif
-		} else {
-			frustum.setView(proj, modelview, viewport);
-		}
+	void getView(const float *proj, const float *modelview, const int *viewport) {
+		frustum.setView(proj, modelview, viewport);
 	}
 
 	float getError(const nx::Sphere &s, float error, bool &visible) {

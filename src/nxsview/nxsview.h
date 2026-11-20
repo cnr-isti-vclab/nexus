@@ -38,7 +38,6 @@ public:
     Nxsview();
     virtual ~Nxsview() = default;
 
-	nx::Renderer renderer;
 	Scene scene;
     nx::Rgba8 colorBottom;
     nx::Rgba8 colorTop;
@@ -69,6 +68,7 @@ public:
 
 protected:
     virtual void requestUpdate() = 0;
+    virtual nx::Renderer &getRenderer() = 0;
 
     Trackball trackball;
     Trackball::Pose saved_pose;

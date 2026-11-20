@@ -32,7 +32,7 @@ Controller::Controller(): max_tokens(300), max_ram(512*1000*1000), max_gpu(256*1
 
 void Controller::setWidget(QOpenGLWidget *widget) {
 	//TODO check destruction of widget
-#ifdef SHARED_CONTEXT
+#if defined(SHARED_CONTEXT) && !defined(NX_RHI)
 	gpu_cache.shared = widget;
 #endif
 }
@@ -52,7 +52,7 @@ bool Controller::hasCacheChanged() {
 }
 
 void Controller::endFrame() {
-#ifndef SHARED_CONTEXT
+#if !defined(SHARED_CONTEXT) || defined(NX_RHI)
 	gpu_cache.dropGpu();
 #endif
 	updatePriorities();

@@ -70,7 +70,8 @@ public:
 		target_error(3.0f), max_rendered(0), controller(NULL), frame(0) {}
 
 	void startFrame();
-	void getView(const float *proj = NULL, const float *modelview = NULL, const int *viewport = NULL);
+	virtual void getView() = 0;
+	void getView(const float *proj, const float *modelview, const int *viewport);
 	void nearFar(Nexus *instance, float &near_distance, float &far_distance);
 	void render(Nexus *instance, bool getview = true, int wait = 0);
 	void endFrame();
@@ -83,6 +84,7 @@ public:
 	void setFps(float fps) { target_fps = fps; }
 	void setError(float error) { target_error = error; }
 	void setMaxPrimitives(uint32_t t) { max_rendered = t; }
+	virtual void setGpuCapacity(uint64_t) {}
 	void resetStats() { stats.resetAll(); }
 
 protected:
@@ -98,7 +100,17 @@ protected:
 	float nodeError(uint32_t n, bool &visible);
 	void verifyErrorSaturation(Nexus *instance);
 
-	void renderSelected(Nexus *nexus);
+	struct RenderOptions {
+		bool draw_normals;
+		bool draw_colors;
+		bool draw_triangles;
+		bool draw_textures;
+		bool draw_texcoords;
+	};
+
+	virtual void beginRender(const RenderOptions &options) = 0;
+	virtual void renderSelected(Nexus *nexus, const RenderOptions &options) = 0;
+	virtual void endRender(const RenderOptions &options) = 0;
 
 	std::vector<nx::Token *> locked; //to unlock at the end of the function
 };

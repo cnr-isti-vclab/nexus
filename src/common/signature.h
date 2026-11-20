@@ -68,21 +68,21 @@ class VertexElement: public Element {
 public:
 	enum Component { COORD = 0, NORM =1, COLOR = 2, TEX = 3, DATA0 = 4 };
 
-	bool hasNormals() { return !attributes[NORM].isNull(); }
-	bool hasColors() { return !attributes[COLOR].isNull(); }
+	bool hasNormals() const { return !attributes[NORM].isNull(); }
+	bool hasColors() const { return !attributes[COLOR].isNull(); }
 	bool hasTextures() const { return !attributes[TEX].isNull(); }
-	bool hasData(int i) { return !attributes[DATA0 + i].isNull(); }
+	bool hasData(int i) const { return !attributes[DATA0 + i].isNull(); }
 };
 
 class FaceElement: public Element {
 public:
 	enum Component { INDEX = 0, NORM =1, COLOR = 2, TEX = 3, DATA0 = 4 };
 
-	bool hasIndex() { return !attributes[INDEX].isNull(); }
-	bool hasNormals() { return !attributes[NORM].isNull(); }
-	bool hasColors() { return !attributes[COLOR].isNull(); }
-	bool hasTextures() { return !attributes[TEX].isNull(); }
-	bool hasData(int i) { return !attributes[DATA0 + i].isNull(); }
+	bool hasIndex() const { return !attributes[INDEX].isNull(); }
+	bool hasNormals() const { return !attributes[NORM].isNull(); }
+	bool hasColors() const { return !attributes[COLOR].isNull(); }
+	bool hasTextures() const { return !attributes[TEX].isNull(); }
+	bool hasData(int i) const { return !attributes[DATA0 + i].isNull(); }
 };
 
 class Signature {

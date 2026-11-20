@@ -43,16 +43,21 @@ void Nxsview::checkForUpdate() {
         requestUpdate();
 }
 
-void Nxsview::setTriangles(bool on) { renderer.setMode(Renderer::TRIANGLES, on); requestUpdate(); }
-void Nxsview::setNormals(bool on) { renderer.setMode(Renderer::NORMALS, on); requestUpdate(); }
-void Nxsview::setColors(bool on) { renderer.setMode(Renderer::COLORS, on); requestUpdate(); }
-void Nxsview::setPatches(bool on) { renderer.setMode(Renderer::PATCHES, on); requestUpdate(); }
+void Nxsview::setTriangles(bool on) { getRenderer().setMode(Renderer::TRIANGLES, on); requestUpdate(); }
+void Nxsview::setNormals(bool on) { getRenderer().setMode(Renderer::NORMALS, on); requestUpdate(); }
+void Nxsview::setColors(bool on) { getRenderer().setMode(Renderer::COLORS, on); requestUpdate(); }
+void Nxsview::setPatches(bool on) { getRenderer().setMode(Renderer::PATCHES, on); requestUpdate(); }
 void Nxsview::setExtraction(bool on) { extracting = on; requestUpdate(); }
 void Nxsview::setFov(int value) { fov = value; requestUpdate(); }
 void Nxsview::setInfo(bool on) { info = on; requestUpdate(); }
-void Nxsview::setPrimitives(double value) { renderer.setMaxPrimitives(static_cast<uint32_t>(value * (1 << 20))); }
-void Nxsview::setError(double value) { renderer.setError(value); requestUpdate(); }
-void Nxsview::setGpu(double value) { scene.controller.setGpu(value * (1 << 20)); requestUpdate(); }
+void Nxsview::setPrimitives(double value) { getRenderer().setMaxPrimitives(static_cast<uint32_t>(value * (1 << 20))); }
+void Nxsview::setError(double value) { getRenderer().setError(value); requestUpdate(); }
+void Nxsview::setGpu(double value) {
+    const uint64_t capacity = static_cast<uint64_t>(value * (1 << 20));
+    scene.controller.setGpu(capacity);
+    getRenderer().setGpuCapacity(capacity);
+    requestUpdate();
+}
 void Nxsview::setRam(double value) { scene.controller.setRam(value * (1 << 20)); requestUpdate(); }
 
 void Nxsview::setColor(QWidget *parent) {

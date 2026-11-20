@@ -28,7 +28,7 @@ for more details.
 //#include <QWindow>
 //#define SHARED_CONTEXT
 
-#ifdef SHARED_CONTEXT
+#if defined(SHARED_CONTEXT) && !defined(NX_RHI)
 #include <QOpenGLWidget>
 #endif
 
@@ -40,12 +40,12 @@ namespace nx {
 
 class GpuCache: public vcg::Cache<nx::Token> {
 public:
-#ifndef SHARED_CONTEXT
+#if !defined(SHARED_CONTEXT) || defined(NX_RHI)
 	std::vector<unsigned int> to_drop;
 	std::mutex droplock;
 #endif
 
-#ifdef SHARED_CONTEXT
+#if defined(SHARED_CONTEXT) && !defined(NX_RHI)
 	QOpenGLWidget *widget;
 	QOpenGLWidget *shared;
 
@@ -54,16 +54,18 @@ public:
 
 
 
-#ifndef SHARED_CONTEXT
+#if !defined(SHARED_CONTEXT) || defined(NX_RHI)
 	void dropGpu() {
 		std::lock_guard<std::mutex> locker(droplock);
+#ifndef NX_RHI
 		for(uint i = 0; i < to_drop.size(); i++)
 			glDeleteBuffers(1, (GLuint *)&(to_drop[i]));
+#endif
 		to_drop.clear();
 	}
 #endif
 
-#ifdef SHARED_CONTEXT
+#if defined(SHARED_CONTEXT) && !defined(NX_RHI)
 	void begin() {
 		Q_UNUSED(shared);
 		widget = new QOpenGLWidget();
@@ -77,7 +79,7 @@ public:
 #endif
 
 	int get(nx::Token *in) {
-#ifdef SHARED_CONTEXT
+#if defined(SHARED_CONTEXT) && !defined(NX_RHI)
 		in->nexus->loadGpu(in->node);
 		glFinish();
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -87,7 +89,7 @@ public:
 	}
 	int drop(nx::Token *in) {
 
-#ifndef SHARED_CONTEXT
+#if !defined(SHARED_CONTEXT) || defined(NX_RHI)
 		//mark GPU to be dropped, it will be done in the renderer
 		NodeData &data= in->nexus->nodedata[in->node];
 		if(data.vbo == 0)  //can happen if a patch is scheduled for GPU but never actually rendererd
