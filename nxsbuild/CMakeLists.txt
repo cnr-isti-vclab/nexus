@@ -17,7 +17,6 @@ set(SOURCES
 	export_nxs.cpp
 	adjacency.cpp
 	clustering.cpp
-	hungarian.cpp
 	mesh_hierarchy.cpp
 	micro_clustering.cpp
 	spatial_sort.cpp
@@ -47,7 +46,6 @@ set(HEADERS
 	export_nxs.h
 	adjacency.h
 	clustering.h
-	hungarian.h
 	mesh_hierarchy.h
 	micro_clustering.h
 	spatial_sort.h
