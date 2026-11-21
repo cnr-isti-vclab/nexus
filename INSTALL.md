@@ -26,11 +26,39 @@ sudo make install
 sudo ldconfig
 ```
 
-or placed in the parent directory of Nexus, in which case you need to add  `../../../corto` to the `include_directories` line in these files
+or placed in the parent directory of Nexus, in which case you need to update the include directories in these files
 
-* `./src/nxsbuild/CMakeLists.txt`
-* `./src/nxsedit/CMakeLists.txt`
-* `./src/nxsview/CMakeLists.txt`
+* `./nxsbuild/CMakeLists.txt`
+* `./nxsedit/CMakeLists.txt`
+* `./nxsview/CMakeLists.txt`
+
+### oneTBB
+
+The default CMake build includes `nxsbuild`, which fetches Trueform. Trueform
+requires the oneTBB development package and its CMake package configuration.
+The builder also needs METIS, JPEG, PNG, and Draco development files. On
+Debian or Ubuntu, install them with:
+
+```sh
+sudo apt-get install libtbb-dev libmetis-dev libjpeg-dev libpng-dev libdraco-dev
+```
+
+If you only need the viewer and do not want to build `nxsbuild`, configure
+CMake with `-DBUILD_NXS_BUILD=OFF`.
+
+### Qt viewer dependencies on Linux
+
+The viewer requires Qt 6.7 or newer, including the `GuiPrivate` and
+`ShaderTools` components. When using Debian or Ubuntu Qt packages, install the
+private headers, shader tools, XKB, and GLU development packages:
+
+```sh
+sudo apt-get install qt6-base-private-dev qt6-shadertools-dev \
+  libxkbcommon-dev libglu1-mesa-dev
+```
+
+Check that the distribution provides Qt 6.7 or newer; older releases may need
+Qt installed from the official installer instead.
 
 ### glew
 
@@ -112,21 +140,24 @@ include_directories(../../../vcglib ../../../vcglib/eigenlib ../../../glew-2.1.0
 
 ## Build using QMAKE
 
-The .pro files
+The available .pro files
 
-* `src/nxsbuild/nxsbuild.pro`
-* `src/nxsedit/nxsedit.pro`
-* `src/nxsview/nxsview.pro`
+* `nxsedit/nxsedit.pro`
+* `nxsedit/nxscompress.pro`
+* `nxsview/nxsview.pro`
 
 can be loaded using QTCreator or using the commandline.
 
-### nxsbuild
+`nxsbuild` is configured with CMake.
+
+## Build using CMake
 
 ```sh
-cd src/nxsbuild
-qmake nxsbuild.pro
-make
+cmake -S . -B build
+cmake --build build
 ```
+
+The viewer defaults to OpenGL. Select the Qt RHI backend with `nxsview --renderer qrhi`.
 
 ### nxsedit
 
@@ -138,7 +169,7 @@ with        unix:INCLUDEPATH += /usr/local/lib /usr/local/include
 ```
 
 ```sh
-cd src/nxsedit
+cd nxsedit
 qmake nxsedit.pro
 make
 
@@ -156,7 +187,7 @@ with        unix:INCLUDEPATH += /usr/local/lib /usr/local/include /usr/local/Cel
 ```
 
 ```sh
-cd src/nxsview
+cd nxsview
 qmake nxsview.pro
 make
 ```

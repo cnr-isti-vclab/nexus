@@ -424,7 +424,6 @@ protected:
                 in_flight.push_back(insert);
                 reserved_space += reservation;
 				transfer_jobs.push_back({insert, reservation});
-				std::cout << "jobs: " << transfer_jobs.size() << std::endl;
             }
             transfer_ready.notify_one();
             return true;

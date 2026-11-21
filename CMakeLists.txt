@@ -70,8 +70,16 @@ endif()
 
 add_subdirectory(src)
 
+if(BUILD_NXS_BUILD)
+	add_subdirectory(nxsbuild)
+endif()
+
+if(BUILD_NXS_VIEW)
+	add_subdirectory(nxsview)
+endif()
+
 if(BUILD_NXS_EDIT)
-	add_subdirectory(src/nxsedit)
+	add_subdirectory(nxsedit)
 endif()
 
 if(TARGET vcglib::vcglib AND TARGET corto::corto)
