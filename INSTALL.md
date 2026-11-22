@@ -48,7 +48,7 @@ CMake with `-DBUILD_NXS_BUILD=OFF`.
 
 ### Qt viewer dependencies on Linux
 
-The viewer requires Qt 6.7 or newer, including the `GuiPrivate` and
+The viewer requires Qt 6.10 or newer, including the `GuiPrivate` and
 `ShaderTools` components. When using Debian or Ubuntu Qt packages, install the
 private headers, shader tools, XKB, and GLU development packages:
 
@@ -57,7 +57,7 @@ sudo apt-get install qt6-base-private-dev qt6-shadertools-dev \
   libxkbcommon-dev libglu1-mesa-dev
 ```
 
-Check that the distribution provides Qt 6.7 or newer; older releases may need
+Check that the distribution provides Qt 6.10 or newer; older releases may need
 Qt installed from the official installer instead.
 
 ### glew

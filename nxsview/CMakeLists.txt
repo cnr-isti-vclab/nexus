@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(nxsview)
 
-find_package(Qt6 6.7 REQUIRED COMPONENTS Widgets OpenGLWidgets GuiPrivate ShaderTools)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Widgets OpenGLWidgets GuiPrivate ShaderTools)
 find_package(Threads REQUIRED)
 
 set(CMAKE_AUTOMOC ON)

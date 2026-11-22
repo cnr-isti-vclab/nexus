@@ -11,8 +11,73 @@ runs:
       if: ${{ matrix.os != 'macos-latest' }}
       with:
         cache: true
-        version: '6.8.3'
+        version: '6.10.*'
         modules: 'qtshadertools'
+    - name: Ensure Qt GuiPrivate CMake target
+      if: ${{ matrix.os != 'macos-latest' }}
+      shell: bash
+      run: |
+        # aqt kits can ship QRhi headers without the GuiPrivate CMake wrapper.
+        if [ -z "$QT_ROOT_DIR" ]; then
+          echo "::error::install-qt-action did not set QT_ROOT_DIR"
+          exit 1
+        fi
+
+        qt_root="$QT_ROOT_DIR"
+        qt_root_cmake="$QT_ROOT_DIR"
+        if command -v cygpath >/dev/null; then
+          qt_root="$(cygpath -u "$QT_ROOT_DIR")"
+          qt_root_cmake="$(cygpath -m "$QT_ROOT_DIR")"
+        fi
+
+        qmake="$qt_root/bin/qmake"
+        if [ -x "${qmake}.exe" ]; then
+          qmake="${qmake}.exe"
+        fi
+        if [ ! -x "$qmake" ]; then
+          echo "::error::Could not find qmake under $QT_ROOT_DIR"
+          exit 1
+        fi
+
+        qt_version="$("$qmake" -query QT_VERSION)"
+        private_headers="$qt_root/include/QtGui/$qt_version/QtGui"
+        for header in qrhi.h qshader.h; do
+          if [ ! -f "$private_headers/rhi/$header" ]; then
+            echo "::error::Qt $qt_version private header is missing: $private_headers/rhi/$header"
+            exit 1
+          fi
+        done
+
+        private_dir="$qt_root/lib/cmake/Qt6GuiPrivate"
+        private_config="$private_dir/Qt6GuiPrivateConfig.cmake"
+        if [ -f "$private_config" ]; then
+          echo "Qt6GuiPrivate CMake package is already installed"
+          exit 0
+        fi
+
+        mkdir -p "$private_dir"
+        cat > "$private_config" <<EOF
+        set(Qt6GuiPrivate_FOUND TRUE)
+        if(NOT TARGET Qt6::GuiPrivate)
+          add_library(Qt6::GuiPrivate INTERFACE IMPORTED GLOBAL)
+          set_property(TARGET Qt6::GuiPrivate PROPERTY _qt_is_private_module TRUE)
+          target_include_directories(Qt6::GuiPrivate INTERFACE
+            "${qt_root_cmake}/include/QtGui/$qt_version"
+            "${qt_root_cmake}/include/QtGui/$qt_version/QtGui")
+          target_link_libraries(Qt6::GuiPrivate INTERFACE Qt6::Gui)
+        endif()
+        EOF
+        cat > "$private_dir/Qt6GuiPrivateConfigVersion.cmake" <<EOF
+        set(PACKAGE_VERSION "$qt_version")
+        if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)
+          set(PACKAGE_VERSION_COMPATIBLE FALSE)
+        else()
+          set(PACKAGE_VERSION_COMPATIBLE TRUE)
+          if(PACKAGE_VERSION STREQUAL PACKAGE_FIND_VERSION)
+            set(PACKAGE_VERSION_EXACT TRUE)
+          endif()
+        endif()
+        EOF
     - name: Setup Env variables
       shell: bash
       id: envs
