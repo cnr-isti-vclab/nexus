@@ -42,6 +42,10 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path, bo
 	header.version = legacy ? NEXUS_LEGACY_FORMAT_VERSION : NEXUS_FORMAT_VERSION;
 
 	Signature &signature = header.signature;
+	if(legacy)
+		signature.unsetFlag(Signature::INTERLEAVED);
+	else
+		signature.setFlag(Signature::INTERLEAVED);
 	signature.vertex.setComponent(VertexElement::COORD, Attribute(Attribute::FLOAT, 3));
 	signature.face.setComponent(FaceElement::INDEX, Attribute(Attribute::UNSIGNED_SHORT, 3));
 	//if(components & NORMALS)
@@ -291,8 +295,8 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 	}
 
 	const size_t vertex_stride = legacy
-		? static_cast<const Element &>(header.signature.vertex).size()
-		: header.signature.vertex.size();
+		? header.signature.vertex.size()
+		: header.signature.vertex.vertexSize();
 	const size_t vertex_bytes = n_wedges * vertex_stride;
 	size_t geometry_size = vertex_bytes + n_triangles * header.signature.face.size();
 	pad(geometry_size);

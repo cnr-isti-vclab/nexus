@@ -137,7 +137,7 @@ public:
 		Node &node = in->nexus->nodes[in->node];
 		Signature &sig = in->nexus->header.signature;
 
-		uint32_t vertex_size = node.nvert*sig.vertex.size();
+		uint32_t vertex_size = node.nvert*sig.vertex.vertexSize();
 		uint32_t face_size = node.nface*sig.face.size();
 		int size = vertex_size + face_size;
 		if(in->nexus->header.n_textures) {

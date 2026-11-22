@@ -42,22 +42,27 @@ void validateHeader(const nx::Header &header) {
 	   header.magic != NEXUS_PREVIOUS_FORMAT_MAGIC &&
 	   header.magic != NEXUS_LEGACY_MAGIC)
 		throw std::runtime_error("could not read header, probably not a nexus file");
-	if(header.version < NEXUS_FORMAT_VERSION)
+	if(header.version < NEXUS_LEGACY_FORMAT_VERSION)
 		throw std::runtime_error("Nexus file format version " + std::to_string(header.version) +
 		                         " is older than the supported version " +
-		                         std::to_string(NEXUS_FORMAT_VERSION));
+		                         std::to_string(NEXUS_LEGACY_FORMAT_VERSION));
 	if(header.version > NEXUS_FORMAT_VERSION)
 		throw std::runtime_error("Nexus file format version " + std::to_string(header.version) +
 		                         " is newer than the supported version " +
 		                         std::to_string(NEXUS_FORMAT_VERSION));
-	if(header.magic != NEXUS_FORMAT_MAGIC)
-		throw std::runtime_error("Nexus file uses a legacy format signature");
+	const uint32_t expected_magic = header.version == NEXUS_FORMAT_VERSION
+		? NEXUS_FORMAT_MAGIC
+		: header.version == NEXUS_PREVIOUS_FORMAT_VERSION
+			? NEXUS_PREVIOUS_FORMAT_MAGIC
+			: NEXUS_LEGACY_MAGIC;
+	if(header.magic != expected_magic)
+		throw std::runtime_error("Nexus file magic does not match its format version");
 }
 
 } // namespace
 
 uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
-	return (uint16_t  *)(mem + nvert*sig.vertex.size());
+	return (uint16_t  *)(mem + nvert*sig.vertex.vertexSize());
 }
 
 
@@ -182,17 +187,44 @@ uint64_t NexusData::loadRam(uint32_t n) {
 	NodeData &d = nodedata[n];
 	uint64_t compressed_size = node.getEndOffset() - offset;
 
-	uint64_t size = node.nvert*sign.vertex.size() + node.nface*sign.face.size();
+	const uint64_t interleaved_vertex_size =
+		static_cast<uint64_t>(node.nvert) * sign.vertex.vertexSize();
+	const uint64_t planar_vertex_size =
+		static_cast<uint64_t>(node.nvert) * sign.vertex.size();
+	const uint64_t face_size = static_cast<uint64_t>(node.nface) * sign.face.size();
+	uint64_t size = interleaved_vertex_size + face_size;
+	const uint64_t source_size =
+		(sign.isInterleaved() ? interleaved_vertex_size : planar_vertex_size) + face_size;
 
 
 
 	if(!sign.isCompressed()) {
+		char *source;
 		if(sign.isDeepzoom()) {
 			std::lock_guard<std::mutex> file_locker(file_mutex);
-			d.memory = file->loadDZNode(n);
+			source = file->loadDZNode(n);
 		} else {
 			std::lock_guard<std::mutex> file_locker(file_mutex);
-			d.memory = (char *)file->map(offset, size);
+			source = (char *)file->map(offset, source_size);
+		}
+		if(!source)
+			throw std::runtime_error("could not load node data");
+
+		if(sign.isInterleaved()) {
+			d.memory = source;
+		} else {
+			PlanarVertexData planar(sign.vertex, node.nvert);
+			planar.readPlanar(source);
+			d.memory = new char[size]{};
+			planar.interleave(d.memory);
+			if(face_size)
+				memcpy(d.memory + interleaved_vertex_size, source + planar_vertex_size, face_size);
+
+			std::lock_guard<std::mutex> file_locker(file_mutex);
+			if(sign.isDeepzoom())
+				file->dropDZNode(source);
+			else
+				file->unmap((unsigned char *)source);
 		}
 
 	} else {
@@ -331,22 +363,20 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(data.memory);
 
 	auto &sign = header.signature;
-	if(!sign.isCompressed()) {
-		if(sign.isDeepzoom()) {
-			std::lock_guard<std::mutex> file_locker(file_mutex);
-			file->dropDZNode(data.memory);
-		} else {
-			std::lock_guard<std::mutex> file_locker(file_mutex);
-			file->unmap((unsigned char *)data.memory);
-		}
-	} else {
+	if(sign.isCompressed() || !sign.isInterleaved()) {
 		delete []data.memory;
+	} else if(sign.isDeepzoom()) {
+		std::lock_guard<std::mutex> file_locker(file_mutex);
+		file->dropDZNode(data.memory);
+	} else {
+		std::lock_guard<std::mutex> file_locker(file_mutex);
+		file->unmap((unsigned char *)data.memory);
 	}
 
 	data.memory = NULL;
 
 	//report RAM size for compressed meshes.
-	uint32_t size = node.nvert * sign.vertex.size() +
+	uint32_t size = node.nvert * sign.vertex.vertexSize() +
 				node.nface * sign.face.size();
 
 	if(header.n_textures) {

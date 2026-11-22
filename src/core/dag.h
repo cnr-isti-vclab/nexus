@@ -42,6 +42,7 @@ namespace nx {
 constexpr uint32_t NEXUS_FORMAT_VERSION = 4;
 constexpr uint32_t NEXUS_FORMAT_MAGIC = 0x4E787334; // "Nxs4"
 constexpr uint32_t NEXUS_LEGACY_FORMAT_VERSION = 2;
+constexpr uint32_t NEXUS_PREVIOUS_FORMAT_VERSION = 3;
 constexpr uint32_t NEXUS_PREVIOUS_FORMAT_MAGIC = 0x4E787333; // "Nxs3"
 constexpr uint32_t NEXUS_LEGACY_MAGIC = 0x4E787320; // "Nxs "
 

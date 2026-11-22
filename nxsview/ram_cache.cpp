@@ -136,16 +136,17 @@ int RamCache::get(nx::Token *in) {
 			throw "MECO-compressed Nexus files are no longer supported";
 		Node &node = in->nexus->nodes[in->node];
 		NodeData &nodedata = in->nexus->nodedata[in->node];
-		nodedata.memory = new char[node.getSize()];
-		memset(nodedata.memory, 0, node.getSize());
+		char *downloaded = new char[node.getSize()];
+		memset(downloaded, 0, node.getSize());
+		nodedata.memory = downloaded;
 
-		CurlData data(nodedata.memory, node.getSize());
+		CurlData data(downloaded, node.getSize());
 		int32_t readed = getCurl(in->nexus->url.c_str(), data, node.getBeginOffset(), node.getEndOffset());
 		assert(data.written == node.getSize());
 		if(signature.isCompressed()) {
-			const std::size_t size = static_cast<std::size_t>(node.nvert) * signature.vertex.size() +
+			const std::size_t size = static_cast<std::size_t>(node.nvert) * signature.vertex.vertexSize() +
 			                         static_cast<std::size_t>(node.nface) * signature.face.size();
-			char *compressed = nodedata.memory;
+			char *compressed = downloaded;
 			nodedata.memory = new char[size]{};
 
 			if(signature.flags & Signature::CORTO) {
@@ -166,6 +167,23 @@ int RamCache::get(nx::Token *in) {
 				planar.interleave(nodedata.memory);
 			}
 			delete []compressed;
+		} else if(!signature.isInterleaved()) {
+			const uint64_t planar_vertex_size =
+				static_cast<uint64_t>(node.nvert) * signature.vertex.size();
+			const uint64_t interleaved_vertex_size =
+				static_cast<uint64_t>(node.nvert) * signature.vertex.vertexSize();
+			const uint64_t face_size =
+				static_cast<uint64_t>(node.nface) * signature.face.size();
+			const uint64_t size = interleaved_vertex_size + face_size;
+
+			PlanarVertexData planar(signature.vertex, node.nvert);
+			planar.readPlanar(downloaded);
+			nodedata.memory = new char[size]{};
+			planar.interleave(nodedata.memory);
+			if(face_size)
+				memcpy(nodedata.memory + interleaved_vertex_size,
+				       downloaded + planar_vertex_size, face_size);
+			delete []downloaded;
 		}
 		return reportResult(readed);
 #else
@@ -201,7 +219,7 @@ int RamCache::size(nx::Token *in) {
 	Node &node = in->nexus->nodes[in->node];
 	Signature &sig = in->nexus->header.signature;
 
-	uint32_t vertex_size = node.nvert*sig.vertex.size();
+	uint32_t vertex_size = node.nvert*sig.vertex.vertexSize();
 	uint32_t face_size = node.nface*sig.face.size();
 	int size = vertex_size + face_size;
 	if(in->nexus->header.n_textures) {

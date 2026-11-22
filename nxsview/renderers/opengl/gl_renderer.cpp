@@ -170,7 +170,7 @@ void GLRenderer::renderSelected(Nexus *nexus, const RenderOptions &options) {
 		assert(data.vbo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
-		const GLsizei stride = sig.vertex.size();
+		const GLsizei stride = sig.vertex.vertexSize();
 		const Attribute &coordinate = sig.vertex.attributes[VertexElement::COORD];
 		const Attribute &normal = sig.vertex.attributes[VertexElement::NORM];
 		const Attribute &color = sig.vertex.attributes[VertexElement::COLOR];

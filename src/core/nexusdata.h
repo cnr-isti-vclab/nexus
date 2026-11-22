@@ -21,6 +21,7 @@ for more details.
 #include <stdio.h>
 #include <array>
 #include <cstddef>
+#include <cstring>
 #include <limits>
 #include <string>
 #include <mutex>
@@ -64,6 +65,36 @@ public:
 		layout.deinterleave(vertexCount, interleaved, destinations.data());
 	}
 
+	void readPlanar(const char *source) {
+		std::size_t offset = 0;
+		for(unsigned int c : planarComponentOrder()) {
+			const std::size_t bytes = static_cast<std::size_t>(layout.attributes[c].size()) * vertexCount;
+			if(!bytes)
+				continue;
+			if(!source)
+				throw std::invalid_argument("missing planar vertex data");
+			std::memcpy(component(c), source + offset, bytes);
+			offset += bytes;
+		}
+	}
+
+	void writePlanar(char *destination) const {
+		std::size_t offset = 0;
+		for(unsigned int c : planarComponentOrder()) {
+			const std::size_t bytes = static_cast<std::size_t>(layout.attributes[c].size()) * vertexCount;
+			if(!bytes)
+				continue;
+			if(!destination)
+				throw std::invalid_argument("missing planar vertex destination");
+			std::memcpy(destination + offset, component(c), bytes);
+			offset += bytes;
+		}
+	}
+
+	std::size_t planarVertexSize() const {
+		return layout.size();
+	}
+
 	void interleave(char *interleaved) const {
 		std::array<const void *, VertexElement::COMPONENT_COUNT> sources{};
 		for(unsigned int c = 0; c < VertexElement::COMPONENT_COUNT; ++c)
@@ -72,6 +103,15 @@ public:
 	}
 
 private:
+	static const std::array<unsigned int, VertexElement::COMPONENT_COUNT> &planarComponentOrder() {
+		static const std::array<unsigned int, VertexElement::COMPONENT_COUNT> order = {
+			VertexElement::COORD, VertexElement::TEX, VertexElement::NORM, VertexElement::COLOR,
+			VertexElement::DATA0, VertexElement::DATA0 + 1,
+			VertexElement::DATA0 + 2, VertexElement::DATA0 + 3
+		};
+		return order;
+	}
+
 	const VertexElement &layout;
 	uint32_t vertexCount;
 	std::array<std::vector<char>, VertexElement::COMPONENT_COUNT> components;

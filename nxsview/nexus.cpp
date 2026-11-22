@@ -198,7 +198,7 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 	Node &node = nodes[n];
 
 	Signature &sig = header.signature;
-	uint32_t vertex_size = node.nvert*sig.vertex.size();
+	uint32_t vertex_size = node.nvert*sig.vertex.vertexSize();
 	uint32_t face_size = node.nface*sig.face.size();
 
 	char *vertex_start = data.memory;
@@ -288,7 +288,7 @@ uint64_t Nexus::dropGpu(uint32_t n) {
 	data.vbo = data.fbo = 0;
 
 	Signature &sig = header.signature;
-	uint32_t vertex_size = node.nvert*sig.vertex.size();
+	uint32_t vertex_size = node.nvert*sig.vertex.vertexSize();
 	uint32_t face_size = node.nface*sig.face.size();
 	int size = vertex_size + face_size;
 

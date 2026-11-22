@@ -136,6 +136,10 @@ void Extractor::save(QString output, nx::Signature &signature, bool legacy) {
 	
 	nx::Header header = nexus->header;
 	header.signature = signature;
+	if(legacy || signature.isCompressed())
+		header.signature.unsetFlag(nx::Signature::INTERLEAVED);
+	else
+		header.signature.setFlag(nx::Signature::INTERLEAVED);
 	header.magic = legacy ? nx::NEXUS_LEGACY_MAGIC : nx::NEXUS_FORMAT_MAGIC;
 	header.version = legacy ? nx::NEXUS_LEGACY_FORMAT_VERSION : nx::NEXUS_FORMAT_VERSION;
 	header.nvert = 0;
@@ -237,7 +241,7 @@ void Extractor::save(QString output, nx::Signature &signature, bool legacy) {
 			memory = transformed_memory.get();
 			memcpy(memory, data.memory, data_size);
 			
-			const size_t stride = signature.vertex.size();
+			const size_t stride = signature.vertex.vertexSize();
 			const size_t coord_offset = signature.vertex.componentOffset(nx::VertexElement::COORD);
 			for(uint32_t k = 0; k < node.nvert; k++) {
 				nx::Vector3f &v = *reinterpret_cast<nx::Vector3f *>(
@@ -259,33 +263,13 @@ void Extractor::save(QString output, nx::Signature &signature, bool legacy) {
 		} else if(legacy) {
 			nx::PlanarVertexData planar(signature.vertex, node.nvert);
 			planar.deinterleave(memory);
-			const quint64 vertex_bytes =
-				static_cast<const nx::Element &>(signature.vertex).size() * node.nvert;
+			const quint64 vertex_bytes = planar.planarVertexSize() * node.nvert;
 			const quint64 face_bytes = signature.face.size() * node.nface;
 			const quint64 geometry_bytes = vertex_bytes + face_bytes;
 			const quint32 output_size = geometry_bytes ? pad(static_cast<quint32>(geometry_bytes)) : 0;
 			vector<char> legacy_memory(output_size, 0);
 
-			const unsigned int component_order[nx::VertexElement::COMPONENT_COUNT] = {
-				nx::VertexElement::COORD, nx::VertexElement::TEX,
-				nx::VertexElement::NORM, nx::VertexElement::COLOR,
-				nx::VertexElement::DATA0, nx::VertexElement::DATA0 + 1,
-				nx::VertexElement::DATA0 + 2, nx::VertexElement::DATA0 + 3
-			};
-			quint64 planar_offset = 0;
-			for(unsigned int component : component_order) {
-				const quint64 component_size = signature.vertex.attributes[component].size();
-				if(!component_size)
-					continue;
-				const char *component_data = planar.component(component);
-				if(!component_data)
-					throw std::runtime_error("missing planar vertex component for legacy output");
-				const quint64 bytes = component_size * node.nvert;
-				memcpy(legacy_memory.data() + planar_offset, component_data, bytes);
-				planar_offset += bytes;
-			}
-			if(planar_offset != vertex_bytes)
-				throw std::runtime_error("unsupported legacy vertex layout");
+			planar.writePlanar(legacy_memory.data());
 			if(face_bytes) {
 				const char *faces = reinterpret_cast<const char *>(
 					NodeData::faces(signature, node.nvert, memory));

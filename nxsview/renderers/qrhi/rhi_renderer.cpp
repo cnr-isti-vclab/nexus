@@ -500,7 +500,7 @@ bool RhiRenderer::ensureGeometry(Nexus *nexus, uint32_t nodeIndex, GeometryEntry
 		allocation = gpuMemory->allocateGeometry(vertexBytes, indexBytes);
 
 	std::vector<Vertex> vertices(node.nvert);
-	const std::size_t sourceStride = vertexFormat.size();
+	const std::size_t sourceStride = vertexFormat.vertexSize();
 
 	for(uint32_t i = 0; i < node.nvert; ++i) {
 		Vertex &vertex = vertices[i];

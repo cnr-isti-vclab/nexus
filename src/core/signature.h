@@ -96,7 +96,7 @@ public:
 		return component_offsets[c];
 	}
 
-	int size() const { return static_cast<int>(vertex_size); }
+	uint32_t vertexSize() const { return vertex_size; }
 
 	void interleave(uint32_t count, const void *const *components, char *destination) const;
 	void deinterleave(uint32_t count, const char *source, void *const *components) const;
@@ -123,7 +123,7 @@ public:
 	VertexElement vertex;
 	FaceElement face;
 
-	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4, DEEPZOOM = 0x8 };
+	enum Flags { PTEXTURE = 0x1, MECO = 0x2, CORTO = 0x4, DEEPZOOM = 0x8, INTERLEAVED = 0x10 };
 	uint32_t flags;
 	void setFlag(Flags f) { flags |= f; }
 	void unsetFlag(Flags f) { flags &= ~f; }
@@ -131,6 +131,7 @@ public:
 	bool hasPTextures() { return (bool)(flags | PTEXTURE); }
 	bool isCompressed() { return (bool)(flags & (MECO|CORTO)); }
 	bool isDeepzoom() { return (bool)(flags & (DEEPZOOM)); }
+	bool isInterleaved() const { return (flags & INTERLEAVED) != 0; }
 
 	Signature(): flags(0) {}
 };
