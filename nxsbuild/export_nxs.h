@@ -51,7 +51,7 @@ private:
 
 	void pad(uint64_t &size) {
 		uint64_t m = (size-1) & ~(NEXUS_PADDING -1);
-		size = m  + NEXUS_PADDING;
+		size = m + NEXUS_PADDING;
 	}
 };
 

@@ -101,7 +101,7 @@ runs:
       if: ${{ runner.os == 'Windows' }}
       shell: pwsh
       run: |
-        & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install tbb:x64-windows metis:x64-windows draco:x64-windows libjpeg-turbo:x64-windows
+        & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install tbb:x64-windows metis:x64-windows draco:x64-windows libjpeg-turbo:x64-windows libpng:x64-windows
     - name: Install dependencies macOS
       if: ${{ runner.os == 'macOS' }}
       shell: bash

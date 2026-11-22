@@ -79,7 +79,7 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path, bo
 
 	//temporarily write nodes, we will come back after we have the numbers.
 	const size_t header_size = Header::serializedSize();
-	size_t index_size = header_size + sizeof(Node)*header.n_nodes + sizeof(Patch)*header.n_patches + sizeof(Texture)*header.n_textures;
+	uint64_t index_size = header_size + sizeof(Node)*header.n_nodes + sizeof(Patch)*header.n_patches + sizeof(Texture)*header.n_textures;
 	pad(index_size);
 	fseek(out, index_size, SEEK_SET);
 
@@ -298,7 +298,7 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 		? header.signature.vertex.size()
 		: header.signature.vertex.vertexSize();
 	const size_t vertex_bytes = n_wedges * vertex_stride;
-	size_t geometry_size = vertex_bytes + n_triangles * header.signature.face.size();
+	uint64_t geometry_size = vertex_bytes + n_triangles * header.signature.face.size();
 	pad(geometry_size);
 	std::vector<char> buffer(geometry_size, 0);
 
