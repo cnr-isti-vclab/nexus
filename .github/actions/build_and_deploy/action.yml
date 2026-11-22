@@ -30,16 +30,8 @@ runs:
           qt_root_cmake="$(cygpath -m "$QT_ROOT_DIR")"
         fi
 
-        qmake="$qt_root/bin/qmake"
-        if [ -x "${qmake}.exe" ]; then
-          qmake="${qmake}.exe"
-        fi
-        if [ ! -x "$qmake" ]; then
-          echo "::error::Could not find qmake under $QT_ROOT_DIR"
-          exit 1
-        fi
-
-        qt_version="$("$qmake" -query QT_VERSION)"
+        # install-qt-action uses <version>/<target> for the Qt root directory.
+        qt_version="$(basename "$(dirname "$qt_root")")"
         private_headers="$qt_root/include/QtGui/$qt_version/QtGui"
         for header in qrhi.h qshader.h; do
           if [ ! -f "$private_headers/rhi/$header" ]; then
@@ -109,7 +101,7 @@ runs:
       if: ${{ runner.os == 'Windows' }}
       shell: pwsh
       run: |
-        & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install tbb:x64-windows metis:x64-windows draco:x64-windows
+        & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install tbb:x64-windows metis:x64-windows draco:x64-windows libjpeg-turbo:x64-windows
     - name: Install dependencies macOS
       if: ${{ runner.os == 'macOS' }}
       shell: bash
