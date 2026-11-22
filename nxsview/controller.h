@@ -18,7 +18,7 @@ for more details.
 #ifndef NX_CONTROLLER_H
 #define NX_CONTROLLER_H
 
-#include "../src/gcache/controller.h"
+#include "gcache/controller.h"
 
 #include "token.h"
 #include "ram_cache.h"
@@ -62,6 +62,7 @@ public:
 
 	void load(Nexus *nexus);
 	void flush(Nexus *nexus);
+	bool addToken(Token *token);
 	bool hasCacheChanged();
 	void endFrame();
 

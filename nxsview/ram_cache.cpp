@@ -17,6 +17,8 @@ for more details.
 */
 #include "ram_cache.h"
 
+#include <QDebug>
+
 #include <corto/decoder.h>
 
 using namespace nx;
@@ -39,6 +41,9 @@ size_t nx_curl_write_callback( char *ptr, size_t size, size_t nmemb, void *userd
 
 
 void RamCache::loadNexus(Nexus *nexus) {
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+	qInfo() << "Loading Nexus index from" << QString::fromStdString(nexus->url);
+#endif
 	if(nexus->isStreaming()) {
 #ifdef USE_CURL
 		CurlData data(new char[sizeof(Header)], sizeof(Header));
@@ -52,9 +57,14 @@ void RamCache::loadNexus(Nexus *nexus) {
 			nexus->loadHeader(data.buffer);
 			delete []data.buffer;
 		} catch (const char *error) {
-			cerr << "Error: " << error << endl;
+			qWarning() << "Failed to load Nexus header from"
+			           << QString::fromStdString(nexus->url) << ":" << error;
 			return;
 		}
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+		qInfo() << "Nexus header loaded from" << QString::fromStdString(nexus->url)
+		        << "with" << nexus->header.n_nodes << "nodes";
+#endif
 
 		uint32_t index_size = nexus->indexSize();
 		data.buffer = new char[index_size];
@@ -77,16 +87,42 @@ void RamCache::loadNexus(Nexus *nexus) {
 	} else {
 		try {
 			nexus->loadHeader();
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+			qInfo() << "Nexus header loaded from" << QString::fromStdString(nexus->url)
+			        << "with" << nexus->header.n_nodes << "nodes";
+#endif
 			nexus->loadIndex();
 		} catch (const char *error) {
-			std::cerr << "Error: " << error << std::endl;
+			qWarning() << "Failed to load Nexus index from"
+			           << QString::fromStdString(nexus->url) << ":" << error;
+			return;
+		} catch (const std::exception &error) {
+			qWarning() << "Failed to load Nexus index from"
+			           << QString::fromStdString(nexus->url) << ":" << error.what();
 			return;
 		}
-
 	}
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+	qInfo() << "Nexus index ready from" << QString::fromStdString(nexus->url);
+#endif
 }
 
 int RamCache::get(nx::Token *in) {
+	const QString url = QString::fromStdString(in->nexus->url);
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+	qInfo() << "Loading node" << in->node << "into RAM from" << url;
+#endif
+	auto reportResult = [&](int bytes) {
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+		if(bytes >= 0)
+			qInfo() << "RAM node ready" << in->node << "from" << url
+			        << "bytes:" << bytes;
+#endif
+		if(bytes < 0)
+			qWarning() << "RAM node load failed" << in->node << "from" << url;
+		return bytes;
+	};
+
 	try {
 	if(in->nexus->isStreaming()) {
 #ifdef USE_CURL
@@ -123,16 +159,22 @@ int RamCache::get(nx::Token *in) {
 			}
 			delete []buffer;
 		}
-		return readed;
+		return reportResult(readed);
 #else
 		throw "Compiled without curl library";
 #endif
 	} else {
-		return in->nexus->loadRam(in->node);
+		return reportResult(static_cast<int>(in->nexus->loadRam(in->node)));
 	}
 	} catch(const char *error) {
-		std::cerr << "Error loading node " << in->node << " from Nexus "
-			  << in->nexus->url << ": " << error << std::endl;
+		qWarning() << "RAM node load failed" << in->node << "from" << url << ":" << error;
+		return -1;
+	} catch(const std::exception &error) {
+		qWarning() << "RAM node load failed" << in->node << "from" << url << ":" << error.what();
+		return -1;
+	} catch(...) {
+		qWarning() << "RAM node load failed" << in->node << "from" << url
+		           << "with an unknown exception";
 		return -1;
 	}
 }

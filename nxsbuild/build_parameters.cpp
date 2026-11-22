@@ -336,9 +336,9 @@ void BuildParameters::setDefaultOutput() {
 		return;
 	}
 
-	// Use first input file name with .nxs extension
+	// Replace the first input file's extension with .nxs
 	QFileInfo info(inputs.first());
-	output = info.completeBaseName() + ".nxs";
+	output = QDir::cleanPath(info.dir().filePath(info.completeBaseName() + ".nxs"));
 }
 
 } // namespace nx

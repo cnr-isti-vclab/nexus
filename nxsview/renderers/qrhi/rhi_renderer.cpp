@@ -73,6 +73,15 @@ QMatrix4x4 textureMatrix(const float *matrix) {
 
 } // namespace
 
+void RhiRenderer::checkRhiErrors(const char *context) {
+	if(!rhi)
+		return;
+
+	if(rhi->isDeviceLost()) {
+		qWarning() << "QRhi device lost detected at" << context;
+	}
+}
+
 RhiRenderer::RhiRenderer() {
 	setGpuCapacity(gpuCapacity);
 }
@@ -280,7 +289,8 @@ bool RhiRenderer::createBindingsAndPipelines() {
 		pipeline->setDepthTest(true);
 		pipeline->setDepthWrite(true);
 		if(!pipeline->create()) {
-			qWarning() << "Failed to create RHI graphics pipeline";
+			qWarning() << "Failed to create RHI graphics pipeline with topology" << static_cast<int>(topology);
+			checkRhiErrors("QRhiGraphicsPipeline::create");
 			return std::unique_ptr<QRhiGraphicsPipeline>();
 		}
 		return pipeline;
@@ -327,10 +337,18 @@ bool RhiRenderer::beginRhiFrame(QRhiCommandBuffer *cb, QRhiRenderTarget *target,
 	draws.clear();
 	frameBindings.clear();
 	uploadData.clear();
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+	pendingGeometryUploads.clear();
+#endif
 	warnedCacheOverflow = false;
 	Renderer::startFrame();
 	resourceUpdates = rhi->nextResourceUpdateBatch();
+	if(!resourceUpdates) {
+		qWarning() << "Failed to allocate QRhi resource update batch";
+		return false;
+	}
 	frameActive = true;
+	checkRhiErrors("beginRhiFrame");
 	return true;
 }
 
@@ -501,6 +519,12 @@ bool RhiRenderer::ensureGeometry(Nexus *nexus, uint32_t nodeIndex, GeometryEntry
 
 	auto inserted = geometry.emplace(key, std::move(newEntry));
 	entry = &inserted.first->second;
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+	pendingGeometryUploads.emplace_back(nexus, nodeIndex);
+	qInfo() << "QRhi geometry upload queued" << nodeIndex << "from"
+	        << QString::fromStdString(nexus->url)
+	        << "vertex bytes:" << vertexBytes << "index bytes:" << indexBytes;
+#endif
 	return true;
 }
 
@@ -552,6 +576,7 @@ QRhiTexture *RhiRenderer::textureFor(Nexus *nexus, uint32_t textureIndex) {
 		rhi->newTexture(QRhiTexture::RGBA8, QSize(data.width, data.height)));
 	if(!texture->create()) {
 		qWarning() << "Failed to create RHI texture" << textureIndex;
+		checkRhiErrors("QRhiTexture::create");
 		return whiteTexture.get();
 	}
 
@@ -560,6 +585,7 @@ QRhiTexture *RhiRenderer::textureFor(Nexus *nexus, uint32_t textureIndex) {
 	upload.setEntries({QRhiTextureUploadEntry(
 		0, 0, QRhiTextureSubresourceUploadDescription(pixels))});
 	resourceUpdates->uploadTexture(texture.get(), upload);
+	checkRhiErrors("uploadTexture");
 
 	QRhiTexture *result = texture.get();
 	textures.emplace(key, TextureEntry{std::move(texture), bytes, frame});
@@ -711,18 +737,49 @@ void RhiRenderer::finishRhiFrame(const QColor &clearColor) {
 	if(resourceUpdates) {
 		commandBuffer->resourceUpdate(resourceUpdates);
 		resourceUpdates = nullptr;
+		checkRhiErrors("resourceUpdate");
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+		for(const auto &[nexus, nodeIndex] : pendingGeometryUploads) {
+			qInfo() << "QRhi geometry upload submitted" << nodeIndex << "from"
+			        << QString::fromStdString(nexus->url);
+		}
+		pendingGeometryUploads.clear();
+#endif
 	}
+
 	commandBuffer->beginPass(renderTarget, clearColor, {1.0f, 0});
+	checkRhiErrors("beginPass");
+	if(rhi->isDeviceLost()) {
+		qWarning() << "Device lost after beginning render pass";
+		draws.clear();
+		frameActive = false;
+		return;
+	}
+
 	commandBuffer->setViewport(QRhiViewport(0, 0, viewportSize.width(), viewportSize.height()));
 	for(std::size_t i = 0; i < draws.size(); ++i) {
 		if(!frameBindings[i])
 			continue;
 		const DrawCall &draw = draws[i];
+
+		if(!draw.points && !trianglePipeline) {
+			qWarning() << "Triangle pipeline not available for draw" << i;
+			continue;
+		}
+		if(draw.points && !pointPipeline) {
+			qWarning() << "Point pipeline not available for draw" << i;
+			continue;
+		}
+
 		commandBuffer->setGraphicsPipeline(draw.points ? pointPipeline.get() : trianglePipeline.get());
 		commandBuffer->setShaderResources(frameBindings[i].get());
 		const QRhiCommandBuffer::VertexInput vertexInput(
 			draw.vertexBuffer, static_cast<quint32>(draw.allocation.vertexOffset));
 		if(draw.indexed) {
+			if(!draw.indexBuffer) {
+				qWarning() << "Index buffer is null for indexed draw" << i;
+				continue;
+			}
 			commandBuffer->setVertexInput(0, 1, &vertexInput, draw.indexBuffer,
 			                              static_cast<quint32>(draw.allocation.indexOffset),
 			                              QRhiCommandBuffer::IndexUInt16);
@@ -732,7 +789,9 @@ void RhiRenderer::finishRhiFrame(const QColor &clearColor) {
 			commandBuffer->draw(draw.vertexCount, 1, 0, 0);
 		}
 	}
+
 	commandBuffer->endPass();
+	checkRhiErrors("endPass");
 
 	for(auto it = geometry.begin(); it != geometry.end();) {
 		if(it->second.dedicated && it->second.lastUsedFrame == frame)

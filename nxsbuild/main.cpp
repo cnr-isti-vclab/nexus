@@ -40,6 +40,11 @@ int main(int argc, char *argv[]) {
 	std::string input_file = params.inputs.first().toStdString();
 
 	try {
+			if (!fs::exists(input_file)) {
+				std::cerr << "Error: input file does not exist: " << input_file << std::endl;
+				return 1;
+			}
+
 			nx::MeshHierarchy hierarchy;
 
 			if (params.resume) {
@@ -59,7 +64,7 @@ int main(int argc, char *argv[]) {
 		hierarchy.build_hierarchy(params);
 
 		nx::ExportNxs exporter;
-		exporter.export_nxs(hierarchy, "test.nxs");
+		exporter.export_nxs(hierarchy, params.output.toStdString());
 
 	} catch (const std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;

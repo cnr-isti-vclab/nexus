@@ -12,6 +12,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/renderers/opengl/glew.cmake)
 set(VIEW_HEADERS
 	controller.h
 	frustum.h
+	gcache/cache.h
+	gcache/controller.h
+	gcache/dheap.h
+	gcache/door.h
+	gcache/provider.h
+	gcache/token.h
 	globalgl.h
 	gpu_cache.h
 	metric.h

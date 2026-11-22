@@ -7,7 +7,7 @@
 
 #include "nexus.h"
 #include "token.h"
-#include "../src/gcache/cache.h"
+#include "gcache/cache.h"
 #ifdef USE_CURL
 #include <curl/curl.h>
 #endif

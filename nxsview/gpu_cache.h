@@ -21,7 +21,11 @@ for more details.
 #include "globalgl.h"
 #include "nexus.h"
 #include "token.h"
-#include "../src/gcache/cache.h"
+#include "gcache/cache.h"
+
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#include <QDebug>
+#endif
 
 #include <chrono>
 #include <thread>
@@ -91,7 +95,13 @@ public:
 		}
 #endif
 		//do nothing, transfer will be done in renderer
-		return size(in);
+		const int bytes = size(in);
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+		qInfo() << "GPU cache entry ready (renderer upload pending)" << in->node
+		        << "from" << QString::fromStdString(in->nexus->url)
+		        << "bytes:" << bytes;
+#endif
+		return bytes;
 	}
 	int drop(nx::Token *in) {
 

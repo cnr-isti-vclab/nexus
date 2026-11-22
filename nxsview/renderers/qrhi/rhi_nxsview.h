@@ -11,7 +11,6 @@ it under the terms of the GNU General Public License (http://www.gnu.org/license
 #define NX_RHI_NXSVIEW_H
 
 #include <QColor>
-#include <QPainter>
 #include <QTimer>
 #include <QWidget>
 #include <QtWidgets/qrhiwidget.h>
@@ -21,6 +20,7 @@ it under the terms of the GNU General Public License (http://www.gnu.org/license
 
 class QCloseEvent;
 class QKeyEvent;
+class QLabel;
 class QMouseEvent;
 class QPaintEvent;
 class QWheelEvent;
@@ -75,6 +75,7 @@ protected:
 
 private:
 	bool rendererReady = false;
+	QLabel *infoLabel = nullptr;
 };
 
 #endif // NX_RHI_NXSVIEW_H

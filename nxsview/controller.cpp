@@ -17,6 +17,10 @@ for more details.
 */
 #include "controller.h"
 
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#include <QDebug>
+#endif
+
 using namespace nx;
 
 //TODO how to auto-guess ram and gpu?
@@ -40,6 +44,17 @@ void Controller::setWidget(QOpenGLWidget *widget) {
 void Controller::load(Nexus *nexus) {
 	ram_cache.add(nexus);
 	ram_cache.input->check_queue.open();
+}
+
+bool Controller::addToken(Token *token) {
+	if(!vcg::Controller<Token>::addToken(token))
+		return false;
+
+#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+	qInfo() << "Scheduled node load" << token->node
+	        << "from" << QString::fromStdString(token->nexus->url);
+#endif
+	return true;
 }
 
 void Controller::flush(Nexus *nexus) {

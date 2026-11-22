@@ -41,12 +41,12 @@ SOURCES += \
     ../src/core/traversal.cpp
 
 HEADERS += \
-    ../src/gcache/token.h \
-    ../src/gcache/provider.h \
-    ../src/gcache/door.h \
-    ../src/gcache/dheap.h \
-    ../src/gcache/controller.h \
-    ../src/gcache/cache.h \
+    gcache/token.h \
+    gcache/provider.h \
+    gcache/door.h \
+    gcache/dheap.h \
+    gcache/controller.h \
+    gcache/cache.h \
     ../src/core/signature.h \
     ../src/core/nexusdata.h \
     ../src/core/nexusfile.h \
