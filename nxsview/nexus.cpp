@@ -83,6 +83,10 @@ bool Nexus::open(const char *_uri) {
 			loadHeader();
 			loadIndex();
 		} catch(const char *error) {
+			std::cerr << "Could not load Nexus file " << url << ": " << error << std::endl;
+			return false;
+		} catch(const std::exception &error) {
+			std::cerr << "Could not load Nexus file " << url << ": " << error.what() << std::endl;
 			return false;
 		}
 	} else {

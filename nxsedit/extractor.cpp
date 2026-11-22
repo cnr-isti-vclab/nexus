@@ -19,6 +19,10 @@ for more details.
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+#include <vector>
 #include "extractor.h"
 
 #include <corto/corto.h>
@@ -117,7 +121,7 @@ void Extractor::dropLevel() {
 	selected.back() = false; //sink unselection purely for coherence
 }
 
-void Extractor::save(QString output, nx::Signature &signature) {
+void Extractor::save(QString output, nx::Signature &signature, bool legacy) {
 	QFile file;
 	file.setFileName(output);
 	if(!file.open(QIODevice::WriteOnly | QFile::Truncate))
@@ -132,6 +136,8 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	
 	nx::Header header = nexus->header;
 	header.signature = signature;
+	header.magic = legacy ? nx::NEXUS_LEGACY_MAGIC : nx::NEXUS_FORMAT_MAGIC;
+	header.version = legacy ? nx::NEXUS_LEGACY_FORMAT_VERSION : nx::NEXUS_FORMAT_VERSION;
 	header.nvert = 0;
 	header.nface = 0;
 	
@@ -193,7 +199,8 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	header.n_textures = textures.size();
 	
 	
-	quint64 size = sizeof(nx::Header)  +
+	const quint64 header_size = nx::Header::serializedSize();
+	quint64 size = header_size +
 			nodes.size()*sizeof(nx::Node) +
 			patches.size()*sizeof(nx::Patch) +
 			textures.size()*sizeof(nx::Texture);
@@ -205,7 +212,9 @@ void Extractor::save(QString output, nx::Signature &signature) {
 	
 	//TODO should actually remove textures not used anymore.
 	
-	file.write((char *)&header, sizeof(header));
+	char serialized_header[nx::Header::serializedSize()];
+	header.serialize(serialized_header);
+	file.write(serialized_header, sizeof(serialized_header));
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
 	file.write((char *)&*textures.begin(), sizeof(nx::Texture)*textures.size());
@@ -221,13 +230,18 @@ void Extractor::save(QString output, nx::Signature &signature) {
 		
 		NodeData &data = nexus->nodedata[i];
 		char *memory = data.memory;
-		int data_size = nexus->nodes[i].getSize();
+		const quint64 data_size = nexus->nodes[i].getSize();
+		std::unique_ptr<char[]> transformed_memory;
 		if(transform) {
-			memory = new char[node.getSize()];
+			transformed_memory = std::make_unique<char[]>(data_size);
+			memory = transformed_memory.get();
 			memcpy(memory, data.memory, data_size);
 			
-			for(int k = 0; k < node.nvert; k++) {
-				nx::Vector3f &v = reinterpret_cast<nx::Vector3f *>(memory)[k];
+			const size_t stride = signature.vertex.size();
+			const size_t coord_offset = signature.vertex.componentOffset(nx::VertexElement::COORD);
+			for(uint32_t k = 0; k < node.nvert; k++) {
+				nx::Vector3f &v = *reinterpret_cast<nx::Vector3f *>(
+					memory + k*stride + coord_offset);
 				vcg::Point3f transformed = matrix * vcg::Point3f(v.x, v.y, v.z);
 				v = {transformed[0], transformed[1], transformed[2]};
 			}
@@ -237,10 +251,55 @@ void Extractor::save(QString output, nx::Signature &signature) {
 				QFile nodeFile(deepzoomFilePath(deepzoomFolder, n, QStringLiteral("nxn")));
 				if(!nodeFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
 					throw QString("could not open node file %1 for writing").arg(nodeFile.fileName());
-				compress(nodeFile, signature, node, nexus->nodedata[i], &*patches.begin());
+				compress(nodeFile, signature, node, nexus->nodedata[i], memory, &*patches.begin());
 				nodeFile.close();
 			} else {
-				compress(file, signature, node, nexus->nodedata[i], &*patches.begin());
+				compress(file, signature, node, nexus->nodedata[i], memory, &*patches.begin());
+			}
+		} else if(legacy) {
+			nx::PlanarVertexData planar(signature.vertex, node.nvert);
+			planar.deinterleave(memory);
+			const quint64 vertex_bytes =
+				static_cast<const nx::Element &>(signature.vertex).size() * node.nvert;
+			const quint64 face_bytes = signature.face.size() * node.nface;
+			const quint64 geometry_bytes = vertex_bytes + face_bytes;
+			const quint32 output_size = geometry_bytes ? pad(static_cast<quint32>(geometry_bytes)) : 0;
+			vector<char> legacy_memory(output_size, 0);
+
+			const unsigned int component_order[nx::VertexElement::COMPONENT_COUNT] = {
+				nx::VertexElement::COORD, nx::VertexElement::TEX,
+				nx::VertexElement::NORM, nx::VertexElement::COLOR,
+				nx::VertexElement::DATA0, nx::VertexElement::DATA0 + 1,
+				nx::VertexElement::DATA0 + 2, nx::VertexElement::DATA0 + 3
+			};
+			quint64 planar_offset = 0;
+			for(unsigned int component : component_order) {
+				const quint64 component_size = signature.vertex.attributes[component].size();
+				if(!component_size)
+					continue;
+				const char *component_data = planar.component(component);
+				if(!component_data)
+					throw std::runtime_error("missing planar vertex component for legacy output");
+				const quint64 bytes = component_size * node.nvert;
+				memcpy(legacy_memory.data() + planar_offset, component_data, bytes);
+				planar_offset += bytes;
+			}
+			if(planar_offset != vertex_bytes)
+				throw std::runtime_error("unsupported legacy vertex layout");
+			if(face_bytes) {
+				const char *faces = reinterpret_cast<const char *>(
+					NodeData::faces(signature, node.nvert, memory));
+				memcpy(legacy_memory.data() + vertex_bytes, faces, face_bytes);
+			}
+
+			if(saveAsDeepzoom) {
+				QFile nodeFile(deepzoomFilePath(deepzoomFolder, n, QStringLiteral("nxn")));
+				if(!nodeFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+					throw QString("could not open node file %1 for writing").arg(nodeFile.fileName());
+				nodeFile.write(legacy_memory.data(), legacy_memory.size());
+				nodeFile.close();
+			} else {
+				file.write(legacy_memory.data(), legacy_memory.size());
 			}
 		} else {
 			if(saveAsDeepzoom) {
@@ -253,9 +312,6 @@ void Extractor::save(QString output, nx::Signature &signature) {
 				file.write(memory, data_size);
 			}
 		}
-		if(transform)
-			delete []memory;
-		
 		nexus->dropRam(i);
 	}
 	nodes.back().offset = file.pos()/NEXUS_PADDING;
@@ -295,7 +351,7 @@ void Extractor::save(QString output, nx::Signature &signature) {
 		textures.back().offset = file.pos()/NEXUS_PADDING;
 	}
 	
-	file.seek(sizeof(nx::Header));
+	file.seek(header_size);
 	file.write((char *)&*nodes.begin(), sizeof(nx::Node)*nodes.size());
 	file.write((char *)&*patches.begin(), sizeof(nx::Patch)*patches.size());
 	file.write((char *)&*textures.begin(), sizeof(nx::Texture)*textures.size());
@@ -333,32 +389,41 @@ quint32 Extractor::pad(quint32 s) {
 	return m + padding;
 }
 
-void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node, nx::NodeData &data, Patch *patches) {
+void Extractor::compress(QFile &file, nx::Signature &signature, nx::Node &node,
+                         nx::NodeData &data, const char *memory, Patch *patches) {
 	
 	if(signature.flags & Signature::MECO)
 		throw "MECO compression is no longer supported";
 	if(signature.flags & Signature::CORTO) {
+		nx::PlanarVertexData planar(signature.vertex, node.nvert);
+		planar.deinterleave(memory);
 		
 		crt::Encoder encoder(node.nvert, node.nface);
 		
 		for(uint32_t p = node.first_patch; p < node.last_patch(); p++)
 			encoder.addGroup(patches[p].triangle_offset);
 		
+		auto *coords = reinterpret_cast<const float *>(planar.component(nx::VertexElement::COORD));
 		if(node.nface == 0)
-			encoder.addPositions((float *)data.coords(), pow(2, coord_q));
+			encoder.addPositions(coords, pow(2, coord_q));
 		else
-			encoder.addPositions((float *)data.coords(), data.faces(signature, node.nvert), pow(2, coord_q));
+			encoder.addPositions(coords, data.faces(signature, node.nvert), pow(2, coord_q));
 		
 		if(signature.vertex.hasNormals()) {
-			encoder.addNormals((int16_t *)data.normals(signature, node.nvert), norm_bits,
+			auto *normals = reinterpret_cast<const int16_t *>(planar.component(nx::VertexElement::NORM));
+			encoder.addNormals(normals, norm_bits,
 							   node.nface == 0? crt::NormalAttr::DIFF : crt::NormalAttr::ESTIMATED);
 		}
 		
-		if(signature.vertex.hasColors())
-			encoder.addColors((unsigned char *)data.colors(signature, node.nvert), color_bits[0], color_bits[1], color_bits[2], color_bits[3]);
+		if(signature.vertex.hasColors()) {
+			auto *colors = reinterpret_cast<const unsigned char *>(planar.component(nx::VertexElement::COLOR));
+			encoder.addColors(colors, color_bits[0], color_bits[1], color_bits[2], color_bits[3]);
+		}
 		
-		if(signature.vertex.hasTextures())
-			encoder.addUvs((float *)data.texCoords(signature, node.nvert), tex_step/512);
+		if(signature.vertex.hasTextures()) {
+			auto *texcoords = reinterpret_cast<const float *>(planar.component(nx::VertexElement::TEX));
+			encoder.addUvs(texcoords, tex_step/512);
+		}
 		encoder.encode();
 		
 		/*
@@ -490,10 +555,12 @@ void Extractor::savePly(QString filename) {
 		Node &node = nodes[n];
 		nexus->loadRam(n);
 		NodeData &data = nexus->nodedata[n];
+		PlanarVertexData planar(nexus->header.signature.vertex, node.nvert);
+		planar.deinterleave(data.memory);
 		
 		char *buffer = new char[bytes_per_vertex * node.nvert];
-		nx::Vector3f *coords = data.coords();
-		nx::Rgba8 *colors = data.colors(nexus->header.signature, node.nvert);
+		auto *coords = reinterpret_cast<nx::Vector3f *>(planar.component(nx::VertexElement::COORD));
+		auto *colors = reinterpret_cast<nx::Rgba8 *>(planar.component(nx::VertexElement::COLOR));
 		if(has_colors) {
 			struct PlyColorVertex { nx::Vector3f position; nx::Rgba8 color; };
 			static_assert(sizeof(PlyColorVertex) == 16, "PLY vertex layout must be packed");
@@ -603,6 +670,9 @@ void Extractor::saveStl(QString filename) {
 
 		nexus->loadRam(n);
 		NodeData &data = nexus->nodedata[n];
+		PlanarVertexData planar(nexus->header.signature.vertex, node.nvert);
+		planar.deinterleave(data.memory);
+		auto *coords = reinterpret_cast<nx::Vector3f *>(planar.component(nx::VertexElement::COORD));
 		uint start = 0;
 		for(uint p = node.first_patch; p < node.last_patch(); p++) {
 			Patch &patch = patches[p];
@@ -612,7 +682,6 @@ void Extractor::saveStl(QString filename) {
 			}
 
 			uint16_t *triangles = data.faces(nexus->header.signature, node.nvert);
-			nx::Vector3f *coords = data.coords();
 
 			for(uint k = start; k < patch.triangle_offset; k++) {
 				float *face = reinterpret_cast<float *>(buffer + 50*face_count);
@@ -693,9 +762,10 @@ void Extractor::saveUnifiedPly(QString filename) {
 		Node &node = nodes[i];
 		NodeData &data = nexus->nodedata[i];
 		nexus->loadRam(i);
-		
-		nx::Vector3f *coords = data.coords();
-		nx::Rgba8 *colors = data.colors(nexus->header.signature, node.nvert);
+		PlanarVertexData planar(nexus->header.signature.vertex, node.nvert);
+		planar.deinterleave(data.memory);
+		auto *coords = reinterpret_cast<nx::Vector3f *>(planar.component(nx::VertexElement::COORD));
+		auto *colors = reinterpret_cast<nx::Rgba8 *>(planar.component(nx::VertexElement::COLOR));
 		uint16_t *triangles = data.faces(nexus->header.signature, node.nvert);
 		
 		

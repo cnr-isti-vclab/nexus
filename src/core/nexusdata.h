@@ -19,8 +19,13 @@ for more details.
 #define NX_NEXUSDATA_H
 
 #include <stdio.h>
+#include <array>
+#include <cstddef>
+#include <limits>
 #include <string>
 #include <mutex>
+#include <stdexcept>
+#include <vector>
 
 #include "signature.h"
 #include "dag.h"
@@ -30,33 +35,54 @@ for more details.
 
 namespace nx {
 
+class PlanarVertexData {
+public:
+	PlanarVertexData(const VertexElement &layout, uint32_t vertexCount):
+		layout(layout), vertexCount(vertexCount) {
+		for(unsigned int c = 0; c < VertexElement::COMPONENT_COUNT; ++c) {
+			const std::size_t bytes = layout.attributes[c].size();
+			if(bytes && vertexCount > std::numeric_limits<std::size_t>::max() / bytes)
+				throw std::length_error("planar vertex buffer size overflows");
+			components[c].resize(static_cast<std::size_t>(vertexCount) * bytes);
+		}
+	}
+
+	char *component(unsigned int c) {
+		assert(c < VertexElement::COMPONENT_COUNT);
+		return components[c].empty() ? nullptr : components[c].data();
+	}
+
+	const char *component(unsigned int c) const {
+		assert(c < VertexElement::COMPONENT_COUNT);
+		return components[c].empty() ? nullptr : components[c].data();
+	}
+
+	void deinterleave(const char *interleaved) {
+		std::array<void *, VertexElement::COMPONENT_COUNT> destinations{};
+		for(unsigned int c = 0; c < VertexElement::COMPONENT_COUNT; ++c)
+			destinations[c] = component(c);
+		layout.deinterleave(vertexCount, interleaved, destinations.data());
+	}
+
+	void interleave(char *interleaved) const {
+		std::array<const void *, VertexElement::COMPONENT_COUNT> sources{};
+		for(unsigned int c = 0; c < VertexElement::COMPONENT_COUNT; ++c)
+			sources[c] = component(c);
+		layout.interleave(vertexCount, sources.data(), interleaved);
+	}
+
+private:
+	const VertexElement &layout;
+	uint32_t vertexCount;
+	std::array<std::vector<char>, VertexElement::COMPONENT_COUNT> components;
+};
+
 class NodeData {
 public:
 	NodeData(): memory(NULL), vbo(0), fbo(0) {}
 	char *memory;
 	uint32_t vbo;
 	uint32_t fbo;
-	Vector3f *coords() { return reinterpret_cast<Vector3f *>(memory); }
-	Vector2f *texCoords(Signature &/*sig*/, uint32_t nvert) {
-		char *m = memory;
-		m += nvert * sizeof(Vector3f);
-		return reinterpret_cast<Vector2f *>(m);
-	}
-	Vector3s *normals(Signature &sig, uint32_t nvert) {
-		char *m = memory + nvert * sizeof(Vector3f);
-		if(sig.vertex.hasTextures())
-			m += nvert * sizeof(Vector2f);
-		return reinterpret_cast<Vector3s *>(m);
-	}
-	Rgba8 *colors(Signature &sig, uint32_t nvert) {
-		char *m = memory;
-		m += nvert * sizeof(Vector3f);
-		if(sig.vertex.hasTextures())
-			m += nvert * sizeof(Vector2f);
-		if(sig.vertex.hasNormals())
-			m += nvert * sizeof(Vector3s);
-		return reinterpret_cast<Rgba8 *>(m);
-	}
 
 	uint16_t *faces(Signature &sig, uint32_t nvert) {
 		return faces(sig, nvert, memory);

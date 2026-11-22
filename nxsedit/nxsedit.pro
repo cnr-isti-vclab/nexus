@@ -30,6 +30,7 @@ SOURCES += \
     ../../vcglib/wrap/ply/plylib.cpp \
     ../src/core/virtualarray.cpp \
     ../src/core/nexusdata.cpp \
+    ../src/core/signature.cpp \
     ../src/core/traversal.cpp \
     ../src/core/cone.cpp \
     main.cpp \

@@ -37,6 +37,7 @@ SOURCES += \
     renderers/qrhi/gpu_cache_allocator.cpp \
     ../src/core/nexusdata.cpp \
     ../src/core/qtnexusfile.cpp \
+    ../src/core/signature.cpp \
     ../src/core/cone.cpp \
     ../src/core/traversal.cpp
 

@@ -19,11 +19,38 @@ for more details.
 
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 
 #include "../../globalgl.h"
 #include "../../nexus.h"
 
 using namespace nx;
+
+namespace {
+
+GLenum vertexAttributeType(const Attribute &attribute) {
+	switch(attribute.type) {
+	case Attribute::BYTE: return GL_BYTE;
+	case Attribute::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
+	case Attribute::SHORT: return GL_SHORT;
+	case Attribute::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
+	case Attribute::INT: return GL_INT;
+	case Attribute::UNSIGNED_INT: return GL_UNSIGNED_INT;
+	case Attribute::FLOAT: return GL_FLOAT;
+	case Attribute::DOUBLE: return GL_DOUBLE;
+	default: return 0;
+	}
+}
+
+const void *bufferOffset(uint32_t offset) {
+	return reinterpret_cast<const void *>(static_cast<std::uintptr_t>(offset));
+}
+
+bool normalizedAttribute(const Attribute &attribute) {
+	return attribute.type != Attribute::FLOAT && attribute.type != Attribute::DOUBLE;
+}
+
+}
 
 void GLRenderer::getView() {
 	float projection[16];
@@ -61,6 +88,7 @@ void GLRenderer::beginRender(const RenderOptions &options) {
 	glEnableVertexAttribArray(ATTRIB_VERTEX);
 	if(options.draw_colors) glEnableVertexAttribArray(ATTRIB_COLOR);
 	if(options.draw_normals) glEnableVertexAttribArray(ATTRIB_NORMAL);
+	if(options.draw_texcoords) glEnableVertexAttribArray(ATTRIB_TEXTCOORD);
 #endif
 }
 
@@ -68,6 +96,34 @@ void GLRenderer::renderSelected(Nexus *nexus, const RenderOptions &options) {
 	glCheckError();
 
 	Signature &sig = nexus->header.signature;
+#ifdef GL_COMPATIBILITY
+	if(options.draw_normals && !sig.vertex.hasNormals()) {
+		glDisableClientState(GL_NORMAL_ARRAY);
+		glNormal3f(0, 0, 1);
+	}
+	if(options.draw_colors && !sig.vertex.hasColors()) {
+		glDisableClientState(GL_COLOR_ARRAY);
+		glColor4f(1, 1, 1, 1);
+	}
+	if(options.draw_texcoords && !sig.vertex.hasTextures()) {
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+		glTexCoord2f(0, 0);
+	}
+#endif
+#if GL_ES || GL_CORE
+	if(options.draw_normals && !sig.vertex.hasNormals()) {
+		glDisableVertexAttribArray(ATTRIB_NORMAL);
+		glVertexAttrib3f(ATTRIB_NORMAL, 0, 0, 1);
+	}
+	if(options.draw_colors && !sig.vertex.hasColors()) {
+		glDisableVertexAttribArray(ATTRIB_COLOR);
+		glVertexAttrib4f(ATTRIB_COLOR, 1, 1, 1, 1);
+	}
+	if(options.draw_texcoords && !sig.vertex.hasTextures()) {
+		glDisableVertexAttribArray(ATTRIB_TEXTCOORD);
+		glVertexAttrib2f(ATTRIB_TEXTCOORD, 0, 0);
+	}
+#endif
 	int GPU_loaded = 0;
 	uint32_t last_texture = 0xffffffff;
 	for(uint32_t i = 0; i <= last_node; i++) {
@@ -114,42 +170,62 @@ void GLRenderer::renderSelected(Nexus *nexus, const RenderOptions &options) {
 		assert(data.vbo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
-		uint64_t start = 0;
+		const GLsizei stride = sig.vertex.size();
+		const Attribute &coordinate = sig.vertex.attributes[VertexElement::COORD];
+		const Attribute &normal = sig.vertex.attributes[VertexElement::NORM];
+		const Attribute &color = sig.vertex.attributes[VertexElement::COLOR];
+		const Attribute &texCoord = sig.vertex.attributes[VertexElement::TEX];
+		const void *coordinateOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::COORD));
+		const void *normalOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::NORM));
+		const void *colorOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::COLOR));
+		const void *texCoordOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::TEX));
 
 #ifdef GL_COMPATIBILITY
-		glVertexPointer(3, GL_FLOAT, 0, (void *)start);
-		start += node.nvert*sig.vertex.attributes[VertexElement::COORD].size();
+		glVertexPointer(coordinate.number, vertexAttributeType(coordinate), stride, coordinateOffset);
 
-		if(options.draw_texcoords)
-			glTexCoordPointer(2, GL_FLOAT, 0, (void *)start);
-		if(sig.vertex.hasTextures())
-			start += node.nvert * sig.vertex.attributes[VertexElement::TEX].size();
+		if(options.draw_texcoords) {
+			if(sig.vertex.hasTextures()) {
+				glTexCoordPointer(texCoord.number, vertexAttributeType(texCoord), stride, texCoordOffset);
+			}
+		}
 
-		if(options.draw_normals)
-			glNormalPointer(GL_SHORT, 0, (void *)start);
-		if(sig.vertex.hasNormals())
-			start += node.nvert*sig.vertex.attributes[VertexElement::NORM].size();
+		if(options.draw_normals) {
+			if(sig.vertex.hasNormals()) {
+				glNormalPointer(vertexAttributeType(normal), stride, normalOffset);
+			}
+		}
 
-		if(options.draw_colors)
-			glColorPointer(4, GL_UNSIGNED_BYTE, 0, (void *)start);
-		if(sig.vertex.hasColors())
-			start += node.nvert * sig.vertex.attributes[VertexElement::COLOR].size();
+		if(options.draw_colors) {
+			if(sig.vertex.hasColors()) {
+				glColorPointer(color.number, vertexAttributeType(color), stride, colorOffset);
+			}
+		}
 #endif
 
 #if GL_ES || GL_CORE
-		glVertexAttribPointer(ATTRIB_VERTEX, 3, GL_FLOAT, GL_TRUE, 0, (void *)start);
+		glVertexAttribPointer(ATTRIB_VERTEX, coordinate.number, vertexAttributeType(coordinate),
+		                      GL_FALSE, stride, coordinateOffset);
 
-		start += node.nvert*sig.vertex.attributes[VertexElement::COORD].size();
+		if(options.draw_normals) {
+			if(sig.vertex.hasNormals()) {
+				glVertexAttribPointer(ATTRIB_NORMAL, normal.number, vertexAttributeType(normal),
+				                      normalizedAttribute(normal), stride, normalOffset);
+			}
+		}
 
-		if(options.draw_normals)
-			glVertexAttribPointer(ATTRIB_NORMAL, 3, GL_SHORT, GL_TRUE, 0, (void *)start);
-		if(sig.vertex.hasNormals())
-			start += node.nvert*sig.vertex.attributes[VertexElement::NORM].size();
+		if(options.draw_colors) {
+			if(sig.vertex.hasColors()) {
+				glVertexAttribPointer(ATTRIB_COLOR, color.number, vertexAttributeType(color),
+				                      normalizedAttribute(color), stride, colorOffset);
+			}
+		}
 
-		if(options.draw_colors)
-			glVertexAttribPointer(ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void *)start);
-		if(sig.vertex.hasColors())
-			start += node.nvert * sig.vertex.attributes[VertexElement::COLOR].size();
+		if(options.draw_texcoords) {
+			if(sig.vertex.hasTextures()) {
+				glVertexAttribPointer(ATTRIB_TEXTCOORD, texCoord.number, vertexAttributeType(texCoord),
+				                      normalizedAttribute(texCoord), stride, texCoordOffset);
+			}
+		}
 #endif
 
 		if(mode & PATCHES) {
@@ -255,6 +331,7 @@ void GLRenderer::endRender(const RenderOptions &options) {
 	glDisableVertexAttribArray(ATTRIB_VERTEX);
 	if(options.draw_normals) glDisableVertexAttribArray(ATTRIB_NORMAL);
 	if(options.draw_colors) glDisableVertexAttribArray(ATTRIB_COLOR);
+	if(options.draw_texcoords) glDisableVertexAttribArray(ATTRIB_TEXTCOORD);
 #endif
 
 	if(options.draw_textures)

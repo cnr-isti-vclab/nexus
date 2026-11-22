@@ -41,18 +41,18 @@ size_t nx_curl_write_callback( char *ptr, size_t size, size_t nmemb, void *userd
 
 
 void RamCache::loadNexus(Nexus *nexus) {
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 	qInfo() << "Loading Nexus index from" << QString::fromStdString(nexus->url);
 #endif
 	if(nexus->isStreaming()) {
 #ifdef USE_CURL
-		CurlData data(new char[sizeof(Header)], sizeof(Header));
-		int readed = getCurl(nexus->url.c_str(), data, 0, sizeof(Header));
+		CurlData data(new char[Header::serializedSize()], Header::serializedSize());
+		int readed = getCurl(nexus->url.c_str(), data, 0, Header::serializedSize());
 		if(readed == -1) {
 			cerr << "Failed loading: " << nexus->url << endl;
 			return;
 		}
-		assert(data.written == sizeof(Header));
+		assert(data.written == Header::serializedSize());
 		try {
 			nexus->loadHeader(data.buffer);
 			delete []data.buffer;
@@ -60,8 +60,12 @@ void RamCache::loadNexus(Nexus *nexus) {
 			qWarning() << "Failed to load Nexus header from"
 			           << QString::fromStdString(nexus->url) << ":" << error;
 			return;
+		} catch (const std::exception &error) {
+			qWarning() << "Failed to load Nexus header from"
+			           << QString::fromStdString(nexus->url) << ":" << error.what();
+			return;
 		}
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 		qInfo() << "Nexus header loaded from" << QString::fromStdString(nexus->url)
 		        << "with" << nexus->header.n_nodes << "nodes";
 #endif
@@ -71,7 +75,8 @@ void RamCache::loadNexus(Nexus *nexus) {
 		data.written = 0;
 		data.expected = index_size;
 
-		readed = getCurl(nexus->url.c_str(), data, sizeof(Header), index_size + sizeof(Header));
+		readed = getCurl(nexus->url.c_str(), data, Header::serializedSize(),
+		                 index_size + Header::serializedSize());
 		assert(data.written == data.expected);
 		if(readed == -1) {
 			cerr << "Failed loading: " << nexus->url << endl;
@@ -87,7 +92,7 @@ void RamCache::loadNexus(Nexus *nexus) {
 	} else {
 		try {
 			nexus->loadHeader();
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 			qInfo() << "Nexus header loaded from" << QString::fromStdString(nexus->url)
 			        << "with" << nexus->header.n_nodes << "nodes";
 #endif
@@ -102,18 +107,18 @@ void RamCache::loadNexus(Nexus *nexus) {
 			return;
 		}
 	}
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 	qInfo() << "Nexus index ready from" << QString::fromStdString(nexus->url);
 #endif
 }
 
 int RamCache::get(nx::Token *in) {
 	const QString url = QString::fromStdString(in->nexus->url);
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 	qInfo() << "Loading node" << in->node << "into RAM from" << url;
 #endif
 	auto reportResult = [&](int bytes) {
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 		if(bytes >= 0)
 			qInfo() << "RAM node ready" << in->node << "from" << url
 			        << "bytes:" << bytes;
@@ -138,26 +143,29 @@ int RamCache::get(nx::Token *in) {
 		int32_t readed = getCurl(in->nexus->url.c_str(), data, node.getBeginOffset(), node.getEndOffset());
 		assert(data.written == node.getSize());
 		if(signature.isCompressed()) {
-			int size = node.nvert * signature.vertex.size() + node.nface * signature.face.size();
-			char *buffer = nodedata.memory;
-			nodedata.memory = new char[size];
+			const std::size_t size = static_cast<std::size_t>(node.nvert) * signature.vertex.size() +
+			                         static_cast<std::size_t>(node.nface) * signature.face.size();
+			char *compressed = nodedata.memory;
+			nodedata.memory = new char[size]{};
 
 			if(signature.flags & Signature::CORTO) {
+				PlanarVertexData planar(signature.vertex, node.nvert);
 
-				crt::Decoder decoder(node.getSize(), (unsigned char *)buffer);
+				crt::Decoder decoder(node.getSize(), reinterpret_cast<unsigned char *>(compressed));
 
-				decoder.setPositions((float *)nodedata.coords());
+				decoder.setPositions(reinterpret_cast<float *>(planar.component(VertexElement::COORD)));
 				if(signature.vertex.hasNormals())
-					decoder.setNormals((int16_t *)nodedata.normals(signature, node.nvert));
+					decoder.setNormals(reinterpret_cast<int16_t *>(planar.component(VertexElement::NORM)));
 				if(signature.vertex.hasColors())
-					decoder.setColors((unsigned char *)nodedata.colors(signature, node.nvert));
+					decoder.setColors(reinterpret_cast<unsigned char *>(planar.component(VertexElement::COLOR)));
 				if(signature.vertex.hasTextures())
-					decoder.setUvs((float *)nodedata.texCoords(signature, node.nvert));
+					decoder.setUvs(reinterpret_cast<float *>(planar.component(VertexElement::TEX)));
 				if(node.nface)
 					decoder.setIndex(nodedata.faces(signature, node.nvert));
 				decoder.decode();
+				planar.interleave(nodedata.memory);
 			}
-			delete []buffer;
+			delete []compressed;
 		}
 		return reportResult(readed);
 #else

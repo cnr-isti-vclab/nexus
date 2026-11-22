@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
 	QString imatrix("");
 
 	bool compress = true;
+	bool legacy = false;
 
 	GetOpt opt(argc, argv);
 	QString help("ARGS specify a nexus file");
@@ -75,6 +76,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('A', "alha bits", "quantization of alpha channel, default 5", &alpha_bits);
 	opt.addOption('N', "normal bits", "quantization of normals, default 10", &norm_bits);
 	opt.addOption('T', "textures bits", "quantization of textures, default 0.25", &tex_step);
+	opt.addSwitch('g', "legacy format", "write version 2 with planar vertex data", &legacy);
 
 	opt.parse();
 
@@ -178,7 +180,7 @@ int main(int argc, char *argv[]) {
 
 			if(!output.endsWith(".nxs") && !output.endsWith(".nxz")) output += ".nxs";
 
-			extractor.save(output, signature);
+			extractor.save(output, signature, legacy);
 			//builder.copy(nexus, out, selection);
 
 		cout << "Saving to file " << qPrintable(output) << endl;

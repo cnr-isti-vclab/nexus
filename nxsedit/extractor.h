@@ -26,7 +26,7 @@ public:
 	void selectByTriangles(quint64 triangles);
 	void dropLevel();
 
-	void save(QString output, nx::Signature &signature);
+	void save(QString output, nx::Signature &signature, bool legacy = false);
 	void savePly(QString filename);
 	void saveStl(QString filename);
 
@@ -47,7 +47,8 @@ protected:
 	quint32 pad(quint32 s);
 	int sinkDistance(int node);
 
-	void compress(QFile &file, nx::Signature &signature, nx::Node &node, nx::NodeData &data, nx::Patch *patches);
+	void compress(QFile &file, nx::Signature &signature, nx::Node &node, nx::NodeData &data,
+	              const char *memory, nx::Patch *patches);
 	//counts vertices and faces in the selected mesh.
 	void countElements(quint64 &n_vertices, quint64 &n_faces);
 };

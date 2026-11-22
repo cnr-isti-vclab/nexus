@@ -66,7 +66,40 @@ public:
 
 class VertexElement: public Element {
 public:
-	enum Component { COORD = 0, NORM =1, COLOR = 2, TEX = 3, DATA0 = 4 };
+	enum Component { COORD = 0, NORM =1, COLOR = 2, TEX = 3, DATA0 = 4, DATA1 = 5 };
+	static constexpr unsigned int COMPONENT_COUNT = 8;
+
+	uint32_t component_offsets[COMPONENT_COUNT] = {};
+	uint32_t vertex_size = 0;
+
+	void setComponent(unsigned int c, Attribute attr) {
+		Element::setComponent(c, attr);
+		computeLayout();
+	}
+
+	void computeLayout() {
+		uint32_t offset = 0;
+		for(unsigned int c = 0; c < COMPONENT_COUNT; ++c) {
+			if(attributes[c].isNull()) {
+				component_offsets[c] = 0;
+				continue;
+			}
+			offset = (offset + 3u) & ~3u;
+			component_offsets[c] = offset;
+			offset += attributes[c].size();
+		}
+		vertex_size = (offset + 3u) & ~3u;
+	}
+
+	uint32_t componentOffset(unsigned int c) const {
+		assert(c < COMPONENT_COUNT);
+		return component_offsets[c];
+	}
+
+	int size() const { return static_cast<int>(vertex_size); }
+
+	void interleave(uint32_t count, const void *const *components, char *destination) const;
+	void deinterleave(uint32_t count, const char *source, void *const *components) const;
 
 	bool hasNormals() const { return !attributes[NORM].isNull(); }
 	bool hasColors() const { return !attributes[COLOR].isNull(); }

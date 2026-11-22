@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
 	bool info = false;
 	bool check = false;
 	bool compress = false;
+	bool legacy = false;
 	bool drop_level = false;
 	QString recompute_error;
 
@@ -99,6 +100,7 @@ int main(int argc, char *argv[]) {
 	opt.addOption('t', "triangles", "drop nodes until total number of triangles is < triangles  [requires -o]", &max_triangles);
 	opt.addOption('l', "level", "remove nodes above level <level>, (root level is zero)", &max_level);
 	opt.addSwitch('L', "last level", "remove nodes from last level [requires -o]", &drop_level);
+	opt.addSwitch('g', "legacy format", "write version 2 with planar vertex data", &legacy);
 
 	//compression and quantization options
 	opt.addSwitch('z', "compress", "compress patches", &compress);
@@ -284,7 +286,7 @@ int main(int argc, char *argv[]) {
 
 			if(!output.endsWith(".nxs") && !output.endsWith(".nxz")) output += ".nxs";
 
-			extractor.save(output, signature);
+			extractor.save(output, signature, legacy);
 			//builder.copy(nexus, out, selection);
 
 			/*        builder.create(out, signature);
@@ -455,7 +457,9 @@ void recomputeError(NexusData &nexus, QString error_method) {
 		nexus.loadRam(i);
 
 		NodeData &data = nexus.nodedata[i];
-		nx::Vector3f *coords = data.coords();
+		PlanarVertexData planar(nexus.header.signature.vertex, node.nvert);
+		planar.deinterleave(data.memory);
+		auto *coords = reinterpret_cast<nx::Vector3f *>(planar.component(VertexElement::COORD));
 		uint16_t *faces = data.faces(nexus.header.signature, node.nvert);
 
 		switch(method) {
@@ -519,9 +523,9 @@ void recomputeError(NexusData &nexus, QString error_method) {
 
 	nexus.nodes[nexus.header.n_nodes - 1].error = min_error;
 
-	nexus.file->seek(sizeof(Header));
+	nexus.file->seek(Header::serializedSize());
 	nexus.file->write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
-	//fseek(nexus.file, sizeof(Header), SEEK_SET);
+	//fseek(nexus.file, Header::serializedSize(), SEEK_SET);
 	//fwrite(nexus.nodes, sizeof(nx::Node), nexus.header.n_nodes, nexus.file);
 }
 
@@ -575,7 +579,9 @@ void checkSpheres(NexusData &nexus) {
 		nexus.loadRam(i);
 		NodeData &data = nexus.nodedata[i];
 
-		nx::Vector3f *coords = data.coords();
+		PlanarVertexData planar(nexus.header.signature.vertex, node.nvert);
+		planar.deinterleave(data.memory);
+		auto *coords = reinterpret_cast<nx::Vector3f *>(planar.component(VertexElement::COORD));
 		float new_radius = sphere.Radius();
 		for(int k = 0; k < node.nvert; k++) {
 			nx::Vector3f &p = coords[k];
@@ -595,8 +601,8 @@ void checkSpheres(NexusData &nexus) {
 	}
 
 	//write back nodes.
-	nexus.file->seek(sizeof(Header));
+	nexus.file->seek(Header::serializedSize());
 	nexus.file->write((char *)nexus.nodes, sizeof(nx::Node)* nexus.header.n_nodes);
-	//fseek(nexus.file, sizeof(Header), SEEK_SET);
+	//fseek(nexus.file, Header::serializedSize(), SEEK_SET);
 	//fwrite(nexus.nodes, sizeof(Node), n_nodes, nexus.file);
 }

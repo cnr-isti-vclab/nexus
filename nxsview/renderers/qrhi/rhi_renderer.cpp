@@ -23,6 +23,7 @@ for more details.
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <type_traits>
 #include <utility>
 
 #include <QByteArray>
@@ -69,6 +70,66 @@ QColor toQColor(const Rgba8 &color) {
 
 QMatrix4x4 textureMatrix(const float *matrix) {
 	return QMatrix4x4(matrix);
+}
+
+template<typename T>
+float vertexValue(const char *data, bool normalized) {
+	T value;
+	std::memcpy(&value, data, sizeof(value));
+	if constexpr(std::is_floating_point_v<T>) {
+		return static_cast<float>(value);
+	} else if constexpr(std::is_signed_v<T>) {
+		return normalized
+			? std::max(-1.0f, static_cast<float>(value) / std::numeric_limits<T>::max())
+			: static_cast<float>(value);
+	} else {
+		return normalized
+			? static_cast<float>(value) / std::numeric_limits<T>::max()
+			: static_cast<float>(value);
+	}
+}
+
+bool readVertexValue(const char *vertex, const VertexElement &format,
+                     unsigned int component, unsigned int element,
+                     bool normalized, float &value) {
+	const Attribute &attribute = format.attributes[component];
+	if(attribute.isNull() || attribute.type > Attribute::DOUBLE || element >= attribute.number)
+		return false;
+
+	const char *data = vertex + format.componentOffset(component);
+	switch(attribute.type) {
+	case Attribute::BYTE:
+		value = vertexValue<int8_t>(data + element, normalized);
+		return true;
+	case Attribute::UNSIGNED_BYTE:
+		value = vertexValue<uint8_t>(data + element, normalized);
+		return true;
+	case Attribute::SHORT:
+		value = vertexValue<int16_t>(data + element * sizeof(int16_t), normalized);
+		return true;
+	case Attribute::UNSIGNED_SHORT:
+		value = vertexValue<uint16_t>(data + element * sizeof(uint16_t), normalized);
+		return true;
+	case Attribute::INT:
+		value = vertexValue<int32_t>(data + element * sizeof(int32_t), normalized);
+		return true;
+	case Attribute::UNSIGNED_INT:
+		value = vertexValue<uint32_t>(data + element * sizeof(uint32_t), normalized);
+		return true;
+	case Attribute::FLOAT:
+		value = vertexValue<float>(data + element * sizeof(float), normalized);
+		return true;
+	case Attribute::DOUBLE:
+		value = vertexValue<double>(data + element * sizeof(double), normalized);
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool hasReadableAttribute(const Attribute &attribute, unsigned int components) {
+	return !attribute.isNull() && attribute.type <= Attribute::DOUBLE &&
+	       attribute.number >= components;
 }
 
 } // namespace
@@ -337,7 +398,7 @@ bool RhiRenderer::beginRhiFrame(QRhiCommandBuffer *cb, QRhiRenderTarget *target,
 	draws.clear();
 	frameBindings.clear();
 	uploadData.clear();
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 	pendingGeometryUploads.clear();
 #endif
 	warnedCacheOverflow = false;
@@ -404,6 +465,21 @@ bool RhiRenderer::ensureGeometry(Nexus *nexus, uint32_t nodeIndex, GeometryEntry
 	NodeData &nodeData = nexus->nodedata[nodeIndex];
 	assert(nodeData.memory);
 	Signature &signature = nexus->header.signature;
+	const VertexElement &vertexFormat = signature.vertex;
+	const Attribute &coordinate = vertexFormat.attributes[VertexElement::COORD];
+	if(!hasReadableAttribute(coordinate, 3)) {
+		qWarning() << "RHI vertex format has no 3-component coordinate attribute" << nodeIndex;
+		return false;
+	}
+	if((vertexFormat.hasNormals() &&
+	    !hasReadableAttribute(vertexFormat.attributes[VertexElement::NORM], 3)) ||
+	   (vertexFormat.hasColors() &&
+	    !hasReadableAttribute(vertexFormat.attributes[VertexElement::COLOR], 3)) ||
+	   (vertexFormat.hasTextures() &&
+	    !hasReadableAttribute(vertexFormat.attributes[VertexElement::TEX], 2))) {
+		qWarning() << "RHI vertex format has an attribute with too few components" << nodeIndex;
+		return false;
+	}
 
 	const std::size_t vertexBytes = static_cast<std::size_t>(node.nvert) * sizeof(Vertex);
 	const uint64_t indexCount64 = signature.face.hasIndex()
@@ -424,39 +500,33 @@ bool RhiRenderer::ensureGeometry(Nexus *nexus, uint32_t nodeIndex, GeometryEntry
 		allocation = gpuMemory->allocateGeometry(vertexBytes, indexBytes);
 
 	std::vector<Vertex> vertices(node.nvert);
-	Vector3f *positions = nodeData.coords();
-	Vector3s *normals = signature.vertex.hasNormals()
-		? nodeData.normals(signature, node.nvert) : nullptr;
-	Rgba8 *colors = signature.vertex.hasColors()
-		? nodeData.colors(signature, node.nvert) : nullptr;
-	Vector2f *texCoords = signature.vertex.hasTextures()
-		? nodeData.texCoords(signature, node.nvert) : nullptr;
+	const std::size_t sourceStride = vertexFormat.size();
 
 	for(uint32_t i = 0; i < node.nvert; ++i) {
 		Vertex &vertex = vertices[i];
-		vertex.position[0] = positions[i].x;
-		vertex.position[1] = positions[i].y;
-		vertex.position[2] = positions[i].z;
-		if(normals) {
-			vertex.normal[0] = normals[i].x / 32767.0f;
-			vertex.normal[1] = normals[i].y / 32767.0f;
-			vertex.normal[2] = normals[i].z / 32767.0f;
+		const char *sourceVertex = nodeData.memory + static_cast<std::size_t>(i) * sourceStride;
+		for(unsigned int c = 0; c < 3; ++c)
+			readVertexValue(sourceVertex, vertexFormat, VertexElement::COORD, c, false, vertex.position[c]);
+
+		if(vertexFormat.hasNormals()) {
+			for(unsigned int c = 0; c < 3; ++c)
+				readVertexValue(sourceVertex, vertexFormat, VertexElement::NORM, c, true, vertex.normal[c]);
 		} else {
 			vertex.normal[0] = 0;
 			vertex.normal[1] = 0;
 			vertex.normal[2] = 1;
 		}
-		if(colors) {
-			vertex.color[0] = colors[i].r / 255.0f;
-			vertex.color[1] = colors[i].g / 255.0f;
-			vertex.color[2] = colors[i].b / 255.0f;
+		if(vertexFormat.hasColors()) {
+			for(unsigned int c = 0; c < 3; ++c)
+				readVertexValue(sourceVertex, vertexFormat, VertexElement::COLOR, c, true, vertex.color[c]);
 			vertex.color[3] = 1.0f;
+			readVertexValue(sourceVertex, vertexFormat, VertexElement::COLOR, 3, true, vertex.color[3]);
 		} else {
 			vertex.color[0] = vertex.color[1] = vertex.color[2] = vertex.color[3] = 1;
 		}
-		if(texCoords) {
-			vertex.texCoord[0] = texCoords[i].u;
-			vertex.texCoord[1] = texCoords[i].v;
+		if(vertexFormat.hasTextures()) {
+			for(unsigned int c = 0; c < 2; ++c)
+				readVertexValue(sourceVertex, vertexFormat, VertexElement::TEX, c, true, vertex.texCoord[c]);
 		} else {
 			vertex.texCoord[0] = vertex.texCoord[1] = 0;
 		}
@@ -519,7 +589,7 @@ bool RhiRenderer::ensureGeometry(Nexus *nexus, uint32_t nodeIndex, GeometryEntry
 
 	auto inserted = geometry.emplace(key, std::move(newEntry));
 	entry = &inserted.first->second;
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 	pendingGeometryUploads.emplace_back(nexus, nodeIndex);
 	qInfo() << "QRhi geometry upload queued" << nodeIndex << "from"
 	        << QString::fromStdString(nexus->url)
@@ -738,7 +808,7 @@ void RhiRenderer::finishRhiFrame(const QColor &clearColor) {
 		commandBuffer->resourceUpdate(resourceUpdates);
 		resourceUpdates = nullptr;
 		checkRhiErrors("resourceUpdate");
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 		for(const auto &[nexus, nodeIndex] : pendingGeometryUploads) {
 			qInfo() << "QRhi geometry upload submitted" << nodeIndex << "from"
 			        << QString::fromStdString(nexus->url);

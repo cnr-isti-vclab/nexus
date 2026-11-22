@@ -54,6 +54,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 
 	// Resume option
 	parser.addOption({"resume", "Resume build from existing levels.json in current directory"});
+	parser.addOption({"legacy", "Write version 2 Nexus files with planar vertex data"});
 
 	// Add positional arguments
 	parser.addPositionalArgument("inputs", "Input mesh file(s)", "<input files>");
@@ -179,6 +180,7 @@ bool BuildParameters::parse(int argc, char* argv[]) {
 
 	// Resume flag
 	resume = parser.isSet("resume");
+	legacy = parser.isSet("legacy");
 
 	if (inputs.isEmpty()) {
 		std::cerr << "Error: no input files specified\n";
@@ -261,6 +263,7 @@ void BuildParameters::printUsage() {
 	std::cout << "  -c, --colors              Save vertex colors\n";
 	std::cout << "      --no-colors           Don't store colors\n";
 	std::cout << "      --no-texcoords        Don't store texture coordinates\n";
+	std::cout << "      --legacy              Write version 2 with planar vertex data\n";
 	std::cout << "  -d, --deepzoom            Save each node to separate file\n\n";
 
 	std::cout << "Transform options:\n";
@@ -303,6 +306,7 @@ void BuildParameters::print() const {
 	nx::log << " (quality: " << texture_quality << ")\n";
 
 	if (use_greedy) nx::log << "  Using greedy clustering\n";
+	if (legacy) nx::log << "  Writing legacy version 2 planar vertex data\n";
 	nx::log << "  Threads: " << num_threads << "\n";
 	nx::log << "  Translate: (" << translate.x << ", " << translate.y << ", " << translate.z << ")\n";
 	nx::log << "  Scale: (" << scale.x << ", " << scale.y << ", " << scale.z << ")\n";

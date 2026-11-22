@@ -30,9 +30,31 @@ for more details.
 //#endif
 
 #include <iostream>
+#include <stdexcept>
 using namespace std;
 //using namespace vcg;
 using namespace nx;
+
+namespace {
+
+void validateHeader(const nx::Header &header) {
+	if(header.magic != NEXUS_FORMAT_MAGIC &&
+	   header.magic != NEXUS_PREVIOUS_FORMAT_MAGIC &&
+	   header.magic != NEXUS_LEGACY_MAGIC)
+		throw std::runtime_error("could not read header, probably not a nexus file");
+	if(header.version < NEXUS_FORMAT_VERSION)
+		throw std::runtime_error("Nexus file format version " + std::to_string(header.version) +
+		                         " is older than the supported version " +
+		                         std::to_string(NEXUS_FORMAT_VERSION));
+	if(header.version > NEXUS_FORMAT_VERSION)
+		throw std::runtime_error("Nexus file format version " + std::to_string(header.version) +
+		                         " is newer than the supported version " +
+		                         std::to_string(NEXUS_FORMAT_VERSION));
+	if(header.magic != NEXUS_FORMAT_MAGIC)
+		throw std::runtime_error("Nexus file uses a legacy format signature");
+}
+
+} // namespace
 
 uint16_t *NodeData::faces(Signature &sig, uint32_t nvert, char *mem) {
 	return (uint16_t  *)(mem + nvert*sig.vertex.size());
@@ -77,18 +99,17 @@ void NexusData::flush() {
 }
 
 void NexusData::loadHeader() {
-	//fread(&header, sizeof(Header), 1, file);
-	int readed = file->read((char *)&header, sizeof(Header));
-	if (readed != sizeof(Header))
-		throw std::string ("could not read header, file too short");
-	if(header.magic != 0x4E787320)
-		throw std::string("could not read header, probably not a nexus file");
+	char buffer[Header::serializedSize()];
+	const int readed = file->read(buffer, Header::serializedSize());
+	if(readed != static_cast<int>(Header::serializedSize()))
+		throw std::runtime_error("could not read header, file too short");
+	header.deserialize(buffer);
+	validateHeader(header);
 }
 
 void NexusData::loadHeader(char *buffer) {
-	header = *(Header *)buffer;
-	if(header.magic != 0x4E787320)
-		throw std::string("could not read header, probably not a nexus file");
+	header.deserialize(buffer);
+	validateHeader(header);
 }
 
 void NexusData::countRoots() {
@@ -188,59 +209,55 @@ uint64_t NexusData::loadRam(uint32_t n) {
 			assert(r == (int64_t)compressed_size);
 		}
 
-		d.memory = new char[size];
+		d.memory = new char[size]{};
 
 		if(sign.flags & Signature::CORTO) {
+			PlanarVertexData planar(sign.vertex, node.nvert);
 
 			crt::Decoder decoder(compressed_size, (unsigned char *)buffer);
 
-			decoder.setPositions((float *)d.coords());
+			decoder.setPositions(reinterpret_cast<float *>(planar.component(VertexElement::COORD)));
 			if(sign.vertex.hasNormals())
-				decoder.setNormals((int16_t *)d.normals(sign, node.nvert));
+				decoder.setNormals(reinterpret_cast<int16_t *>(planar.component(VertexElement::NORM)));
 			if(sign.vertex.hasColors())
-				decoder.setColors((unsigned char *)d.colors(sign, node.nvert));
+				decoder.setColors(reinterpret_cast<unsigned char *>(planar.component(VertexElement::COLOR)));
 			if(sign.vertex.hasTextures())
-				decoder.setUvs((float *)d.texCoords(sign, node.nvert));
+				decoder.setUvs(reinterpret_cast<float *>(planar.component(VertexElement::TEX)));
 			if(node.nface)
 				decoder.setIndex(d.faces(sign, node.nvert));
 
 			decoder.decode();
+
+			//Shuffle every attribute with the point order used by CORTO.
+			if(!sign.face.hasIndex()) {
+				std::vector<int> order(node.nvert);
+				for(int i = 0; i < node.nvert; i++)
+					order[i] = i;
+
+				unsigned seed = 0;
+				std::shuffle(order.begin(), order.end(), std::default_random_engine(seed));
+
+				for(unsigned int c = 0; c < VertexElement::COMPONENT_COUNT; ++c) {
+					const std::size_t bytes = sign.vertex.attributes[c].size();
+					if(!bytes)
+						continue;
+					std::vector<char> shuffled(static_cast<std::size_t>(node.nvert) * bytes);
+					char *component = planar.component(c);
+					for(uint32_t i = 0; i < node.nvert; ++i)
+						memcpy(shuffled.data() + static_cast<std::size_t>(i) * bytes,
+						       component + static_cast<std::size_t>(order[i]) * bytes,
+						       bytes);
+					memcpy(component, shuffled.data(), shuffled.size());
+				}
+			}
+
+			planar.interleave(d.memory);
 		}
 		if(sign.isDeepzoom()) {
 			std::lock_guard<std::mutex> file_locker(file_mutex);
 			file->dropDZNode(buffer);
 		} else {
 			delete []buffer;
-		}
-
-		//Shuffle points in compressed point clouds
-		if(!sign.face.hasIndex()) {
-			std::vector<int> order(node.nvert);
-			for(int i = 0; i < node.nvert; i++)
-				order[i] = i;
-
-			unsigned seed = 0;
-			std::shuffle (order.begin(), order.end(), std::default_random_engine(seed));
-			std::vector<Vector3f> coords(node.nvert);
-			for(int i =0; i < node.nvert; i++)
-				coords[i] = d.coords()[order[i]];
-			memcpy(d.coords(), coords.data(), sizeof(Vector3f)*node.nvert);
-
-			if(sign.vertex.hasNormals()) {
-				nx::Vector3s *n = d.normals(sign, node.nvert);
-				std::vector<nx::Vector3s> normals(node.nvert);
-				for(int i =0; i < node.nvert; i++)
-					normals[i] = n[order[i]];
-				memcpy(n, normals.data(), sizeof(nx::Vector3s)*node.nvert);
-			}
-
-			if(sign.vertex.hasColors()) {
-				Rgba8 *c = d.colors(sign, node.nvert);
-				std::vector<Rgba8> colors(node.nvert);
-				for(int i =0; i < node.nvert; i++)
-					colors[i] = c[order[i]];
-				memcpy(c, colors.data(), sizeof(Rgba8)*node.nvert);
-			}
 		}
 	}
 

@@ -9,6 +9,7 @@ add_library(nexus
 	core/nexusdata.cpp
 	core/nodemesh.cpp
 	core/qtnexusfile.cpp
+	core/signature.cpp
 	core/traversal.cpp
 	core/virtualarray.cpp
 )

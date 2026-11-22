@@ -58,6 +58,7 @@ public:
 	bool no_texcoords = false;       // Don't store texture coordinates
 
 	bool deepzoom = false;           // Save each node to separate file
+	bool legacy = false;             // Write version 2 planar vertex data
 
 	// Transform options
 	Vector3d translate = {0.0, 0.0, 0.0}; // New origin

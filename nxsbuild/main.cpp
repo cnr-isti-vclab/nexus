@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 		hierarchy.build_hierarchy(params);
 
 		nx::ExportNxs exporter;
-		exporter.export_nxs(hierarchy, params.output.toStdString());
+		exporter.export_nxs(hierarchy, params.output.toStdString(), params.legacy);
 
 	} catch (const std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;

@@ -17,6 +17,8 @@ for more details.
 */
 #ifndef NX_DAG_H
 #define NX_DAG_H
+#include <cstring>
+
 #ifdef _MSC_VER
 
 typedef __int16 int16_t;
@@ -37,10 +39,32 @@ typedef unsigned __int64 uint64_t;
 namespace nx {
 
 #define NEXUS_PADDING 256
-// Magic is: "Nxs "
-struct Header {
+constexpr uint32_t NEXUS_FORMAT_VERSION = 4;
+constexpr uint32_t NEXUS_FORMAT_MAGIC = 0x4E787334; // "Nxs4"
+constexpr uint32_t NEXUS_LEGACY_FORMAT_VERSION = 2;
+constexpr uint32_t NEXUS_PREVIOUS_FORMAT_MAGIC = 0x4E787333; // "Nxs3"
+constexpr uint32_t NEXUS_LEGACY_MAGIC = 0x4E787320; // "Nxs "
 
-	Header(): magic(0x4E787320), version(0), nvert(0), nface(0), n_nodes(0), n_patches(0), n_textures(0) {}
+struct Header {
+	struct SerializedSignature {
+		Attribute vertex_attributes[8];
+		Attribute face_attributes[8];
+		uint32_t flags;
+	};
+
+	struct Serialized {
+		uint32_t magic;
+		uint32_t version;
+		uint64_t nvert;
+		uint64_t nface;
+		SerializedSignature signature;
+		uint32_t n_nodes;
+		uint32_t n_patches;
+		uint32_t n_textures;
+		Sphere sphere;
+	};
+
+	Header(): magic(NEXUS_FORMAT_MAGIC), version(NEXUS_FORMAT_VERSION), nvert(0), nface(0), n_nodes(0), n_patches(0), n_textures(0) {}
 	uint32_t magic;
 	uint32_t version;
 	uint64_t nvert;            //total number of vertices (at full resolution)
@@ -50,7 +74,49 @@ struct Header {
 	uint32_t n_patches;        //number of links (patches) in the dag
 	uint32_t n_textures;       //number of textures
 	Sphere sphere;             //bounding sphere; same 16-byte on-disk layout
+
+	static constexpr size_t serializedSize() { return sizeof(Serialized); }
+
+	void serialize(char *buffer) const {
+		Serialized disk{};
+		disk.magic = magic;
+		disk.version = version;
+		disk.nvert = nvert;
+		disk.nface = nface;
+		for(unsigned int i = 0; i < 8; ++i) {
+			disk.signature.vertex_attributes[i] = signature.vertex.attributes[i];
+			disk.signature.face_attributes[i] = signature.face.attributes[i];
+		}
+		disk.signature.flags = signature.flags;
+		disk.n_nodes = n_nodes;
+		disk.n_patches = n_patches;
+		disk.n_textures = n_textures;
+		disk.sphere = sphere;
+		std::memcpy(buffer, &disk, sizeof(disk));
+	}
+
+	void deserialize(const char *buffer) {
+		Serialized disk;
+		std::memcpy(&disk, buffer, sizeof(disk));
+		magic = disk.magic;
+		version = disk.version;
+		nvert = disk.nvert;
+		nface = disk.nface;
+		for(unsigned int i = 0; i < 8; ++i) {
+			signature.vertex.attributes[i] = disk.signature.vertex_attributes[i];
+			signature.face.attributes[i] = disk.signature.face_attributes[i];
+		}
+		signature.vertex.computeLayout();
+		signature.flags = disk.signature.flags;
+		n_nodes = disk.n_nodes;
+		n_patches = disk.n_patches;
+		n_textures = disk.n_textures;
+		sphere = disk.sphere;
+	}
 };
+
+static_assert(sizeof(Header::SerializedSignature) == 36);
+static_assert(sizeof(Header::Serialized) == 88);
 
 struct Node {
 	uint32_t offset;           //offset on disk (could be moved), granularity NEXUS_PADDING) //use the function

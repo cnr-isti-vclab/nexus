@@ -30,15 +30,16 @@ For our stub/first version:
 
 namespace nx {
 
-void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
+void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path, bool writeLegacy) {
+	legacy = writeLegacy;
 
 	out = fopen(path.c_str(), "wb");
 	if (!out) {
 		throw std::runtime_error("ExportNxs: failed to open output file: " + path);
-
 	}
 
-	header.version = 2;
+	header.magic = legacy ? NEXUS_LEGACY_MAGIC : NEXUS_FORMAT_MAGIC;
+	header.version = legacy ? NEXUS_LEGACY_FORMAT_VERSION : NEXUS_FORMAT_VERSION;
 
 	Signature &signature = header.signature;
 	signature.vertex.setComponent(VertexElement::COORD, Attribute(Attribute::FLOAT, 3));
@@ -48,10 +49,9 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	/*if(components & COLORS)
 		signature.vertex.setComponent(VertexElement::COLOR, Attribute(Attribute::BYTE, 4)); */
 	if(hierarchy.levels[0]->has_textures)
-		signature.vertex.setComponent(FaceElement::TEX, Attribute(Attribute::FLOAT, 2));
+		signature.vertex.setComponent(VertexElement::TEX, Attribute(Attribute::FLOAT, 2));
 
 	header.nvert = header.nface = header.n_nodes = header.n_patches = header.n_textures = 0;
-	header.version = 2;
 	nodes.clear();
 	patches.clear();
 	textures.clear();
@@ -74,7 +74,8 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	header.n_nodes++; //sink
 
 	//temporarily write nodes, we will come back after we have the numbers.
-	size_t index_size = sizeof(Header) + sizeof(Node)*header.n_nodes + sizeof(Patch)*header.n_patches + sizeof(Texture)*header.n_textures;
+	const size_t header_size = Header::serializedSize();
+	size_t index_size = header_size + sizeof(Node)*header.n_nodes + sizeof(Patch)*header.n_patches + sizeof(Texture)*header.n_textures;
 	pad(index_size);
 	fseek(out, index_size, SEEK_SET);
 
@@ -129,7 +130,9 @@ void ExportNxs::export_nxs(MeshHierarchy& hierarchy, const std::string& path) {
 	header.sphere = nx::Sphere(center, nodes[0].tight_radius);
 
 	fseek(out, 0, SEEK_SET);
-	fwrite((char *)&header, sizeof(Header), 1, out);
+	char serialized_header[Header::serializedSize()];
+	header.serialize(serialized_header);
+	fwrite(serialized_header, 1, sizeof(serialized_header), out);
 	fwrite((char*)&(nodes[0]), 1, sizeof(Node)*nodes.size(), out);
 	fwrite((char*)&(patches[0]), 1, sizeof(Patch)*patches.size(), out);
 	if(!textures.empty())
@@ -263,19 +266,11 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 		}
 	}
 	size_t n_wedges = wedges_ids.size();
-	size_t size = n_triangles*header.signature.face.size() +
-				  n_wedges*header.signature.vertex.size();
-	pad(size);
-	char *buffer = new char[size];
-
-	Vector3f *vertices = (Vector3f *)buffer;
-	Vector2f *texcoords = nullptr;
-	int16_t *normals = (int16_t *)(buffer + 12*n_wedges);
-
-	if(mesh.has_textures) {
-		texcoords = (Vector2f *)(buffer + 12*n_wedges);
-		normals = (int16_t *)(buffer + 20*n_wedges);
-	}
+	std::vector<Vector3f> vertices(n_wedges);
+	std::vector<Vector3s> normals(n_wedges);
+	std::vector<Vector2f> texcoords;
+	if(header.signature.vertex.hasTextures())
+		texcoords.resize(n_wedges);
 
 	//write the wedges
 	for(const auto [old_index, new_index]: wedges_ids) {
@@ -285,15 +280,52 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 		if(mesh.has_normals && wedge.n != NONE) {
 			n = mesh.normals[wedge.n];
 		}
-		normals[new_index*3 + 0] = int16_t(n.x*32767);
-		normals[new_index*3 + 1] = int16_t(n.y*32767);
-		normals[new_index*3 + 2] = int16_t(n.z*32767);
-		if(mesh.has_textures) {
+		normals[new_index] = {
+			int16_t(n.x*32767),
+			int16_t(n.y*32767),
+			int16_t(n.z*32767)
+		};
+		if(header.signature.vertex.hasTextures()) {
 			texcoords[new_index] = mesh.texcoords[wedge.t];
 		}
 	}
 
-	uint16_t *triangles = (uint16_t *)(buffer + header.signature.vertex.size()*n_wedges);
+	const size_t vertex_stride = legacy
+		? static_cast<const Element &>(header.signature.vertex).size()
+		: header.signature.vertex.size();
+	const size_t vertex_bytes = n_wedges * vertex_stride;
+	size_t geometry_size = vertex_bytes + n_triangles * header.signature.face.size();
+	pad(geometry_size);
+	std::vector<char> buffer(geometry_size, 0);
+
+	const void *components[VertexElement::COMPONENT_COUNT] = {};
+	components[VertexElement::COORD] = vertices.data();
+	components[VertexElement::NORM] = normals.data();
+	if(header.signature.vertex.hasTextures())
+		components[VertexElement::TEX] = texcoords.data();
+	if(legacy) {
+		const unsigned int component_order[VertexElement::COMPONENT_COUNT] = {
+			VertexElement::COORD, VertexElement::TEX, VertexElement::NORM, VertexElement::COLOR,
+			VertexElement::DATA0, VertexElement::DATA0 + 1, VertexElement::DATA0 + 2, VertexElement::DATA0 + 3
+		};
+		size_t planar_offset = 0;
+		for(unsigned int component : component_order) {
+			const size_t component_size = header.signature.vertex.attributes[component].size();
+			if(!component_size)
+				continue;
+			if(!components[component])
+				throw std::runtime_error("ExportNxs: missing planar vertex component");
+			const size_t bytes = n_wedges * component_size;
+			std::memcpy(buffer.data() + planar_offset, components[component], bytes);
+			planar_offset += bytes;
+		}
+		if(planar_offset != vertex_bytes)
+			throw std::runtime_error("ExportNxs: unsupported legacy vertex layout");
+	} else {
+		header.signature.vertex.interleave(static_cast<uint32_t>(n_wedges), components, buffer.data());
+	}
+
+	uint16_t *triangles = reinterpret_cast<uint16_t *>(buffer.data() + vertex_bytes);
 	int tri_count = 0;
 	for(Index c = 0; c < micronode.cluster_ids.size(); c++) {
 		const Cluster &cluster = mesh.clusters[micronode.cluster_ids[c]];
@@ -331,7 +363,7 @@ void ExportNxs::exportMicronode(int level, std::uint32_t micronode_id, MappedMes
 
 	nodes.push_back(node);
 
-	fwrite(buffer, 1, size, out);
+	fwrite(buffer.data(), 1, geometry_size, out);
 	//TODO we might want to optimize the node by cache coherence (or compress!)
 }
 

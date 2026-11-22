@@ -190,7 +190,7 @@ private:
 
 	std::unordered_map<GeometryKey, GeometryEntry, GeometryKeyHash> geometry;
 	std::unordered_map<TextureKey, TextureEntry, TextureKeyHash> textures;
-#if defined(NXSVIEW_DEBUG_NODE_LOADING) && NXSVIEW_DEBUG_NODE_LOADING
+#ifdef NXSVIEW_DEBUG_NODE_LOADING
 	std::vector<std::pair<Nexus *, uint32_t>> pendingGeometryUploads;
 #endif
 	std::vector<DrawCall> draws;

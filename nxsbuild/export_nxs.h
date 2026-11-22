@@ -17,11 +17,12 @@ class MicroNode;
 class ExportNxs {
 public:
 	// Export mesh hierarchy to the given path. Returns true on success.
-	void export_nxs(MeshHierarchy& hierarchy, const std::string& path);
+	void export_nxs(MeshHierarchy& hierarchy, const std::string& path, bool legacy = false);
 private:
 
 	FILE *out = nullptr;
 	Header header;
+	bool legacy = false;
 	std::vector<Node> nodes;
 	std::vector<Patch> patches;
 	std::vector<Texture> textures;
