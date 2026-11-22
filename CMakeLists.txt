@@ -2,6 +2,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(nexus)
 
+if(MSVC)
+	add_definitions(-D_USE_MATH_DEFINES)
+endif()
+
 option(BUILD_NXS_BUILD "" ON)
 option(BUILD_NXS_EDIT "" ON)
 option(BUILD_NXS_VIEW "" ON)

@@ -82,6 +82,19 @@ add_executable(nxsbuild ${SOURCES} ${HEADERS}
 find_package(Qt6 COMPONENTS Core Gui REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
+
+set(METIS_ROOT "$ENV{METIS_ROOT}")
+if(METIS_ROOT)
+	find_path(METIS_INCLUDE_DIR NAMES metis.h HINTS "${METIS_ROOT}/include")
+	find_library(METIS_LIBRARY NAMES metis HINTS "${METIS_ROOT}/lib")
+else()
+	find_path(METIS_INCLUDE_DIR NAMES metis.h)
+	find_library(METIS_LIBRARY NAMES metis)
+endif()
+if(NOT METIS_INCLUDE_DIR OR NOT METIS_LIBRARY)
+	message(FATAL_ERROR "METIS headers and library were not found.")
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -100,6 +113,7 @@ target_include_directories(nxsbuild PRIVATE
 	"${VCGDIR}/eigenlib"
 	/usr/include/eigen3
 	/home/ponchio/local/include
+	"${METIS_INCLUDE_DIR}"
 	${JPEG_INCLUDE_DIRS}
 	${PNG_INCLUDE_DIRS}
 )
@@ -107,7 +121,7 @@ target_include_directories(nxsbuild PRIVATE
 target_link_directories(nxsbuild PRIVATE /home/ponchio/local/lib)
 target_link_libraries(nxsbuild PRIVATE
 	nexus
-	metis
+	"${METIS_LIBRARY}"
 	corto
 	Qt6::Core
 	Qt6::Gui

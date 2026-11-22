@@ -107,6 +107,7 @@ runs:
       shell: bash
       run: |
         brew install tbb metis draco
+        echo "METIS_ROOT=$(brew --prefix metis)" >> "$GITHUB_ENV"
         echo "TBB_DIR=$(brew --prefix tbb)/lib/cmake/TBB" >> "$GITHUB_ENV"
     - name: Install Qt macOS arm
       shell: bash

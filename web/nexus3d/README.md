@@ -24,6 +24,8 @@ npx webpack --mode development
 
 Run the dev server:
 
+The development server requires Node.js 22.15 or newer.
+
 ```bash
 npm run start
 ```
@@ -88,7 +90,8 @@ You can render multiple instances of the same mesh, just using the reference to 
 
 ## Notes
 
-- This library is compatible with three.js v0.181.x (see `package.json`).
+- This library is compatible with three.js v0.186.x (see `package.json`).
+- Supports planar and interleaved NXS files, normalizing node data to interleaved vertex buffers in RAM.
 
 ## Roadmap / TODO
 
