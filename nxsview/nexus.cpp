@@ -44,8 +44,8 @@ void _glCheckError(const char *file, int line) {
 		std::cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<std::endl;
 		err=glGetError();
 	}
-}
 #endif
+}
 
 
 Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stream(false) {
