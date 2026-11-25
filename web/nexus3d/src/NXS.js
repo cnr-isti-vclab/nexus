@@ -3,6 +3,21 @@ import { Traversal } from './Traversal.js'
 import { Mesh } from './Mesh.js'
 import { Cache } from './Cache.js'
 
+function extractVertexAttribute(vertices, count, vertex, attribute, Type) {
+    if(!attribute) return null;
+    if(attribute.byteSize !== Type.BYTES_PER_ELEMENT * attribute.size)
+        throw new Error("Unsupported vertex attribute type");
+
+    const result = new Type(count * attribute.size);
+    const source = new Uint8Array(vertices.buffer, vertices.byteOffset, vertices.byteLength);
+    const destination = new Uint8Array(result.buffer);
+    for(let i = 0; i < count; ++i) {
+        const offset = i * vertex.stride + attribute.offset;
+        destination.set(source.subarray(offset, offset + attribute.byteSize), i * attribute.byteSize);
+    }
+    return result;
+}
+
 function NXS(url, onLoad, onUpdate, material) {
 
 	THREE.Object3D.call( this );
@@ -227,15 +242,27 @@ NXS.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
     },
 
     createNodeGeometry: function(id, data) {
+        const mesh = this.mesh;
+        const count = mesh.nvertices[id];
         let geometry = new THREE.BufferGeometry()
-        geometry.setAttribute( 'position', new THREE.BufferAttribute(data.position, 3 ) );
-        if(data.normal) {
-            geometry.setAttribute( 'normal', new THREE.BufferAttribute(data.normal, 3, true ) );
+        const position = extractVertexAttribute(data.vertices, count, mesh.vertex,
+            mesh.vertex.position, Float32Array);
+        geometry.setAttribute('position', new THREE.BufferAttribute(position, mesh.vertex.position.size));
+        if(mesh.vertex.normal) {
+            const normal = extractVertexAttribute(data.vertices, count, mesh.vertex,
+                mesh.vertex.normal, Int16Array);
+            geometry.setAttribute('normal', new THREE.BufferAttribute(normal, mesh.vertex.normal.size, true));
         }
-        if(data.color)
-            geometry.setAttribute( 'color', new THREE.BufferAttribute(data.color, 4, true ) );
-        if(data.uv)
-            geometry.setAttribute( 'uv', new THREE.BufferAttribute(data.uv, 2 ) );
+        if(mesh.vertex.color) {
+            const color = extractVertexAttribute(data.vertices, count, mesh.vertex,
+                mesh.vertex.color, Uint8Array);
+            geometry.setAttribute('color', new THREE.BufferAttribute(color, mesh.vertex.color.size, true));
+        }
+        if(mesh.vertex.texCoord) {
+            const uv = extractVertexAttribute(data.vertices, count, mesh.vertex,
+                mesh.vertex.texCoord, Float32Array);
+            geometry.setAttribute('uv', new THREE.BufferAttribute(uv, mesh.vertex.texCoord.size));
+        }
         geometry.setIndex(new THREE.BufferAttribute( data.index, 1 ) );
 
         //if material include maps we need a different material for each

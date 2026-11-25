@@ -6,6 +6,11 @@ let Debug = { verbose: true };
 let glP = WebGLRenderingContext.prototype;
 let attrGlMap = [glP.NONE, glP.BYTE, glP.UNSIGNED_BYTE, glP.SHORT, glP.UNSIGNED_SHORT, glP.INT, glP.UNSIGNED_INT, glP.FLOAT, glP.DOUBLE];
 let attrSizeMap = [0, 1, 1, 2, 2, 4, 4, 4, 8];
+const formatVersions = new Map([
+    [0x4E787320, 2], // Legacy Nxs magic
+    [0x4E787333, 3], // Nxs3
+    [0x4E787334, 4]  // Nxs4
+]);
 
 //All addresses in the file are n*256 so,  256 * 2^32 is the max size of a Nxs file 
 var padding = 256;
@@ -47,6 +52,8 @@ Mesh.prototype = {
                     mesh[i] = header[i];
                 mesh.vertex = mesh.signature.vertex;
                 mesh.face = mesh.signature.face;
+                mesh.interleaved = !!(mesh.signature.flags & 0x10);
+                mesh.sourceVertexSize = mesh.interleaved ? mesh.vertex.stride : mesh.vertex.planarSize;
                 mesh.renderMode = mesh.face.index?["FILL", "POINT"]:["POINT"];
                 mesh.compressed = (mesh.signature.flags & (2 | 4)); //meco or corto
                 mesh.meco = (mesh.signature.flags & 2);
@@ -153,7 +160,6 @@ Mesh.prototype = {
             view.offset += 16*4; //skip proj matrix
         }
 
-        t.vsize = 12 + (t.vertex.normal?6:0) + (t.vertex.color?4:0) + (t.vertex.texCoord?8:0);
         t.fsize = 6;
 
         //problem: I have no idea how much space a texture is needed in GPU. 10x factor assumed.
@@ -165,7 +171,7 @@ Mesh.prototype = {
                 tmptexsize[i] += t.textures[tex+1] - t.textures[tex];
                 tmptexcount[i]++;
             }
-            t.nsize[i] = t.vsize*t.nvertices[i] + t.fsize*t.nfaces[i];
+            t.nsize[i] = t.vertex.stride*t.nvertices[i] + t.fsize*t.nfaces[i];
         }
         for(let i = 0; i < n-1; i++) {
             t.nsize[i] += 10*tmptexsize[i]/tmptexcount[i];
@@ -187,7 +193,7 @@ Mesh.prototype = {
         a.size = view.getUint8(view.offset++, true);
         a.glType = attrGlMap[a.type];
         a.normalized = a.type < 7;
-        a.stride = attrSizeMap[a.type]*a.size;
+        a.byteSize = attrSizeMap[a.type]*a.size;
         if(a.size == 0) return null;
         return a;
     },
@@ -201,12 +207,33 @@ Mesh.prototype = {
 
     importVertex: function(view) {	//enum POSITION, NORMAL, COLOR, TEXCOORD, DATA0
         const e = this.importElement(view);
+        let planarSize = 0;
+        for(const c of [0, 3, 1, 2, 4, 5, 6, 7]) {
+            if(e[c]) {
+                e[c].planarOffset = planarSize;
+                planarSize += e[c].byteSize;
+            }
+        }
+
+        let offset = 0;
+        for(const attr of e) {
+            if(!attr) continue;
+            offset = (offset + 3) & ~3;
+            attr.offset = offset;
+            offset += attr.byteSize;
+        }
+
         let color = e[2];
         if(color) {
             color.type = 2; //unsigned byte
             color.glType = attrGlMap[2];
         }
-        return { position: e[0], normal: e[1], color: e[2], texCoord: e[3], data: e[4] };
+        return {
+            position: e[0], normal: e[1], color: e[2], texCoord: e[3], data: e[4],
+            attributes: e,
+            stride: (offset + 3) & ~3,
+            planarSize
+        };
     },
 
     //enum INDEX, NORMAL, COLOR, TEXCOORD, DATA0
@@ -230,9 +257,9 @@ Mesh.prototype = {
 
     importHeader: function(view) {
         const magic = getUint32(view);
-        if(magic != 0x4E787320) return null;
-        let h = {};
-        h.version = getUint32(view);
+        const version = getUint32(view);
+        if(formatVersions.get(magic) !== version) return null;
+        let h = { version };
         h.verticesCount = getUint64(view);
         h.facesCount = getUint64(view);
         h.signature = this.importSignature(view);

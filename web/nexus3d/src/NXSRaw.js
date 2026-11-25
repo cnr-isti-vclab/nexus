@@ -218,30 +218,30 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
             gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo[id]);
             //if(t.mode != "POINT")
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo[id]);
-    
-            gl.vertexAttribPointer(attr.position, 3, gl.FLOAT, false, 12, 0);
+
+            const vertex = mesh.vertex;
+            gl.vertexAttribPointer(attr.position, vertex.position.size, vertex.position.glType,
+                vertex.position.normalized, vertex.stride, vertex.position.offset);
             gl.enableVertexAttribArray(attr.position);
-    
-            let nv = this.mesh.nvertices[id];
-            let offset = nv*12;
-    
+
             if(mesh.vertex.texCoord) {
                 if(attr.uv >= 0) {
-                    gl.vertexAttribPointer(attr.uv, 2, gl.FLOAT, false, 8, offset);
+                    gl.vertexAttribPointer(attr.uv, vertex.texCoord.size, vertex.texCoord.glType,
+                        vertex.texCoord.normalized, vertex.stride, vertex.texCoord.offset);
                     gl.enableVertexAttribArray(attr.uv);
                 }
-                offset += nv*8;
             }
             if(mesh.vertex.color) {
                 if(attr.color >= 0) {
-                    gl.vertexAttribPointer(attr.color, 4, gl.UNSIGNED_BYTE, true, 4, offset);
+                    gl.vertexAttribPointer(attr.color, vertex.color.size, vertex.color.glType,
+                        vertex.color.normalized, vertex.stride, vertex.color.offset);
                     gl.enableVertexAttribArray(attr.color);
                 }
-                offset += nv*4;
             }
             if(mesh.vertex.normal) {
                 if(attr.normal >= 0) {
-                    gl.vertexAttribPointer(attr.normal, 3, gl.SHORT, true, 6, offset);
+                    gl.vertexAttribPointer(attr.normal, vertex.normal.size, vertex.normal.glType,
+                        vertex.normal.normalized, vertex.stride, vertex.normal.offset);
                     gl.enableVertexAttribArray(attr.normal);
                 }
             }
@@ -303,29 +303,8 @@ NXSRaw.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
 
 
     createNodeGeometry: function(id, data) {
-        let m = this.mesh;
-        var nv = m.nvertices[id];
-        var nf = m.nfaces[id];
         let indices  = data.index;
-        let vertices = new ArrayBuffer(nv*m.vsize);
-        var position = new Float32Array(vertices, 0, nv*3);
-        position.set(data.position);
-		var off = nv*12;
-		if(m.vertex.texCoord) {
-            var uv = new Float32Array(vertices, off, nv*2);
-            uv.set(data.uv);
-			off += nv*8;
-		}
-		if(m.vertex.color) {
-            var color = new Uint8Array(vertices, off, nv*4);
-            color.set(data.color);
-            off += nv*4;
-        }
-        if(m.vertex.normal) {
-            var normal = new Int16Array(vertices, off, nv*3);
-            normal.set(data.normal);
-            off += nv*6;
-		}
+		let vertices = data.vertices;
         
         var gl = this.gl
         var vbo = this.vbo[id] = gl.createBuffer();

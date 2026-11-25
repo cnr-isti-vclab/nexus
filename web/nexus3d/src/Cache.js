@@ -3,6 +3,47 @@ function powerOf2(n) {
 	return n && (n & (n - 1)) === 0;
 }
 
+function interleaveComponents(vertex, count, components) {
+    const result = new Uint8Array(count * vertex.stride);
+    for(let c = 0; c < vertex.attributes.length; ++c) {
+        const attribute = vertex.attributes[c];
+        const component = components[c];
+        if(!attribute) continue;
+        if(!component) {
+            if(c < 4)
+                throw new Error("Missing decoded vertex attribute " + c);
+            continue;
+        }
+
+        const source = ArrayBuffer.isView(component)
+            ? new Uint8Array(component.buffer, component.byteOffset, component.byteLength)
+            : new Uint8Array(component);
+        const componentSize = count * attribute.byteSize;
+        if(source.byteLength < componentSize)
+            throw new Error("Decoded vertex attribute is too small");
+
+        for(let i = 0; i < count; ++i) {
+            const sourceOffset = i * attribute.byteSize;
+            const destinationOffset = i * vertex.stride + attribute.offset;
+            result.set(source.subarray(sourceOffset, sourceOffset + attribute.byteSize), destinationOffset);
+        }
+    }
+    return result;
+}
+
+function planarToInterleaved(buffer, vertex, count) {
+    const source = new Uint8Array(buffer);
+    const components = new Array(vertex.attributes.length);
+    for(let c = 0; c < vertex.attributes.length; ++c) {
+        const attribute = vertex.attributes[c];
+        if(attribute) {
+            const offset = count * attribute.planarOffset;
+            components[c] = source.subarray(offset, offset + count * attribute.byteSize);
+        }
+    }
+    return interleaveComponents(vertex, count, components);
+}
+
 var targetError   = 2.0;    //error won't go lower than this if we reach it
 var maxError      = 15;     //error won't go over this even if fps is low
 var minFps        = 15;
@@ -304,32 +345,24 @@ _Cache.prototype = {
             return;
         const nv = mesh.nvertices[id];
         const nf = mesh.nfaces[id];
-	    let geometry = {};
-
-	    
+        let vertices;
+        let indices;
 	    if(!mesh.corto) {
-		    geometry.index  = new Uint16Array(buffer, nv*mesh.vsize,  nf*3);
-            geometry.position =  new Float32Array(buffer, 0, nv*3);
-
-		    var off = nv*12;
-		    if(mesh.vertex.texCoord) {
-                geometry.uv = new Float32Array(buffer, off, nv*2);
-                off += nv*8;
-            }
-            if(mesh.vertex.normal) {
-				geometry.normal = new Int16Array(buffer, off, nv*3);
-                off += nv*6;
-			}
-
-            if(mesh.vertex.color) {
-                geometry.color = new Uint8Array(buffer, off, nv*4);
-                off += nv*4;
-			}
-
-		
+            indices = new Uint16Array(buffer, nv * mesh.sourceVertexSize, nf * 3);
+            vertices = mesh.interleaved
+                ? new Uint8Array(buffer, 0, nv * mesh.vertex.stride)
+                : planarToInterleaved(buffer, mesh.vertex, nv);
 	    } else {
-            geometry = buffer;
+            indices = buffer.index;
+            vertices = interleaveComponents(mesh.vertex, nv, [
+                buffer.position, buffer.normal, buffer.color, buffer.uv,
+                buffer.data, buffer.data1, buffer.data2, buffer.data3
+            ]);
 	    }
+	    if(!indices)
+	        throw new Error("Missing node indices");
+
+        const geometry = { vertices, index: indices };
 
 	    //if(nf == 0)
     	//	scramble(nv, v, no, co);

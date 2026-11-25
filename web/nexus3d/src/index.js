@@ -101,7 +101,6 @@ function onNexusLoad(nexus) {
 }
 
 var url = "models/gargo.nxz"; 
-url = "models/test.nxs";
 //onUpdate parameter here is used to trigger a redraw
 let nexus1 = new Nexus3D(url, renderer, { onLoad: onNexusLoad, onUpdate: () => { redraw = true; }} );
 //nexus1.castShadow = true;
