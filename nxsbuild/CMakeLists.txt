@@ -95,6 +95,18 @@ if(NOT METIS_INCLUDE_DIR OR NOT METIS_LIBRARY)
 	message(FATAL_ERROR "METIS headers and library were not found.")
 endif()
 
+set(DRACO_ROOT "$ENV{DRACO_ROOT}")
+if(DRACO_ROOT)
+	find_path(DRACO_INCLUDE_DIR NAMES draco/compression/decode.h HINTS "${DRACO_ROOT}/include")
+	find_library(DRACO_LIBRARY NAMES draco HINTS "${DRACO_ROOT}/lib")
+else()
+	find_path(DRACO_INCLUDE_DIR NAMES draco/compression/decode.h)
+	find_library(DRACO_LIBRARY NAMES draco)
+endif()
+if(NOT DRACO_INCLUDE_DIR OR NOT DRACO_LIBRARY)
+	message(FATAL_ERROR "Draco headers and library were not found.")
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -114,6 +126,7 @@ target_include_directories(nxsbuild PRIVATE
 	/usr/include/eigen3
 	/home/ponchio/local/include
 	"${METIS_INCLUDE_DIR}"
+	"${DRACO_INCLUDE_DIR}"
 	${JPEG_INCLUDE_DIRS}
 	${PNG_INCLUDE_DIRS}
 )
@@ -127,7 +140,7 @@ target_link_libraries(nxsbuild PRIVATE
 	Qt6::Gui
 	${JPEG_LIBRARIES}
 	${PNG_LIBRARIES}
-	draco
+	"${DRACO_LIBRARY}"
 	tf::trueform
 )
 

@@ -8,13 +8,13 @@ runs:
       uses: ilammy/msvc-dev-cmd@v1
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
-      if: ${{ matrix.os != 'macos-latest' }}
+      if: ${{ runner.os != 'macOS' }}
       with:
         cache: true
         version: '6.10.*'
         modules: 'qtshadertools'
     - name: Ensure Qt GuiPrivate CMake target
-      if: ${{ matrix.os != 'macos-latest' }}
+      if: ${{ runner.os != 'macOS' }}
       shell: bash
       run: |
         # aqt kits can ship QRhi headers without the GuiPrivate CMake wrapper.
@@ -108,10 +108,11 @@ runs:
       run: |
         brew install tbb metis draco
         echo "METIS_ROOT=$(brew --prefix metis)" >> "$GITHUB_ENV"
+        echo "DRACO_ROOT=$(brew --prefix draco)" >> "$GITHUB_ENV"
         echo "TBB_DIR=$(brew --prefix tbb)/lib/cmake/TBB" >> "$GITHUB_ENV"
-    - name: Install Qt macOS arm
+    - name: Install Qt macOS
       shell: bash
-      if: ${{ matrix.os == 'macos-latest' }}
+      if: ${{ runner.os == 'macOS' }}
       run: |
         brew install qt qtshadertools
         echo "CMAKE_PREFIX_PATH=$(brew --prefix qt):$(brew --prefix qtshadertools):$(brew --prefix tbb)" >> "$GITHUB_ENV"
