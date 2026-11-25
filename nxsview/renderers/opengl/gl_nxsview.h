@@ -37,7 +37,7 @@ public:
 	nx::GLRenderer renderer;
 
 	GLNxsview(QWidget *parent = 0, bool share = true);
-	~GLNxsview() {}
+	~GLNxsview();
 
 public slots:
 
@@ -88,6 +88,7 @@ private:
 	unsigned int lineVertexArray = 0;
 	unsigned int lineBuffer = 0;
 	bool glReady = false;
+	bool glCleaned = false;
 };
 
 

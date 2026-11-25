@@ -120,7 +120,12 @@ void GLNxsview::getSnapshot() {
 		image.save(file, "PNG");
 }
 
+GLNxsview::~GLNxsview() {
+	cleanupGL();
+}
+
 void GLNxsview::initializeGL() {
+	glCleaned = false;
 	QObject::connect(context(), &QOpenGLContext::aboutToBeDestroyed,
 	                 this, &GLNxsview::cleanupGL, Qt::DirectConnection);
 	const QSurfaceFormat actualFormat = context()->format();
@@ -172,8 +177,11 @@ void GLNxsview::initializeGL() {
 }
 
 void GLNxsview::cleanupGL() {
-	if(!context())
+	if(!context() || glCleaned)
 		return;
+	glCleaned = true;
+	QObject::disconnect(context(), &QOpenGLContext::aboutToBeDestroyed,
+	                    this, &GLNxsview::cleanupGL);
 	makeCurrent();
 	auto *gl = currentGLFunctions();
 	renderer.releaseResources();

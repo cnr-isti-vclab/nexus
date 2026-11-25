@@ -147,7 +147,6 @@ class Controller {
   void resume() {
     assert(!stopped);
     assert(paused);
-    std::cout << "Resume" << std::endl;
 
     //unlock and open all doors
     for(unsigned int i = 0; i < caches.size(); i++) {
