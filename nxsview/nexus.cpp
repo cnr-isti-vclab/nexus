@@ -28,7 +28,8 @@ using namespace nx;
 
 void _glCheckError(const char *file, int line) {
 #ifndef NDEBUG
-	GLenum err (glGetError());
+	auto *gl = currentGLFunctions();
+	GLenum err (gl->glGetError());
 
 	while(err != GL_NO_ERROR) {
 		std::string error;
@@ -42,19 +43,17 @@ void _glCheckError(const char *file, int line) {
 		}
 
 		std::cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<std::endl;
-		err=glGetError();
+		err=gl->glGetError();
 	}
 #endif
 }
 
 
 Nexus::Nexus(Controller *control): controller(control), loaded(false), http_stream(false) {
-	file = new QTNexusFile();
 }
 
 Nexus::~Nexus() {
 	close();
-	delete file;
 }
 
 bool Nexus::open(const char *_uri) {
@@ -133,6 +132,7 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 		std::cerr << "Failed mapping texture data" << std::endl;
 		exit(0);
 	}
+	data.memory_owned = false;
 	QImage img;
 	bool success = img.loadFromData((uchar*)data.memory, texture.getSize());
 	if(header.signature.isDeepzoom()) {
@@ -154,6 +154,7 @@ void nx::Nexus::loadImageFromData(nx::TextureData& data, int t)
 
 	int imgsize = data.width * data.height * 4;
 	data.memory = new char[imgsize];
+	data.memory_owned = true;
 
 	//flip memory for texture
 	int linesize = img.width() * 4;
@@ -203,17 +204,18 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 
 	char *vertex_start = data.memory;
 	char *face_start = vertex_start + vertex_size;
+	auto *gl = currentGLFunctions();
 
 	glCheckError();
 
-	glGenBuffers(1, (GLuint *)(&(data.vbo)));
-	glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertex_size, vertex_start, GL_STATIC_DRAW);
+	gl->glGenBuffers(1, (GLuint *)(&(data.vbo)));
+	gl->glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
+	gl->glBufferData(GL_ARRAY_BUFFER, vertex_size, vertex_start, GL_STATIC_DRAW);
 
 	if(node.nface) {
-		glGenBuffers(1, (GLuint *)(&(data.fbo)));
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.fbo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_size, face_start, GL_STATIC_DRAW);
+		gl->glGenBuffers(1, (GLuint *)(&(data.fbo)));
+		gl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.fbo);
+		gl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_size, face_start, GL_STATIC_DRAW);
 	}
 
 	int size = vertex_size + face_size;
@@ -229,16 +231,16 @@ uint64_t Nexus::loadGpu(uint32_t n) {
 			if(texturedata[t].tex) continue;
 			
 			glCheckError();
-			glGenTextures(1, &data.tex);
-			glBindTexture(GL_TEXTURE_2D, data.tex);
+			gl->glGenTextures(1, &data.tex);
+			gl->glBindTexture(GL_TEXTURE_2D, data.tex);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.memory);
-			glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.memory);
+			gl->glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			if(isPowerOfTwo(data.width) && isPowerOfTwo(data.height)) {
-				glGenerateMipmap(GL_TEXTURE_2D);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				gl->glGenerateMipmap(GL_TEXTURE_2D);
+				gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 			} else
-				glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				gl->glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			
 
 			//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -281,9 +283,10 @@ uint64_t Nexus::dropGpu(uint32_t n) {
 	Node &node = nodes[n];
 
 #ifndef NO_OPENGL
-	glDeleteBuffers(1, (GLuint *)(&(data.vbo)));
+	auto *gl = currentGLFunctions();
+	gl->glDeleteBuffers(1, (GLuint *)(&(data.vbo)));
 	if(node.nface)
-		glDeleteBuffers(1, (GLuint *)(&(data.fbo)));
+		gl->glDeleteBuffers(1, (GLuint *)(&(data.fbo)));
 #endif
 	data.vbo = data.fbo = 0;
 
@@ -302,7 +305,7 @@ uint64_t Nexus::dropGpu(uint32_t n) {
 			tdata.count_gpu--;
 			if(tdata.count_gpu != 0) continue;
 
-			glDeleteTextures(1, &tdata.tex);
+			gl->glDeleteTextures(1, &tdata.tex);
 			tdata.tex = 0;
 			size += tdata.width*tdata.height*3;
 		}

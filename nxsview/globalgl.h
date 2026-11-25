@@ -18,18 +18,23 @@ for more details.
 #ifndef NX_GLOBALGL_H
 #define NX_GLOBALGL_H
 
-#ifdef GL_ES
-
-#include <OpenGLES/ES2/gl.h>
-
-#else
-
-#include <GL/glew.h>
-
-#endif
+#include <QOpenGLContext>
+#include <QOpenGLFunctions_4_3_Core>
+#include <QOpenGLVersionFunctionsFactory>
+#include <QtGlobal>
 
 #include <string>
 #include <iostream>
+
+inline QOpenGLFunctions_4_3_Core *currentGLFunctions() {
+	QOpenGLContext *context = QOpenGLContext::currentContext();
+	if(!context)
+		qFatal("OpenGL operation requested without a current context");
+	auto *functions = QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_4_3_Core>(context);
+	if(!functions || !functions->initializeOpenGLFunctions())
+		qFatal("Unable to initialize OpenGL 4.3 Core functions");
+	return functions;
+}
 
 void _glCheckError(const char *file, int line);
 #define glCheckError() _glCheckError(__FILE__,__LINE__)

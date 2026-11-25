@@ -18,8 +18,8 @@ for more details.
 #include "scene.h"
 
 Scene::~Scene() {
-	for(uint i = 0; i < nodes.size(); i++)
-		delete nodes[i].nexus;
+	for(nx::Nexus *model : models)
+		delete model;
 }
 
 bool Scene::load(QStringList inputs, int instances) {

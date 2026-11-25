@@ -58,8 +58,18 @@ bool Controller::addToken(Token *token) {
 }
 
 void Controller::flush(Nexus *nexus) {
+	{
+		std::lock_guard<std::mutex> locker(ram_cache.loading_mutex);
+		ram_cache.loading.remove(nexus);
+	}
 	TokenRemover remover(nexus);
-	removeTokens(remover);
+	if(!stopped) {
+		removeTokens(remover);
+		return;
+	}
+	for(int i = static_cast<int>(caches.size()) - 1; i >= 0; --i)
+		caches[i]->flush(remover);
+	provider.flush(remover);
 }
 
 bool Controller::hasCacheChanged() {

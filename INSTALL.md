@@ -54,37 +54,14 @@ private headers, shader tools, XKB, and GLU development packages:
 
 ```sh
 sudo apt-get install qt6-base-private-dev qt6-shadertools-dev \
-  libxkbcommon-dev libglu1-mesa-dev
+  libxkbcommon-dev libgl-dev
 ```
 
 Check that the distribution provides Qt 6.10 or newer; older releases may need
 Qt installed from the official installer instead.
 
-### glew
-
-See [Glew](https://github.com/nigels-com/glew) for build instructions.
-
-```sh
-git clone git@github.com:nigels-com/glew.git
-```
-
-or
-
-```sh
-sudo apt-get install libglew-dev
-```
-
-or
-
-```sh
-brew install glew
-```
-
-Again if glew is compiled and not installed, you need to add the include directory in CMakeLists.txt for nxsedit, nxsview and nxsbuild:
-
-```
-include_directories(../../../vcglib ../../../vcglib/eigenlib  ../../../glew-2.1.0/include )
-```
+The OpenGL viewer requests desktop OpenGL 4.3 Core and uses Qt's OpenGL
+function wrappers; it does not require GLEW or GLU.
 ### curl
 nxsview support view over http, curl is needed:
 
@@ -158,6 +135,7 @@ cmake --build build
 ```
 
 The viewer defaults to OpenGL. Select the Qt RHI backend with `nxsview --renderer qrhi`.
+The OpenGL backend requires a driver that supports OpenGL 4.3 Core.
 
 ### nxsedit
 

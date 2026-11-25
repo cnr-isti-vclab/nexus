@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(nxsview)
 
-find_package(Qt6 6.10 REQUIRED COMPONENTS Widgets OpenGLWidgets GuiPrivate ShaderTools)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Widgets OpenGL OpenGLWidgets GuiPrivate ShaderTools)
+find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/renderers/opengl/glew.cmake)
 
 set(VIEW_HEADERS
 	controller.h
@@ -64,7 +63,7 @@ add_executable(nxsview MACOSX_BUNDLE ${VIEW_SOURCES} ${VIEW_HEADERS}
 )
 
 target_compile_features(nxsview PRIVATE cxx_std_20)
-target_compile_definitions(nxsview PRIVATE GL_COMPATIBILITY NXSVIEW_QRHI_RESOURCES)
+target_compile_definitions(nxsview PRIVATE NXSVIEW_QRHI_RESOURCES)
 target_include_directories(nxsview PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(nxsview SYSTEM PRIVATE
 	"${VCGDIR}"
@@ -75,16 +74,16 @@ target_include_directories(nxsview SYSTEM PRIVATE
 target_link_libraries(nxsview PRIVATE
 	nexus
 	Qt6::Widgets
+	Qt6::OpenGL
 	Qt6::OpenGLWidgets
 	Qt6::GuiPrivate
 	Threads::Threads
-	external-glew
 )
 
 if(WIN32)
-	target_link_libraries(nxsview PRIVATE glu32 OpenGL32)
+	target_link_libraries(nxsview PRIVATE OpenGL32)
 else()
-	target_link_libraries(nxsview PRIVATE OpenGL::GLU OpenGL::GL)
+	target_link_libraries(nxsview PRIVATE OpenGL::GL)
 endif()
 
 qt_add_shaders(nxsview nxsview_qrhi_shaders
@@ -125,7 +124,6 @@ if(APPLE)
 		FILE ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Info.plist
 	)
 
-	install(TARGETS external-glew DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/nxsview.app/Contents/Frameworks)
 	install(TARGETS nxsview DESTINATION ${CMAKE_INSTALL_PREFIX})
 else()
 	install(TARGETS nxsview)

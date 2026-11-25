@@ -1,25 +1,13 @@
-/*
-Nexus
-
-Copyright(C) 2012 - Federico Ponchio
-ISTI - Italian National Research Council - Visual Computing Lab
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
-for more details.
-*/
 #include "gl_renderer.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
+
+#include <QColor>
+#include <QDebug>
+#include <QVector4D>
 
 #include "../../globalgl.h"
 #include "../../nexus.h"
@@ -27,6 +15,60 @@ for more details.
 using namespace nx;
 
 namespace {
+
+constexpr auto vertexShader = R"(
+#version 430 core
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec4 color;
+layout(location = 3) in vec2 texCoord;
+
+uniform mat4 uMvp;
+uniform mat4 uModelView;
+uniform mat4 uTextureMatrix;
+uniform vec4 uBaseColor;
+uniform bool uUseVertexColors;
+uniform bool uGenerateTexCoords;
+
+out vec4 vertexColor;
+out vec3 vertexNormal;
+out vec2 vertexTexCoord;
+
+void main() {
+    gl_Position = uMvp * vec4(position, 1.0);
+    vertexColor = uUseVertexColors ? color * uBaseColor : uBaseColor;
+    vertexNormal = mat3(transpose(inverse(uModelView))) * normal;
+    vertexTexCoord = uGenerateTexCoords
+        ? (uTextureMatrix * vec4(position, 1.0)).xy
+        : texCoord;
+}
+)";
+
+constexpr auto fragmentShader = R"(
+#version 430 core
+in vec4 vertexColor;
+in vec3 vertexNormal;
+in vec2 vertexTexCoord;
+
+uniform sampler2D meshTexture;
+uniform vec3 uLightDirection;
+uniform bool uUseTexture;
+uniform bool uUseLighting;
+
+out vec4 fragColor;
+
+void main() {
+    vec4 color = vertexColor;
+    if(uUseTexture)
+        color *= texture(meshTexture, vertexTexCoord);
+
+    float light = 1.0;
+    if(uUseLighting)
+        light = 0.2 + 0.8 * max(dot(normalize(vertexNormal), normalize(uLightDirection)), 0.0);
+
+    fragColor = vec4(color.rgb * light, color.a);
+}
+)";
 
 GLenum vertexAttributeType(const Attribute &attribute) {
 	switch(attribute.type) {
@@ -46,301 +88,204 @@ const void *bufferOffset(uint32_t offset) {
 	return reinterpret_cast<const void *>(static_cast<std::uintptr_t>(offset));
 }
 
-bool normalizedAttribute(const Attribute &attribute) {
-	return attribute.type != Attribute::FLOAT && attribute.type != Attribute::DOUBLE;
+QVector4D rgbaVector(const Rgba8 &color) {
+	return QVector4D(color.r / 255.0f, color.g / 255.0f,
+	                 color.b / 255.0f, 1.0f);
 }
 
+void setAttribute(QOpenGLFunctions_4_3_Core *gl, GLuint index,
+                  const Attribute &attribute, GLint minimumComponents,
+                  GLsizei stride, uint32_t offset, bool normalized) {
+	if(!attribute.isNull() && attribute.number >= minimumComponents) {
+		gl->glEnableVertexAttribArray(index);
+		gl->glVertexAttribPointer(index, std::min<GLint>(attribute.number, 4),
+		                          vertexAttributeType(attribute),
+		                          normalized, stride,
+		                          bufferOffset(offset));
+	} else {
+		gl->glDisableVertexAttribArray(index);
+	}
+}
+
+} // namespace
+
+bool GLRenderer::initialize() {
+	if(initialized)
+		return true;
+
+	if(!program.addShaderFromSourceCode(QOpenGLShader::Vertex, vertexShader) ||
+	   !program.addShaderFromSourceCode(QOpenGLShader::Fragment, fragmentShader) ||
+	   !program.link()) {
+		qWarning() << "Failed to initialize OpenGL core renderer:" << program.log();
+		program.removeAllShaders();
+		return false;
+	}
+
+	currentGLFunctions()->glGenVertexArrays(1, &vertexArray);
+	if(!vertexArray) {
+		qWarning() << "Failed to create OpenGL core renderer vertex array";
+		program.removeAllShaders();
+		return false;
+	}
+	initialized = true;
+	return true;
+}
+
+void GLRenderer::releaseResources() {
+	if(vertexArray) {
+		currentGLFunctions()->glDeleteVertexArrays(1, &vertexArray);
+		vertexArray = 0;
+	}
+	program.removeAllShaders();
+	initialized = false;
+}
+
+void GLRenderer::setViewMatrices(const QMatrix4x4 &projection,
+                                     const QMatrix4x4 &modelView,
+                                     const QVector3D &light,
+                                     const int *viewport) {
+	projectionMatrix = projection;
+	modelViewMatrix = modelView;
+	lightDirection = light;
+	std::copy(viewport, viewport + 4, currentViewport);
 }
 
 void GLRenderer::getView() {
-	float projection[16];
-	float modelview[16];
-	int viewport[4];
-	glGetFloatv(GL_PROJECTION_MATRIX, projection);
-	glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	Renderer::getView(projection, modelview, viewport);
+	Renderer::getView(projectionMatrix.constData(), modelViewMatrix.constData(),
+	                  currentViewport);
 }
 
-void GLRenderer::beginRender(const RenderOptions &options) {
-	if(options.draw_textures)
-		glEnable(GL_TEXTURE_2D);
-	if(options.draw_textures && !options.draw_texcoords) {
-		glEnable(GL_TEXTURE_2D);
-		glEnable(GL_TEXTURE_GEN_S);
-		glEnable(GL_TEXTURE_GEN_T);
-		glEnable(GL_TEXTURE_GEN_R);
-		glEnable(GL_TEXTURE_GEN_Q);
-	}
-
-	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-	glEnable(GL_COLOR_MATERIAL);
-	glCheckError();
-
-#ifdef GL_COMPATIBILITY
-	glEnableClientState(GL_VERTEX_ARRAY);
-	if(options.draw_colors) glEnableClientState(GL_COLOR_ARRAY);
-	if(options.draw_normals) glEnableClientState(GL_NORMAL_ARRAY);
-	if(options.draw_texcoords) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-#endif
-
-#if GL_ES || GL_CORE
-	glEnableVertexAttribArray(ATTRIB_VERTEX);
-	if(options.draw_colors) glEnableVertexAttribArray(ATTRIB_COLOR);
-	if(options.draw_normals) glEnableVertexAttribArray(ATTRIB_NORMAL);
-	if(options.draw_texcoords) glEnableVertexAttribArray(ATTRIB_TEXTCOORD);
-#endif
+void GLRenderer::beginRender(const RenderOptions &) {
+	assert(initialized);
+	auto *gl = currentGLFunctions();
+	gl->glBindVertexArray(vertexArray);
+	program.bind();
+	program.setUniformValue("uMvp", projectionMatrix * modelViewMatrix);
+	program.setUniformValue("uModelView", modelViewMatrix);
+	program.setUniformValue("uLightDirection", lightDirection);
+	program.setUniformValue("meshTexture", 0);
 }
 
 void GLRenderer::renderSelected(Nexus *nexus, const RenderOptions &options) {
-	glCheckError();
+	auto *gl = currentGLFunctions();
+	const Signature &signature = nexus->header.signature;
+	const VertexElement &vertexFormat = signature.vertex;
+	const Attribute &coordinate = vertexFormat.attributes[VertexElement::COORD];
+	const Attribute &normal = vertexFormat.attributes[VertexElement::NORM];
+	const Attribute &color = vertexFormat.attributes[VertexElement::COLOR];
+	const Attribute &texCoord = vertexFormat.attributes[VertexElement::TEX];
+	const GLsizei stride = vertexFormat.vertexSize();
 
-	Signature &sig = nexus->header.signature;
-#ifdef GL_COMPATIBILITY
-	if(options.draw_normals && !sig.vertex.hasNormals()) {
-		glDisableClientState(GL_NORMAL_ARRAY);
-		glNormal3f(0, 0, 1);
-	}
-	if(options.draw_colors && !sig.vertex.hasColors()) {
-		glDisableClientState(GL_COLOR_ARRAY);
-		glColor4f(1, 1, 1, 1);
-	}
-	if(options.draw_texcoords && !sig.vertex.hasTextures()) {
-		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-		glTexCoord2f(0, 0);
-	}
-#endif
-#if GL_ES || GL_CORE
-	if(options.draw_normals && !sig.vertex.hasNormals()) {
-		glDisableVertexAttribArray(ATTRIB_NORMAL);
-		glVertexAttrib3f(ATTRIB_NORMAL, 0, 0, 1);
-	}
-	if(options.draw_colors && !sig.vertex.hasColors()) {
-		glDisableVertexAttribArray(ATTRIB_COLOR);
-		glVertexAttrib4f(ATTRIB_COLOR, 1, 1, 1, 1);
-	}
-	if(options.draw_texcoords && !sig.vertex.hasTextures()) {
-		glDisableVertexAttribArray(ATTRIB_TEXTCOORD);
-		glVertexAttrib2f(ATTRIB_TEXTCOORD, 0, 0);
-	}
-#endif
-	int GPU_loaded = 0;
-	uint32_t last_texture = 0xffffffff;
-	for(uint32_t i = 0; i <= last_node; i++) {
-		if(!selected[i]) continue;
+	program.setUniformValue("uModelView", modelViewMatrix);
+	program.setUniformValue("uUseVertexColors", options.draw_colors);
+	program.setUniformValue("uUseLighting", options.draw_normals);
 
-		Node &node = nexus->nodes[i];
+	for(uint32_t nodeIndex = 0; nodeIndex <= last_node; ++nodeIndex) {
+		if(!selected[nodeIndex])
+			continue;
 
-		if(nexus->header.signature.face.hasIndex() && skipNode(i)) continue;
+		Node &node = nexus->nodes[nodeIndex];
+		if(signature.face.hasIndex() && skipNode(nodeIndex))
+			continue;
 
-		stats.node_rendered++;
-
-		nx::Sphere sphere = node.tightSphere();
-		const nx::Vector3f &sphereCenter = sphere.Center();
-		if(frustum_culling && metric.frustum.isOutside(sphereCenter, sphere.Radius())) {
-			stats.frustum_culled++;
+		++stats.node_rendered;
+		const Sphere sphere = node.tightSphere();
+		if(frustum_culling && metric.frustum.isOutside(sphere.Center(), sphere.Radius())) {
+			++stats.frustum_culled;
 			continue;
 		}
-		nx::Vector3f viewPoint = metric.frustum.viewPoint();
-		if(cone_culling && node.cone.Backface(sphere, viewPoint)) {
-			stats.cone_culled++;
+		if(cone_culling && node.cone.Backface(sphere, metric.frustum.viewPoint()))
 			continue;
-		}
-		glCheckError();
-		if(0) {
-			const nx::Vector3f &c = sphere.Center();
-			float r = node.tight_radius;
 
-			glLineWidth(4);
-			glBegin(GL_LINE_STRIP);
-			for(int i = 0; i < 21; i++)
-				glVertex3f(c[0] + r*sin(i*M_PI/10), c[1] + r*cos(i*M_PI/10), c[2]);
-			glEnd();
-		}
-
-		glCheckError();
-		NodeData &data = nexus->nodedata[i];
+		NodeData &data = nexus->nodedata[nodeIndex];
 		assert(data.memory);
+		if(!data.vbo)
+			nexus->loadGpu(nodeIndex);
+		if(!data.vbo)
+			continue;
 
-		if(!data.vbo) {
-			GPU_loaded++;
-			nexus->loadGpu(i);
-		}
+		gl->glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
+		setAttribute(gl, 0, coordinate, 3, stride,
+		             vertexFormat.componentOffset(VertexElement::COORD), false);
+		setAttribute(gl, 1, options.draw_normals ? normal : Attribute{}, 3, stride,
+		             vertexFormat.componentOffset(VertexElement::NORM), true);
+		setAttribute(gl, 2, options.draw_colors ? color : Attribute{}, 3, stride,
+		             vertexFormat.componentOffset(VertexElement::COLOR), true);
+		setAttribute(gl, 3, options.draw_texcoords ? texCoord : Attribute{}, 2, stride,
+		             vertexFormat.componentOffset(VertexElement::TEX), true);
 
-		assert(data.vbo);
-
-		glBindBuffer(GL_ARRAY_BUFFER, data.vbo);
-		const GLsizei stride = sig.vertex.vertexSize();
-		const Attribute &coordinate = sig.vertex.attributes[VertexElement::COORD];
-		const Attribute &normal = sig.vertex.attributes[VertexElement::NORM];
-		const Attribute &color = sig.vertex.attributes[VertexElement::COLOR];
-		const Attribute &texCoord = sig.vertex.attributes[VertexElement::TEX];
-		const void *coordinateOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::COORD));
-		const void *normalOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::NORM));
-		const void *colorOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::COLOR));
-		const void *texCoordOffset = bufferOffset(sig.vertex.componentOffset(VertexElement::TEX));
-
-#ifdef GL_COMPATIBILITY
-		glVertexPointer(coordinate.number, vertexAttributeType(coordinate), stride, coordinateOffset);
-
-		if(options.draw_texcoords) {
-			if(sig.vertex.hasTextures()) {
-				glTexCoordPointer(texCoord.number, vertexAttributeType(texCoord), stride, texCoordOffset);
-			}
-		}
-
-		if(options.draw_normals) {
-			if(sig.vertex.hasNormals()) {
-				glNormalPointer(vertexAttributeType(normal), stride, normalOffset);
-			}
-		}
-
-		if(options.draw_colors) {
-			if(sig.vertex.hasColors()) {
-				glColorPointer(color.number, vertexAttributeType(color), stride, colorOffset);
-			}
-		}
-#endif
-
-#if GL_ES || GL_CORE
-		glVertexAttribPointer(ATTRIB_VERTEX, coordinate.number, vertexAttributeType(coordinate),
-		                      GL_FALSE, stride, coordinateOffset);
-
-		if(options.draw_normals) {
-			if(sig.vertex.hasNormals()) {
-				glVertexAttribPointer(ATTRIB_NORMAL, normal.number, vertexAttributeType(normal),
-				                      normalizedAttribute(normal), stride, normalOffset);
-			}
-		}
-
-		if(options.draw_colors) {
-			if(sig.vertex.hasColors()) {
-				glVertexAttribPointer(ATTRIB_COLOR, color.number, vertexAttributeType(color),
-				                      normalizedAttribute(color), stride, colorOffset);
-			}
-		}
-
-		if(options.draw_texcoords) {
-			if(sig.vertex.hasTextures()) {
-				glVertexAttribPointer(ATTRIB_TEXTCOORD, texCoord.number, vertexAttributeType(texCoord),
-				                      normalizedAttribute(texCoord), stride, texCoordOffset);
-			}
-		}
-#endif
-
-		if(mode & PATCHES) {
-			nx::Rgba8 color{};
-			color[2] = ((i % 11)*171)%63 + 63;
-			color[1] = ((i % 7)*57)%127 + 127;
-			color[0] = ((i % 16)*135)%127 + 127;
-#ifdef GL_COMPATIBILITY
-			glColor3ub(color[0], color[1], color[2]);
-#endif
-#if GL_ES || GL_CORE
-			glVertexAttrib4f(ATTRIB_COLOR, color[0]/255.0f, color[1]/255.0f, color[2]/255.0f, 1.0f);
-#endif
-		}
-
-		glCheckError();
+		program.setUniformValue("uMvp", projectionMatrix * modelViewMatrix);
+		program.setUniformValue("uModelView", modelViewMatrix);
+		program.setUniformValue("uUseVertexColors", options.draw_colors);
+		program.setUniformValue("uUseLighting", options.draw_normals);
+		program.setUniformValue("uGenerateTexCoords", false);
+		program.setUniformValue("uUseTexture", false);
 
 		if(!options.draw_triangles) {
-			float pointsize = ceil(0.3*errors[i]);
-			if(pointsize > 2) pointsize = 2;
-			glPointSize(pointsize);
-
-			glDrawArrays(GL_POINTS, 0, node.nvert);
-			stats.patch_rendered++;
+			const Rgba8 pointColor = options.draw_colors
+				? Rgba8{255, 255, 255, 255}
+				: meshColor;
+			program.setUniformValue("uBaseColor", rgbaVector(pointColor));
+			gl->glDrawArrays(GL_POINTS, 0, node.nvert);
+			++stats.patch_rendered;
 			stats.instance_rendered += node.nvert;
 			continue;
 		}
 
-		if(options.draw_triangles)
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.fbo);
-
+		gl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.fbo);
 		uint32_t offset = 0;
 		uint32_t end = 0;
-		uint32_t last_patch = node.last_patch() - 1;
-		for(uint32_t k = node.first_patch; k < node.last_patch(); k++) {
-			Patch &patch = nexus->patches[k];
-
+		const uint32_t lastPatch = node.last_patch() - 1;
+		for(uint32_t patchIndex = node.first_patch; patchIndex < node.last_patch(); ++patchIndex) {
+			Patch &patch = nexus->patches[patchIndex];
 			if(!selected[patch.node]) {
 				end = patch.triangle_offset;
-				if(k != last_patch)
+				if(patchIndex != lastPatch)
 					continue;
 			}
 			if(end > offset) {
-				if(options.draw_textures) {
-					if(patch.texture != 0xffffffff) {
-						if(last_texture != patch.texture) {
-							if(!options.draw_texcoords) {
-								Texture &texture = nexus->textures[patch.texture];
-								glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
-								glTexGeni(GL_Q, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR);
+				Rgba8 patchColor = options.draw_colors
+					? Rgba8{255, 255, 255, 255}
+					: meshColor;
+				if(mode & PATCHES) {
+					patchColor = Rgba8{
+						static_cast<uint8_t>(((nodeIndex % 16) * 135) % 127 + 127),
+						static_cast<uint8_t>(((nodeIndex % 7) * 57) % 127 + 127),
+						static_cast<uint8_t>(((nodeIndex % 11) * 171) % 63 + 63),
+						255
+					};
+				}
+				program.setUniformValue("uBaseColor", rgbaVector(patchColor));
 
-								glTexGenfv(GL_S, GL_OBJECT_PLANE, &texture.matrix[0]);
-								glTexGenfv(GL_T, GL_OBJECT_PLANE, &texture.matrix[4]);
-								glTexGenfv(GL_R, GL_OBJECT_PLANE, &texture.matrix[8]);
-								glTexGenfv(GL_Q, GL_OBJECT_PLANE, &texture.matrix[12]);
-							}
-							TextureData &tdata = nexus->texturedata[patch.texture];
-							glBindTexture(GL_TEXTURE_2D, tdata.tex);
-							last_texture = patch.texture;
-						}
-					} else {
-						glBindTexture(GL_TEXTURE_2D, 0);
-						last_texture = 0xffffffff;
-					}
+				const bool useTexture = options.draw_textures && patch.texture != 0xffffffff;
+				program.setUniformValue("uUseTexture", useTexture);
+				program.setUniformValue("uGenerateTexCoords",
+				                        useTexture && !options.draw_texcoords);
+				if(useTexture) {
+					const TextureData &textureData = nexus->texturedata[patch.texture];
+					const Texture &texture = nexus->textures[patch.texture];
+					gl->glActiveTexture(GL_TEXTURE0);
+					gl->glBindTexture(GL_TEXTURE_2D, textureData.tex);
+					program.setUniformValue("uTextureMatrix", QMatrix4x4(texture.matrix));
 				}
 
-				if(!options.draw_triangles) {
-					if(nexus->header.signature.face.hasIndex())
-						glDrawArrays(GL_POINTS, 0, node.nvert);
-					else
-						glDrawArrays(GL_POINTS, offset, end - offset);
-				} else {
-					glDrawElements(GL_TRIANGLES, (end - offset)*3, GL_UNSIGNED_SHORT, (void *)(offset*3*sizeof(uint16_t)));
-				}
-				stats.patch_rendered++;
+				gl->glDrawElements(GL_TRIANGLES, static_cast<GLsizei>((end - offset) * 3),
+				                   GL_UNSIGNED_SHORT,
+				                   bufferOffset(offset * 3 * sizeof(uint16_t)));
+				++stats.patch_rendered;
 				stats.instance_rendered += end - offset;
 			}
 			offset = patch.triangle_offset;
 		}
-		glCheckError();
+		gl->glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }
 
-void GLRenderer::endRender(const RenderOptions &options) {
-	glCheckError();
-
-#ifdef GL_COMPATIBILITY
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	if(options.draw_triangles) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	glDisableClientState(GL_VERTEX_ARRAY);
-	if(options.draw_normals) glDisableClientState(GL_NORMAL_ARRAY);
-	if(options.draw_colors) glDisableClientState(GL_COLOR_ARRAY);
-	if(options.draw_texcoords) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-#endif
-
-#if GL_ES || GL_CORE
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	if(options.draw_triangles) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	glDisableVertexAttribArray(ATTRIB_VERTEX);
-	if(options.draw_normals) glDisableVertexAttribArray(ATTRIB_NORMAL);
-	if(options.draw_colors) glDisableVertexAttribArray(ATTRIB_COLOR);
-	if(options.draw_texcoords) glDisableVertexAttribArray(ATTRIB_TEXTCOORD);
-#endif
-
-	if(options.draw_textures)
-		glDisable(GL_TEXTURE_2D);
-	if(options.draw_textures && !options.draw_texcoords) {
-		glDisable(GL_TEXTURE_GEN_S);
-		glDisable(GL_TEXTURE_GEN_T);
-		glDisable(GL_TEXTURE_GEN_R);
-		glDisable(GL_TEXTURE_GEN_Q);
-	}
-	glDisable(GL_COLOR_MATERIAL);
+void GLRenderer::endRender(const RenderOptions &) {
+	auto *gl = currentGLFunctions();
+	gl->glBindTexture(GL_TEXTURE_2D, 0);
+	gl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	gl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	gl->glBindVertexArray(0);
+	program.release();
 }

@@ -1,10 +1,10 @@
-QT += core gui openglwidgets widgets gui-private
+QT += core gui opengl openglwidgets widgets gui-private
 
 TARGET = nxsview
 TEMPLATE = app
 
 QMAKE_CXXFLAGS += -std=c++20
-DEFINES += GL_COMPATIBILITY NDEBUG
+DEFINES += NDEBUG
 unix:DEFINES -= USE_CURL
 win32:DEFINES += NOMINMAX
 
@@ -15,10 +15,9 @@ INCLUDEPATH += \
     ../src/core \
     ../src/corto/include
 
-win32:INCLUDEPATH += ../../glew/include
 CORTO_LIBRARY = $$absolute_path(../src/corto/libcorto.a, $$_PRO_FILE_PWD_)
-win32:LIBS += opengl32.lib GLU32.lib ../../glew/lib/glew32.lib $$CORTO_LIBRARY
-unix:LIBS += -lGLEW -lGLU -lGL $$CORTO_LIBRARY -pthread
+win32:LIBS += opengl32.lib $$CORTO_LIBRARY
+unix:LIBS += -lGL $$CORTO_LIBRARY -pthread
 
 SOURCES += \
     main.cpp \

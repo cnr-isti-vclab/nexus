@@ -66,8 +66,9 @@ public:
 	void dropGpu() {
 		std::lock_guard<std::mutex> locker(droplock);
 		if(openGLBackend) {
+			auto *gl = currentGLFunctions();
 			for(uint i = 0; i < to_drop.size(); i++)
-				glDeleteBuffers(1, (GLuint *)&(to_drop[i]));
+				gl->glDeleteBuffers(1, (GLuint *)&(to_drop[i]));
 		}
 		to_drop.clear();
 	}
@@ -90,7 +91,7 @@ public:
 #if defined(SHARED_CONTEXT)
 		if(openGLBackend) {
 			in->nexus->loadGpu(in->node);
-			glFinish();
+			currentGLFunctions()->glFinish();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 #endif

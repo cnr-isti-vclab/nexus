@@ -119,8 +119,9 @@ private:
 
 class NodeData {
 public:
-	NodeData(): memory(NULL), vbo(0), fbo(0) {}
+	NodeData(): memory(NULL), memory_owned(false), vbo(0), fbo(0) {}
 	char *memory;
+	bool memory_owned;
 	uint32_t vbo;
 	uint32_t fbo;
 
@@ -134,8 +135,9 @@ public:
 class TextureData {
 public:
 	std::mutex mutex;
-	TextureData(): memory(NULL), width(0), height(0), tex(0), count_ram(0), count_gpu(0) {}
+	TextureData(): memory(NULL), memory_owned(false), width(0), height(0), tex(0), count_ram(0), count_gpu(0) {}
 	char *memory;             //some form of raw data (probably compressed jpeg)
+	bool memory_owned;
 	uint32_t width;            //size of image
 	uint32_t height;
 

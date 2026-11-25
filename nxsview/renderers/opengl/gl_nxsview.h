@@ -18,8 +18,11 @@ for more details.
 #ifndef NX_GLNXSVIEW_H
 #define NX_GLNXSVIEW_H
 
-#include <GL/glew.h>
+#include "../../globalgl.h"
+
 #include <iostream>
+#include <QMatrix4x4>
+#include <QOpenGLShaderProgram>
 #include <QOpenGLWidget>
 #include <QDebug>
 
@@ -64,10 +67,10 @@ public slots:
 protected:
 	void requestUpdate() override { update(); }
 	nx::Renderer &getRenderer() override { return renderer; }
-	void initializeGL();
-	void resizeGL(int w, int h);
-	void setView(float znear, float zfar);
-	void paintGL();
+	void initializeGL() override;
+	void resizeGL(int w, int h) override;
+	void paintGL() override;
+	void cleanupGL();
 
 	void closeEvent ( QCloseEvent * event );
 	void wheelEvent(QWheelEvent *e);
@@ -79,6 +82,12 @@ protected:
 	void keyPressEvent(QKeyEvent* e);
 
 private:
+	QOpenGLShaderProgram backgroundProgram;
+	QOpenGLShaderProgram lineProgram;
+	unsigned int backgroundVertexArray = 0;
+	unsigned int lineVertexArray = 0;
+	unsigned int lineBuffer = 0;
+	bool glReady = false;
 };
 
 

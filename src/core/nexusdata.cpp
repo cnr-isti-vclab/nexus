@@ -92,15 +92,36 @@ void NexusData::close() {
 }
 
 void NexusData::flush() {
-	//flush
-	for(unsigned int i = 0; i < header.n_nodes; i++)
-		delete nodedata[i].memory;
-
+	if(nodes && nodedata) {
+		for(unsigned int i = 0; i < header.n_nodes; i++)
+			if(nodedata[i].memory)
+				dropRam(i);
+	}
+	if(texturedata) {
+		for(unsigned int i = 0; i < header.n_textures; i++) {
+			TextureData &data = texturedata[i];
+			if(!data.memory)
+				continue;
+			if(data.memory_owned)
+				delete []data.memory;
+			else if(header.signature.isDeepzoom())
+				file->dropDZTex(data.memory);
+			else
+				file->unmap((unsigned char *)data.memory);
+			data.memory = NULL;
+			data.memory_owned = false;
+		}
+	}
 	delete []nodes;
+	nodes = NULL;
 	delete []patches;
+	patches = NULL;
 	delete []textures;
+	textures = NULL;
 	delete []nodedata;
+	nodedata = NULL;
 	delete []texturedata;
+	texturedata = NULL;
 }
 
 void NexusData::loadHeader() {
@@ -212,10 +233,12 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 		if(sign.isInterleaved()) {
 			d.memory = source;
+			d.memory_owned = false;
 		} else {
 			PlanarVertexData planar(sign.vertex, node.nvert);
 			planar.readPlanar(source);
 			d.memory = new char[size]{};
+			d.memory_owned = true;
 			planar.interleave(d.memory);
 			if(face_size)
 				memcpy(d.memory + interleaved_vertex_size, source + planar_vertex_size, face_size);
@@ -242,6 +265,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 		}
 
 		d.memory = new char[size]{};
+		d.memory_owned = true;
 
 		if(sign.flags & Signature::CORTO) {
 			PlanarVertexData planar(sign.vertex, node.nvert);
@@ -315,6 +339,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 				std::lock_guard<std::mutex> file_locker(file_mutex);
 				data.memory = (char *)file->map(texture.getBeginOffset(), texture.getSize());
 			}
+			data.memory_owned = false;
 			if(!data.memory) {
 				cerr << "Failed mapping texture data" << endl;
 				exit(0);
@@ -338,6 +363,7 @@ uint64_t NexusData::loadRam(uint32_t n) {
 
 			int imgsize = data.width*data.height*4;
 			data.memory = new char[imgsize];
+			data.memory_owned = true;
 
 			//flip memory for texture
 			int linesize = img.width()*4;
@@ -363,7 +389,7 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	assert(data.memory);
 
 	auto &sign = header.signature;
-	if(sign.isCompressed() || !sign.isInterleaved()) {
+	if(data.memory_owned) {
 		delete []data.memory;
 	} else if(sign.isDeepzoom()) {
 		std::lock_guard<std::mutex> file_locker(file_mutex);
@@ -374,6 +400,7 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 	}
 
 	data.memory = NULL;
+	data.memory_owned = false;
 
 	//report RAM size for compressed meshes.
 	uint32_t size = node.nvert * sign.vertex.vertexSize() +
@@ -388,7 +415,9 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 			std::lock_guard<std::mutex> texture_locker(tdata.mutex);
 			tdata.count_ram--;
 			if(tdata.count_ram != 0) continue;
-			if(sign.isDeepzoom()) {
+			if(tdata.memory_owned) {
+				delete []tdata.memory;
+			} else if(sign.isDeepzoom()) {
 				std::lock_guard<std::mutex> file_locker(file_mutex);
 				file->dropDZTex(tdata.memory);
 			} else {
@@ -397,6 +426,7 @@ uint64_t NexusData::dropRam(uint32_t n, bool write) {
 			}
 
 			tdata.memory = NULL;
+			tdata.memory_owned = false;
 			size += tdata.width*tdata.height*4;
 		}
 	}

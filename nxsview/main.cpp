@@ -5,6 +5,7 @@
 #include <QCommandLineParser>
 #include <QDir>
 #include <QFileDialog>
+#include <QSurfaceFormat>
 #include <QWidget>
 
 #include "nxsview.h"
@@ -39,6 +40,14 @@ public:
 };
 
 int main(int argc, char *argv[]) {
+	QSurfaceFormat openGLFormat;
+	openGLFormat.setRenderableType(QSurfaceFormat::OpenGL);
+	openGLFormat.setVersion(4, 3);
+	openGLFormat.setProfile(QSurfaceFormat::CoreProfile);
+	openGLFormat.setDepthBufferSize(24);
+	openGLFormat.setAlphaBufferSize(8);
+	QSurfaceFormat::setDefaultFormat(openGLFormat);
+
 	QApplication app(argc, argv);
 
 	QCommandLineParser opt;

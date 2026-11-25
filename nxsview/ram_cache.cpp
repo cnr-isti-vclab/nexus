@@ -139,6 +139,7 @@ int RamCache::get(nx::Token *in) {
 		char *downloaded = new char[node.getSize()];
 		memset(downloaded, 0, node.getSize());
 		nodedata.memory = downloaded;
+		nodedata.memory_owned = true;
 
 		CurlData data(downloaded, node.getSize());
 		int32_t readed = getCurl(in->nexus->url.c_str(), data, node.getBeginOffset(), node.getEndOffset());
@@ -148,6 +149,7 @@ int RamCache::get(nx::Token *in) {
 			                         static_cast<std::size_t>(node.nface) * signature.face.size();
 			char *compressed = downloaded;
 			nodedata.memory = new char[size]{};
+			nodedata.memory_owned = true;
 
 			if(signature.flags & Signature::CORTO) {
 				PlanarVertexData planar(signature.vertex, node.nvert);
@@ -179,6 +181,7 @@ int RamCache::get(nx::Token *in) {
 			PlanarVertexData planar(signature.vertex, node.nvert);
 			planar.readPlanar(downloaded);
 			nodedata.memory = new char[size]{};
+			nodedata.memory_owned = true;
 			planar.interleave(nodedata.memory);
 			if(face_size)
 				memcpy(nodedata.memory + interleaved_vertex_size,
