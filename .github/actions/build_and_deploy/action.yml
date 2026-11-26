@@ -121,6 +121,7 @@ runs:
         echo "$(brew --prefix qt)/bin" >> "$GITHUB_PATH"
     - name: Ccache
       uses: hendrikmuhs/ccache-action@v1.2
+      if: ${{ runner.os != 'Windows' }}
       with:
         key: ${{ matrix.os }}-${{ github.ref }}
     - name: Configure and Build
@@ -133,8 +134,10 @@ runs:
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           vcpkg_root="$(cygpath -u "$VCPKG_INSTALLATION_ROOT")"
           cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=$vcpkg_root/scripts/buildsystems/vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=x64-windows")
+        else
+          cmake_args+=("-DCMAKE_C_COMPILER_LAUNCHER=ccache" "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
         fi
-        cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install "${cmake_args[@]}" ..
+        cmake -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install "${cmake_args[@]}" ..
         ninja
         ninja install
     - name: Deploy Linux
