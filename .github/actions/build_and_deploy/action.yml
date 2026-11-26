@@ -121,7 +121,6 @@ runs:
         echo "$(brew --prefix qt)/bin" >> "$GITHUB_PATH"
     - name: Ccache
       uses: hendrikmuhs/ccache-action@v1.2
-      if: ${{ runner.os != 'Windows' }}
       with:
         key: ${{ matrix.os }}-${{ github.ref }}
     - name: Configure and Build
@@ -134,11 +133,29 @@ runs:
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           vcpkg_root="$(cygpath -u "$VCPKG_INSTALLATION_ROOT")"
           cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=$vcpkg_root/scripts/buildsystems/vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=x64-windows")
-        else
-          cmake_args+=("-DCMAKE_C_COMPILER_LAUNCHER=ccache" "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
         fi
-        cmake -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install "${cmake_args[@]}" ..
-        ninja
+        cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install "${cmake_args[@]}" ..
+        build_status=0
+        ninja || build_status=$?
+        if [[ "$RUNNER_OS" == "Windows" && $build_status -ne 0 ]]; then
+          symbol='?build_hierarchy@MeshHierarchy@nx@@QEAAXAEBVBuildParameters@2@@Z'
+          for object in \
+            'nxsbuild/CMakeFiles/nxsbuild.dir/mesh_hierarchy.cpp.obj' \
+            'nxsbuild/CMakeFiles/nxsbuild.dir/main.cpp.obj'; do
+            echo "::group::Inspecting $object for build_hierarchy"
+            if [[ -f "$object" ]]; then
+              if ! dumpbin /symbols "$object" | grep -F "$symbol"; then
+                echo "::warning::Expected build_hierarchy symbol not found in $object"
+              fi
+            else
+              echo "::warning::Object file not found: $object"
+            fi
+            echo "::endgroup::"
+          done
+        fi
+        if [[ $build_status -ne 0 ]]; then
+          exit "$build_status"
+        fi
         ninja install
     - name: Deploy Linux
       shell: bash
