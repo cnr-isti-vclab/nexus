@@ -16,6 +16,7 @@ GNU General Public License (http://www.gnu.org/licenses/gpl.txt)
 for more details.
 */
 #include <assert.h>
+#include <mutex>
 
 #include <QTextStream>
 #include <QDebug>
