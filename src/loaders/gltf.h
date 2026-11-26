@@ -38,7 +38,7 @@ namespace base64
             'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
         };
 
-        constexpr std::array<char, 256> DecodeMap =
+        constexpr std::array<int, 256> DecodeMap =
         {
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -126,7 +126,7 @@ namespace base64
         for (std::size_t i = 0; i < length; i++)
         {
             const uint8_t c = static_cast<uint8_t>(in[i]);
-            const char map = detail::DecodeMap.at(c);
+            const int map = detail::DecodeMap.at(c);
             if (map == -1)
             {
                 if (c != '=') // Non base64 character
