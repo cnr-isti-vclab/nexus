@@ -135,28 +135,65 @@ runs:
           cmake_args+=("-DCMAKE_TOOLCHAIN_FILE=$vcpkg_root/scripts/buildsystems/vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=x64-windows")
         fi
         cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=../install "${cmake_args[@]}" ..
-        build_status=0
-        ninja || build_status=$?
-        if [[ "$RUNNER_OS" == "Windows" && $build_status -ne 0 ]]; then
-          symbol='?build_hierarchy@MeshHierarchy@nx@@QEAAXAEBVBuildParameters@2@@Z'
-          for object in \
-            'nxsbuild/CMakeFiles/nxsbuild.dir/mesh_hierarchy.cpp.obj' \
-            'nxsbuild/CMakeFiles/nxsbuild.dir/main.cpp.obj'; do
-            echo "::group::Inspecting $object for build_hierarchy"
-            if [[ -f "$object" ]]; then
-              if ! dumpbin /symbols "$object" | grep -F "$symbol"; then
-                echo "::warning::Expected build_hierarchy symbol not found in $object"
-              fi
-            else
-              echo "::warning::Object file not found: $object"
-            fi
-            echo "::endgroup::"
-          done
-        fi
-        if [[ $build_status -ne 0 ]]; then
-          exit "$build_status"
-        fi
+        ninja
         ninja install
+    - name: Diagnose Windows linker symbols
+      if: ${{ runner.os == 'Windows' && failure() }}
+      shell: pwsh
+      run: |
+        $toolPath = $null
+        $toolArgs = @('/symbols')
+        $dumpbin = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+        if ($dumpbin) {
+          $toolPath = $dumpbin.Source
+        } elseif ($env:VCToolsInstallDir) {
+          $candidate = Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\dumpbin.exe'
+          if (Test-Path $candidate) {
+            $toolPath = $candidate
+          }
+        }
+
+        if (-not $toolPath) {
+          $link = Get-Command link.exe -ErrorAction SilentlyContinue
+          if ($link) {
+            $toolPath = $link.Source
+            $toolArgs = @('/dump', '/symbols')
+          }
+        }
+
+        if (-not $toolPath) {
+          Write-Host '::warning::Could not locate dumpbin.exe or link.exe for symbol inspection'
+          exit 0
+        }
+
+        Write-Host "Using symbol inspector: $toolPath"
+        foreach ($relativePath in @(
+          'build\nxsbuild\CMakeFiles\nxsbuild.dir\mesh_hierarchy.cpp.obj',
+          'build\nxsbuild\CMakeFiles\nxsbuild.dir\main.cpp.obj'
+        )) {
+          $objectPath = Join-Path $env:GITHUB_WORKSPACE $relativePath
+          Write-Host "::group::Symbols containing build_hierarchy in $relativePath"
+          if (-not (Test-Path $objectPath)) {
+            Write-Host "::warning::Object file not found: $objectPath"
+            Write-Host '::endgroup::'
+            continue
+          }
+
+          $output = & $toolPath @toolArgs $objectPath 2>&1
+          $toolExitCode = $LASTEXITCODE
+          if ($toolExitCode -ne 0) {
+            Write-Host "::warning::Symbol inspector exited with code $toolExitCode for $relativePath"
+            $output | ForEach-Object { Write-Host $_ }
+          } else {
+            $matches = $output | Select-String -SimpleMatch 'build_hierarchy'
+            if ($matches) {
+              $matches | ForEach-Object { Write-Host $_.Line }
+            } else {
+              Write-Host 'No symbol-table entries contain build_hierarchy'
+            }
+          }
+          Write-Host '::endgroup::'
+        }
     - name: Deploy Linux
       shell: bash
       if: ${{ runner.os == 'Linux' }}
