@@ -9,7 +9,7 @@
 namespace nx {
 
 // Forward declaration
-struct BuildParameters;
+class BuildParameters;
 
 /**
  * MeshHierarchy manages the creation and storage of multiple LOD levels
